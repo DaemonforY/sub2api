@@ -97,6 +97,7 @@ export default {
       title: 'Supported AI Models',
       description: 'One API, Multiple Choices',
       supported: 'Supported',
+      pending: 'Pending',
       soon: 'Soon',
       claude: 'Claude',
       gemini: 'Gemini',
