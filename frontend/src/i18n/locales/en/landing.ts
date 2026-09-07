@@ -119,7 +119,7 @@ export default {
       card: {
         title: 'AI Application Development Guide',
         desc: '33 in-depth articles covering LLM basics, Agents, RAG and AI system design, plus interview questions and a learning roadmap. Free to read.',
-        tags: 'LLM Basics|AI Agent|RAG|System Design|Interview',
+        tags: 'LLM Basics,AI Agent,RAG,System Design,Interview',
         cta: 'Read for free'
       }
     },

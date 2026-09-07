@@ -590,7 +590,7 @@ const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 // 互推站点：AI 应用开发学习站（带 UTM 便于统计引流）
 const learnSiteUrl = 'https://ai-learn.xinduanju.top/'
 const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_medium=${medium}`
-const learnTags = computed(() => String(t('home.learn.card.tags')).split('|').filter(Boolean))
+const learnTags = computed(() => String(t('home.learn.card.tags')).split(',').filter(Boolean))
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)

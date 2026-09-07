@@ -119,7 +119,7 @@ export default {
       card: {
         title: 'AI 应用开发知识体系',
         desc: '33 篇系统文章：大模型基础、Agent、RAG、AI 系统设计，配套高频面试题与学习路线，免费阅读。',
-        tags: '大模型基础|AI Agent|RAG|系统设计|面试题',
+        tags: '大模型基础,AI Agent,RAG,系统设计,面试题',
         cta: '免费阅读'
       }
     },
