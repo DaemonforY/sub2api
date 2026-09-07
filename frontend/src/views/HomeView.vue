@@ -129,6 +129,17 @@
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
+          <!-- Learning site link (cross-site) -->
+          <a
+            :href="learnUrl('nav')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            :title="t('home.learn.card.title')"
+          >
+            <span class="text-base leading-none">📚</span>
+            <span class="hidden sm:inline">{{ t('home.learn.navLabel') }}</span>
+          </a>
           <!-- Doc Link -->
           <a
             v-if="docUrl"
@@ -458,6 +469,46 @@
             >
           </div>
         </div>
+
+        <!-- Learning Resources (cross-site) -->
+        <div class="mb-16">
+          <div class="mb-8 text-center">
+            <span
+              class="inline-block rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
+              >{{ t('home.learn.badge') }}</span
+            >
+            <h2 class="mt-3 text-3xl font-bold text-gray-900 dark:text-white">{{ t('home.learn.title') }}</h2>
+            <p class="mt-2 text-gray-600 dark:text-dark-300">{{ t('home.learn.subtitle') }}</p>
+          </div>
+          <a
+            :href="learnUrl('home')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-2xl border border-gray-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center dark:border-dark-700 dark:bg-dark-800/60"
+          >
+            <div
+              class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-2xl shadow-md"
+            >
+              📚
+            </div>
+            <div class="min-w-0 flex-1">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('home.learn.card.title') }}</h3>
+              <p class="mt-1 text-sm text-gray-600 dark:text-dark-300">{{ t('home.learn.card.desc') }}</p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span
+                  v-for="tag in learnTags"
+                  :key="tag"
+                  class="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-700 dark:text-dark-300"
+                  >{{ tag }}</span
+                >
+              </div>
+            </div>
+            <span
+              class="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary-500 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-primary-600"
+              >{{ t('home.learn.card.cta') }} →</span
+            >
+          </a>
+        </div>
       </div>
     </main>
 
@@ -486,6 +537,14 @@
             class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
           >
             GitHub
+          </a>
+          <a
+            :href="learnUrl('footer')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+          >
+            {{ t('home.learn.card.title') }}
           </a>
         </div>
       </div>
@@ -528,6 +587,10 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 
 // GitHub URL
 const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
+// 互推站点：AI 应用开发学习站（带 UTM 便于统计引流）
+const learnSiteUrl = 'https://ai-learn.xinduanju.top/'
+const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_medium=${medium}`
+const learnTags = computed(() => String(t('home.learn.card.tags')).split('|').filter(Boolean))
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)

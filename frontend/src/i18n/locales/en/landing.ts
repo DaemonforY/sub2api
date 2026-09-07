@@ -110,6 +110,19 @@ export default {
       description: 'Sign up now and get free trial credits to experience seamless AI access',
       button: 'Sign Up Free'
     },
+    // Learning resources (cross-site)
+    learn: {
+      badge: 'Learn',
+      title: 'Learning Resources',
+      subtitle: 'Learn AI application development, then practice with a single API key',
+      navLabel: 'Learn AI',
+      card: {
+        title: 'AI Application Development Guide',
+        desc: '33 in-depth articles covering LLM basics, Agents, RAG and AI system design, plus interview questions and a learning roadmap. Free to read.',
+        tags: 'LLM Basics|AI Agent|RAG|System Design|Interview',
+        cta: 'Read for free'
+      }
+    },
     footer: {
       allRightsReserved: 'All rights reserved.'
     }
