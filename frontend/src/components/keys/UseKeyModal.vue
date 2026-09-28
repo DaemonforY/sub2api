@@ -28,6 +28,22 @@
           {{ platformDescription }}
         </p>
 
+        <!-- Infinite canvas quick entry (cross-site, subdomain) -->
+        <a
+          :href="canvasEntryUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="use-key-canvas-entry"
+          class="group flex items-center gap-3 rounded-lg border border-primary-200 bg-primary-50/60 px-4 py-3 transition hover:bg-primary-50 dark:border-primary-800 dark:bg-primary-900/20 dark:hover:bg-primary-900/30"
+        >
+          <span class="text-2xl leading-none">🎨</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-medium text-gray-900 dark:text-white">{{ t('keys.useKeyModal.canvas.title') }}</span>
+            <span class="block text-xs text-gray-600 dark:text-gray-400">{{ t('keys.useKeyModal.canvas.description') }}</span>
+          </span>
+          <span class="flex-shrink-0 text-sm font-medium text-primary-600 group-hover:underline dark:text-primary-400">{{ t('keys.useKeyModal.canvas.cta') }} →</span>
+        </a>
+
         <!-- Client Tabs -->
         <div v-if="clientTabs.length" class="overflow-x-auto border-b border-gray-200 dark:border-dark-700">
           <nav class="-mb-px flex min-w-max gap-4 sm:gap-6" aria-label="Client">
@@ -263,6 +279,7 @@ import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
 import { fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform } from '@/types'
+import { canvasUrl } from '@/constants/crossSites'
 import {
   findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
@@ -511,6 +528,11 @@ const currentTabs = computed(() => {
   }
   return shellTabs
 })
+
+// 无限画布入口：预填网关地址，用户只需在画布里粘贴 Key（Key 不放进 URL）
+const canvasEntryUrl = computed(() =>
+  canvasUrl({ medium: 'use-key', baseUrl: props.baseUrl || window.location.origin })
+)
 
 const platformDescription = computed(() => {
   if (activeClientTab.value === 'codex' &&

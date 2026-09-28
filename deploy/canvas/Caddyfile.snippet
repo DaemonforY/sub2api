@@ -1,0 +1,13 @@
+# 追加到 /etc/caddy/Caddyfile 末尾（与主站块平级），把域名改成你的子域名。
+# 纯静态站点，Caddy 自动申请证书。
+canvas.hivegpt.cn {
+	reverse_proxy 127.0.0.1:3000
+	encode zstd gzip
+	log {
+		output file /var/log/caddy/canvas.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+		format json
+	}
+}

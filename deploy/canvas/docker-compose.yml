@@ -1,0 +1,31 @@
+# =============================================================================
+# 无限画布 (infinite-canvas) — 部署在子域名上的 AI 生图工作台
+# 上游项目: https://github.com/basketikun/infinite-canvas
+#
+# 纯静态前端 (nginx)，浏览器直连 Sub2API 的 /v1 接口，不需要数据库。
+# 与主站 compose 独立，互不影响：
+#   cd deploy/canvas && sudo docker compose pull && sudo docker compose up -d
+#
+# 前置条件（详见 README.md）：
+#   1. DNS: canvas.<domain> A 记录指向本机
+#   2. Caddy: 为 canvas.<domain> 增加 reverse_proxy 127.0.0.1:3000
+#   3. Sub2API 主站 .env 设置 CORS_ALLOWED_ORIGINS=https://canvas.<domain>
+# =============================================================================
+services:
+  canvas:
+    image: ghcr.io/basketikun/infinite-canvas:latest
+    container_name: infinite-canvas
+    restart: unless-stopped
+    ports:
+      # 只绑定本机回环，由 Caddy 对外提供 HTTPS
+      - "127.0.0.1:${CANVAS_PORT:-3000}:3000"
+    # 可选统计（留空即关闭）
+    environment:
+      - ANALYTICS_GA4_ID=${ANALYTICS_GA4_ID:-}
+      - ANALYTICS_BAIDU_ID=${ANALYTICS_BAIDU_ID:-}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

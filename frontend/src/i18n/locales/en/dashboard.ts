@@ -129,6 +129,11 @@ export default {
     useKey: 'Use Key',
     useKeyModal: {
       title: 'Use API Key',
+      canvas: {
+        title: 'Use in Infinite Canvas',
+        description: 'Opens the canvas site with the gateway URL pre-filled. Paste this key there to generate and edit images or videos.',
+        cta: 'Open canvas'
+      },
       description:
         'Add the following environment variables to your terminal profile or run directly in terminal to configure API access.',
       copy: 'Copy',

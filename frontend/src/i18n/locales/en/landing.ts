@@ -110,6 +110,16 @@ export default {
       description: 'Sign up now and get free trial credits to experience seamless AI access',
       button: 'Sign Up Free'
     },
+    // Infinite canvas (cross-site, deployed on a subdomain)
+    canvas: {
+      navLabel: 'AI Canvas',
+      card: {
+        title: 'Infinite Canvas · AI Image Studio',
+        desc: 'Generate, edit and remix images or videos on an infinite canvas with your key from this site, wiring nodes into a full creative workflow.',
+        tags: 'Text to Image,Image to Image,Reference Edit,Video,Node Workflow',
+        cta: 'Open canvas'
+      }
+    },
     // Learning resources (cross-site)
     learn: {
       badge: 'Learn',

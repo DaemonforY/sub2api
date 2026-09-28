@@ -129,6 +129,17 @@
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
+          <!-- Canvas site link (cross-site) -->
+          <a
+            :href="canvasLink('nav')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            :title="t('home.canvas.card.title')"
+          >
+            <span class="text-base leading-none">🎨</span>
+            <span class="hidden sm:inline">{{ t('home.canvas.navLabel') }}</span>
+          </a>
           <!-- Learning site link (cross-site) -->
           <a
             :href="learnUrl('nav')"
@@ -480,11 +491,41 @@
             <h2 class="mt-3 text-3xl font-bold text-gray-900 dark:text-white">{{ t('home.learn.title') }}</h2>
             <p class="mt-2 text-gray-600 dark:text-dark-300">{{ t('home.learn.subtitle') }}</p>
           </div>
+          <div class="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
+          <!-- Canvas card (cross-site) -->
+          <a
+            :href="canvasLink('home')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group flex flex-col items-start gap-4 rounded-2xl border border-gray-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center dark:border-dark-700 dark:bg-dark-800/60"
+          >
+            <div
+              class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-400 to-violet-600 text-2xl shadow-md"
+            >
+              🎨
+            </div>
+            <div class="min-w-0 flex-1">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('home.canvas.card.title') }}</h3>
+              <p class="mt-1 text-sm text-gray-600 dark:text-dark-300">{{ t('home.canvas.card.desc') }}</p>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <span
+                  v-for="tag in canvasTags"
+                  :key="tag"
+                  class="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-700 dark:text-dark-300"
+                  >{{ tag }}</span
+                >
+              </div>
+            </div>
+            <span
+              class="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary-500 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-primary-600"
+              >{{ t('home.canvas.card.cta') }} →</span
+            >
+          </a>
           <a
             :href="learnUrl('home')"
             target="_blank"
             rel="noopener noreferrer"
-            class="group mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-2xl border border-gray-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center dark:border-dark-700 dark:bg-dark-800/60"
+            class="group flex flex-col items-start gap-4 rounded-2xl border border-gray-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center dark:border-dark-700 dark:bg-dark-800/60"
           >
             <div
               class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-2xl shadow-md"
@@ -508,6 +549,7 @@
               >{{ t('home.learn.card.cta') }} →</span
             >
           </a>
+          </div>
         </div>
       </div>
     </main>
@@ -539,6 +581,14 @@
             GitHub
           </a>
           <a
+            :href="canvasLink('footer')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
+          >
+            {{ t('home.canvas.card.title') }}
+          </a>
+          <a
             :href="learnUrl('footer')"
             target="_blank"
             rel="noopener noreferrer"
@@ -560,6 +610,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
+import { canvasUrl } from '@/constants/crossSites'
 
 const { t } = useI18n()
 
@@ -591,6 +642,9 @@ const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 const learnSiteUrl = 'https://ai-learn.xinduanju.top/'
 const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_medium=${medium}`
 const learnTags = computed(() => String(t('home.learn.card.tags')).split(',').filter(Boolean))
+// 互推站点：无限画布（子域名部署的生图工作台），预填本站网关地址
+const canvasLink = (medium: string) => canvasUrl({ medium, baseUrl: window.location.origin })
+const canvasTags = computed(() => String(t('home.canvas.card.tags')).split(',').filter(Boolean))
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)
