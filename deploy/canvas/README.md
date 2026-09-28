@@ -2,6 +2,8 @@
 
 把 [infinite-canvas](https://github.com/basketikun/infinite-canvas) 作为 Sub2API 的配套生图工作台，部署在子域名（默认 `canvas.hivegpt.cn`）。
 
+镜像来自本站定制分支 [DaemonforY/infinite-canvas](https://github.com/DaemonforY/infinite-canvas)（push 到 main 自动构建 `ghcr.io/daemonfory/infinite-canvas:latest`）。相对上游的改动：渠道默认接口指向主站网关；顶栏和移动端菜单有回主站的链接；去掉了 GitHub 链接；填写非主站接口时提示前往主站注册购买。主站地址、名称、默认接口通过 `MAIN_SITE_URL` / `MAIN_SITE_NAME` / `MAIN_SITE_API_BASE_URL` 环境变量配置，可复用到其他站点。
+
 它是纯静态前端：用户在画布里填入本网关地址和自己的 API Key，浏览器直接调用 `https://<主站>/v1/images/generations`、`/v1/chat/completions` 等接口。主站的「使用密钥」弹窗和首页都带有跳转入口，跳转时会用 `?baseUrl=` 预填网关地址。
 
 ## 步骤

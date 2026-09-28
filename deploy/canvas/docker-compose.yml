@@ -1,6 +1,7 @@
 # =============================================================================
 # 无限画布 (infinite-canvas) — 部署在子域名上的 AI 生图工作台
 # 上游项目: https://github.com/basketikun/infinite-canvas
+# 本站定制分支: https://github.com/DaemonforY/infinite-canvas（默认接口指向主站、顶栏回链主站、去掉 GitHub 链接）
 #
 # 纯静态前端 (nginx)，浏览器直连 Sub2API 的 /v1 接口，不需要数据库。
 # 与主站 compose 独立，互不影响：
@@ -13,14 +14,19 @@
 # =============================================================================
 services:
   canvas:
-    image: ghcr.io/basketikun/infinite-canvas:latest
+    image: ghcr.io/daemonfory/infinite-canvas:latest
     container_name: infinite-canvas
     restart: unless-stopped
     ports:
       # 只绑定本机回环，由 Caddy 对外提供 HTTPS
       - "127.0.0.1:${CANVAS_PORT:-3000}:3000"
-    # 可选统计（留空即关闭）
     environment:
+      # 主站信息：画布顶栏回链、渠道默认接口地址、注册/购买引导都指向这里。
+      # 部署到其他站点时只需改这三项，无需重新构建镜像。
+      - MAIN_SITE_URL=${MAIN_SITE_URL:-https://hivegpt.cn}
+      - MAIN_SITE_NAME=${MAIN_SITE_NAME:-HiveGPT}
+      - MAIN_SITE_API_BASE_URL=${MAIN_SITE_API_BASE_URL:-https://hivegpt.cn}
+      # 可选统计（留空即关闭）
       - ANALYTICS_GA4_ID=${ANALYTICS_GA4_ID:-}
       - ANALYTICS_BAIDU_ID=${ANALYTICS_BAIDU_ID:-}
     healthcheck:
