@@ -113,6 +113,20 @@ cors:
   allow_credentials: true
 
 # =============================================================================
+# Gateway request log
+# 网关全量请求日志
+# =============================================================================
+# Records every API gateway request (success or failure, including rejected keys
+# and wrong paths) with the full URL and the full API key presented. Admin-only,
+# shown on the admin "Request Logs" page.
+# 记录所有网关调用（含失败、密钥无效、路径错误），带完整 URL 与完整 API Key，仅管理员可见。
+request_log:
+  enabled: true
+  # Rows older than this are deleted; 0 keeps them forever.
+  # 超过该天数的记录自动清理；0 表示永久保留。
+  retention_days: 30
+
+# =============================================================================
 # Security Configuration
 # 安全配置
 # =============================================================================

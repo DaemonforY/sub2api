@@ -568,6 +568,19 @@ func ProvideOpsSystemLogSink(opsRepo OpsRepository) *OpsSystemLogSink {
 	return sink
 }
 
+// ProvideGatewayRequestLogService 创建网关全量请求日志服务并启动异步写入与保留期清理协程。
+// 停止逻辑挂在 cmd/server 的 provideCleanup。
+func ProvideGatewayRequestLogService(repo GatewayRequestLogRepository, cfg *config.Config) *GatewayRequestLogService {
+	enabled, retention := true, DefaultGatewayRequestLogRetentionDays
+	if cfg != nil {
+		enabled = cfg.RequestLog.Enabled
+		retention = cfg.RequestLog.RetentionDays
+	}
+	svc := NewGatewayRequestLogService(repo, enabled, retention)
+	svc.Start()
+	return svc
+}
+
 // ProvideAuditLogService 创建操作审计日志服务并启动异步写入与保留期清理协程。
 // 停止逻辑挂在 cmd/server 的 provideCleanup。
 func ProvideAuditLogService(repo AuditLogRepository, settingService *SettingService) *AuditLogService {
@@ -884,6 +897,7 @@ var ProviderSet = wire.NewSet(
 	ProvideOpsService,
 	ProvideOpsIngressRejectAggregator,
 	ProvideAuditLogService,
+	ProvideGatewayRequestLogService,
 	ProvideOpsMetricsCollector,
 	ProvideOpsAggregationService,
 	ProvideOpsAlertEvaluatorService,

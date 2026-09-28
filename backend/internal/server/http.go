@@ -42,7 +42,9 @@ func ProvideRouter(
 	settingService *service.SettingService,
 	compositeResolver *service.CompositeRouteResolver,
 	redisClient *redis.Client,
+	gatewayRequestLog *service.GatewayRequestLogService,
 ) *gin.Engine {
+	middleware2.SetGatewayRequestLogRecorder(gatewayRequestLog)
 	if cfg.Server.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}

@@ -62,6 +62,8 @@ func SetupRouter(
 	r.Use(middleware2.SessionBindingContext(cfg))
 	r.Use(middleware2.Logger())
 	r.Use(middleware2.CORS(cfg.CORS))
+	// 网关全量请求日志：所有网关调用（含失败、鉴权拒绝、错误路径）都记录完整 URL 与 API Key。
+	r.Use(middleware2.GatewayRequestLog())
 	r.Use(middleware2.SecurityHeaders(cfg.Security.CSP, func() []string {
 		if p := cachedFrameOrigins.Load(); p != nil {
 			return *p

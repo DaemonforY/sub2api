@@ -69,6 +69,7 @@ type Config struct {
 	Server                  ServerConfig                  `mapstructure:"server"`
 	Log                     LogConfig                     `mapstructure:"log"`
 	CORS                    CORSConfig                    `mapstructure:"cors"`
+	RequestLog              RequestLogConfig              `mapstructure:"request_log"`
 	Security                SecurityConfig                `mapstructure:"security"`
 	Billing                 BillingConfig                 `mapstructure:"billing"`
 	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
@@ -703,6 +704,14 @@ type H2CConfig struct {
 type CORSConfig struct {
 	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 	AllowCredentials bool     `mapstructure:"allow_credentials"`
+}
+
+// RequestLogConfig controls the full gateway request log (every /v1-style call,
+// success or failure, with full URL and API key), visible to admins only.
+type RequestLogConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+	// RetentionDays prunes rows older than this many days; 0 keeps them forever.
+	RetentionDays int `mapstructure:"retention_days"`
 }
 
 // WebAuthnConfig configures this deployment as a WebAuthn relying party.
@@ -2029,6 +2038,10 @@ func setDefaults() {
 	// CORS
 	viper.SetDefault("cors.allowed_origins", []string{})
 	viper.SetDefault("cors.allow_credentials", true)
+
+	// Gateway request log
+	viper.SetDefault("request_log.enabled", true)
+	viper.SetDefault("request_log.retention_days", 30)
 
 	// WebAuthn / Passkeys are opt-in because every deployment must explicitly
 	// declare its relying-party domain and trusted browser origins.

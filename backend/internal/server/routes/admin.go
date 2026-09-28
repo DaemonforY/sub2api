@@ -130,6 +130,7 @@ func RegisterAdminRoutes(
 
 		// 操作审计日志
 		registerAuditLogRoutes(admin, h, stepUpAuth)
+		registerGatewayRequestLogRoutes(admin, h)
 	}
 }
 
@@ -157,6 +158,14 @@ func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middl
 		// 清空需现场 TOTP 校验（在 handler 内强制），不复用 step-up sudo 窗口
 		auditLogs.POST("/clear", h.Admin.AuditLog.Clear)
 	}
+}
+
+// registerGatewayRequestLogRoutes 网关全量请求日志（含完整 URL 与 API Key，仅管理员可见）。
+func registerGatewayRequestLogRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.RequestLog == nil {
+		return
+	}
+	admin.GET("/request-logs", h.Admin.RequestLog.List)
 }
 
 func registerAdminComplianceRoutes(admin *gin.RouterGroup, h *handler.Handlers) {

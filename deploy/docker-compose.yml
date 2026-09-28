@@ -55,6 +55,9 @@ services:
       - ALIPAY_MOBILE_PRECREATE_DEEP_LINK=${ALIPAY_MOBILE_PRECREATE_DEEP_LINK:-}
       # 允许跨域调用 /v1 的前端来源（逗号分隔），例如子域名上的无限画布
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
+      # 网关全量请求日志（后台「请求日志」页，含完整 URL 与 API Key）；保留天数 0 表示永久保留
+      - REQUEST_LOG_ENABLED=${REQUEST_LOG_ENABLED:-true}
+      - REQUEST_LOG_RETENTION_DAYS=${REQUEST_LOG_RETENTION_DAYS:-30}
 
       # =======================================================================
       # Database Configuration (PostgreSQL)

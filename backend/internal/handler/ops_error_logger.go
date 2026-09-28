@@ -26,9 +26,9 @@ import (
 )
 
 const (
-	opsModelKey                  = "ops_model"
+	opsModelKey                  = service.OpsModelContextKey
 	opsStreamKey                 = "ops_stream"
-	opsAccountIDKey              = "ops_account_id"
+	opsAccountIDKey              = service.OpsAccountIDContextKey
 	opsRoutingCapacityLimitedKey = "ops_routing_capacity_limited"
 	opsDedicatedErrorRecordedKey = "ops_dedicated_error_recorded"
 
