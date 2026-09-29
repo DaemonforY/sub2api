@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,6 +29,12 @@ func TestContestFlow_SubmitVoteSettleGrant(t *testing.T) {
 		return mustCreateUser(t, integrationEntClient, &service.User{Email: name + "-" + suffix + "@contest.test"})
 	}
 	alice, bob, carol, dave := mk("alice"), mk("bob"), mk("carol"), mk("dave")
+	// Prize grants write committed redeem codes; remove them so suites that count every
+	// redeem code in the shared database (TestRedeemCodeRepoSuite) are unaffected.
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(),
+			`DELETE FROM redeem_codes WHERE used_by = ANY($1)`, pq.Array([]int64{alice.ID, bob.ID, carol.ID, dave.ID}))
+	})
 
 	repo := NewContestRepository(integrationDB)
 	svc := service.NewContestService(repo, NewUserRepository(integrationEntClient, integrationDB),
