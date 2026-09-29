@@ -176,6 +176,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/contests',
+    name: 'Contests',
+    component: () => import('@/views/ContestsView.vue'),
+    meta: { requiresAuth: false, title: 'Contests', titleKey: 'contests.title' }
+  },
+  {
+    path: '/contests/:id(\\d+)',
+    name: 'ContestDetail',
+    component: () => import('@/views/ContestDetailView.vue'),
+    meta: { requiresAuth: false, title: 'Contest', titleKey: 'contests.title' }
+  },
+  {
     path: '/model-plaza',
     name: 'ModelPlaza',
     component: () => import('@/views/ModelPlazaView.vue'),
@@ -424,6 +436,24 @@ const routes: RouteRecordRaw[] = [
       titleKey: 'admin.ops.title',
       descriptionKey: 'admin.ops.description'
     }
+  },
+  {
+    path: '/admin/contests',
+    name: 'AdminContests',
+    component: () => import('@/views/admin/ContestsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Contests',
+      titleKey: 'admin.contests.title',
+      descriptionKey: 'admin.contests.description'
+    }
+  },
+  {
+    path: '/admin/contests/:id(\\d+)',
+    name: 'AdminContestDetail',
+    component: () => import('@/views/admin/ContestDetailView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Contest', titleKey: 'admin.contests.title' }
   },
   {
     path: '/admin/request-logs',

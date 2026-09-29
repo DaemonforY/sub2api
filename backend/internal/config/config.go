@@ -70,6 +70,7 @@ type Config struct {
 	Log                     LogConfig                     `mapstructure:"log"`
 	CORS                    CORSConfig                    `mapstructure:"cors"`
 	RequestLog              RequestLogConfig              `mapstructure:"request_log"`
+	Contest                 ContestConfig                 `mapstructure:"contest"`
 	Security                SecurityConfig                `mapstructure:"security"`
 	Billing                 BillingConfig                 `mapstructure:"billing"`
 	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
@@ -704,6 +705,12 @@ type H2CConfig struct {
 type CORSConfig struct {
 	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 	AllowCredentials bool     `mapstructure:"allow_credentials"`
+}
+
+// ContestConfig configures community contests (drawing contests etc.).
+type ContestConfig struct {
+	// ImageDir stores uploaded entry images; keep it on the persistent data volume.
+	ImageDir string `mapstructure:"image_dir"`
 }
 
 // RequestLogConfig controls the full gateway request log (every /v1-style call,
@@ -2042,6 +2049,9 @@ func setDefaults() {
 	// Gateway request log
 	viper.SetDefault("request_log.enabled", true)
 	viper.SetDefault("request_log.retention_days", 30)
+
+	// Contests
+	viper.SetDefault("contest.image_dir", "./data/contest-images")
 
 	// WebAuthn / Passkeys are opt-in because every deployment must explicitly
 	// declare its relying-party domain and trusted browser origins.

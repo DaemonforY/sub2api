@@ -207,6 +207,8 @@ export default {
     promptAudit: '提示词审计',
     auditLogs: '操作日志',
     requestLogs: '请求日志',
+    contests: '活动',
+    contestAdmin: '活动管理',
   },
 
   // Auth

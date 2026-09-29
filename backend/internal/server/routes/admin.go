@@ -131,6 +131,7 @@ func RegisterAdminRoutes(
 		// 操作审计日志
 		registerAuditLogRoutes(admin, h, stepUpAuth)
 		registerGatewayRequestLogRoutes(admin, h)
+		registerContestAdminRoutes(admin, h)
 	}
 }
 
@@ -157,6 +158,30 @@ func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middl
 		auditLogs.GET("/:id", h.Admin.AuditLog.Get)
 		// 清空需现场 TOTP 校验（在 handler 内强制），不复用 step-up sudo 窗口
 		auditLogs.POST("/clear", h.Admin.AuditLog.Clear)
+	}
+}
+
+// registerContestAdminRoutes 活动（绘画比赛等）管理：配置、作品审核、查票、结算与发奖。
+func registerContestAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.Contest == nil {
+		return
+	}
+	contests := admin.Group("/contests")
+	{
+		contests.GET("", h.Admin.Contest.List)
+		contests.POST("", h.Admin.Contest.Create)
+		contests.GET("/:id", h.Admin.Contest.Get)
+		contests.PUT("/:id", h.Admin.Contest.Update)
+		contests.DELETE("/:id", h.Admin.Contest.Delete)
+		contests.POST("/:id/cancel", h.Admin.Contest.Cancel)
+		contests.POST("/:id/settle", h.Admin.Contest.Settle)
+		contests.GET("/:id/entries", h.Admin.Contest.ListEntries)
+		contests.PUT("/:id/entries/:entryId/status", h.Admin.Contest.ReviewEntry)
+		contests.GET("/:id/entries/:entryId/votes", h.Admin.Contest.ListEntryVotes)
+		contests.DELETE("/:id/votes/:voteId", h.Admin.Contest.VoidVote)
+		contests.GET("/:id/awards", h.Admin.Contest.ListAwards)
+		contests.POST("/:id/awards/grant-balance", h.Admin.Contest.GrantAllBalance)
+		contests.POST("/:id/awards/:awardId/grant", h.Admin.Contest.GrantAward)
 	}
 }
 

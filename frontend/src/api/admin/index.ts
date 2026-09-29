@@ -36,6 +36,7 @@ import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
 import auditAPI from './audit'
 import requestLogsAPI from './requestLogs'
+import adminContestsAPI from './contests'
 import pluginsAPI from './plugins'
 
 /**
@@ -75,6 +76,7 @@ export const adminAPI = {
   compliance: adminComplianceAPI,
   audit: auditAPI,
   requestLogs: requestLogsAPI,
+  contests: adminContestsAPI,
   plugins: pluginsAPI
 }
 
@@ -112,6 +114,7 @@ export {
   adminComplianceAPI,
   auditAPI,
   requestLogsAPI,
+  adminContestsAPI,
   pluginsAPI
 }
 
@@ -120,6 +123,7 @@ export default adminAPI
 // Re-export types used by components
 export type { AuditLog, AuditLogQuery, AuditLogListResponse } from './audit'
 export type { GatewayRequestLog, GatewayRequestLogQuery, GatewayRequestLogListResponse } from './requestLogs'
+export type { ContestInput, ContestVote } from './contests'
 export type { BalanceHistoryItem } from './users'
 export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from './errorPassthrough'
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'

@@ -207,6 +207,8 @@ export default {
     promptAudit: 'Prompt Audit',
     auditLogs: 'Audit Logs',
     requestLogs: 'Request Logs',
+    contests: 'Contests',
+    contestAdmin: 'Contests',
   },
 
   // Auth

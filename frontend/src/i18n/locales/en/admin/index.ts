@@ -6,6 +6,7 @@ import ops from './ops'
 import settings from './settings'
 import audit from './audit'
 import requestLogs from './requestLogs'
+import contests from './contests'
 import promptAudit from './promptAudit'
 import plugins from './plugins'
 
@@ -18,6 +19,7 @@ export default {
   ...settings,
   ...audit,
   ...requestLogs,
+  ...contests,
   ...promptAudit,
   ...plugins,
 }

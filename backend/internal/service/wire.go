@@ -568,6 +568,19 @@ func ProvideOpsSystemLogSink(opsRepo OpsRepository) *OpsSystemLogSink {
 	return sink
 }
 
+// ProvideContestService 创建活动（绘画比赛等）服务并启动到期自动结算协程。
+// 停止逻辑挂在 cmd/server 的 provideCleanup。
+func ProvideContestService(repo ContestRepository, userRepo UserRepository, redeemCodeRepo RedeemCodeRepository,
+	billingCache *BillingCacheService, authInvalidator APIKeyAuthCacheInvalidator, cfg *config.Config) *ContestService {
+	dir := ""
+	if cfg != nil {
+		dir = cfg.Contest.ImageDir
+	}
+	svc := NewContestService(repo, userRepo, redeemCodeRepo, billingCache, authInvalidator, NewContestImageStore(dir))
+	svc.Start()
+	return svc
+}
+
 // ProvideGatewayRequestLogService 创建网关全量请求日志服务并启动异步写入与保留期清理协程。
 // 停止逻辑挂在 cmd/server 的 provideCleanup。
 func ProvideGatewayRequestLogService(repo GatewayRequestLogRepository, cfg *config.Config) *GatewayRequestLogService {
@@ -898,6 +911,7 @@ var ProviderSet = wire.NewSet(
 	ProvideOpsIngressRejectAggregator,
 	ProvideAuditLogService,
 	ProvideGatewayRequestLogService,
+	ProvideContestService,
 	ProvideOpsMetricsCollector,
 	ProvideOpsAggregationService,
 	ProvideOpsAlertEvaluatorService,

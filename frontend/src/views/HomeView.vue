@@ -129,6 +129,15 @@
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
+          <!-- Contests -->
+          <RouterLink
+            to="/contests"
+            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            :title="t('contests.title')"
+          >
+            <span class="text-base leading-none">🏆</span>
+            <span class="hidden sm:inline">{{ t('nav.contests') }}</span>
+          </RouterLink>
           <!-- Canvas site link (cross-site) -->
           <a
             :href="canvasLink('nav')"
