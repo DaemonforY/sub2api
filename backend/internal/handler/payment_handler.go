@@ -122,8 +122,22 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 	plans, _ := h.configService.ListPlansForSale(ctx)
 	groupInfo := h.configService.GetGroupInfoMap(ctx, plans)
 	planList := make([]checkoutPlan, 0, len(plans))
+	userID := int64(0)
+	if subject, ok := middleware2.GetAuthSubjectFromContext(c); ok {
+		userID = subject.UserID
+	}
+	eduDiscountActive := false
 	for _, p := range plans {
 		gi := groupInfo[p.GroupID]
+		price, eduDiscounted := h.paymentService.PlanPriceForUser(ctx, p, userID)
+		originalPrice := p.OriginalPrice
+		if eduDiscounted {
+			eduDiscountActive = true
+			if originalPrice == nil || *originalPrice < p.Price {
+				listPrice := p.Price
+				originalPrice = &listPrice
+			}
+		}
 		planList = append(planList, checkoutPlan{
 			ID: int64(p.ID), GroupID: p.GroupID,
 			GroupPlatform: gi.Platform, GroupName: gi.Name,
@@ -133,7 +147,8 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			DailyLimitUSD:  gi.DailyLimitUSD,
 			WeeklyLimitUSD: gi.WeeklyLimitUSD, MonthlyLimitUSD: gi.MonthlyLimitUSD,
 			ModelScopes: gi.ModelScopes,
-			Name:        p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
+			Name:        p.Name, Description: p.Description, Price: price, OriginalPrice: originalPrice,
+			BalancePrice: h.paymentService.SubscriptionBalancePrice(price, cfg), EduDiscounted: eduDiscounted,
 			Currency:     p.Currency,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
 			ProductName: p.ProductName,
@@ -154,6 +169,8 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		StripePublishableKey:          cfg.StripePublishableKey,
 		AlipayForceQRCode:             cfg.AlipayForceQRCode,
 		AlipayMobilePrecreateDeepLink: alipayMobilePrecreateDeepLink,
+		BalanceSubscriptionEnabled:    !cfg.SubscriptionBalancePayDisabled,
+		EduDiscountActive:             eduDiscountActive,
 	})
 }
 
@@ -171,6 +188,10 @@ type checkoutInfoResponse struct {
 	StripePublishableKey          string                          `json:"stripe_publishable_key"`
 	AlipayForceQRCode             bool                            `json:"alipay_force_qrcode"`
 	AlipayMobilePrecreateDeepLink bool                            `json:"alipay_mobile_precreate_deep_link"`
+	// BalanceSubscriptionEnabled: plans can be bought with account balance (see plan.balance_price).
+	BalanceSubscriptionEnabled bool `json:"balance_subscription_enabled"`
+	// EduDiscountActive: the current user is education-verified and plan prices include the discount.
+	EduDiscountActive bool `json:"edu_discount_active"`
 }
 
 type checkoutPlan struct {
@@ -196,6 +217,9 @@ type checkoutPlan struct {
 	ValidityUnit       string   `json:"validity_unit"`
 	Features           []string `json:"features"`
 	ProductName        string   `json:"product_name"`
+	// BalancePrice is what the plan costs when paid with account balance.
+	BalancePrice  float64 `json:"balance_price"`
+	EduDiscounted bool    `json:"edu_discounted"`
 }
 
 // parseFeatures splits a newline-separated features string into a string slice.
@@ -330,6 +354,31 @@ func applyWeChatPaymentResumeClaims(req *CreateOrderRequest, claims *service.WeC
 		req.PlanID = claims.PlanID
 	}
 	return nil
+}
+
+// PurchaseSubscriptionRequest is the body of a balance-paid subscription purchase.
+type PurchaseSubscriptionRequest struct {
+	PlanID int64 `json:"plan_id" binding:"required"`
+}
+
+// PurchaseSubscriptionWithBalance buys a subscription plan with the user's account balance.
+// POST /api/v1/payment/orders/balance-subscription
+func (h *PaymentHandler) PurchaseSubscriptionWithBalance(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	var req PurchaseSubscriptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	result, err := h.paymentService.PurchaseSubscriptionWithBalance(c.Request.Context(), subject.UserID, req.PlanID, c.ClientIP(), c.Request.Host)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
 }
 
 // GetMyOrders returns the authenticated user's orders.

@@ -12,6 +12,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentauditlog"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
+	"github.com/Wei-Shaw/sub2api/internal/payment"
 )
 
 // --- Dashboard & Analytics ---
@@ -30,6 +31,8 @@ func (s *PaymentService) GetDashboardStats(ctx context.Context, days int) (*Dash
 		Where(
 			paymentorder.StatusIn(paidStatuses...),
 			paymentorder.PaidAtGTE(since),
+			// Balance-paid subscriptions spend already-counted recharges; counting them would double revenue.
+			paymentorder.PaymentTypeNEQ(payment.TypeBalance),
 		).
 		All(ctx)
 	if err != nil {

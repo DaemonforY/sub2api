@@ -214,6 +214,9 @@ func (s *PaymentService) PrepareRefund(ctx context.Context, oid int64, amt float
 	if !psSliceContains(ok, o.Status) {
 		return nil, nil, infraerrors.BadRequest("INVALID_STATUS", "order status does not allow refund")
 	}
+	if isBalancePaidOrder(o) {
+		return nil, nil, infraerrors.BadRequest("BALANCE_PAID_ORDER_NOT_REFUNDABLE", "balance-paid orders have no gateway payment; adjust the balance and subscription manually")
+	}
 	// Check provider instance allows admin refund
 	inst, instErr := s.getRefundOrderProviderInstance(ctx, o)
 	if instErr != nil {

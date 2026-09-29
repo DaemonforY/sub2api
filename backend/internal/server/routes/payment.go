@@ -38,6 +38,7 @@ func RegisterPaymentRoutes(
 		{
 			orders.POST("", paymentHandler.CreateOrder)
 			orders.POST("/verify", paymentHandler.VerifyOrder)
+			orders.POST("/balance-subscription", paymentHandler.PurchaseSubscriptionWithBalance)
 			orders.GET("/my", paymentHandler.GetMyOrders)
 			orders.GET("/:id", paymentHandler.GetOrder)
 			orders.POST("/:id/cancel", paymentHandler.CancelOrder)

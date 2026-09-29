@@ -355,6 +355,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		PaymentMaxPendingOrders:                                paymentCfg.MaxPendingOrders,
 		PaymentEnabledTypes:                                    paymentCfg.EnabledTypes,
 		PaymentBalanceDisabled:                                 paymentCfg.BalanceDisabled,
+		PaymentSubscriptionBalancePayDisabled:                  paymentCfg.SubscriptionBalancePayDisabled,
 		PaymentBalanceRechargeMultiplier:                       paymentCfg.BalanceRechargeMultiplier,
 		PaymentSubscriptionUSDToCNYRate:                        paymentCfg.SubscriptionUSDToCNYRate,
 		PaymentRechargeFeeRate:                                 paymentCfg.RechargeFeeRate,

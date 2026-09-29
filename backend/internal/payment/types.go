@@ -18,6 +18,9 @@ const (
 	TypeLink         PaymentType = "link"
 	TypeEasyPay      PaymentType = "easypay"
 	TypeAirwallex    PaymentType = "airwallex"
+	// TypeBalance marks subscription orders paid from the user's account balance
+	// (no gateway involved). It is never a selectable gateway method.
+	TypeBalance PaymentType = "balance"
 )
 
 // Order status constants shared across payment and service layers.

@@ -78,6 +78,10 @@ export interface CheckoutInfoResponse {
   alipay_force_qrcode?: boolean
   /** When true, official Alipay mobile orders use precreate plus an Alipay app deep link */
   alipay_mobile_precreate_deep_link?: boolean
+  /** Plans can be bought with account balance (see SubscriptionPlan.balance_price) */
+  balance_subscription_enabled?: boolean
+  /** The current user is education-verified; plan prices already include the discount */
+  edu_discount_active?: boolean
 }
 
 // ==================== Orders ====================
@@ -134,6 +138,20 @@ export interface SubscriptionPlan {
   features: string[]
   for_sale: boolean
   sort_order: number
+  /** Balance cost when paid with account balance (checkout-info only) */
+  balance_price?: number
+  /** Price includes the education discount (checkout-info only) */
+  edu_discounted?: boolean
+}
+
+export interface BalanceSubscriptionResult {
+  order_id: number
+  balance_cost: number
+  balance_after: number
+  status: string
+  group_id: number
+  validity_days: number
+  fulfillment_ok: boolean
 }
 
 export interface PaymentChannel {

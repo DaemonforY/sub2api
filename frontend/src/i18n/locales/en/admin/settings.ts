@@ -727,6 +727,8 @@ export default {
         cancelRateLimitWindowModeRolling: 'Rolling',
         cancelRateLimitWindowModeFixed: 'Fixed',
         alipayForceQRCode: 'Force Alipay QR Code',
+        subscriptionBalancePay: 'Allow buying subscriptions with balance',
+        subscriptionBalancePayHint: 'Users can pay for subscription plans from their account balance (including transferred referral rewards). Balance-paid orders are excluded from revenue stats, earn no referral rebate and cannot be refunded to a payment method',
         alipayForceQRCodeHint: 'When enabled, mobile Alipay users always see a QR code instead of being redirected to the mobile payment page',
         alipayMobilePrecreateDeepLink: 'Mobile Alipay Precreate Handoff',
         alipayMobilePrecreateDeepLinkHint: 'Use official Alipay precreate on mobile, open the Alipay app, and show the dynamic QR only if handoff fails. This takes priority over Force Alipay QR Code',

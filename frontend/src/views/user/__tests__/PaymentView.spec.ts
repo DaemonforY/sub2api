@@ -5,6 +5,7 @@ import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import en from '@/i18n/locales/en'
 import zh from '@/i18n/locales/zh'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
@@ -24,6 +25,9 @@ const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
+const showSuccess = vi.hoisted(() => vi.fn())
+const authUser = vi.hoisted(() => ({ username: 'demo-user', balance: 0 }))
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
 
@@ -52,10 +56,7 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
-    user: {
-      username: 'demo-user',
-      balance: 0,
-    },
+    user: authUser,
     refreshUser,
   }),
 }))
@@ -78,12 +79,14 @@ vi.mock('@/stores', () => ({
     showError,
     showInfo,
     showWarning,
+    showSuccess,
   }),
 }))
 
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
     getCheckoutInfo,
+    purchaseSubscriptionWithBalance,
   },
 }))
 
@@ -739,5 +742,49 @@ describe('PaymentView WeChat JSAPI flow', () => {
     expect(showWarning).toHaveBeenCalledWith('payment.errors.mobilePaymentFallbackToQr')
     expect(showError).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toContain('weixin://wxpay/bizpayurl?pr=fallback-native')
+  })
+})
+
+describe('PaymentView pay subscription with balance', () => {
+  beforeEach(() => {
+    authUser.balance = 0
+    purchaseSubscriptionWithBalance.mockReset()
+    showSuccess.mockReset()
+  })
+
+  it('hides the balance card when the feature is off', async () => {
+    authUser.balance = 500
+    const wrapper = await mountSubscriptionConfirm({ plan: { balance_price: 128 } })
+    expect(wrapper.find('[data-testid="balance-pay-card"]').exists()).toBe(false)
+  })
+
+  it('disables balance payment when the balance does not cover the plan', async () => {
+    authUser.balance = 100
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: { balance_subscription_enabled: true },
+      plan: { balance_price: 128 },
+    })
+    const button = wrapper.get('[data-testid="balance-pay-button"]')
+    expect(button.attributes('disabled')).toBeDefined()
+    expect(translate).toHaveBeenCalledWith('payment.balancePay.insufficient', { gap: '28.00' })
+  })
+
+  it('buys the plan with balance after confirmation and refreshes user state', async () => {
+    authUser.balance = 200
+    purchaseSubscriptionWithBalance.mockResolvedValue({ data: { order_id: 9, fulfillment_ok: true, balance_cost: 128, balance_after: 72 } })
+    const wrapper = await mountSubscriptionConfirm({
+      checkout: { balance_subscription_enabled: true },
+      plan: { balance_price: 128 },
+    })
+
+    await wrapper.get('[data-testid="balance-pay-button"]').trigger('click')
+    wrapper.findComponent(ConfirmDialog).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(purchaseSubscriptionWithBalance).toHaveBeenCalledWith(7)
+    expect(createOrder).not.toHaveBeenCalled()
+    expect(showSuccess).toHaveBeenCalledWith('payment.balancePay.success')
+    expect(refreshUser).toHaveBeenCalled()
+    expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
   })
 })

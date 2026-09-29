@@ -104,6 +104,9 @@
                     {{ platformLabel(selectedPlan.group_platform || '') }}
                   </span>
                   <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ selectedPlan.name }}</h3>
+                  <span v-if="selectedPlan.edu_discounted" class="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" data-testid="edu-price-badge">
+                    🎓 {{ t('payment.balancePay.eduPrice') }}
+                  </span>
                 </div>
                 <!-- Price -->
                 <div class="flex items-baseline gap-2">
@@ -148,6 +151,37 @@
                     <div class="text-lg font-semibold text-gray-800 dark:text-gray-200">{{ t('payment.planCard.unlimited') }}</div>
                   </div>
                 </div>
+              </div>
+              <!-- Pay with account balance (e.g. referral rewards transferred to balance) -->
+              <div v-if="balancePayAvailable" class="card p-6" data-testid="balance-pay-card">
+                <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('payment.balancePay.title') }}</h4>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.balancePay.current') }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ currentBalance.toFixed(2) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.balancePay.cost') }}</span>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ balanceCost.toFixed(2) }}</span>
+                  </div>
+                  <div v-if="balanceGap <= 0" class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.balancePay.after') }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ (currentBalance - balanceCost).toFixed(2) }}</span>
+                  </div>
+                </div>
+                <p v-if="balanceGap > 0" class="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                  {{ t('payment.balancePay.insufficient', { gap: balanceGap.toFixed(2) }) }}
+                  <button v-if="!checkout.balance_disabled" type="button" class="ml-1 font-medium underline" @click="goTopUp">{{ t('payment.balancePay.topUp') }}</button>
+                </p>
+                <button
+                  type="button"
+                  class="btn btn-secondary mt-4 w-full"
+                  :disabled="balanceGap > 0 || submitting"
+                  data-testid="balance-pay-button"
+                  @click="showBalanceConfirm = true"
+                >
+                  {{ t('payment.balancePay.button', { amount: balanceCost.toFixed(2) }) }}
+                </button>
               </div>
               <div v-if="enabledMethods.length >= 1" class="card p-6">
                 <PaymentMethodSelector
@@ -244,6 +278,13 @@
         </div>
       </Transition>
     </Teleport>
+    <ConfirmDialog
+      :show="showBalanceConfirm"
+      :title="t('payment.balancePay.confirmTitle')"
+      :message="t('payment.balancePay.confirmMessage', { amount: balanceCost.toFixed(2), plan: selectedPlan?.name || '' })"
+      @confirm="confirmBalancePurchase"
+      @cancel="showBalanceConfirm = false"
+    />
     <!-- Image Preview Overlay -->
     <Teleport to="body">
       <Transition name="modal">
@@ -287,6 +328,7 @@ import { platformAccentBarClass, platformBadgeLightClass, platformBadgeClass, pl
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { DEFAULT_PAYMENT_CURRENCY, formatPaymentAmount, normalizePaymentCurrency } from '@/components/payment/currency'
 import { planValiditySuffix as validitySuffixOf } from '@/components/payment/validity'
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'
@@ -735,6 +777,40 @@ function planHasPeakRate(plan: SubscriptionPlan): boolean {
 
 function planPeakRateLabel(plan: SubscriptionPlan): string {
   return formatPeakRateWindow(plan, serverTimezoneLabel(appStore.cachedPublicSettings?.server_utc_offset))
+}
+
+// --- Pay with balance ---
+const showBalanceConfirm = ref(false)
+const balanceCost = computed(() => selectedPlan.value?.balance_price ?? 0)
+const currentBalance = computed(() => user.value?.balance ?? 0)
+const balanceGap = computed(() => Math.max(0, Math.round((balanceCost.value - currentBalance.value) * 100) / 100))
+const balancePayAvailable = computed(() => checkout.value.balance_subscription_enabled === true && balanceCost.value > 0)
+
+function goTopUp() {
+  selectedPlan.value = null
+  activeTab.value = 'recharge'
+}
+
+async function confirmBalancePurchase() {
+  showBalanceConfirm.value = false
+  const plan = selectedPlan.value
+  if (!plan || submitting.value) return
+  submitting.value = true
+  try {
+    const { data } = await paymentAPI.purchaseSubscriptionWithBalance(plan.id)
+    if (data.fulfillment_ok) {
+      appStore.showSuccess(t('payment.balancePay.success'))
+    } else {
+      appStore.showWarning(t('payment.balancePay.fulfillmentPending', { orderId: data.order_id }))
+    }
+    selectedPlan.value = null
+    authStore.refreshUser()
+    subscriptionStore.fetchActiveSubscriptions(true).catch(() => {})
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  } finally {
+    submitting.value = false
+  }
 }
 
 function selectPlan(plan: SubscriptionPlan) {

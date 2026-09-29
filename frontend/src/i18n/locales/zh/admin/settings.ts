@@ -722,6 +722,8 @@ export default {
         cancelRateLimitWindowModeRolling: '滚动',
         cancelRateLimitWindowModeFixed: '固定',
         alipayForceQRCode: '支付宝强制二维码支付',
+        subscriptionBalancePay: '允许用余额购买订阅',
+        subscriptionBalancePayHint: '开启后用户可以直接用账户余额（含邀请返利转入的余额）购买订阅套餐；余额支付的订单不计入收入统计、不产生邀请返利、不支持原路退款',
         alipayForceQRCodeHint: '启用后，移动端支付宝用户将统一使用二维码扫码支付，不再跳转至手机网站支付',
         alipayMobilePrecreateDeepLink: '支付宝移动端当面付唤起',
         alipayMobilePrecreateDeepLinkHint: '启用后，移动端官方支付宝订单调用当面付并尝试打开支付宝；失败时显示动态二维码。该设置优先于强制二维码支付',

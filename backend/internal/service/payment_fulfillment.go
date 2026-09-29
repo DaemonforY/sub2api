@@ -695,7 +695,8 @@ func (s *PaymentService) applyAffiliateRebateForOrder(ctx context.Context, o *db
 }
 
 func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
-	if o == nil {
+	// Balance-paid orders spend money that was already rebated when it was recharged.
+	if o == nil || isBalancePaidOrder(o) {
 		return 0
 	}
 	switch o.OrderType {
