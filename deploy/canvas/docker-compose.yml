@@ -28,6 +28,8 @@ services:
       - MAIN_SITE_API_BASE_URL=${MAIN_SITE_API_BASE_URL:-https://hivegpt.cn}
       # 首次访问的默认皮肤：nebula(星云紫) / ocean / forest / sunset / sakura / classic(原版灰)
       - DEFAULT_SKIN=${CANVAS_DEFAULT_SKIN:-nebula}
+      # 合作站点（同一运营方，也可购买 Key），格式 "名称|https://地址,名称2|https://地址2"
+      - PARTNER_SITES=${CANVAS_PARTNER_SITES:-GoRustAI|https://gorustai.com}
       # 可选统计（留空即关闭）
       - ANALYTICS_GA4_ID=${ANALYTICS_GA4_ID:-}
       - ANALYTICS_BAIDU_ID=${ANALYTICS_BAIDU_ID:-}

@@ -217,6 +217,7 @@ export default {
         },
         registerCta: 'Sign up free',
         keyCta: 'Manage API keys',
+        partnerCta: 'Or buy on {site}',
         useCta: 'Open canvas'
       },
       support: {
@@ -234,6 +235,11 @@ export default {
           title: 'Contact us',
           desc: 'Questions about accounts, payments or partnerships',
           label: 'Contact: {info}'
+        },
+        partner: {
+          title: 'Buy on {site}',
+          desc: '{site} is our partner site; you can also sign up and buy API keys there.',
+          cta: 'Buy on {site}'
         },
         open: 'Open'
       },
@@ -283,6 +289,7 @@ export default {
         batch: 'Batch images',
         docs: 'Documentation',
         learn: 'AI learning hub',
+        partner: 'Partner site: {site}',
         keys: 'API keys'
       }
     },

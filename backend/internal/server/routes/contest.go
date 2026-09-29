@@ -15,6 +15,7 @@ func RegisterContestRoutes(
 	h *handler.Handlers,
 	jwtAuth middleware.JWTAuthMiddleware,
 	optionalJWT middleware.OptionalJWTAuthMiddleware,
+	apiKeyAuth middleware.APIKeyAuthMiddleware,
 	settingService *service.SettingService,
 	panelRateLimiter *middleware.PanelRateLimiter,
 ) {
@@ -43,5 +44,17 @@ func RegisterContestRoutes(
 		authed.DELETE("/:id/entries/:entryId", h.Contest.WithdrawEntry)
 		authed.POST("/:id/entries/:entryId/vote", h.Contest.Vote)
 		authed.DELETE("/:id/entries/:entryId/vote", h.Contest.Unvote)
+	}
+
+	// Submission authenticated by an API key, for companion apps on other origins
+	// (e.g. the canvas at canvas.<domain>) that hold the user's key but not their web session.
+	// The key goes through the same checks as gateway calls (status, owner, IP rules);
+	// the entry is filed under the key's owner. Browsers reach it cross-origin via CORS_ALLOWED_ORIGINS.
+	keyAuthed := v1.Group("/contests")
+	keyAuthed.Use(gin.HandlerFunc(apiKeyAuth))
+	keyAuthed.Use(middleware.BackendModeUserGuard(settingService))
+	keyAuthed.Use(panelRateLimiter.Global())
+	{
+		keyAuthed.POST("/:id/key-entries", h.Contest.SubmitEntry)
 	}
 }

@@ -29,3 +29,27 @@ export function canvasUrl({ medium, baseUrl, path = '/', prompt }: CanvasUrlOpti
   const base = CANVAS_SITE_URL.replace(/\/+$/, '')
   return `${base}${path === '/' ? '/' : path}?${params.toString()}`
 }
+
+/**
+ * 合作站点（同一运营方的兄弟站）：用户也可以在这些站点购买 Key。主站仍是本站。
+ * 以后扩展新站点只需在这里追加一项。
+ */
+export interface PartnerSite {
+  key: string
+  name: string
+  url: string
+}
+
+export const PARTNER_SITES: PartnerSite[] = [{ key: 'gorustai', name: 'GoRustAI', url: 'https://gorustai.com' }]
+
+/** 当前站点之外的合作站点（同一套前端部署到合作站点时不会链接到自己）。 */
+export function otherPartnerSites(currentHost = typeof window !== 'undefined' ? window.location.host : ''): PartnerSite[] {
+  return PARTNER_SITES.filter((site) => new URL(site.url).host !== currentHost)
+}
+
+export function partnerSiteUrl(site: PartnerSite, path: string, medium: string): string {
+  const url = new URL(path.startsWith('/') ? path : `/${path}`, `${site.url}/`)
+  url.searchParams.set('utm_source', 'hivegpt')
+  url.searchParams.set('utm_medium', medium)
+  return url.toString()
+}

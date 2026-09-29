@@ -20,6 +20,18 @@
         >
           {{ step.cta }} →
         </component>
+        <div v-if="step.key === 'key' && partners.length" class="mt-2 flex flex-wrap gap-x-3 text-xs text-gray-500 dark:text-dark-400">
+          <a
+            v-for="site in partners"
+            :key="site.key"
+            :href="partnerSiteUrl(site, '/purchase', 'home-steps')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hover:text-primary-600 dark:hover:text-primary-400"
+          >
+            {{ t('home.v2.steps.partnerCta', { site: site.name }) }} ↗
+          </a>
+        </div>
       </li>
     </ol>
   </section>
@@ -28,10 +40,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { canvasUrl } from '@/constants/crossSites'
+import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossSites'
 
 const props = defineProps<{ isAuthenticated: boolean; dashboardPath: string }>()
 const { t } = useI18n()
+const partners = otherPartnerSites()
 
 const steps = computed(() => [
   {

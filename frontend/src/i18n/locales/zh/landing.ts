@@ -217,6 +217,7 @@ export default {
         },
         registerCta: '免费注册',
         keyCta: '管理 API Key',
+        partnerCta: '也可在 {site} 购买',
         useCta: '打开画布'
       },
       support: {
@@ -234,6 +235,11 @@ export default {
           title: '联系我们',
           desc: '账号、充值、合作问题可直接联系',
           label: '联系方式：{info}'
+        },
+        partner: {
+          title: '{site} 购买 Key',
+          desc: '{site} 是我们的合作站点，也可以在那里注册并购买 API Key。',
+          cta: '去 {site} 购买'
         },
         open: '查看'
       },
@@ -283,6 +289,7 @@ export default {
         batch: '批量生图',
         docs: '使用文档',
         learn: 'AI 学习站',
+        partner: '合作站点：{site}',
         keys: 'API Key 管理'
       }
     },

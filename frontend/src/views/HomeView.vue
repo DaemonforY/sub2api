@@ -533,6 +533,11 @@
             <li v-if="docUrl"><a :href="docUrl" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.docs') }}</a></li>
             <li><a :href="learnUrl('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.learn') }}</a></li>
             <li><router-link to="/keys" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.keys') }}</router-link></li>
+            <li v-for="site in partnerSites" :key="site.key">
+              <a :href="partnerSiteUrl(site, '/', 'footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">
+                {{ t('home.v2.footer.partner', { site: site.name }) }}
+              </a>
+            </li>
           </ul>
         </div>
       </div>
@@ -552,7 +557,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
-import { canvasUrl } from '@/constants/crossSites'
+import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossSites'
 import HomePromptBox from '@/components/home/HomePromptBox.vue'
 import HomeScenarios from '@/components/home/HomeScenarios.vue'
 import HomeShowcase from '@/components/home/HomeShowcase.vue'
@@ -592,6 +597,7 @@ const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_med
 // 互推站点：无限画布（子域名部署的生图工作台），预填本站网关地址
 const canvasLink = (medium: string, path: '/' | '/image' | '/video' = '/') =>
   canvasUrl({ medium, baseUrl: window.location.origin, path })
+const partnerSites = otherPartnerSites()
 const contactInfo = computed(() => String(appStore.cachedPublicSettings?.contact_info || '').trim())
 const heroChips = computed(() => [
   t('home.v2.hero.chips.models'),
