@@ -705,6 +705,28 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/affiliates/leaderboard',
+    name: 'AdminInviteLeaderboard',
+    component: () => import('@/views/admin/affiliates/AdminInviteLeaderboardView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Invite Leaderboard',
+      titleKey: 'growth.admin.nav.leaderboard'
+    }
+  },
+  {
+    path: '/admin/growth',
+    name: 'AdminGrowthSettings',
+    component: () => import('@/views/admin/affiliates/AdminGrowthSettingsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Growth Settings',
+      titleKey: 'growth.admin.nav.settings'
+    }
+  },
+  {
     path: '/admin/affiliates/transfers',
     name: 'AdminAffiliateTransfers',
     component: () => import('@/views/admin/affiliates/AdminAffiliateTransfersView.vue'),

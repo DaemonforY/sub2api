@@ -153,6 +153,13 @@
               :placeholder="t('auth.invitationCodePlaceholder')"
             />
           </div>
+          <p
+            v-if="inviteeBonusRate > 0 && formData.aff_code"
+            class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+            data-testid="invitee-bonus-notice"
+          >
+            🎁 {{ inviteeBonusCap > 0 ? t('growth.inviteeBonus.registerNoticeCapped', { rate: inviteeBonusRate, cap: inviteeBonusCap }) : t('growth.inviteeBonus.registerNotice', { rate: inviteeBonusRate }) }}
+          </p>
         </div>
 
         <!-- Promo Code Input (Optional) -->
@@ -367,6 +374,7 @@ import {
   resolveAffiliateReferralCode
 } from '@/utils/oauthAffiliate'
 import type { LoginAgreementDocument } from '@/types'
+import { growthAPI } from '@/api/growth'
 
 const { t, locale } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
@@ -516,8 +524,16 @@ function syncAffiliateReferralCode(): string {
 
 // ==================== Lifecycle ====================
 
+// Invitee first-order bonus advertised next to the invitation code (0 = program off).
+const inviteeBonusRate = ref(0)
+const inviteeBonusCap = ref(0)
+
 onMounted(async () => {
   syncAffiliateReferralCode()
+  growthAPI.getPublicConfig().then((cfg) => {
+    inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
+    inviteeBonusCap.value = cfg.invitee_bonus_cap
+  }).catch(() => {})
 
   try {
     const settings = await getPublicSettings()

@@ -198,7 +198,7 @@ type PaymentService struct {
 	resumeService            *PaymentResumeService
 	affiliateService         *AffiliateService
 	notificationEmailService *NotificationEmailService
-	eduService               *EduService
+	growthService            *GrowthService
 }
 
 func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService) *PaymentService {
@@ -207,9 +207,9 @@ func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, load
 	return svc
 }
 
-// SetEduService enables education-discounted plan prices.
-func (s *PaymentService) SetEduService(eduService *EduService) {
-	s.eduService = eduService
+// SetGrowthService enables education-discounted plan prices and the invitee first-order bonus.
+func (s *PaymentService) SetGrowthService(growthService *GrowthService) {
+	s.growthService = growthService
 }
 
 func (s *PaymentService) SetNotificationEmailService(notificationEmailService *NotificationEmailService) {

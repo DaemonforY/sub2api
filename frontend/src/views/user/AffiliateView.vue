@@ -79,6 +79,8 @@
               <li>2. {{ t('affiliate.tips.line2', { rate: `${formattedRebateRate}%` }) }}</li>
               <li>3. {{ t('affiliate.tips.line3') }}</li>
               <li v-if="detail.aff_frozen_quota > 0">4. {{ t('affiliate.tips.line4') }}</li>
+              <li v-if="inviteeBonusRate > 0" data-testid="invitee-bonus-tip">🎁 {{ t('growth.inviteeBonus.affiliateTip', { rate: inviteeBonusRate }) }}</li>
+              <li>💡 {{ t('growth.inviteeBonus.balanceForSubscription') }}</li>
             </ul>
           </div>
         </div>
@@ -103,6 +105,8 @@
             {{ t('affiliate.transfer.empty') }}
           </p>
         </div>
+
+        <InviteLeaderboardCard />
 
         <div class="card p-6">
           <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('affiliate.invitees.title') }}</h3>
@@ -144,6 +148,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
+import InviteLeaderboardCard from '@/components/user/growth/InviteLeaderboardCard.vue'
+import { growthAPI } from '@/api/growth'
 import userAPI from '@/api/user'
 import type { UserAffiliateDetail } from '@/types'
 import { useAppStore } from '@/stores/app'
@@ -221,7 +227,12 @@ async function transferQuota(): Promise<void> {
   }
 }
 
+const inviteeBonusRate = ref(0)
+
 onMounted(() => {
   void loadAffiliateDetail()
+  growthAPI.getPublicConfig().then((cfg) => {
+    inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
+  }).catch(() => {})
 })
 </script>

@@ -132,6 +132,22 @@ func RegisterAdminRoutes(
 		registerAuditLogRoutes(admin, h, stepUpAuth)
 		registerGatewayRequestLogRoutes(admin, h)
 		registerContestAdminRoutes(admin, h)
+		registerGrowthAdminRoutes(admin, h)
+	}
+}
+
+// registerGrowthAdminRoutes 推广设置（被邀请人首单奖励、教育认证、邀请排行榜）。
+func registerGrowthAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.Growth == nil {
+		return
+	}
+	growth := admin.Group("/growth")
+	{
+		growth.GET("/settings", h.Admin.Growth.GetSettings)
+		growth.PUT("/settings", h.Admin.Growth.UpdateSettings)
+		growth.GET("/edu-verifications", h.Admin.Growth.ListEduVerifications)
+		growth.DELETE("/edu-verifications/:user_id", h.Admin.Growth.RevokeEduVerification)
+		growth.GET("/leaderboard", h.Admin.Growth.Leaderboard)
 	}
 }
 

@@ -337,6 +337,7 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 		if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 			return err
 		}
+		s.applyInviteeFirstOrderBonus(ctx, o)
 		// Code already created and redeemed — just mark completed
 		return s.markCompleted(ctx, o, lease, "RECHARGE_SUCCESS")
 	case redeemActionCreate:
@@ -353,6 +354,7 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err
 	}
+	s.applyInviteeFirstOrderBonus(ctx, o)
 	return s.markCompleted(ctx, o, lease, "RECHARGE_SUCCESS")
 }
 
@@ -508,6 +510,7 @@ func (s *PaymentService) doSub(ctx context.Context, o *dbent.PaymentOrder, lease
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		return err
 	}
+	s.applyInviteeFirstOrderBonus(ctx, o)
 	return s.markCompleted(ctx, o, lease, "SUBSCRIPTION_SUCCESS")
 }
 
@@ -692,6 +695,24 @@ func (s *PaymentService) applyAffiliateRebateForOrder(ctx context.Context, o *db
 		return fmt.Errorf("commit affiliate rebate tx: %w", err)
 	}
 	return nil
+}
+
+// applyInviteeFirstOrderBonus grants the invited user's first-order bonus. The grant is
+// idempotent (one per invitee, enforced by a unique index), so fulfillment retries are safe;
+// failures are recorded but never block fulfillment.
+func (s *PaymentService) applyInviteeFirstOrderBonus(ctx context.Context, o *dbent.PaymentOrder) {
+	if s.growthService == nil || o == nil || isBalancePaidOrder(o) {
+		return
+	}
+	amount, err := s.growthService.GrantInviteeFirstOrderBonus(ctx, o.UserID, o.ID, o.Amount)
+	if err != nil {
+		slog.Warn("invitee first-order bonus failed", "orderID", o.ID, "userID", o.UserID, "error", err)
+		s.writeAuditLog(ctx, o.ID, "INVITEE_BONUS_FAILED", "system", map[string]any{"error": err.Error()})
+		return
+	}
+	if amount > 0 {
+		s.writeAuditLog(ctx, o.ID, "INVITEE_BONUS_GRANTED", "system", map[string]any{"amount": amount})
+	}
 }
 
 func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {

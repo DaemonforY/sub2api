@@ -45,6 +45,7 @@ type AdminHandlers struct {
 	AuditLog               *admin.AuditLogHandler
 	RequestLog             *admin.GatewayRequestLogHandler
 	Contest                *admin.ContestHandler
+	Growth                 *admin.GrowthHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -71,6 +72,7 @@ type Handlers struct {
 	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler
 	Contest          *ContestHandler
+	Growth           *GrowthHandler
 }
 
 // BuildInfo contains build-time information

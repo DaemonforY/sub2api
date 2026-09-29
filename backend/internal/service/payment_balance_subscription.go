@@ -201,8 +201,8 @@ func (s *PaymentService) PlanPriceForUser(ctx context.Context, plan *dbent.Subsc
 	if plan == nil {
 		return 0, false
 	}
-	if s.eduService == nil || userID <= 0 {
+	if s.growthService == nil || userID <= 0 {
 		return plan.Price, false
 	}
-	return s.eduService.DiscountedPrice(ctx, userID, plan.Price)
+	return s.growthService.DiscountedPrice(ctx, userID, plan.Price)
 }

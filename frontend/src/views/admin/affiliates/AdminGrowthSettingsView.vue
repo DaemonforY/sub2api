@@ -1,0 +1,224 @@
+<template>
+  <AppLayout>
+    <div class="mx-auto max-w-4xl space-y-6" data-testid="admin-growth-settings">
+      <div>
+        <h1 class="text-xl font-semibold text-gray-900 dark:text-white">{{ t('growth.admin.settings.title') }}</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ t('growth.admin.settings.description') }}</p>
+      </div>
+
+      <div v-if="loading" class="flex justify-center py-12">
+        <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
+      </div>
+
+      <form v-else-if="form" class="space-y-6" @submit.prevent="save">
+        <p v-if="!affiliateEnabled" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200">
+          {{ t('growth.admin.settings.affiliateOff') }}
+        </p>
+
+        <section class="card space-y-4 p-6">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🎁 {{ t('growth.admin.settings.inviteeBonusTitle') }}</h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-bonus-rate">{{ t('growth.admin.settings.inviteeBonusRate') }}</label>
+              <input id="growth-bonus-rate" v-model.number="form.invitee_bonus_rate_percent" type="number" min="0" max="100" step="0.1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.inviteeBonusRateHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-bonus-cap">{{ t('growth.admin.settings.inviteeBonusCap') }}</label>
+              <input id="growth-bonus-cap" v-model.number="form.invitee_bonus_cap" type="number" min="0" step="0.01" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.inviteeBonusCapHint') }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card space-y-3 p-6">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🏆 {{ t('growth.admin.settings.leaderboardTitle') }}</h2>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.leaderboard_enabled" />
+            {{ t('growth.admin.settings.leaderboardEnabled') }}
+          </label>
+          <p class="text-xs text-gray-400">{{ t('growth.admin.settings.leaderboardHint') }}</p>
+        </section>
+
+        <section class="card space-y-4 p-6">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🎓 {{ t('growth.admin.settings.eduTitle') }}</h2>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.edu_verify_enabled" data-testid="edu-enabled-toggle" />
+            {{ t('growth.admin.settings.eduEnabled') }}
+          </label>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-edu-suffixes">{{ t('growth.admin.settings.eduSuffixes') }}</label>
+              <textarea id="growth-edu-suffixes" v-model="suffixText" rows="4" class="input font-mono text-sm"></textarea>
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.eduSuffixesHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-edu-discount">{{ t('growth.admin.settings.eduDiscount') }}</label>
+              <input id="growth-edu-discount" v-model.number="form.edu_discount_percent" type="number" min="0" max="90" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.eduDiscountHint') }}</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="flex justify-end">
+          <button type="submit" class="btn btn-primary" :disabled="saving" data-testid="growth-save">{{ t('growth.admin.settings.save') }}</button>
+        </div>
+      </form>
+
+      <section class="card p-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('growth.admin.settings.verificationsTitle') }} ({{ total }})</h2>
+          <input v-model="search" type="text" class="input w-full sm:w-72" :placeholder="t('growth.admin.settings.searchPlaceholder')" @input="debouncedLoad" />
+        </div>
+        <div v-if="verifications.length === 0" class="mt-4 rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-dark-700 dark:text-dark-400">
+          {{ t('growth.admin.settings.empty') }}
+        </div>
+        <div v-else class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-[560px] text-left text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 text-gray-500 dark:border-dark-700 dark:text-dark-400">
+                <th class="px-3 py-2 font-medium">{{ t('growth.admin.settings.columns.user') }}</th>
+                <th class="px-3 py-2 font-medium">{{ t('growth.admin.settings.columns.eduEmail') }}</th>
+                <th class="px-3 py-2 font-medium">{{ t('growth.admin.settings.columns.verifiedAt') }}</th>
+                <th class="px-3 py-2 text-right font-medium">{{ t('growth.admin.settings.columns.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="v in verifications" :key="v.user_id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
+                <td class="px-3 py-2.5">
+                  <div class="text-gray-900 dark:text-white">{{ v.user_email }}</div>
+                  <div class="text-xs text-gray-400">#{{ v.user_id }} {{ v.username }}</div>
+                </td>
+                <td class="px-3 py-2.5 font-mono text-gray-700 dark:text-gray-300">{{ v.email }}</td>
+                <td class="px-3 py-2.5 text-gray-500 dark:text-dark-400">{{ formatDateTime(v.verified_at) }}</td>
+                <td class="px-3 py-2.5 text-right">
+                  <button type="button" class="btn btn-secondary btn-sm" @click="revokeTarget = v">{{ t('growth.admin.settings.revoke') }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-if="pages > 1" class="mt-4 flex justify-end gap-2">
+          <button class="btn btn-secondary btn-sm" :disabled="page <= 1" @click="goPage(page - 1)">‹</button>
+          <span class="px-2 text-sm text-gray-500">{{ page }} / {{ pages }}</span>
+          <button class="btn btn-secondary btn-sm" :disabled="page >= pages" @click="goPage(page + 1)">›</button>
+        </div>
+      </section>
+    </div>
+
+    <ConfirmDialog
+      :show="revokeTarget !== null"
+      :title="t('growth.admin.settings.revoke')"
+      :message="t('growth.admin.settings.revokeConfirm', { email: revokeTarget?.email || '' })"
+      danger
+      @confirm="revoke"
+      @cancel="revokeTarget = null"
+    />
+  </AppLayout>
+</template>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import AppLayout from '@/components/layout/AppLayout.vue'
+import Toggle from '@/components/common/Toggle.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import { adminGrowthAPI, growthAPI, type EduVerification, type GrowthSettings } from '@/api/growth'
+import { useAppStore } from '@/stores/app'
+import { extractApiErrorMessage } from '@/utils/apiError'
+import { formatDateTime } from '@/utils/format'
+
+const { t } = useI18n()
+const appStore = useAppStore()
+
+const loading = ref(true)
+const saving = ref(false)
+const form = ref<GrowthSettings | null>(null)
+const suffixText = ref('')
+const affiliateEnabled = ref(true)
+
+const verifications = ref<EduVerification[]>([])
+const total = ref(0)
+const page = ref(1)
+const pages = ref(1)
+const search = ref('')
+const revokeTarget = ref<EduVerification | null>(null)
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+
+async function loadSettings() {
+  loading.value = true
+  try {
+    const [settings, publicConfig] = await Promise.all([adminGrowthAPI.getSettings(), growthAPI.getPublicConfig()])
+    form.value = settings
+    suffixText.value = settings.edu_email_suffixes.join('\n')
+    affiliateEnabled.value = publicConfig.affiliate_enabled
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    loading.value = false
+  }
+}
+
+async function save() {
+  if (!form.value || saving.value) return
+  saving.value = true
+  try {
+    const payload: GrowthSettings = {
+      ...form.value,
+      invitee_bonus_rate_percent: Number(form.value.invitee_bonus_rate_percent) || 0,
+      invitee_bonus_cap: Number(form.value.invitee_bonus_cap) || 0,
+      edu_discount_percent: Number(form.value.edu_discount_percent) || 0,
+      edu_email_suffixes: suffixText.value.split(/[\s,，、]+/).map((s) => s.trim()).filter(Boolean),
+    }
+    form.value = await adminGrowthAPI.updateSettings(payload)
+    suffixText.value = form.value.edu_email_suffixes.join('\n')
+    appStore.showSuccess(t('growth.admin.settings.saved'))
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    saving.value = false
+  }
+}
+
+async function loadVerifications() {
+  try {
+    const res = await adminGrowthAPI.listEduVerifications({ page: page.value, page_size: 20, search: search.value || undefined })
+    verifications.value = res.items
+    total.value = res.total
+    pages.value = Math.max(1, res.pages)
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  }
+}
+
+function debouncedLoad() {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    page.value = 1
+    void loadVerifications()
+  }, 300)
+}
+
+function goPage(p: number) {
+  page.value = p
+  void loadVerifications()
+}
+
+async function revoke() {
+  const target = revokeTarget.value
+  revokeTarget.value = null
+  if (!target) return
+  try {
+    await adminGrowthAPI.revokeEduVerification(target.user_id)
+    appStore.showSuccess(t('growth.admin.settings.revoked'))
+    await loadVerifications()
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  }
+}
+
+onMounted(() => {
+  void loadSettings()
+  void loadVerifications()
+})
+</script>

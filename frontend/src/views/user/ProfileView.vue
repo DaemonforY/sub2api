@@ -32,6 +32,8 @@
         </div>
       </div>
 
+      <EduVerifyCard />
+
       <ProfilePasswordForm />
 
       <ProfileBalanceNotifyCard
@@ -59,6 +61,7 @@ import ProfileInfoCard from '@/components/user/profile/ProfileInfoCard.vue'
 import ProfilePasswordForm from '@/components/user/profile/ProfilePasswordForm.vue'
 import ProfileTotpCard from '@/components/user/profile/ProfileTotpCard.vue'
 import ProfilePasskeyCard from '@/components/user/profile/ProfilePasskeyCard.vue'
+import EduVerifyCard from '@/components/user/growth/EduVerifyCard.vue'
 import { isWeChatWebOAuthEnabled } from '@/api/auth'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'

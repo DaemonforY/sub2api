@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"testing"
+	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/ent/paymentorder"
@@ -138,4 +139,28 @@ func TestSubscriptionBalancePrice(t *testing.T) {
 	// USD plan converted to CNY, then credited at the recharge multiplier: 10 × 7.2 × 0.5.
 	require.InDelta(t, 36, subscriptionBalancePrice(10, &PaymentConfig{SubscriptionUSDToCNYRate: 7.2, BalanceRechargeMultiplier: 0.5}), 1e-9)
 	require.Zero(t, subscriptionBalancePrice(0, &PaymentConfig{BalanceRechargeMultiplier: 1}))
+}
+
+type growthRepoBonusRecorder struct {
+	GrowthRepository
+	grants []float64
+}
+
+func (r *growthRepoBonusRecorder) GrantInviteeBonus(_ context.Context, _, _ int64, amount float64, _ *time.Time) (bool, int64, error) {
+	r.grants = append(r.grants, amount)
+	return true, 1, nil
+}
+
+func TestApplyInviteeFirstOrderBonus_GatewayOrdersOnly(t *testing.T) {
+	repo := &growthRepoBonusRecorder{}
+	settings := &paymentConfigSettingRepoStub{values: map[string]string{SettingKeyGrowthInviteeBonusRate: "10"}}
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	svc := &PaymentService{entClient: client, growthService: NewGrowthService(settings, repo, nil, nil, nil, nil)}
+
+	svc.applyInviteeFirstOrderBonus(ctx, &dbent.PaymentOrder{ID: 1, UserID: 2, Amount: 120, PaymentType: payment.TypeBalance})
+	require.Empty(t, repo.grants, "balance-paid orders never earn the invitee bonus")
+
+	svc.applyInviteeFirstOrderBonus(ctx, &dbent.PaymentOrder{ID: 2, UserID: 2, Amount: 120, PaymentType: payment.TypeWxpay})
+	require.Equal(t, []float64{12}, repo.grants)
 }

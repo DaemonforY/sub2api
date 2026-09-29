@@ -33,6 +33,13 @@ func RegisterUserRoutes(
 			user.PUT("", h.User.UpdateProfile)
 			user.GET("/aff", h.User.GetAffiliate)
 			user.POST("/aff/transfer", h.User.TransferAffiliateQuota)
+			if h.Growth != nil {
+				user.GET("/aff/leaderboard", h.Growth.Leaderboard)
+				// 教育邮箱认证：发码走重限流（每个邮箱另有冷却与尝试次数上限）
+				user.GET("/edu", h.Growth.GetEdu)
+				user.POST("/edu/send-code", panelRateLimiter.Heavy(), h.Growth.SendEduCode)
+				user.POST("/edu/verify", panelRateLimiter.Heavy(), h.Growth.VerifyEdu)
+			}
 			user.POST("/account-bindings/email/send-code", h.User.SendEmailBindingCode)
 			user.POST("/account-bindings/email", h.User.BindEmailIdentity)
 			user.DELETE("/account-bindings/:provider", h.User.UnbindIdentity)

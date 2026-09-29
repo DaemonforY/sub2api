@@ -217,6 +217,7 @@
             </template>
             <!-- Plan list -->
             <template v-else>
+              <EduVerifyCard v-if="!checkout.edu_discount_active" @verified="reloadCheckoutPrices" />
               <div v-if="checkout.plans.length === 0" class="card py-16 text-center">
                 <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
                 <p class="text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
@@ -329,6 +330,7 @@ import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import EduVerifyCard from '@/components/user/growth/EduVerifyCard.vue'
 import { DEFAULT_PAYMENT_CURRENCY, formatPaymentAmount, normalizePaymentCurrency } from '@/components/payment/currency'
 import { planValiditySuffix as validitySuffixOf } from '@/components/payment/validity'
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'
@@ -785,6 +787,16 @@ const balanceCost = computed(() => selectedPlan.value?.balance_price ?? 0)
 const currentBalance = computed(() => user.value?.balance ?? 0)
 const balanceGap = computed(() => Math.max(0, Math.round((balanceCost.value - currentBalance.value) * 100) / 100))
 const balancePayAvailable = computed(() => checkout.value.balance_subscription_enabled === true && balanceCost.value > 0)
+
+// After education verification, plan prices change; refresh them without resetting the page.
+async function reloadCheckoutPrices() {
+  try {
+    const res = await paymentAPI.getCheckoutInfo()
+    checkout.value = res.data
+  } catch {
+    // keep current prices; the order itself is always priced by the backend
+  }
+}
 
 function goTopUp() {
   selectedPlan.value = null
