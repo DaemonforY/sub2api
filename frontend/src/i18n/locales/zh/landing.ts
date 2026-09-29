@@ -133,6 +133,159 @@ export default {
         cta: '免费阅读'
       }
     },
+    // 首页 v2（参考 mxai.cn 的首屏即创作、场景入口、案例墙、上手路径、FAQ 结构）
+    v2: {
+      nav: {
+        start: '开始创作'
+      },
+      hero: {
+        eyebrow: '{site} · AI 创作与 API 一站式平台',
+        titleLead: '一个 Key，',
+        titleHighlight: '畅用顶级 AI',
+        subtitle: '画图、视频、编程助手一站搞定。按量计费，稳定不掉线。',
+        chips: {
+          models: '多模型聚合',
+          billing: '按量计费',
+          stable: '稳定高可用'
+        },
+        promptPlaceholder: '描述你想画的画面，例如：月光下的古风庭院，水墨风格，细节丰富',
+        examplesLabel: '试试：',
+        examples: '赛博朋克风格的城市夜景,水彩风格的熊猫在竹林里,电商白底主图：一双白色运动鞋,极简扁平风格的咖啡店 logo',
+        generate: '去画布生成',
+        getKey: '获取 API Key',
+        hint: '在画布中粘贴你的 API Key 即可出图，网关地址已自动填好'
+      },
+      why: {
+        title: '为什么选择 {site}',
+        subtitle: '把分散的 AI 订阅，变成一个稳定、好用、可控的入口'
+      },
+      scenarios: {
+        title: '覆盖高频 AI 使用场景',
+        subtitle: '从写代码到出图出片，一个账号全部搞定',
+        cta: '立即使用',
+        coding: {
+          title: 'AI 编程助手',
+          badge: '开发者',
+          points: 'Claude Code / Codex / OpenCode 一键配置,复制即用的环境变量与配置文件,按 Token 精确计费'
+        },
+        image: {
+          title: 'AI 绘画',
+          badge: '热门',
+          points: '文生图、图生图、参考图编辑,无限画布自由编排,内置海量提示词库'
+        },
+        video: {
+          title: 'AI 视频',
+          badge: '新',
+          points: '文生视频与图生视频,首尾帧与参考模式,在画布中串联完整流程'
+        },
+        batch: {
+          title: '批量生图',
+          badge: '效率',
+          points: '一次提交多条提示词,后台排队自动生成,结果统一打包下载'
+        },
+        plaza: {
+          title: '模型广场',
+          badge: '透明',
+          points: '查看可用模型与倍率,按分组了解价格,选择最适合的模型'
+        },
+        contest: {
+          title: '创作比赛',
+          badge: '有奖',
+          points: '投稿 AI 作品赢取奖励,社区投票公开透明,截止时刻冻结排名'
+        }
+      },
+      showcase: {
+        title: '精选作品',
+        subtitle: '来自社区创作比赛的高票作品',
+        more: '查看全部活动',
+        votes: '{n} 票'
+      },
+      steps: {
+        title: '三步开始使用',
+        subtitle: '从注册到出图，最快一分钟',
+        register: {
+          title: '注册账号',
+          desc: '邮箱注册，登录后进入控制台'
+        },
+        key: {
+          title: '充值并创建 API Key',
+          desc: '按需充值，一个 Key 通用所有已开放的模型'
+        },
+        use: {
+          title: '开始创作',
+          desc: '在无限画布里画图，或把 Key 配置到 Claude Code / Codex'
+        },
+        registerCta: '免费注册',
+        keyCta: '管理 API Key',
+        useCta: '打开画布'
+      },
+      support: {
+        title: '帮助与支持',
+        subtitle: '上手指南、学习资源和联系方式都在这里',
+        docs: {
+          title: '使用文档',
+          desc: '接入教程、客户端配置和常见问题'
+        },
+        learn: {
+          title: 'AI 学习站',
+          desc: '大模型、Agent、RAG 系统文章，边学边用'
+        },
+        contact: {
+          title: '联系我们',
+          desc: '账号、充值、合作问题可直接联系',
+          label: '联系方式：{info}'
+        },
+        open: '查看'
+      },
+      faq: {
+        title: '常见问题',
+        subtitle: '先看看这些，也许就能找到答案',
+        items: {
+          what: {
+            q: '{site} 是什么？',
+            a: '{site} 是一个 AI 服务聚合平台。你只需要一个账号和一个 API Key，就能在画布里画图、生成视频，也能接入 Claude Code、Codex 等编程工具。'
+          },
+          models: {
+            q: '支持哪些模型和工具？',
+            a: '已开放的模型以「模型广场」和首页的支持列表为准，并会持续增加。编程工具支持 Claude Code、Codex CLI、OpenCode 等，控制台「使用密钥」里有一键复制的配置。'
+          },
+          billing: {
+            q: '如何收费？',
+            a: '按实际用量计费，用多少扣多少。你可以为每个 Key 设置额度上限，随时在控制台查看用量明细。'
+          },
+          canvas: {
+            q: '画布和 API Key 是什么关系？',
+            a: '画布是一个免费的创作界面，真正的生图、生视频由你的 API Key 调用本站完成。从本站跳转到画布时网关地址会自动填好，只需粘贴 Key。'
+          },
+          privacy: {
+            q: '我的数据安全吗？',
+            a: '画布里的作品、历史和 Key 默认只保存在你自己的浏览器中。网关只转发请求并记录计费所需的用量信息。'
+          },
+          contact: {
+            q: '遇到问题怎么办？',
+            a: '先查看使用文档，仍未解决可以通过页面上的联系方式找到我们。'
+          }
+        }
+      },
+      finalCta: {
+        title: '准备好用 AI 提升效率了吗？',
+        subtitle: '注册账号，一个 Key 畅用画图、视频和编程助手',
+        primary: '立即开始',
+        secondary: '先去画布看看'
+      },
+      footer: {
+        desc: '一个 Key 畅用顶级 AI：画图、视频、编程助手一站搞定。',
+        product: '产品',
+        support: '支持',
+        canvas: 'AI 画布',
+        contests: '创作比赛',
+        plaza: '模型广场',
+        batch: '批量生图',
+        docs: '使用文档',
+        learn: 'AI 学习站',
+        keys: 'API Key 管理'
+      }
+    },
     footer: {
       allRightsReserved: '保留所有权利。'
     }

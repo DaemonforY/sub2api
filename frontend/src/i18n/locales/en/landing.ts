@@ -133,6 +133,159 @@ export default {
         cta: 'Read for free'
       }
     },
+    // Home v2 (inspired by mxai.cn: create-from-the-hero, scenario entry points, showcase wall, onboarding path, FAQ)
+    v2: {
+      nav: {
+        start: 'Start creating'
+      },
+      hero: {
+        eyebrow: '{site} · AI creation and API in one place',
+        titleLead: 'One key for ',
+        titleHighlight: 'top-tier AI',
+        subtitle: 'Images, video and coding assistants in one place. Pay as you go, always on.',
+        chips: {
+          models: 'Many models',
+          billing: 'Pay as you go',
+          stable: 'High availability'
+        },
+        promptPlaceholder: 'Describe what you want to draw, e.g. a moonlit classical courtyard, ink painting style, rich detail',
+        examplesLabel: 'Try:',
+        examples: 'Cyberpunk city at night,Watercolor panda in a bamboo forest,E-commerce shot: white sneakers on white,Minimal flat coffee shop logo',
+        generate: 'Generate in canvas',
+        getKey: 'Get an API key',
+        hint: 'Paste your API key in the canvas to generate. The gateway URL is filled in for you.'
+      },
+      why: {
+        title: 'Why {site}',
+        subtitle: 'Turn scattered AI subscriptions into one stable, easy, controllable entry point'
+      },
+      scenarios: {
+        title: 'Built for everyday AI work',
+        subtitle: 'From writing code to making images and videos, all with one account',
+        cta: 'Use now',
+        coding: {
+          title: 'AI coding assistants',
+          badge: 'Dev',
+          points: 'One-click setup for Claude Code / Codex / OpenCode,Copy-ready env vars and config files,Precise per-token billing'
+        },
+        image: {
+          title: 'AI images',
+          badge: 'Popular',
+          points: 'Text-to-image and image-to-image,Free-form infinite canvas,Huge built-in prompt library'
+        },
+        video: {
+          title: 'AI video',
+          badge: 'New',
+          points: 'Text-to-video and image-to-video,First/last frame and reference modes,Chain full workflows on the canvas'
+        },
+        batch: {
+          title: 'Batch images',
+          badge: 'Fast',
+          points: 'Submit many prompts at once,Queued and generated automatically,Download all results together'
+        },
+        plaza: {
+          title: 'Model plaza',
+          badge: 'Open',
+          points: 'See available models and rates,Understand pricing per group,Pick the right model'
+        },
+        contest: {
+          title: 'Contests',
+          badge: 'Prizes',
+          points: 'Submit AI art to win prizes,Transparent community voting,Ranking frozen at the deadline'
+        }
+      },
+      showcase: {
+        title: 'Featured works',
+        subtitle: 'Top-voted entries from community contests',
+        more: 'See all contests',
+        votes: '{n} votes'
+      },
+      steps: {
+        title: 'Get started in three steps',
+        subtitle: 'From sign-up to your first image in about a minute',
+        register: {
+          title: 'Create an account',
+          desc: 'Sign up with email and open the console'
+        },
+        key: {
+          title: 'Top up and create a key',
+          desc: 'Add credit as needed; one key works for every enabled model'
+        },
+        use: {
+          title: 'Start creating',
+          desc: 'Draw on the canvas, or plug the key into Claude Code / Codex'
+        },
+        registerCta: 'Sign up free',
+        keyCta: 'Manage API keys',
+        useCta: 'Open canvas'
+      },
+      support: {
+        title: 'Help & support',
+        subtitle: 'Guides, learning resources and contact info',
+        docs: {
+          title: 'Documentation',
+          desc: 'Setup guides, client configs and FAQs'
+        },
+        learn: {
+          title: 'AI learning hub',
+          desc: 'Articles on LLMs, agents and RAG to learn while you build'
+        },
+        contact: {
+          title: 'Contact us',
+          desc: 'Questions about accounts, payments or partnerships',
+          label: 'Contact: {info}'
+        },
+        open: 'Open'
+      },
+      faq: {
+        title: 'FAQ',
+        subtitle: 'You might find your answer here',
+        items: {
+          what: {
+            q: 'What is {site}?',
+            a: '{site} is an AI service hub. With one account and one API key you can make images and videos on the canvas and plug coding tools like Claude Code and Codex into it.'
+          },
+          models: {
+            q: 'Which models and tools are supported?',
+            a: 'See the model plaza and the supported list on this page; more are added over time. Coding tools include Claude Code, Codex CLI and OpenCode, with copy-ready configs under "Use key" in the console.'
+          },
+          billing: {
+            q: 'How does billing work?',
+            a: 'You pay for what you use. Each key can have a spending cap, and usage details are always visible in the console.'
+          },
+          canvas: {
+            q: 'How do the canvas and API keys relate?',
+            a: 'The canvas is a free creative UI; the actual generation runs through your API key on this site. Opening the canvas from here fills in the gateway URL, so you only paste your key.'
+          },
+          privacy: {
+            q: 'Is my data safe?',
+            a: 'Canvas artworks, history and keys stay in your own browser by default. The gateway only forwards requests and records the usage needed for billing.'
+          },
+          contact: {
+            q: 'What if I run into problems?',
+            a: 'Check the documentation first. If that does not help, reach us through the contact info on this page.'
+          }
+        }
+      },
+      finalCta: {
+        title: 'Ready to get more done with AI?',
+        subtitle: 'Create an account and use images, video and coding assistants with one key',
+        primary: 'Get started',
+        secondary: 'Try the canvas first'
+      },
+      footer: {
+        desc: 'One key for top-tier AI: images, video and coding assistants in one place.',
+        product: 'Product',
+        support: 'Support',
+        canvas: 'AI canvas',
+        contests: 'Contests',
+        plaza: 'Model plaza',
+        batch: 'Batch images',
+        docs: 'Documentation',
+        learn: 'AI learning hub',
+        keys: 'API keys'
+      }
+    },
     footer: {
       allRightsReserved: 'All rights reserved.'
     }

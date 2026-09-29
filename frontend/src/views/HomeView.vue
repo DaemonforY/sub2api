@@ -93,7 +93,7 @@
   <!-- Default Home Page -->
   <div
     v-else
-    class="relative flex min-h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
+    class="relative flex min-h-screen flex-col overflow-x-clip bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
   >
     <!-- Background Decorations -->
     <div class="pointer-events-none absolute inset-0 overflow-hidden">
@@ -115,17 +115,18 @@
     </div>
 
     <!-- Header -->
-    <header class="relative z-20 px-6 py-4">
+    <header class="sticky top-0 z-30 border-b border-gray-200/50 bg-white/70 px-6 py-3 backdrop-blur-xl dark:border-dark-800/60 dark:bg-dark-950/70">
       <nav class="mx-auto flex max-w-6xl items-center justify-between">
         <!-- Logo -->
-        <div class="flex items-center">
-          <div class="h-10 w-10 overflow-hidden rounded-xl shadow-md">
+        <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
+          <div class="h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl shadow-md">
             <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
           </div>
-        </div>
+          <span class="hidden truncate text-base font-semibold text-gray-900 sm:inline dark:text-white">{{ siteName }}</span>
+        </router-link>
 
         <!-- Nav Actions -->
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 sm:gap-2">
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
@@ -193,6 +194,16 @@
             <Icon v-else name="moon" size="md" />
           </button>
 
+          <!-- Primary CTA: start creating in the canvas -->
+          <a
+            :href="canvasLink('nav-cta', '/image')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hidden items-center rounded-full bg-gradient-to-r from-primary-500 to-violet-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-primary-500/30 transition hover:opacity-90 md:inline-flex"
+          >
+            {{ t('home.v2.nav.start') }}
+          </a>
+
           <!-- Login / Dashboard Button -->
           <router-link
             v-if="isAuthenticated"
@@ -204,7 +215,7 @@
             >
               {{ userInitial }}
             </span>
-            <span class="text-xs font-medium text-white">{{ t('home.dashboard') }}</span>
+            <span class="whitespace-nowrap text-xs font-medium text-white">{{ t('home.dashboard') }}</span>
             <svg
               class="h-3 w-3 text-gray-400"
               fill="none"
@@ -231,35 +242,29 @@
     </header>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex-1 px-6 py-16">
+    <main class="relative z-10 flex-1 px-6 pb-16 pt-10 lg:pt-16">
       <div class="mx-auto max-w-6xl">
-        <!-- Hero Section - Left/Right Layout -->
-        <div class="mb-12 flex flex-col items-center justify-between gap-12 lg:flex-row lg:gap-16">
-          <!-- Left: Text Content -->
-          <div class="flex-1 text-center lg:text-left">
-            <h1
-              class="mb-4 text-4xl font-bold text-gray-900 dark:text-white md:text-5xl lg:text-6xl"
-            >
-              {{ siteName }}
-            </h1>
-            <p class="mb-8 text-lg text-gray-600 dark:text-dark-300 md:text-xl">
-              {{ siteSubtitle }}
+        <!-- Hero: value proposition + create-from-here prompt box (left), gateway terminal (right) -->
+        <div class="mb-20 flex flex-col items-center gap-12 lg:flex-row lg:gap-14">
+          <div class="w-full flex-1 text-center lg:text-left">
+            <p class="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-200/70 bg-primary-50/70 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800/60 dark:bg-primary-900/20 dark:text-primary-300">
+              <span class="h-1.5 w-1.5 rounded-full bg-primary-500"></span>
+              {{ t('home.v2.hero.eyebrow', { site: siteName }) }}
             </p>
-
-            <!-- CTA Button -->
-            <div>
-              <router-link
-                :to="isAuthenticated ? dashboardPath : '/login'"
-                class="btn btn-primary px-8 py-3 text-base shadow-lg shadow-primary-500/30"
-              >
-                {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
-                <Icon name="arrowRight" size="md" class="ml-2" :stroke-width="2" />
-              </router-link>
+            <h1 class="text-4xl font-bold leading-tight text-gray-900 dark:text-white md:text-5xl lg:text-6xl">
+              {{ t('home.v2.hero.titleLead') }}<span class="block bg-gradient-to-r from-primary-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">{{ t('home.v2.hero.titleHighlight') }}</span>
+            </h1>
+            <p class="mt-5 text-lg text-gray-600 dark:text-dark-300">{{ t('home.v2.hero.subtitle') }}</p>
+            <div class="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-gray-600 dark:text-dark-300 lg:justify-start">
+              <span v-for="chip in heroChips" :key="chip" class="inline-flex items-center gap-1.5">
+                <span class="text-primary-500" aria-hidden="true">✓</span>{{ chip }}
+              </span>
             </div>
+            <HomePromptBox :is-authenticated="isAuthenticated" class="mt-8 text-left" />
           </div>
 
           <!-- Right: Terminal Animation -->
-          <div class="flex flex-1 justify-center lg:justify-end">
+          <div class="hidden flex-1 justify-center lg:flex lg:justify-end">
             <div class="terminal-container">
               <div class="terminal-window">
                 <!-- Window header -->
@@ -296,34 +301,15 @@
           </div>
         </div>
 
-        <!-- Feature Tags - Centered -->
-        <div class="mb-12 flex flex-wrap items-center justify-center gap-4 md:gap-6">
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="swap" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.subscriptionToApi')
-            }}</span>
-          </div>
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="shield" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.stickySession')
-            }}</span>
-          </div>
-          <div
-            class="inline-flex items-center gap-2.5 rounded-full border border-gray-200/50 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/80"
-          >
-            <Icon name="chart" size="sm" class="text-primary-500" />
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
-              t('home.tags.realtimeBilling')
-            }}</span>
-          </div>
-        </div>
+        <HomeScenarios :is-authenticated="isAuthenticated" :show-model-plaza="showModelPlazaEntry" />
 
+        <HomeShowcase />
+
+        <!-- Why: gateway strengths -->
+        <div class="mb-10 text-center">
+          <h2 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('home.v2.why.title', { site: siteName }) }}</h2>
+          <p class="mt-3 text-gray-600 dark:text-dark-300">{{ t('home.v2.why.subtitle') }}</p>
+        </div>
         <!-- Features Grid -->
         <div class="mb-12 grid gap-6 md:grid-cols-3">
           <!-- Feature 1: Unified Gateway -->
@@ -490,122 +476,69 @@
           </div>
         </div>
 
-        <!-- Learning Resources (cross-site) -->
-        <div class="mb-16">
-          <div class="mb-8 text-center">
-            <span
-              class="inline-block rounded-full bg-primary-100 px-3 py-1 text-xs font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.learn.badge') }}</span
+        <HomeSteps :is-authenticated="isAuthenticated" :dashboard-path="dashboardPath" />
+
+        <HomeSupport :doc-url="docUrl" :learn-href="learnUrl('home-support')" :contact-info="contactInfo" />
+
+        <HomeFaq :site-name="siteName" />
+
+        <!-- Final CTA -->
+        <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-violet-600 to-fuchsia-600 px-6 py-12 text-center text-white shadow-xl sm:px-12">
+          <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl"></div>
+          <h2 class="text-2xl font-bold sm:text-3xl">{{ t('home.v2.finalCta.title') }}</h2>
+          <p class="mt-3 text-white/80">{{ t('home.v2.finalCta.subtitle') }}</p>
+          <div class="mt-7 flex flex-wrap justify-center gap-3">
+            <router-link
+              :to="isAuthenticated ? dashboardPath : '/register'"
+              class="inline-flex items-center rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-primary-700 shadow-lg transition hover:bg-gray-100"
             >
-            <h2 class="mt-3 text-3xl font-bold text-gray-900 dark:text-white">{{ t('home.learn.title') }}</h2>
-            <p class="mt-2 text-gray-600 dark:text-dark-300">{{ t('home.learn.subtitle') }}</p>
+              {{ isAuthenticated ? t('home.goToDashboard') : t('home.v2.finalCta.primary') }}
+            </router-link>
+            <a
+              :href="canvasLink('home-final-cta', '/image')"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center rounded-xl border border-white/40 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              {{ t('home.v2.finalCta.secondary') }}
+            </a>
           </div>
-          <div class="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
-          <!-- Canvas card (cross-site) -->
-          <a
-            :href="canvasLink('home')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="group flex flex-col items-start gap-4 rounded-2xl border border-gray-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center dark:border-dark-700 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-400 to-violet-600 text-2xl shadow-md"
-            >
-              🎨
-            </div>
-            <div class="min-w-0 flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('home.canvas.card.title') }}</h3>
-              <p class="mt-1 text-sm text-gray-600 dark:text-dark-300">{{ t('home.canvas.card.desc') }}</p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <span
-                  v-for="tag in canvasTags"
-                  :key="tag"
-                  class="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-700 dark:text-dark-300"
-                  >{{ tag }}</span
-                >
-              </div>
-            </div>
-            <span
-              class="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary-500 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-primary-600"
-              >{{ t('home.canvas.card.cta') }} →</span
-            >
-          </a>
-          <a
-            :href="learnUrl('home')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="group flex flex-col items-start gap-4 rounded-2xl border border-gray-200/60 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-md sm:flex-row sm:items-center dark:border-dark-700 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-2xl shadow-md"
-            >
-              📚
-            </div>
-            <div class="min-w-0 flex-1">
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('home.learn.card.title') }}</h3>
-              <p class="mt-1 text-sm text-gray-600 dark:text-dark-300">{{ t('home.learn.card.desc') }}</p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <span
-                  v-for="tag in learnTags"
-                  :key="tag"
-                  class="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-700 dark:text-dark-300"
-                  >{{ tag }}</span
-                >
-              </div>
-            </div>
-            <span
-              class="inline-flex flex-shrink-0 items-center gap-1 rounded-full bg-primary-500 px-4 py-2 text-sm font-medium text-white transition group-hover:bg-primary-600"
-              >{{ t('home.learn.card.cta') }} →</span
-            >
-          </a>
-          </div>
-        </div>
+        </section>
       </div>
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-10 border-t border-gray-200/50 px-6 py-8 dark:border-dark-800/50">
-      <div
-        class="mx-auto flex max-w-6xl flex-col items-center justify-center gap-4 text-center sm:flex-row sm:text-left"
-      >
-        <p class="text-sm text-gray-500 dark:text-dark-400">
-          &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
-        </p>
-        <div class="flex items-center gap-4">
-          <a
-            v-if="docUrl"
-            :href="docUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
-          >
-            {{ t('home.docs') }}
-          </a>
-          <a
-            :href="githubUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
-          >
-            GitHub
-          </a>
-          <a
-            :href="canvasLink('footer')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
-          >
-            {{ t('home.canvas.card.title') }}
-          </a>
-          <a
-            :href="learnUrl('footer')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-white"
-          >
-            {{ t('home.learn.card.title') }}
-          </a>
+    <footer class="relative z-10 mt-8 border-t border-gray-200/50 px-6 pb-8 pt-12 dark:border-dark-800/50">
+      <div class="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="lg:col-span-2">
+          <div class="flex items-center gap-2.5">
+            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-8 w-8 rounded-lg object-contain" />
+            <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ siteName }}</span>
+          </div>
+          <p class="mt-3 max-w-sm text-sm text-gray-500 dark:text-dark-400">{{ t('home.v2.footer.desc') }}</p>
+          <p v-if="contactInfo" class="mt-3 text-sm text-gray-500 dark:text-dark-400">{{ t('home.v2.support.contact.label', { info: contactInfo }) }}</p>
         </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('home.v2.footer.product') }}</h3>
+          <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
+            <li><a :href="canvasLink('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.canvas') }}</a></li>
+            <li><router-link to="/contests" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.contests') }}</router-link></li>
+            <li v-if="showModelPlazaEntry"><router-link to="/model-plaza" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.plaza') }}</router-link></li>
+            <li><router-link to="/batch-image" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.batch') }}</router-link></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('home.v2.footer.support') }}</h3>
+          <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
+            <li v-if="docUrl"><a :href="docUrl" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.docs') }}</a></li>
+            <li><a :href="learnUrl('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.learn') }}</a></li>
+            <li><router-link to="/keys" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.keys') }}</router-link></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mx-auto mt-10 flex max-w-6xl flex-col items-center justify-between gap-2 border-t border-gray-200/50 pt-6 text-xs text-gray-400 sm:flex-row dark:border-dark-800/50">
+        <p>&copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}</p>
+        <a :href="githubUrl" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 dark:hover:text-dark-200">Powered by Sub2API</a>
       </div>
     </footer>
   </div>
@@ -620,6 +553,12 @@ import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { canvasUrl } from '@/constants/crossSites'
+import HomePromptBox from '@/components/home/HomePromptBox.vue'
+import HomeScenarios from '@/components/home/HomeScenarios.vue'
+import HomeShowcase from '@/components/home/HomeShowcase.vue'
+import HomeSteps from '@/components/home/HomeSteps.vue'
+import HomeSupport from '@/components/home/HomeSupport.vue'
+import HomeFaq from '@/components/home/HomeFaq.vue'
 
 const { t } = useI18n()
 
@@ -650,10 +589,15 @@ const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 // 互推站点：AI 应用开发学习站（带 UTM 便于统计引流）
 const learnSiteUrl = 'https://ai-learn.xinduanju.top/'
 const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_medium=${medium}`
-const learnTags = computed(() => String(t('home.learn.card.tags')).split(',').filter(Boolean))
 // 互推站点：无限画布（子域名部署的生图工作台），预填本站网关地址
-const canvasLink = (medium: string) => canvasUrl({ medium, baseUrl: window.location.origin })
-const canvasTags = computed(() => String(t('home.canvas.card.tags')).split(',').filter(Boolean))
+const canvasLink = (medium: string, path: '/' | '/image' | '/video' = '/') =>
+  canvasUrl({ medium, baseUrl: window.location.origin, path })
+const contactInfo = computed(() => String(appStore.cachedPublicSettings?.contact_info || '').trim())
+const heroChips = computed(() => [
+  t('home.v2.hero.chips.models'),
+  t('home.v2.hero.chips.billing'),
+  t('home.v2.hero.chips.stable')
+])
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)

@@ -14,11 +14,18 @@ export interface CanvasUrlOptions {
    * 用户只需再粘贴自己的 API Key。
    */
   baseUrl?: string
+  /** 画布内页面：'/'（首页）、'/image'（生图工作台）、'/video'（视频工作台） */
+  path?: '/' | '/image' | '/video'
+  /** 预填到生图工作台的提示词（仅 path 为 /image 时生效） */
+  prompt?: string
 }
 
-export function canvasUrl({ medium, baseUrl }: CanvasUrlOptions): string {
+export function canvasUrl({ medium, baseUrl, path = '/', prompt }: CanvasUrlOptions): string {
   const params = new URLSearchParams({ utm_source: 'hivegpt', utm_medium: medium })
   const root = (baseUrl || '').trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '')
   if (root) params.set('baseUrl', root)
-  return `${CANVAS_SITE_URL}?${params.toString()}`
+  const text = (prompt || '').trim()
+  if (text && path === '/image') params.set('prompt', text.slice(0, 1000))
+  const base = CANVAS_SITE_URL.replace(/\/+$/, '')
+  return `${base}${path === '/' ? '/' : path}?${params.toString()}`
 }
