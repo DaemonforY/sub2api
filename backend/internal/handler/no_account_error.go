@@ -70,7 +70,7 @@ func classifySelectionFailureError(err error, fallback noAccountErrorClassificat
 	return noAccountErrorClassification{
 		Status:  http.StatusTooManyRequests,
 		ErrType: "rate_limit_error",
-		Message: "All available accounts are currently rate-limited. Please retry later.",
+		Message: "该模型的上游账号目前都在限流中，请过 1–2 分钟再试，本次请求未扣费（All available accounts are currently rate-limited. Please retry later.）",
 	}
 }
 
@@ -106,16 +106,15 @@ func classifyNoAccountError(
 	displayModel string,
 	platform string,
 ) noAccountErrorClassification {
-	fallback := noAccountErrorClassification{
-		Status:  http.StatusServiceUnavailable,
-		ErrType: "api_error",
-		Message: "Service temporarily unavailable",
-	}
-
 	routingModel = strings.TrimSpace(routingModel)
 	displayModel = strings.TrimSpace(displayModel)
 	if displayModel == "" {
 		displayModel = routingModel
+	}
+	fallback := noAccountErrorClassification{
+		Status:  http.StatusServiceUnavailable,
+		ErrType: "api_error",
+		Message: noAvailableAccountMessage(apiKeyGroupName(apiKey), displayModel),
 	}
 	if diag == nil || apiKey == nil || apiKey.GroupID == nil || routingModel == "" {
 		return fallback
@@ -126,7 +125,7 @@ func classifyNoAccountError(
 		return noAccountErrorClassification{
 			Status:        http.StatusNotFound,
 			ErrType:       "model_not_found",
-			Message:       fmt.Sprintf("Model %q is not supported by any configured account in this group", displayModel),
+			Message:       modelNotInGroupMessage(apiKeyGroupName(apiKey), displayModel),
 			ModelNotFound: true,
 		}
 	}
@@ -185,4 +184,34 @@ func openAICompatibleSelectionErrorForLog(err error, platform string) error {
 		return err
 	}
 	return fmt.Errorf("%s", message)
+}
+
+// User-facing texts: Chinese first (what happened + what to do), original English kept in
+// parentheses because clients, tests and the ops classifiers match on it.
+
+func noAvailableAccountMessage(groupName, model string) string {
+	scope := "当前分组"
+	if groupName != "" {
+		scope = fmt.Sprintf("分组「%s」", groupName)
+	}
+	target := ""
+	if model != "" {
+		target = fmt.Sprintf("模型 %s 的", model)
+	}
+	return fmt.Sprintf("%s暂时没有可处理%s请求的上游账号：可能是账号繁忙，也可能是这个 Key 的分组不支持所选模型。请稍后重试，或在客户端换成该分组支持的模型；本次请求未扣费（Service temporarily unavailable）", scope, target)
+}
+
+func modelNotInGroupMessage(groupName, model string) string {
+	scope := "当前 Key 所属分组"
+	if groupName != "" {
+		scope = fmt.Sprintf("当前 Key 所属分组「%s」", groupName)
+	}
+	return fmt.Sprintf("%s不支持模型 %q，请在客户端换成该分组支持的模型，或换一个支持该模型的 Key（Model %q is not supported by any configured account in this group）", scope, model, model)
+}
+
+func apiKeyGroupName(apiKey *service.APIKey) string {
+	if apiKey == nil || apiKey.Group == nil {
+		return ""
+	}
+	return strings.TrimSpace(apiKey.Group.Name)
 }

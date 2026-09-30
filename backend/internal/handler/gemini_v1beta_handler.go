@@ -687,17 +687,17 @@ func (h *GatewayHandler) handleGeminiFailoverExhausted(c *gin.Context, failoverE
 func mapGeminiUpstreamError(statusCode int) (int, string) {
 	switch statusCode {
 	case 401:
-		return http.StatusBadGateway, "Upstream authentication failed, please contact administrator"
+		return http.StatusBadGateway, msgUpstreamAuthFailed
 	case 403:
-		return http.StatusBadGateway, "Upstream access forbidden, please contact administrator"
+		return http.StatusBadGateway, msgUpstreamForbidden
 	case 429:
-		return http.StatusTooManyRequests, "Upstream rate limit exceeded, please retry later"
+		return http.StatusTooManyRequests, msgUpstreamRateLimited
 	case 529:
-		return http.StatusServiceUnavailable, "Upstream service overloaded, please retry later"
+		return http.StatusServiceUnavailable, msgUpstreamOverloaded
 	case 500, 502, 503, 504:
-		return http.StatusBadGateway, "Upstream service temporarily unavailable"
+		return http.StatusBadGateway, msgUpstreamUnavailable
 	default:
-		return http.StatusBadGateway, "Upstream request failed"
+		return http.StatusBadGateway, msgUpstreamFailed
 	}
 }
 

@@ -453,7 +453,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_InvalidKey(t *testing.T) {
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusUnauthorized, resp.Error.Code)
-	require.Equal(t, "Invalid API key", resp.Error.Message)
+	require.Equal(t, msgInvalidAPIKey, resp.Error.Message)
 	require.Equal(t, "UNAUTHENTICATED", resp.Error.Status)
 	require.True(t, rejected)
 	require.Equal(t, IngressRejectInvalidAPIKey, rejectReason)
@@ -580,7 +580,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_DisabledKey(t *testing.T) {
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusUnauthorized, resp.Error.Code)
-	require.Equal(t, "API key is disabled", resp.Error.Message)
+	require.Equal(t, msgAPIKeyDisabled, resp.Error.Message)
 	require.Equal(t, "UNAUTHENTICATED", resp.Error.Status)
 }
 
@@ -614,7 +614,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_InsufficientBalance(t *testing.T) {
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusForbidden, resp.Error.Code)
-	require.Equal(t, "Insufficient account balance", resp.Error.Message)
+	require.Equal(t, insufficientBalanceMessage(0), resp.Error.Message)
 	require.Equal(t, "PERMISSION_DENIED", resp.Error.Status)
 }
 
@@ -682,7 +682,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_RejectsExhaustedBalance(t *testing.T) 
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusForbidden, resp.Error.Code)
-	require.Equal(t, "Insufficient account balance", resp.Error.Message)
+	require.Equal(t, insufficientBalanceMessage(0), resp.Error.Message)
 	require.Equal(t, "PERMISSION_DENIED", resp.Error.Status)
 }
 

@@ -169,6 +169,12 @@ func historicalIngressRejectReason(item candidate) (string, bool) {
 	}
 
 	normalized := strings.TrimSpace(message)
+	// Gateway messages are "<中文说明>（<original English>）"; classify on the English part.
+	if strings.HasSuffix(normalized, "）") {
+		if i := strings.LastIndex(normalized, "（"); i >= 0 {
+			normalized = strings.TrimSuffix(normalized[i+len("（"):], "）")
+		}
+	}
 	switch {
 	case normalized == "API key is required":
 		return "missing_key", true

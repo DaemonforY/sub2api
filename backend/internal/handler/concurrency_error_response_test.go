@@ -26,7 +26,7 @@ func TestConcurrencyErrorResponse(t *testing.T) {
 			wantStatus:  http.StatusTooManyRequests,
 			wantType:    "rate_limit_error",
 			wantCode:    gatewayConcurrencyLimitCode,
-			wantMessage: "Concurrency limit exceeded for account, please retry later",
+			wantMessage: concurrencyLimitMessage("account"),
 		},
 		{
 			name:        "full local wait queue has gateway code",
@@ -35,7 +35,7 @@ func TestConcurrencyErrorResponse(t *testing.T) {
 			wantStatus:  http.StatusTooManyRequests,
 			wantType:    "rate_limit_error",
 			wantCode:    gatewayQueueFullCode,
-			wantMessage: "Too many pending requests, please retry later",
+			wantMessage: msgQueueFull,
 		},
 		{
 			name:        "client cancellation is not classified as concurrency limit",
@@ -51,7 +51,7 @@ func TestConcurrencyErrorResponse(t *testing.T) {
 			slotType:    "user",
 			wantStatus:  http.StatusServiceUnavailable,
 			wantType:    "api_error",
-			wantMessage: "Service temporarily unavailable, please retry later",
+			wantMessage: msgServiceBusyRetry,
 		},
 		{
 			name:        "redis acquire error is service unavailable",
@@ -59,7 +59,7 @@ func TestConcurrencyErrorResponse(t *testing.T) {
 			slotType:    "user",
 			wantStatus:  http.StatusServiceUnavailable,
 			wantType:    "api_error",
-			wantMessage: "Service temporarily unavailable, please retry later",
+			wantMessage: msgServiceBusyRetry,
 		},
 	}
 

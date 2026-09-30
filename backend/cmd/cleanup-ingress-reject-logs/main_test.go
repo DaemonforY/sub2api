@@ -11,6 +11,7 @@ func TestHistoricalIngressRejectReason(t *testing.T) {
 	}{
 		{name: "standard invalid key", item: candidate{body: `{"code":"INVALID_API_KEY","message":"Invalid API key"}`}, reason: "invalid_key", match: true},
 		{name: "google missing key", item: candidate{body: `{"error":{"code":401,"message":"API key is required","status":"UNAUTHENTICATED"}}`}, reason: "missing_key", match: true},
+		{name: "google bilingual invalid key", item: candidate{body: `{"error":{"code":401,"message":"API Key 无效或已被删除，请到控制台「API 密钥」复制一个有效的 Key 后重试（Invalid API key）","status":"UNAUTHENTICATED"}}`}, reason: "invalid_key", match: true},
 		{name: "google group deleted", item: candidate{body: `{"error":{"code":403,"message":"API Key 所属分组已删除","status":"PERMISSION_DENIED"}}`}, reason: "group_deleted", match: true},
 		{name: "ip acl", item: candidate{body: `{"code":"ACCESS_DENIED","message":"Access denied. Your IP is 192.0.2.1"}`}, reason: "ip_acl_denied", match: true},
 		{name: "user not found remains", item: candidate{body: `{"code":"USER_NOT_FOUND","message":"User associated with API key not found"}`}, match: false},
