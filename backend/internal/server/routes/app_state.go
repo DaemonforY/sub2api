@@ -19,6 +19,8 @@ func RegisterAppStateRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth
 	group.Use(gin.HandlerFunc(apiKeyAuth))
 	group.Use(middleware.BackendModeUserGuard(settingService))
 	group.Use(panelRateLimiter.Global())
+	group.POST("/blobs", h.AppState.UploadBlob)
+	group.GET("/blobs/:id", h.AppState.GetBlob)
 	group.GET("/:namespace", h.AppState.Get)
 	group.PUT("/:namespace", h.AppState.Put)
 }

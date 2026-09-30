@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"path/filepath"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -581,6 +582,15 @@ func ProvideContestService(repo ContestRepository, userRepo UserRepository, rede
 	return svc
 }
 
+// ProvideUserAppBlobService stores synced images next to contest images on the data volume.
+func ProvideUserAppBlobService(repo UserAppBlobRepository, cfg *config.Config) *UserAppBlobService {
+	dir := "./data/contest-images"
+	if cfg != nil && cfg.Contest.ImageDir != "" {
+		dir = cfg.Contest.ImageDir
+	}
+	return NewUserAppBlobService(repo, filepath.Join(filepath.Dir(filepath.Clean(dir)), "app-state-blobs"))
+}
+
 // ProvideGatewayRequestLogService 创建网关全量请求日志服务并启动异步写入与保留期清理协程。
 // 停止逻辑挂在 cmd/server 的 provideCleanup。
 func ProvideGatewayRequestLogService(repo GatewayRequestLogRepository, cfg *config.Config) *GatewayRequestLogService {
@@ -967,6 +977,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentService,
 	NewGrowthService,
 	NewUserAppStateService,
+	ProvideUserAppBlobService,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
 	ProvideChannelMonitorService,
