@@ -461,6 +461,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/prompt-library',
+    name: 'AdminPromptLibrary',
+    component: () => import('@/views/admin/PromptLibraryView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Prompt library',
+      titleKey: 'admin.promptLibrary.title',
+      descriptionKey: 'admin.promptLibrary.description'
+    }
+  },
+  {
     path: '/admin/contests/:id(\\d+)',
     name: 'AdminContestDetail',
     component: () => import('@/views/admin/ContestDetailView.vue'),

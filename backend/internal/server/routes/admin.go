@@ -132,6 +132,7 @@ func RegisterAdminRoutes(
 		registerAuditLogRoutes(admin, h, stepUpAuth)
 		registerGatewayRequestLogRoutes(admin, h)
 		registerContestAdminRoutes(admin, h)
+		registerPromptLibraryAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -174,6 +175,27 @@ func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middl
 		auditLogs.GET("/:id", h.Admin.AuditLog.Get)
 		// 清空需现场 TOTP 校验（在 handler 内强制），不复用 step-up sudo 窗口
 		auditLogs.POST("/clear", h.Admin.AuditLog.Clear)
+	}
+}
+
+// registerPromptLibraryAdminRoutes 提示词库管理：人工校对场景/标签、隐藏/精选、审核用户分享、来源同步。
+func registerPromptLibraryAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.PromptLibrary == nil {
+		return
+	}
+	g := admin.Group("/prompt-library")
+	{
+		g.GET("/stats", h.Admin.PromptLibrary.Stats)
+		g.GET("/tags", h.Admin.PromptLibrary.Tags)
+		g.GET("/items", h.Admin.PromptLibrary.List)
+		g.POST("/items", h.Admin.PromptLibrary.Create)
+		g.POST("/items/batch", h.Admin.PromptLibrary.Batch)
+		g.GET("/items/:id", h.Admin.PromptLibrary.Get)
+		g.PUT("/items/:id", h.Admin.PromptLibrary.Update)
+		g.DELETE("/items/:id", h.Admin.PromptLibrary.Delete)
+		g.GET("/sources", h.Admin.PromptLibrary.Sources)
+		g.PUT("/sources/:id", h.Admin.PromptLibrary.UpdateSource)
+		g.POST("/sources/:id/sync", h.Admin.PromptLibrary.SyncSource)
 	}
 }
 

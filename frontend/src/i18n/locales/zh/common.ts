@@ -209,6 +209,7 @@ export default {
     requestLogs: '请求日志',
     contests: '活动',
     contestAdmin: '活动管理',
+    promptLibraryAdmin: '提示词库',
   },
 
   // Auth

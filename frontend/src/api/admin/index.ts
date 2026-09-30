@@ -38,6 +38,7 @@ import auditAPI from './audit'
 import requestLogsAPI from './requestLogs'
 import adminContestsAPI from './contests'
 import pluginsAPI from './plugins'
+import promptLibraryAPI from './promptLibrary'
 
 /**
  * Unified admin API object for convenient access
@@ -77,7 +78,8 @@ export const adminAPI = {
   audit: auditAPI,
   requestLogs: requestLogsAPI,
   contests: adminContestsAPI,
-  plugins: pluginsAPI
+  plugins: pluginsAPI,
+  promptLibrary: promptLibraryAPI
 }
 
 export {

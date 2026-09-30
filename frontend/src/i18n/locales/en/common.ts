@@ -209,6 +209,7 @@ export default {
     requestLogs: 'Request Logs',
     contests: 'Contests',
     contestAdmin: 'Contests',
+    promptLibraryAdmin: 'Prompt library',
   },
 
   // Auth

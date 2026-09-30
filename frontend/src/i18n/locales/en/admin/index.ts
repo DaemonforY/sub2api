@@ -9,6 +9,7 @@ import requestLogs from './requestLogs'
 import contests from './contests'
 import promptAudit from './promptAudit'
 import plugins from './plugins'
+import promptLibrary from './promptLibrary'
 
 export default {
   ...overview,
@@ -22,4 +23,5 @@ export default {
   ...contests,
   ...promptAudit,
   ...plugins,
+  ...promptLibrary,
 }

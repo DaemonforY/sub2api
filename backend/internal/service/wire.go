@@ -591,6 +591,22 @@ func ProvideUserAppBlobService(repo UserAppBlobRepository, cfg *config.Config) *
 	return NewUserAppBlobService(repo, filepath.Join(filepath.Dir(filepath.Clean(dir)), "app-state-blobs"))
 }
 
+// ProvidePromptLibraryService keeps user prompt covers next to contest images on the data volume.
+func ProvidePromptLibraryService(repo PromptLibraryRepository, cfg *config.Config) *PromptLibraryService {
+	dir := "./data/contest-images"
+	if cfg != nil && cfg.Contest.ImageDir != "" {
+		dir = cfg.Contest.ImageDir
+	}
+	return NewPromptLibraryService(repo, NewPromptCoverStore(filepath.Join(filepath.Dir(filepath.Clean(dir)), "prompt-covers")))
+}
+
+// ProvidePromptLibrarySyncService creates and starts the daily community-source sync.
+func ProvidePromptLibrarySyncService(repo PromptLibraryRepository) *PromptLibrarySyncService {
+	svc := NewPromptLibrarySyncService(repo, nil)
+	svc.Start()
+	return svc
+}
+
 // ProvideGatewayRequestLogService 创建网关全量请求日志服务并启动异步写入与保留期清理协程。
 // 停止逻辑挂在 cmd/server 的 provideCleanup。
 func ProvideGatewayRequestLogService(repo GatewayRequestLogRepository, cfg *config.Config) *GatewayRequestLogService {
@@ -978,6 +994,8 @@ var ProviderSet = wire.NewSet(
 	NewGrowthService,
 	NewUserAppStateService,
 	ProvideUserAppBlobService,
+	ProvidePromptLibraryService,
+	ProvidePromptLibrarySyncService,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
 	ProvideChannelMonitorService,

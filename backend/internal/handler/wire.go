@@ -50,6 +50,7 @@ func ProvideAdminHandlers(
 	gatewayRequestLogHandler *admin.GatewayRequestLogHandler,
 	adminContestHandler *admin.ContestHandler,
 	adminGrowthHandler *admin.GrowthHandler,
+	adminPromptLibraryHandler *admin.PromptLibraryHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
 ) *AdminHandlers {
@@ -95,6 +96,7 @@ func ProvideAdminHandlers(
 		RequestLog:             gatewayRequestLogHandler,
 		Contest:                adminContestHandler,
 		Growth:                 adminGrowthHandler,
+		PromptLibrary:          adminPromptLibraryHandler,
 	}
 }
 
@@ -203,6 +205,7 @@ func ProvideHandlers(
 	contestHandler *ContestHandler,
 	growthHandler *GrowthHandler,
 	appStateHandler *UserAppStateHandler,
+	promptLibraryHandler *PromptLibraryHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -232,6 +235,7 @@ func ProvideHandlers(
 		Contest:          contestHandler,
 		Growth:           growthHandler,
 		AppState:         appStateHandler,
+		PromptLibrary:    promptLibraryHandler,
 	}
 }
 
@@ -261,6 +265,7 @@ var ProviderSet = wire.NewSet(
 	NewContestHandler,
 	NewGrowthHandler,
 	NewUserAppStateHandler,
+	NewPromptLibraryHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,
@@ -300,6 +305,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewAuditLogHandler,
 	admin.NewGatewayRequestLogHandler,
 	admin.NewContestHandler,
+	admin.NewPromptLibraryHandler,
 	admin.NewGrowthHandler,
 
 	// AdminHandlers and Handlers constructors

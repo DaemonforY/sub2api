@@ -91,7 +91,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			} else {
 				MarkIngressRejected(c, IngressRejectAPIKeyRequired)
 			}
-			AbortWithError(c, 401, "API_KEY_REQUIRED", "API key is required in Authorization header (Bearer scheme), x-api-key header, or x-goog-api-key header")
+			AbortWithError(c, 401, "API_KEY_REQUIRED", msgAPIKeyRequired)
 			return
 		}
 
@@ -172,7 +172,8 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		// Contest submissions and synced app state from companion apps (the canvas) cost nothing, so a
 		// drained balance or a used-up subscription window must not block them.
 		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path) ||
-			isContestKeyEntrySubmission(c.Request.Method, c.Request.URL.Path) || strings.HasPrefix(c.Request.URL.Path, "/api/v1/app-state/")
+			isContestKeyEntrySubmission(c.Request.Method, c.Request.URL.Path) || strings.HasPrefix(c.Request.URL.Path, "/api/v1/app-state/") ||
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/prompt-library/")
 
 		// ── 4. SimpleMode → early return ─────────────────────────────
 

@@ -46,6 +46,7 @@ type AdminHandlers struct {
 	RequestLog             *admin.GatewayRequestLogHandler
 	Contest                *admin.ContestHandler
 	Growth                 *admin.GrowthHandler
+	PromptLibrary          *admin.PromptLibraryHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -74,6 +75,7 @@ type Handlers struct {
 	Contest          *ContestHandler
 	Growth           *GrowthHandler
 	AppState         *UserAppStateHandler
+	PromptLibrary    *PromptLibraryHandler
 }
 
 // BuildInfo contains build-time information

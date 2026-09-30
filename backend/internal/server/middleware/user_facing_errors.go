@@ -15,6 +15,7 @@ import (
 // classifiers match on it, and it keeps the message searchable.
 
 const (
+	msgAPIKeyRequired       = "缺少 API Key：请在请求头 Authorization: Bearer <你的 Key>（或 x-api-key）里填写控制台「API 密钥」中的 Key（API key is required in Authorization header (Bearer scheme), x-api-key header, or x-goog-api-key header）"
 	msgInvalidAPIKey        = "API Key 无效或已被删除，请到控制台「API 密钥」复制一个有效的 Key 后重试（Invalid API key）"
 	msgAPIKeyDisabled       = "API Key 已停用，请到控制台「API 密钥」启用它或换一个 Key（API key is disabled）"
 	msgUserInactive         = "账号已被停用，如有疑问请联系客服（User account is not active）"

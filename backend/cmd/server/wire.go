@@ -127,6 +127,7 @@ func provideCleanup(
 	auditLog *service.AuditLogService,
 	gatewayRequestLog *service.GatewayRequestLogService,
 	contestService *service.ContestService,
+	promptLibrarySync *service.PromptLibrarySyncService,
 	openAIAutoReset *service.OpenAIQuotaAutoResetService,
 	promptAudit *securityaudit.PromptService,
 	pluginManager *service.PluginManager,
@@ -270,6 +271,12 @@ func provideCleanup(
 			}},
 			{"TokenRefreshService", func() error {
 				tokenRefresh.Stop()
+				return nil
+			}},
+			{"PromptLibrarySyncService", func() error {
+				if promptLibrarySync != nil {
+					promptLibrarySync.Stop()
+				}
 				return nil
 			}},
 			{"AccountExpiryService", func() error {
