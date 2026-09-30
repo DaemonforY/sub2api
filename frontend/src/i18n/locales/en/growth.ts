@@ -1,4 +1,71 @@
 export default {
+  affiliatePoster: {
+    title: 'Invite posters',
+    description: 'Pick a poster to save or share. Its QR code is your personal invite link; friends who sign up with it are bound to you.',
+    templates: { invite: 'Rewards for both', student: 'Students / teachers', canvas: 'AI art', minimal: 'Minimal card' },
+    download: 'Download',
+    copyImage: 'Copy image',
+    copied: 'Poster copied — paste it straight into a chat',
+    copyUnsupported: 'This browser cannot copy images; download the poster instead',
+    saveHint: 'On a phone, long-press the poster to save it',
+    generating: 'Generating poster…',
+    failed: 'Could not generate the poster. Refresh and try again',
+    capSuffix: ', up to ¥{cap}',
+    footer: {
+      cta: 'Scan to sign up',
+      code: 'Invite code {code}',
+      fine: 'Sign in at {site} after registering; rewards follow the rules on the site',
+      fineBonus: 'Sign up with this code and your first payment earns a balance bonus; see {site} for the rules'
+    },
+    invite: {
+      tag: 'Referral',
+      line1: 'Invite a friend,',
+      line2: 'both of you win.',
+      sub: 'Rewards arrive automatically once your friend signs up and pays; balance can buy subscriptions.',
+      friend: 'Friend',
+      friendDesc: 'of the first payment back as balance (once{cap})',
+      you: 'You',
+      youDesc: 'rebate on every payment your friend makes',
+      example: 'Example: friend pays ¥{amount} → friend gets ¥{bonus} balance, you get ¥{rebate}',
+      exampleNoBonus: 'Example: friend pays ¥{amount} → you get ¥{rebate}'
+    },
+    student: {
+      tag: 'Students / teachers',
+      line1: 'Great AI,',
+      line2: 'priced for ',
+      accent: 'students.',
+      sub: 'Code, debug, write papers and slides with Codex —\nplus an AI drawing canvas.',
+      eduTitle: 'School email verified: {rate}% off plans',
+      eduDesc: 'Verify a school email once; QQ-mail accounts can verify too',
+      codexTitle: 'Codex plans for code and papers',
+      codexDesc: 'Weekly or monthly; balance can buy plans directly',
+      canvasTitle: 'Infinite canvas: text-to-image, edits',
+      canvasDesc: 'Same account; submit works to on-site contests in one click',
+      bonusTitle: 'Sign up here: {rate}% back on first order',
+      bonusDesc: 'Credited to your balance automatically{cap}',
+      rebateTitle: 'Invite classmates, save together',
+      rebateDesc: 'Earn {rate}% of every payment they make'
+    },
+    canvas: {
+      tag: 'Infinite canvas',
+      line1: 'One sentence,',
+      line2: 'the picture you want.',
+      sub: 'Text-to-image, edits, filters and cropping on one canvas.',
+      prompt: '"An old street at dawn, steaming buns, warm tones, watercolor"',
+      result: '→ Generate, then refine',
+      chip1: 'Posters',
+      chip2: 'Avatars',
+      chip3: 'Illustrations',
+      chip4: 'Products',
+      ctaBonus: 'Sign up: {rate}% back on first order'
+    },
+    minimal: {
+      tagline: 'AI coding · writing · art',
+      invite: 'I use {site} — join me',
+      offer: 'Sign up: {rate}% back on first order{cap}',
+      offerNoBonus: 'Scan to start using AI'
+    }
+  },
   appModules: {
     sectionTitle: 'AI apps',
     sectionHint: 'More apps coming soon',

@@ -85,6 +85,15 @@
           </div>
         </div>
 
+        <InvitePosterCard
+          :invite-link="inviteLink"
+          :aff-code="detail.aff_code"
+          :rebate-rate="detail.effective_rebate_rate_percent ?? 0"
+          :invitee-bonus-rate="inviteeBonusRate"
+          :invitee-bonus-cap="inviteeBonusCap"
+          :edu-discount="eduDiscount"
+        />
+
         <div class="card p-6">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -149,6 +158,7 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import InviteLeaderboardCard from '@/components/user/growth/InviteLeaderboardCard.vue'
+import InvitePosterCard from '@/components/user/growth/InvitePosterCard.vue'
 import { growthAPI } from '@/api/growth'
 import userAPI from '@/api/user'
 import type { UserAffiliateDetail } from '@/types'
@@ -228,11 +238,15 @@ async function transferQuota(): Promise<void> {
 }
 
 const inviteeBonusRate = ref(0)
+const inviteeBonusCap = ref(0)
+const eduDiscount = ref(0)
 
 onMounted(() => {
   void loadAffiliateDetail()
   growthAPI.getPublicConfig().then((cfg) => {
     inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
+    inviteeBonusCap.value = cfg.affiliate_enabled ? cfg.invitee_bonus_cap : 0
+    eduDiscount.value = cfg.edu_verify_enabled ? cfg.edu_discount_percent : 0
   }).catch(() => {})
 })
 </script>

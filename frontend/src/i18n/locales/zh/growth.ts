@@ -1,4 +1,71 @@
 export default {
+  affiliatePoster: {
+    title: '邀请海报',
+    description: '选一张海报保存或分享，海报上的二维码就是你的专属邀请链接，好友扫码注册会自动绑定到你。',
+    templates: { invite: '双向奖励', student: '学生 / 教师', canvas: 'AI 绘画', minimal: '简约名片' },
+    download: '下载海报',
+    copyImage: '复制图片',
+    copied: '海报已复制，可以直接粘贴到聊天窗口',
+    copyUnsupported: '当前浏览器不支持复制图片，请下载后分享',
+    saveHint: '手机上长按海报即可保存到相册',
+    generating: '正在生成海报…',
+    failed: '海报生成失败，请刷新页面后重试',
+    capSuffix: '，最高 ¥{cap}',
+    footer: {
+      cta: '扫码注册，一起用 AI',
+      code: '邀请码 {code}',
+      fine: '注册后登录 {site} 使用；奖励以页面规则为准',
+      fineBonus: '通过此码注册，首笔付费自动返余额；规则以 {site} 页面为准'
+    },
+    invite: {
+      tag: '邀请计划',
+      line1: '邀请一位朋友，',
+      line2: '两个人都有奖励。',
+      sub: '扫码注册并付费后，奖励自动到账，余额可以直接买订阅。',
+      friend: '好友',
+      friendDesc: '首笔付费返到好友余额（每人一次{cap}）',
+      you: '你',
+      youDesc: '好友每一笔付费，你都拿返利',
+      example: '举个例子：好友付费 ¥{amount} → 好友得 ¥{bonus} 余额，你得 ¥{rebate} 返利',
+      exampleNoBonus: '举个例子：好友付费 ¥{amount} → 你得 ¥{rebate} 返利'
+    },
+    student: {
+      tag: '学生 / 教师 · 教育优惠',
+      line1: '好用的 AI，',
+      line2: '学生也',
+      accent: '用得起。',
+      sub: '用 Codex 写代码、查 bug、改论文、做课件；\n再加一块 AI 绘画画布。',
+      eduTitle: '教育邮箱认证，订阅立减 {rate}%',
+      eduDesc: '用学校邮箱验证一次即可，QQ 邮箱注册的账号也能认证',
+      codexTitle: 'Codex 订阅：写代码、改论文',
+      codexDesc: '周卡、月卡按需购买，余额也能直接买订阅',
+      canvasTitle: '无限画布：文生图、改图',
+      canvasDesc: '同一个账号画图，作品可一键投稿站内活动',
+      bonusTitle: '扫码注册，首单返 {rate}% 余额',
+      bonusDesc: '首笔付费自动返到余额{cap}',
+      rebateTitle: '邀请同学，一起省',
+      rebateDesc: '好友每笔付费你得 {rate}% 返利，可直接买订阅'
+    },
+    canvas: {
+      tag: '无限画布',
+      line1: '一句话，',
+      line2: '画出你想要的画。',
+      sub: '文生图、改图、滤镜、裁剪，在一块画布里完成。',
+      prompt: '「清晨的老街，蒸笼冒着热气，暖色调，水彩风格」',
+      result: '→ 一键出图，满意再精修',
+      chip1: '海报',
+      chip2: '头像',
+      chip3: '插画',
+      chip4: '产品图',
+      ctaBonus: '扫码注册，首单返 {rate}%'
+    },
+    minimal: {
+      tagline: 'AI 编程 · 写作 · 绘画',
+      invite: '我在用 {site}，邀请你一起',
+      offer: '扫码注册，首单返 {rate}% 余额{cap}',
+      offerNoBonus: '扫码注册，开始用 AI'
+    }
+  },
   appModules: {
     sectionTitle: 'AI 应用',
     sectionHint: '更多应用陆续上线',
