@@ -557,12 +557,12 @@ func (s *ContestService) SubmitEntry(ctx context.Context, contestID, userID int6
 	}
 	title := strings.TrimSpace(in.Title)
 	if title == "" || len([]rune(title)) > 120 {
-		return nil, contestInvalid("title is required (max 120 characters)")
+		return nil, contestInvalid("请填写作品标题（最多 120 个字）")
 	}
 	desc := strings.TrimSpace(in.Description)
 	prompt := strings.TrimSpace(in.Prompt)
 	if len([]rune(desc)) > 2000 || len([]rune(prompt)) > 4000 {
-		return nil, contestInvalid("description max 2000 characters, prompt max 4000 characters")
+		return nil, contestInvalid("作品说明最多 2000 字，提示词最多 4000 字")
 	}
 	count, err := s.repo.CountActiveUserEntries(ctx, contestID, userID)
 	if err != nil {

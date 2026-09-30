@@ -105,13 +105,13 @@ func (h *ContestHandler) SubmitEntry(c *gin.Context) {
 	}
 	userID := contestViewerID(c)
 	if userID <= 0 {
-		response.Unauthorized(c, "Login required")
+		response.Unauthorized(c, "请先登录")
 		return
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, service.ContestImageMaxBytes+1<<20)
 	file, err := c.FormFile("image")
 	if err != nil {
-		response.BadRequest(c, "image file is required")
+		response.BadRequest(c, "请选择要投稿的图片")
 		return
 	}
 	if file.Size > service.ContestImageMaxBytes {
@@ -120,13 +120,13 @@ func (h *ContestHandler) SubmitEntry(c *gin.Context) {
 	}
 	f, err := file.Open()
 	if err != nil {
-		response.BadRequest(c, "cannot read image")
+		response.BadRequest(c, "图片读取失败，请重新选择图片")
 		return
 	}
 	defer func() { _ = f.Close() }()
 	data, err := io.ReadAll(io.LimitReader(f, service.ContestImageMaxBytes+1))
 	if err != nil {
-		response.BadRequest(c, "cannot read image")
+		response.BadRequest(c, "图片读取失败，请重新选择图片")
 		return
 	}
 	entry, err := h.service.SubmitEntry(c.Request.Context(), id, userID, service.ContestEntryInput{

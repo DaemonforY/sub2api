@@ -1427,6 +1427,49 @@ func TestAPIKeyAuthRejectsExhaustedBalance(t *testing.T) {
 	requireAPIKeyAuthError(t, w, "INSUFFICIENT_BALANCE", insufficientBalanceMessage(0))
 }
 
+func TestAPIKeyAuthContestKeyEntrySkipsBilling(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	user := &service.User{ID: 11, Role: service.RoleUser, Status: service.StatusActive, Balance: 0, Concurrency: 3}
+	apiKey := &service.APIKey{ID: 105, UserID: user.ID, Key: "contest-balance-zero", Status: service.StatusActive, User: user}
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			userClone := *user
+			clone.User = &userClone
+			return &clone, nil
+		},
+	}
+	cfg := &config.Config{RunMode: config.RunModeStandard}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	router := newAuthTestRouter(apiKeyService, nil, cfg)
+
+	// A drained balance still blocks model calls…
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusForbidden, w.Code)
+
+	// …but not handing in a contest entry, which costs nothing.
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/contests/1/key-entries", nil)
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestIsContestKeyEntrySubmission(t *testing.T) {
+	require.True(t, isContestKeyEntrySubmission(http.MethodPost, "/api/v1/contests/12/key-entries"))
+	require.False(t, isContestKeyEntrySubmission(http.MethodGet, "/api/v1/contests/12/key-entries"))
+	require.False(t, isContestKeyEntrySubmission(http.MethodPost, "/api/v1/contests/x/key-entries"))
+	require.False(t, isContestKeyEntrySubmission(http.MethodPost, "/api/v1/contests/12/entries"))
+	require.False(t, isContestKeyEntrySubmission(http.MethodPost, "/v1/responses"))
+}
+
 func TestAPIKeyAuthOpenAIQuotaErrorFormat(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -1510,6 +1553,7 @@ func newAuthTestRouter(apiKeyService *service.APIKeyService, subscriptionService
 	router.POST("/v1/messages", ok)
 	router.GET("/v1/usage", ok)
 	router.GET("/v1/sub2api/billing", ok)
+	router.POST("/api/v1/contests/:id/key-entries", ok)
 	return router
 }
 
