@@ -96,6 +96,7 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 		nil, // auditLog
 		nil, // gatewayRequestLog
 		nil, // contestService
+		nil, // promptLibrarySync
 		nil, // openAIAutoReset
 		nil, // promptAudit
 		nil, // pluginManager
