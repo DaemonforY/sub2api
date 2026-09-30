@@ -73,6 +73,7 @@ type Handlers struct {
 	BatchImage       *BatchImageHandler
 	Contest          *ContestHandler
 	Growth           *GrowthHandler
+	AppState         *UserAppStateHandler
 }
 
 // BuildInfo contains build-time information

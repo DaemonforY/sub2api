@@ -202,6 +202,7 @@ func ProvideHandlers(
 	batchImageHandler *BatchImageHandler,
 	contestHandler *ContestHandler,
 	growthHandler *GrowthHandler,
+	appStateHandler *UserAppStateHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -230,6 +231,7 @@ func ProvideHandlers(
 		BatchImage:       batchImageHandler,
 		Contest:          contestHandler,
 		Growth:           growthHandler,
+		AppState:         appStateHandler,
 	}
 }
 
@@ -258,6 +260,7 @@ var ProviderSet = wire.NewSet(
 	ProvideBatchImageHandler,
 	NewContestHandler,
 	NewGrowthHandler,
+	NewUserAppStateHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,
