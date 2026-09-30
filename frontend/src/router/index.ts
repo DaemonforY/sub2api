@@ -265,6 +265,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/canvas-connect',
+    name: 'CanvasConnect',
+    component: () => import('@/views/user/CanvasConnectView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Connect Canvas',
+      titleKey: 'canvasConnect.title'
+    }
+  },
+  {
     path: '/affiliate',
     name: 'Affiliate',
     component: () => import('@/views/user/AffiliateView.vue'),

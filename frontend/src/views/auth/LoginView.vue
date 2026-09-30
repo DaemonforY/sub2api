@@ -201,7 +201,7 @@
       <p class="text-gray-500 dark:text-dark-400">
         {{ t('auth.dontHaveAccount') }}
         <router-link
-          to="/register"
+          :to="registerLink"
           class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ t('auth.signUp') }}
@@ -258,6 +258,14 @@ const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 // ==================== Router & Stores ====================
 
 const router = useRouter()
+// Keep the post-auth destination when a visitor switches from login to registration
+// (e.g. the canvas connect popup sends them to /login?redirect=/canvas-connect?...).
+const registerLink = computed(() => {
+  const redirect = router.currentRoute.value.query.redirect
+  return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+    ? { path: '/register', query: { redirect } }
+    : '/register'
+})
 const authStore = useAuthStore()
 const appStore = useAppStore()
 

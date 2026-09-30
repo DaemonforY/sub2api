@@ -1,4 +1,29 @@
 export default {
+  canvasConnect: {
+    title: '授权无限画布使用 API Key',
+    subtitle: '来自 canvas.hivegpt.cn 的连接请求 · {site}',
+    explain: '选择一个支持画图的 Key 授权给无限画布。画布会用它在你的浏览器里直接调用 {site} 出图，按 Key 所在分组计费。',
+    canDraw: '可画图',
+    cannotDraw: '该分组不支持画图',
+    inactive: 'Key 已停用或额度用完',
+    noGroup: '未绑定分组',
+    createTitle: '还没有可以画图的 Key，创建一个：',
+    createAnother: '新建一个画布专用 Key',
+    create: '创建',
+    keyName: '无限画布',
+    subscriptionSuffix: '（订阅）',
+    balanceSuffix: '（按量，扣余额）',
+    balanceHint: '按量分组按调用扣余额，当前余额 {balance}。',
+    topUp: '去充值',
+    noDrawableGroup: '你当前没有支持画图的分组。购买 Codex 订阅或充值后即可使用。',
+    buyPlan: '去购买',
+    authorize: '授权',
+    privacy: 'Key 只会发送给 {canvas}，保存在你这台电脑的浏览器里；随时可以在「API 密钥」页停用。',
+    done: '已连接无限画布',
+    doneHint: '这个窗口会自动关闭，回到画布就能开始画图。',
+    openFromCanvas: '请从无限画布里点「一键连接」打开本页。',
+    goCanvas: '打开无限画布'
+  },
   growth: {
     inviteeBonus: {
       registerNotice: '通过邀请注册，首笔付费订单额外返 {rate}% 到余额',

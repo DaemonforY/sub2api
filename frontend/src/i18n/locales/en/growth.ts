@@ -1,4 +1,29 @@
 export default {
+  canvasConnect: {
+    title: 'Authorize the canvas to use an API key',
+    subtitle: 'Connection request from canvas.hivegpt.cn · {site}',
+    explain: 'Pick an image-capable key for Infinite Canvas. It calls {site} directly from your browser with this key, billed by the key’s group.',
+    canDraw: 'Can draw',
+    cannotDraw: 'group can’t generate images',
+    inactive: 'key disabled or out of quota',
+    noGroup: 'No group',
+    createTitle: 'No key can draw yet — create one:',
+    createAnother: 'Create a key for the canvas',
+    create: 'Create',
+    keyName: 'Infinite Canvas',
+    subscriptionSuffix: ' (subscription)',
+    balanceSuffix: ' (pay as you go)',
+    balanceHint: 'Pay-as-you-go groups charge your balance per call; current balance {balance}.',
+    topUp: 'Top up',
+    noDrawableGroup: 'None of your groups can generate images yet. Buy a Codex plan or top up first.',
+    buyPlan: 'Buy',
+    authorize: 'Authorize',
+    privacy: 'The key is sent only to {canvas} and stays in this browser; you can disable it anytime on the API keys page.',
+    done: 'Canvas connected',
+    doneHint: 'This window closes automatically — head back to the canvas to start drawing.',
+    openFromCanvas: 'Open this page from the canvas “Connect” button.',
+    goCanvas: 'Open the canvas'
+  },
   growth: {
     inviteeBonus: {
       registerNotice: 'Joined through an invite? Get {rate}% of your first paid order back as balance',

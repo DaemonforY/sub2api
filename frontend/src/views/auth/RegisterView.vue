@@ -329,7 +329,7 @@
       <p class="text-gray-500 dark:text-dark-400">
         {{ t('auth.alreadyHaveAccount') }}
         <router-link
-          to="/login"
+          :to="postRegisterRedirect ? { path: '/login', query: { redirect: postRegisterRedirect } } : '/login'"
           class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ t('auth.signIn') }}
@@ -523,6 +523,14 @@ function syncAffiliateReferralCode(): string {
 }
 
 // ==================== Lifecycle ====================
+
+// Same-site path to continue to after registration (?redirect=/canvas-connect?...); never an external URL.
+const postRegisterRedirect = computed(() => {
+  const redirect = route.query.redirect
+  if (typeof redirect !== 'string') return ''
+  if (!redirect.startsWith('/') || redirect.startsWith('//') || redirect.includes('://') || /[\r\n]/.test(redirect)) return ''
+  return redirect
+})
 
 // Invitee first-order bonus advertised next to the invitation code (0 = program off).
 const inviteeBonusRate = ref(0)
@@ -1030,7 +1038,8 @@ async function handleRegister(): Promise<void> {
           tencent_captcha_randstr: tencentCaptchaEnabled.value ? tencentCaptchaRandstr.value : undefined,
           promo_code: formData.promo_code || undefined,
           invitation_code: formData.invitation_code || undefined,
-          ...(affCode ? { aff_code: affCode } : {})
+          ...(affCode ? { aff_code: affCode } : {}),
+          ...(postRegisterRedirect.value ? { pending_redirect: postRegisterRedirect.value } : {})
         })
       )
 
@@ -1056,8 +1065,8 @@ async function handleRegister(): Promise<void> {
     // Show success toast
     appStore.showSuccess(t('auth.accountCreatedSuccess', { siteName: siteName.value }))
 
-    // Redirect to dashboard
-    await router.push('/dashboard')
+    // Redirect to where the visitor came from (e.g. the canvas connect popup), else the dashboard
+    await router.push(postRegisterRedirect.value || '/dashboard')
   } catch (error: unknown) {
     // Handle registration error
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.registrationFailed'))
