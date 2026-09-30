@@ -218,3 +218,34 @@ func TestPromptCoverURLValidation(t *testing.T) {
 		require.False(t, ok, url)
 	}
 }
+
+type countingListRepo struct {
+	PromptLibraryRepository
+	lists int
+}
+
+func (r *countingListRepo) List(context.Context, PromptListQuery) ([]PromptItem, int64, error) {
+	r.lists++
+	return []PromptItem{{ID: 1, Scenes: []string{"poster"}}}, 1, nil
+}
+func (r *countingListRepo) SceneCounts(context.Context, PromptListQuery) (map[string]int64, error) {
+	return map[string]int64{"poster": 1}, nil
+}
+func (r *countingListRepo) ListSources(context.Context) ([]PromptSource, error) { return nil, nil }
+
+func TestPublicListingIsCachedBriefly(t *testing.T) {
+	repo := &countingListRepo{}
+	svc := NewPromptLibraryService(repo, nil)
+	now := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	svc.now = func() time.Time { return now }
+	ctx := context.Background()
+	_, err := svc.ListPublic(ctx, PromptListQuery{Keyword: "海报"})
+	require.NoError(t, err)
+	_, _ = svc.ListPublic(ctx, PromptListQuery{Keyword: " 海报 ", Page: 1})
+	require.Equal(t, 1, repo.lists, "same normalized query is served from the cache")
+	_, _ = svc.ListPublic(ctx, PromptListQuery{Keyword: "头像"})
+	require.Equal(t, 2, repo.lists)
+	now = now.Add(2 * time.Minute)
+	_, _ = svc.ListPublic(ctx, PromptListQuery{Keyword: "海报"})
+	require.Equal(t, 3, repo.lists, "entries expire")
+}

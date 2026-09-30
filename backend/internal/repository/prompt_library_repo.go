@@ -196,13 +196,17 @@ func (r *promptLibraryRepository) queryItems(ctx context.Context, query string, 
 
 func (r *promptLibraryRepository) List(ctx context.Context, q service.PromptListQuery) ([]service.PromptItem, int64, error) {
 	w := buildPromptWhere(q, true)
+	totalCh := make(chan error, 1)
 	var total int64
-	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM prompt_items i"+w.sql(), w.args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
+	go func() {
+		totalCh <- r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM prompt_items i"+w.sql(), w.args...).Scan(&total)
+	}()
 	args := append(append([]any{}, w.args...), q.PageSize, (q.Page-1)*q.PageSize)
 	query := promptItemSelect + w.sql() + promptOrderBy(q.Sort) + fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(w.args)+1, len(w.args)+2)
 	items, err := r.queryItems(ctx, query, args...)
+	if countErr := <-totalCh; countErr != nil {
+		return nil, 0, countErr
+	}
 	return items, total, err
 }
 

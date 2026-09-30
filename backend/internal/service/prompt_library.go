@@ -9,6 +9,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -285,10 +286,25 @@ type PromptLibraryService struct {
 	repo   PromptLibraryRepository
 	covers *PromptCoverStore
 	now    func() time.Time
+
+	// Anonymous listings are identical for everyone; short searches cannot use the trigram index,
+	// so results are kept for a minute.
+	cacheMu sync.Mutex
+	cache   map[string]promptListCacheEntry
 }
 
+type promptListCacheEntry struct {
+	res     *PromptListResult
+	expires time.Time
+}
+
+const (
+	promptListCacheTTL = time.Minute
+	promptListCacheMax = 500
+)
+
 func NewPromptLibraryService(repo PromptLibraryRepository, covers *PromptCoverStore) *PromptLibraryService {
-	return &PromptLibraryService{repo: repo, covers: covers, now: time.Now}
+	return &PromptLibraryService{repo: repo, covers: covers, now: time.Now, cache: map[string]promptListCacheEntry{}}
 }
 
 func (s *PromptLibraryService) Covers() *PromptCoverStore { return s.covers }
@@ -297,7 +313,26 @@ func (s *PromptLibraryService) Covers() *PromptCoverStore { return s.covers }
 func (s *PromptLibraryService) ListPublic(ctx context.Context, q PromptListQuery) (*PromptListResult, error) {
 	q.Admin = false
 	q.OwnerUserID = 0
-	return s.list(ctx, q, true)
+	q.normalize()
+	key := fmt.Sprintf("%q|%s|%s|%s|%s|%q|%s|%d|%d", q.Keyword, q.Scene, q.Model, q.SourceID, q.Kind, q.Tag, q.Sort, q.Page, q.PageSize)
+	now := s.now()
+	s.cacheMu.Lock()
+	if entry, ok := s.cache[key]; ok && now.Before(entry.expires) {
+		s.cacheMu.Unlock()
+		return entry.res, nil
+	}
+	s.cacheMu.Unlock()
+	res, err := s.list(ctx, q, true)
+	if err != nil {
+		return nil, err
+	}
+	s.cacheMu.Lock()
+	if len(s.cache) >= promptListCacheMax {
+		s.cache = map[string]promptListCacheEntry{}
+	}
+	s.cache[key] = promptListCacheEntry{res: res, expires: now.Add(promptListCacheTTL)}
+	s.cacheMu.Unlock()
+	return res, nil
 }
 
 // ListAdmin lists every item with moderation filters.
@@ -326,14 +361,25 @@ func (s *PromptLibraryService) ListMine(ctx context.Context, userID int64, q Pro
 
 func (s *PromptLibraryService) list(ctx context.Context, q PromptListQuery, public bool) (*PromptListResult, error) {
 	q.normalize()
+	// The scene counts scan the same rows as the listing; run them side by side.
+	type countsResult struct {
+		counts map[string]int64
+		err    error
+	}
+	countsCh := make(chan countsResult, 1)
+	go func() {
+		counts, err := s.repo.SceneCounts(ctx, q)
+		countsCh <- countsResult{counts, err}
+	}()
 	items, total, err := s.repo.List(ctx, q)
+	cr := <-countsCh
 	if err != nil {
 		return nil, err
 	}
-	counts, err := s.repo.SceneCounts(ctx, q)
-	if err != nil {
-		return nil, err
+	if cr.err != nil {
+		return nil, cr.err
 	}
+	counts := cr.counts
 	if public {
 		for i := range items {
 			items[i] = items[i].PublicView()
