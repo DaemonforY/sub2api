@@ -145,6 +145,31 @@
           </router-link>
         </div>
       </template>
+
+      <!-- AI 应用：模块来自 constants/appModules.ts（站内页面或兄弟站点） -->
+      <div v-if="!appStore.backendModeEnabled && appModules.length" class="sidebar-section" data-testid="sidebar-apps">
+        <div class="sidebar-section-title" :class="{ 'sidebar-section-title-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+          <span class="sidebar-section-title-text" :class="{ 'sidebar-section-title-text-collapsed': sidebarCollapsed }">
+            {{ t('appModules.sectionTitle') }}
+          </span>
+        </div>
+        <component
+          :is="appLink(m).to ? 'router-link' : 'a'"
+          v-for="m in appModules"
+          :key="m.key"
+          v-bind="appLink(m).to ? { to: appLink(m).to } : { href: appLink(m).href, target: '_blank', rel: 'noopener' }"
+          class="sidebar-link mb-1"
+          :class="{ 'sidebar-link-active': appLink(m).to ? isActive(appLink(m).to!) : false, 'sidebar-link-collapsed': sidebarCollapsed }"
+          :title="sidebarCollapsed ? t(m.labelKey) : undefined"
+          :data-testid="`sidebar-app-${m.key}`"
+        >
+          <img :src="m.iconUrl" alt="" class="h-5 w-5 flex-shrink-0" />
+          <span class="sidebar-label sidebar-label-flex" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">
+            <span class="min-w-0 truncate">{{ t(m.labelKey) }}</span>
+            <span v-if="!appLink(m).to" class="text-xs opacity-60" aria-hidden="true">↗</span>
+          </span>
+        </component>
+      </div>
     </nav>
 
     <!-- Bottom Section -->
@@ -191,6 +216,7 @@
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { APP_MODULES, appModuleLink, type AppModule } from '@/constants/appModules'
 import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
@@ -727,6 +753,10 @@ const flagPluginManagement = makeSidebarFlag(FeatureFlags.pluginManagement)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
 const flagAdminPayment = () => adminSettingsStore.paymentEnabled
 const flagBatchImageAccess = () => canUseBatchImage.value
+
+// AI 应用分组（画布等模块），链接带上入口来源 UTM。
+const appModules = APP_MODULES
+const appLink = (m: AppModule) => appModuleLink(m, 'sidebar')
 
 // buildSelfNavItems 构造用户自己的导航项（用户端主菜单和管理员的"我的账户"子菜单共享这组声明）。
 // withDashboard=true 时包含仪表盘（用户端），false 时不含（管理员的个人区已经有独立仪表盘入口）。

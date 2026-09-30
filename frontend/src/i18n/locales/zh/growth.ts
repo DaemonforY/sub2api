@@ -1,4 +1,13 @@
 export default {
+  appModules: {
+    sectionTitle: 'AI 应用',
+    sectionHint: '更多应用陆续上线',
+    badgeNew: '新',
+    canvas: {
+      name: '无限画布',
+      description: '文生图、改图、裁剪美化，作品可一键投稿站内活动'
+    }
+  },
   canvasConnect: {
     title: '授权无限画布使用 API Key',
     subtitle: '来自 canvas.hivegpt.cn 的连接请求 · {site}',

@@ -1,4 +1,13 @@
 export default {
+  appModules: {
+    sectionTitle: 'AI apps',
+    sectionHint: 'More apps coming soon',
+    badgeNew: 'New',
+    canvas: {
+      name: 'Infinite Canvas',
+      description: 'Generate and edit images, crop and retouch, submit to contests in one click'
+    }
+  },
   canvasConnect: {
     title: 'Authorize the canvas to use an API key',
     subtitle: 'Connection request from canvas.hivegpt.cn · {site}',
