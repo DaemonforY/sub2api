@@ -49,6 +49,7 @@ type AdminHandlers struct {
 	PromptLibrary          *admin.PromptLibraryHandler
 	ImageTools             *admin.ImageToolsHandler
 	SiteHosting            *admin.SiteHostingHandler
+	Community              *admin.CommunityHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -81,6 +82,7 @@ type Handlers struct {
 	ImageTools       *ImageToolsHandler
 	SiteHosting      *SiteHostingHandler
 	CanvasSession    *CanvasSessionHandler
+	Community        *CommunityHandler
 }
 
 // BuildInfo contains build-time information

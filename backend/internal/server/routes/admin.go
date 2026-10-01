@@ -135,6 +135,7 @@ func RegisterAdminRoutes(
 		registerPromptLibraryAdminRoutes(admin, h)
 		registerImageToolsAdminRoutes(admin, h)
 		registerSiteHostingAdminRoutes(admin, h)
+		registerCommunityAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -196,6 +197,23 @@ func registerSiteHostingAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 		g.PUT("/reports/:id", h.Admin.SiteHosting.SetReportStatus)
 		g.GET("/reviews", h.Admin.SiteHosting.Reviews)
 		g.POST("/:id/review", h.Admin.SiteHosting.Review)
+	}
+}
+
+// registerCommunityAdminRoutes 无限画布社区：作品审核队列、举报、精选、限制发布、审核设置。
+func registerCommunityAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.Community == nil {
+		return
+	}
+	g := admin.Group("/community")
+	{
+		g.GET("/works", h.Admin.Community.Works)
+		g.POST("/works/:id/moderate", h.Admin.Community.Moderate)
+		g.POST("/users/:id/ban", h.Admin.Community.Ban)
+		g.GET("/reports", h.Admin.Community.Reports)
+		g.PUT("/reports/:id", h.Admin.Community.SetReport)
+		g.GET("/settings", h.Admin.Community.Settings)
+		g.PUT("/settings", h.Admin.Community.SaveSettings)
 	}
 }
 

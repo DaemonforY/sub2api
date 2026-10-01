@@ -63,3 +63,19 @@ func CanvasSessionFromContext(c *gin.Context) (*service.CanvasSession, *service.
 	user, _ := u.(*service.User)
 	return session, user, ok1 && ok2 && session != nil && user != nil
 }
+
+// CanvasSessionOptional signs the request in when the cookie holds a live session and otherwise
+// lets it through anonymously (public community pages).
+func CanvasSessionOptional(sessions *service.CanvasSessionService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if token, _ := c.Cookie(service.CanvasSessionCookie); token != "" {
+			if session, user, err := sessions.Authenticate(c.Request.Context(), token); err == nil {
+				c.Set(string(ContextKeyUser), AuthSubject{UserID: user.ID, Concurrency: user.Concurrency})
+				c.Set(string(ContextKeyUserRole), user.Role)
+				c.Set(contextKeyCanvasSession, session)
+				c.Set(contextKeyCanvasUser, user)
+			}
+		}
+		c.Next()
+	}
+}

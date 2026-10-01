@@ -73,6 +73,7 @@ type Config struct {
 	Contest                 ContestConfig                 `mapstructure:"contest"`
 	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
 	Sites                   SitesConfig                   `mapstructure:"sites"`
+	Community               CommunityConfig               `mapstructure:"community"`
 	Security                SecurityConfig                `mapstructure:"security"`
 	Billing                 BillingConfig                 `mapstructure:"billing"`
 	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
@@ -722,6 +723,11 @@ type ImageToolsConfig struct {
 	PriceRemoveBg float64 `mapstructure:"price_remove_bg"`
 	PriceUpscale  float64 `mapstructure:"price_upscale"`
 	FreeDaily     int     `mapstructure:"free_daily"`
+}
+
+// CommunityConfig: the canvas community stores work images under Dir.
+type CommunityConfig struct {
+	Dir string `mapstructure:"dir"`
 }
 
 // SitesConfig is the static-site hosting for subscribers: sites are served at <name>.<Domain>
@@ -2079,6 +2085,7 @@ func setDefaults() {
 	viper.SetDefault("image_tools.free_daily", 3)
 	viper.SetDefault("sites.domain", "")
 	viper.SetDefault("sites.dir", "./data/sites")
+	viper.SetDefault("community.dir", "./data/community")
 	viper.SetDefault("sites.main_site_url", "https://hivegpt.cn")
 
 	// WebAuthn / Passkeys are opt-in because every deployment must explicitly

@@ -622,6 +622,19 @@ func ProvideCanvasSessionService(repo CanvasSessionRepository, users *UserServic
 	return NewCanvasSessionService(repo, users, subs)
 }
 
+// ProvideCommunityService wires the canvas community; images live under community.dir.
+func ProvideCommunityService(repo CommunityRepository, settings SettingRepository, cfg *config.Config) *CommunityService {
+	dir := "./data/community"
+	if cfg != nil && cfg.Community.Dir != "" {
+		dir = cfg.Community.Dir
+	}
+	var store imageToolSettings
+	if settings != nil {
+		store = settings
+	}
+	return NewCommunityService(repo, NewCommunityMediaStore(dir), store)
+}
+
 // ProvideSiteHostingService wires static-site hosting (SITES_DOMAIN enables it) and starts the hourly
 // subscription / renewal maintenance.
 func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *SiteHostingService {
@@ -1049,6 +1062,7 @@ var ProviderSet = wire.NewSet(
 	ProvideImageToolsService,
 	ProvideSiteHostingService,
 	ProvideCanvasSessionService,
+	ProvideCommunityService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
