@@ -51,6 +51,10 @@ func ProvideRouter(
 
 	r := gin.New()
 	r.Use(middleware2.Recovery())
+	// Hosted sites (<name>.<sites domain>) are answered before any main-site middleware or route.
+	if handlers.SiteHosting != nil {
+		r.Use(handlers.SiteHosting.HostMiddleware)
+	}
 	configureTrustedProxies(r, cfg.Server)
 
 	// Wire up websearch Manager builder so it initializes on startup and rebuilds on config save.

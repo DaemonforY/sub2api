@@ -48,6 +48,7 @@ type AdminHandlers struct {
 	Growth                 *admin.GrowthHandler
 	PromptLibrary          *admin.PromptLibraryHandler
 	ImageTools             *admin.ImageToolsHandler
+	SiteHosting            *admin.SiteHostingHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -78,6 +79,7 @@ type Handlers struct {
 	AppState         *UserAppStateHandler
 	PromptLibrary    *PromptLibraryHandler
 	ImageTools       *ImageToolsHandler
+	SiteHosting      *SiteHostingHandler
 }
 
 // BuildInfo contains build-time information

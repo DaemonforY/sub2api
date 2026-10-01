@@ -617,6 +617,31 @@ func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRe
 	return svc
 }
 
+// ProvideSiteHostingService wires static-site hosting (SITES_DOMAIN enables it) and starts the hourly
+// subscription / renewal maintenance.
+func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *SiteHostingService {
+	domain, dir, mainSite := "", "./data/sites", "https://hivegpt.cn"
+	if cfg != nil {
+		domain, mainSite = cfg.Sites.Domain, cfg.Sites.MainSiteURL
+		if cfg.Sites.Dir != "" {
+			dir = cfg.Sites.Dir
+		}
+	}
+	var balanceCache imageToolBalanceCache
+	if cache != nil {
+		balanceCache = cache
+	}
+	var store imageToolSettings
+	if settings != nil {
+		store = settings
+	}
+	svc := NewSiteHostingService(repo, subs, balanceCache, store, DefaultSiteHostingConfig(domain), dir, mainSite)
+	if svc.Domain() != "" {
+		svc.Start()
+	}
+	return svc
+}
+
 // ProvidePromptLibrarySyncService creates and starts the daily community-source sync.
 func ProvidePromptLibrarySyncService(repo PromptLibraryRepository, translator *PromptTitleTranslator) *PromptLibrarySyncService {
 	svc := NewPromptLibrarySyncService(repo, nil, translator)
@@ -1014,6 +1039,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePromptLibraryService,
 	ProvidePromptLibrarySyncService,
 	ProvideImageToolsService,
+	ProvideSiteHostingService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

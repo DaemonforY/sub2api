@@ -212,6 +212,8 @@ export default {
     promptLibraryAdmin: '提示词库',
     imageToolsAdmin: '图片工具',
     imageToolUses: '图片工具记录',
+    mySites: '我的网站',
+    sitesAdmin: '网站托管',
   },
 
   // Auth

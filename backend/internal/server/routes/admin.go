@@ -134,6 +134,7 @@ func RegisterAdminRoutes(
 		registerContestAdminRoutes(admin, h)
 		registerPromptLibraryAdminRoutes(admin, h)
 		registerImageToolsAdminRoutes(admin, h)
+		registerSiteHostingAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -176,6 +177,23 @@ func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middl
 		auditLogs.GET("/:id", h.Admin.AuditLog.Get)
 		// 清空需现场 TOTP 校验（在 handler 内强制），不复用 step-up sudo 窗口
 		auditLogs.POST("/clear", h.Admin.AuditLog.Clear)
+	}
+}
+
+// registerSiteHostingAdminRoutes 网站托管：设置、站点下线 / 删除、举报处理。
+func registerSiteHostingAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.SiteHosting == nil {
+		return
+	}
+	g := admin.Group("/sites")
+	{
+		g.GET("/settings", h.Admin.SiteHosting.Settings)
+		g.PUT("/settings", h.Admin.SiteHosting.SaveSettings)
+		g.GET("", h.Admin.SiteHosting.List)
+		g.PUT("/:id/status", h.Admin.SiteHosting.SetStatus)
+		g.DELETE("/:id", h.Admin.SiteHosting.Delete)
+		g.GET("/reports", h.Admin.SiteHosting.Reports)
+		g.PUT("/reports/:id", h.Admin.SiteHosting.SetReportStatus)
 	}
 }
 

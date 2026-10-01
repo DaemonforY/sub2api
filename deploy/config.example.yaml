@@ -135,6 +135,14 @@ contest:
   # 参赛作品图片存放目录，务必位于持久化数据卷内（Docker 部署即 /app/data）。
   image_dir: "./data/contest-images"
 
+sites:
+  # Static-site hosting for subscribers: <name>.<domain>. Use a domain that does not share cookies
+  # with the main site and point *.<domain> at this server. Empty disables hosting.
+  # 订阅用户的网站托管：网址为 <网站名>.<domain>，请用与主站不同的域名，并把 *.<domain> 解析到本机；留空即关闭。
+  domain: ""
+  dir: "./data/sites"
+  main_site_url: "https://hivegpt.cn"
+
 image_tools:
   # Internal imagetools service (deploy/imagetools): background removal and super-resolution
   # for the canvas. Empty disables the tools. Prices are in balance units per successful run;

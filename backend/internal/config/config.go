@@ -72,6 +72,7 @@ type Config struct {
 	RequestLog              RequestLogConfig              `mapstructure:"request_log"`
 	Contest                 ContestConfig                 `mapstructure:"contest"`
 	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
+	Sites                   SitesConfig                   `mapstructure:"sites"`
 	Security                SecurityConfig                `mapstructure:"security"`
 	Billing                 BillingConfig                 `mapstructure:"billing"`
 	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
@@ -721,6 +722,16 @@ type ImageToolsConfig struct {
 	PriceRemoveBg float64 `mapstructure:"price_remove_bg"`
 	PriceUpscale  float64 `mapstructure:"price_upscale"`
 	FreeDaily     int     `mapstructure:"free_daily"`
+}
+
+// SitesConfig is the static-site hosting for subscribers: sites are served at <name>.<Domain>
+// (a domain that must not share cookies with the main site). An empty Domain disables hosting.
+type SitesConfig struct {
+	Domain string `mapstructure:"domain"`
+	// Dir stores the published files; keep it on the persistent data volume.
+	Dir string `mapstructure:"dir"`
+	// MainSiteURL is linked from the hosting badge (report a site) and the status pages.
+	MainSiteURL string `mapstructure:"main_site_url"`
 }
 
 // RequestLogConfig controls the full gateway request log (every /v1-style call,
@@ -2066,6 +2077,9 @@ func setDefaults() {
 	viper.SetDefault("image_tools.price_remove_bg", 0.02)
 	viper.SetDefault("image_tools.price_upscale", 0.05)
 	viper.SetDefault("image_tools.free_daily", 3)
+	viper.SetDefault("sites.domain", "")
+	viper.SetDefault("sites.dir", "./data/sites")
+	viper.SetDefault("sites.main_site_url", "https://hivegpt.cn")
 
 	// WebAuthn / Passkeys are opt-in because every deployment must explicitly
 	// declare its relying-party domain and trusted browser origins.

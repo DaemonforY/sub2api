@@ -40,6 +40,7 @@ import adminContestsAPI from './contests'
 import pluginsAPI from './plugins'
 import promptLibraryAPI from './promptLibrary'
 import imageToolsAPI from './imageTools'
+import sitesAPI from './sites'
 
 /**
  * Unified admin API object for convenient access
@@ -81,7 +82,8 @@ export const adminAPI = {
   contests: adminContestsAPI,
   plugins: pluginsAPI,
   promptLibrary: promptLibraryAPI,
-  imageTools: imageToolsAPI
+  imageTools: imageToolsAPI,
+  sites: sitesAPI
 }
 
 export {

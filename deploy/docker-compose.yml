@@ -128,6 +128,9 @@ services:
       - TZ=${TZ:-Asia/Shanghai}
       # Canvas image tools (background removal / super-resolution), see the imagetools service below.
       - IMAGE_TOOLS_BASE_URL=${IMAGE_TOOLS_BASE_URL:-http://imagetools:7000}
+      # Static-site hosting: sites are served at <name>.<SITES_DOMAIN> (use a domain that does
+      # not share cookies with the main site; point *.<SITES_DOMAIN> at this server). Empty = off.
+      - SITES_DOMAIN=${SITES_DOMAIN:-}
 
       # =======================================================================
       # Gemini OAuth Configuration (for Gemini accounts)

@@ -212,6 +212,8 @@ export default {
     promptLibraryAdmin: 'Prompt library',
     imageToolsAdmin: 'Image tools',
     imageToolUses: 'Image tool records',
+    mySites: 'My sites',
+    sitesAdmin: 'Site hosting',
   },
 
   // Auth

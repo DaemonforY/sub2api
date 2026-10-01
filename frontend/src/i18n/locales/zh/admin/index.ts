@@ -11,6 +11,7 @@ import promptAudit from './promptAudit'
 import plugins from './plugins'
 import promptLibrary from './promptLibrary'
 import imageTools from './imageTools'
+import sites from './sites'
 
 export default {
   ...overview,
@@ -26,4 +27,5 @@ export default {
   ...plugins,
   ...promptLibrary,
   ...imageTools,
+  ...sites,
 }

@@ -253,6 +253,28 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/sites',
+    name: 'MySites',
+    component: () => import('@/views/user/SitesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'My sites',
+      titleKey: 'sites.title',
+      descriptionKey: 'sites.description'
+    }
+  },
+  {
+    path: '/site-report',
+    name: 'SiteReport',
+    component: () => import('@/views/SiteReportView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Report a site',
+      titleKey: 'siteReport.title'
+    }
+  },
+  {
     path: '/image-tool-uses',
     name: 'ImageToolUses',
     component: () => import('@/views/user/ImageToolUsesView.vue'),
@@ -482,6 +504,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Prompt library',
       titleKey: 'admin.promptLibrary.title',
       descriptionKey: 'admin.promptLibrary.description'
+    }
+  },
+  {
+    path: '/admin/sites',
+    name: 'AdminSites',
+    component: () => import('@/views/admin/SitesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Site hosting',
+      titleKey: 'admin.sites.title',
+      descriptionKey: 'admin.sites.description'
     }
   },
   {
