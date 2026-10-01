@@ -169,6 +169,35 @@ func TestPromptLibraryRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(0), changed)
 
+	// Model-checked scenes survive syncs of the same prompt and are checked again when the prompt changes.
+	fresh := promptTestItem("m", "新条目 "+suffix, marker+" fresh prompt", []string{"social"}, 3)
+	require.NoError(t, repo.UpsertSourceItems(ctx, src, []service.PromptItem{fresh}))
+	unchecked, err := repo.UncheckedScenePrompts(ctx, 100000)
+	require.NoError(t, err)
+	var freshID int64
+	for _, c := range unchecked {
+		require.NotEqual(t, byExternal["a"], c.ID, "curated items are never re-labelled")
+		require.NotEqual(t, byExternal["b"], c.ID, "bundled corrections count as checked")
+		if c.Title == "新条目 "+suffix {
+			freshID = c.ID
+			require.Equal(t, []string{"social"}, c.Scenes)
+		}
+	}
+	require.NotZero(t, freshID)
+	changed, err = repo.ApplyCheckedScenes(ctx, map[int64][]string{freshID: {"3d", "portrait"}, byExternal["a"]: {"other"}})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), changed)
+	fresh.SyncHash = fmt.Sprintf("%x", sha256.Sum256([]byte(fresh.SyncHash+"again")))
+	require.NoError(t, repo.UpsertSourceItems(ctx, src, []service.PromptItem{fresh}))
+	got, _ = repo.Get(ctx, freshID)
+	require.Equal(t, []string{"3d", "portrait"}, got.Scenes)
+	fresh.Prompt = marker + " changed prompt"
+	fresh.SyncHash = fmt.Sprintf("%x", sha256.Sum256([]byte(fresh.SyncHash+"changed")))
+	require.NoError(t, repo.UpsertSourceItems(ctx, src, []service.PromptItem{fresh}))
+	got, _ = repo.Get(ctx, freshID)
+	require.Equal(t, []string{"social"}, got.Scenes)
+	require.NoError(t, repo.Delete(ctx, freshID))
+
 	// Batch edits keep scene order and fall back to {other}.
 	updated, err := repo.Batch(ctx, []int64{byExternal["b"], byExternal["c"]}, service.PromptBatchOp{Action: "add_scenes", Scenes: []string{"poster", "3d"}})
 	require.NoError(t, err)

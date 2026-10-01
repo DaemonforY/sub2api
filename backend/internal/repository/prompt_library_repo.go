@@ -563,8 +563,10 @@ ON CONFLICT (source_id, external_id) DO UPDATE SET
     title = CASE WHEN prompt_items.curated THEN prompt_items.title ELSE EXCLUDED.title END,
     -- A translation belongs to the title it was made from.
     title_zh = CASE WHEN prompt_items.curated OR prompt_items.title = EXCLUDED.title THEN prompt_items.title_zh ELSE '' END,
-    kind = CASE WHEN prompt_items.curated THEN prompt_items.kind ELSE EXCLUDED.kind END,
-    scenes = CASE WHEN prompt_items.curated THEN prompt_items.scenes ELSE EXCLUDED.scenes END,
+    -- Admin edits and model-checked scenes survive syncs; a changed prompt is classified again.
+    kind = CASE WHEN prompt_items.curated OR (prompt_items.scenes_checked AND prompt_items.prompt = EXCLUDED.prompt) THEN prompt_items.kind ELSE EXCLUDED.kind END,
+    scenes = CASE WHEN prompt_items.curated OR (prompt_items.scenes_checked AND prompt_items.prompt = EXCLUDED.prompt) THEN prompt_items.scenes ELSE EXCLUDED.scenes END,
+    scenes_checked = prompt_items.scenes_checked AND prompt_items.prompt = EXCLUDED.prompt,
     model = CASE WHEN prompt_items.curated THEN prompt_items.model ELSE EXCLUDED.model END,
     needs_reference = CASE WHEN prompt_items.curated THEN prompt_items.needs_reference ELSE EXCLUDED.needs_reference END,
     status = CASE
@@ -687,11 +689,67 @@ func (r *promptLibraryRepository) ApplySceneOverrides(ctx context.Context, overr
 UPDATE prompt_items p
 SET scenes = string_to_array(t.sc, ','),
     kind = CASE WHEN split_part(t.sc, ',', 1) = 'video' THEN 'video' ELSE 'image' END,
+    scenes_checked = TRUE,
     updated_at = NOW()
 FROM unnest($1::text[], $2::text[]) AS t(k, sc)
 WHERE p.source_id || ':' || p.external_id = t.k
-  AND NOT p.curated AND p.source_id NOT IN ('user', 'official')
-  AND p.scenes IS DISTINCT FROM string_to_array(t.sc, ',')`, pq.Array(keys), pq.Array(values))
+  AND NOT p.curated AND NOT p.scenes_checked AND p.source_id NOT IN ('user', 'official')`, pq.Array(keys), pq.Array(values))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// promptSceneUnchecked selects listed source items whose scenes no model or admin has checked.
+const promptSceneUnchecked = `FROM prompt_items WHERE NOT scenes_checked AND NOT curated AND source_id NOT IN ('user', 'official') AND status = 'active'`
+
+func (r *promptLibraryRepository) UncheckedScenePrompts(ctx context.Context, limit int) ([]service.PromptSceneCandidate, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT id, CASE WHEN title_zh <> '' THEN title_zh ELSE title END, left(description, 200), left(prompt, 500), scenes
+`+promptSceneUnchecked+` ORDER BY use_count DESC, id DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []service.PromptSceneCandidate
+	for rows.Next() {
+		var c service.PromptSceneCandidate
+		var scenes pq.StringArray
+		if err := rows.Scan(&c.ID, &c.Title, &c.Description, &c.Prompt, &scenes); err != nil {
+			return nil, err
+		}
+		c.Scenes = nonNilStrings(scenes)
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func (r *promptLibraryRepository) CountUncheckedScenes(ctx context.Context) (int64, error) {
+	var n int64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) `+promptSceneUnchecked).Scan(&n)
+	return n, err
+}
+
+func (r *promptLibraryRepository) ApplyCheckedScenes(ctx context.Context, scenes map[int64][]string) (int64, error) {
+	ids := make([]int64, 0, len(scenes))
+	values := make([]string, 0, len(scenes))
+	for id, list := range scenes {
+		if id > 0 && len(list) > 0 {
+			ids = append(ids, id)
+			values = append(values, strings.Join(list, ","))
+		}
+	}
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	res, err := r.db.ExecContext(ctx, `
+UPDATE prompt_items p
+SET scenes = string_to_array(t.sc, ','),
+    kind = CASE WHEN split_part(t.sc, ',', 1) = 'video' THEN 'video' ELSE 'image' END,
+    scenes_checked = TRUE,
+    updated_at = NOW()
+FROM unnest($1::bigint[], $2::text[]) AS t(id, sc)
+WHERE p.id = t.id AND NOT p.curated AND p.source_id NOT IN ('user', 'official')`, pq.Array(ids), pq.Array(values))
 	if err != nil {
 		return 0, err
 	}

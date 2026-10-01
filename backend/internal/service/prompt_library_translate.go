@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -57,6 +58,8 @@ const (
 	promptTranslateAfterSync  = 500
 	promptTranslateManualMax  = 20000
 	promptTranslateTitleRunes = 30
+
+	promptSceneBatch = 20
 )
 
 var (
@@ -72,11 +75,22 @@ type PromptTranslateConfig struct {
 
 type PromptTranslateStatus struct {
 	PromptTranslateConfig
-	Untranslated   int64      `json:"untranslated"`
-	Running        bool       `json:"running"`
-	LastRunAt      *time.Time `json:"last_run_at,omitempty"`
-	LastTranslated int        `json:"last_translated"`
-	LastError      string     `json:"last_error"`
+	Untranslated    int64      `json:"untranslated"`
+	UncheckedScenes int64      `json:"unchecked_scenes"`
+	Running         bool       `json:"running"`
+	LastRunAt       *time.Time `json:"last_run_at,omitempty"`
+	LastTranslated  int        `json:"last_translated"`
+	LastScenes      int        `json:"last_scenes"`
+	LastError       string     `json:"last_error"`
+}
+
+// PromptSceneCandidate is a source item whose automatic scenes a model should check.
+type PromptSceneCandidate struct {
+	ID          int64
+	Title       string
+	Description string
+	Prompt      string
+	Scenes      []string
 }
 
 type PromptTranslateConfigInput struct {
@@ -87,17 +101,19 @@ type PromptTranslateConfigInput struct {
 	ClearAPIKey bool   `json:"clear_api_key"`
 }
 
-// PromptTitleTranslator fills title_zh from the bundled dictionary and the configured model.
+// PromptTitleTranslator fills title_zh from the bundled dictionary and the configured model, and
+// has the same model check the automatic scenes of items that arrived after the bundled corrections.
 type PromptTitleTranslator struct {
 	repo     PromptLibraryRepository
 	settings SettingRepository
 	client   *http.Client
 
-	mu        sync.Mutex
-	running   bool
-	lastRunAt *time.Time
-	lastCount int
-	lastError string
+	mu         sync.Mutex
+	running    bool
+	lastRunAt  *time.Time
+	lastCount  int
+	lastScenes int
+	lastError  string
 }
 
 func NewPromptTitleTranslator(repo PromptLibraryRepository, settings SettingRepository) *PromptTitleTranslator {
@@ -139,10 +155,14 @@ func (t *PromptTitleTranslator) Status(ctx context.Context) (*PromptTranslateSta
 	if err != nil {
 		return nil, err
 	}
+	unchecked, err := t.repo.CountUncheckedScenes(ctx)
+	if err != nil {
+		return nil, err
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return &PromptTranslateStatus{PromptTranslateConfig: cfg.PromptTranslateConfig, Untranslated: left, Running: t.running,
-		LastRunAt: t.lastRunAt, LastTranslated: t.lastCount, LastError: t.lastError}, nil
+	return &PromptTranslateStatus{PromptTranslateConfig: cfg.PromptTranslateConfig, Untranslated: left, UncheckedScenes: unchecked, Running: t.running,
+		LastRunAt: t.lastRunAt, LastTranslated: t.lastCount, LastScenes: t.lastScenes, LastError: t.lastError}, nil
 }
 
 func (t *PromptTitleTranslator) SaveConfig(ctx context.Context, in PromptTranslateConfigInput) error {
@@ -159,8 +179,8 @@ func (t *PromptTitleTranslator) SaveConfig(ctx context.Context, in PromptTransla
 	return t.settings.SetMultiple(ctx, values)
 }
 
-// AfterSync applies the bundled dictionary and, when a model is configured, translates a few
-// hundred new titles. Called by the sync job; errors are logged, not returned.
+// AfterSync applies the bundled corrections and, when a model is configured, translates the titles
+// and checks the scenes of a few hundred new items. Called by the sync job; errors are logged, not returned.
 func (t *PromptTitleTranslator) AfterSync(ctx context.Context) {
 	if n, err := t.repo.ApplySceneOverrides(ctx, BundledPromptScenes()); err != nil {
 		slog.Warn("prompt library: apply bundled scenes failed", "error", err)
@@ -179,7 +199,7 @@ func (t *PromptTitleTranslator) AfterSync(ctx context.Context) {
 	_, _ = t.run(ctx, cfg, promptTranslateAfterSync)
 }
 
-// RunAsync translates every remaining English title in the background (admin button).
+// RunAsync translates every remaining English title and checks every remaining scene in the background (admin button).
 func (t *PromptTitleTranslator) RunAsync(ctx context.Context) error {
 	cfg, err := t.config(ctx)
 	if err != nil {
@@ -205,15 +225,28 @@ func (t *PromptTitleTranslator) run(ctx context.Context, cfg promptTranslateSecr
 	t.running = true
 	t.mu.Unlock()
 	translated, err := t.translate(ctx, cfg, max)
+	if err != nil {
+		slog.Warn("prompt library: title translation failed", "error", err, "translated", translated)
+	}
+	checked, sceneErr := t.checkScenes(ctx, cfg, max)
+	if sceneErr != nil {
+		slog.Warn("prompt library: scene check failed", "error", sceneErr, "checked", checked)
+		if err == nil {
+			err = sceneErr
+		}
+	}
+	if translated > 0 || checked > 0 {
+		slog.Info("prompt library: model pass done", "titles", translated, "scenes", checked)
+	}
 	now := time.Now()
 	t.mu.Lock()
 	t.running = false
 	t.lastRunAt = &now
 	t.lastCount = translated
+	t.lastScenes = checked
 	t.lastError = ""
 	if err != nil {
 		t.lastError = truncateRunes(err.Error(), 300)
-		slog.Warn("prompt library: title translation failed", "error", err, "translated", translated)
 	}
 	t.mu.Unlock()
 	return translated, err
@@ -228,7 +261,11 @@ func (t *PromptTitleTranslator) translate(ctx context.Context, cfg promptTransla
 	failures := 0
 	for start := 0; start < len(titles); start += promptTranslateBatch {
 		end := min(start+promptTranslateBatch, len(titles))
-		result, err := t.callModel(ctx, cfg, titles[start:end])
+		content, err := t.callModel(ctx, cfg, promptTranslateInstruction, titles[start:end])
+		var result map[string]string
+		if err == nil {
+			result = parseTitleTranslations(content, titles[start:end])
+		}
 		if err != nil {
 			failures++
 			// A few bad batches are tolerated; a broken configuration stops early.
@@ -251,30 +288,31 @@ Input: a JSON array of titles (mostly English). Output: ONLY a JSON object mappi
 Keep brand, product and franchise names recognizable (iPhone, LEGO, Pokémon, YouTube...). Use common design terms: poster 海报, infographic 信息图, mockup 样机, thumbnail 缩略图, isometric 等距, chibi Q版, cinematic 电影感.
 If a title is meaningless (punctuation, timestamps, template fragments), map it to "".`
 
-func (t *PromptTitleTranslator) callModel(ctx context.Context, cfg promptTranslateSecrets, titles []string) (map[string]string, error) {
-	input, _ := json.Marshal(titles)
+// callModel sends one Chat Completions request and returns the reply text.
+func (t *PromptTitleTranslator) callModel(ctx context.Context, cfg promptTranslateSecrets, instruction string, payload any) (string, error) {
+	input, _ := json.Marshal(payload)
 	body, _ := json.Marshal(map[string]any{
 		"model":       cfg.Model,
 		"temperature": 0.2,
 		"messages": []map[string]string{
-			{"role": "system", "content": promptTranslateInstruction},
+			{"role": "system", "content": instruction},
 			{"role": "user", "content": string(input)},
 		},
 	})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.BaseURL+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+cfg.apiKey)
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("调用翻译模型失败：%w", err)
+		return "", fmt.Errorf("调用整理模型失败：%w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("翻译模型返回 HTTP %d：%s", resp.StatusCode, truncateRunes(strings.TrimSpace(string(raw)), 200))
+		return "", fmt.Errorf("整理模型返回 HTTP %d：%s", resp.StatusCode, truncateRunes(strings.TrimSpace(string(raw)), 200))
 	}
 	var parsed struct {
 		Choices []struct {
@@ -284,9 +322,9 @@ func (t *PromptTitleTranslator) callModel(ctx context.Context, cfg promptTransla
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(raw, &parsed); err != nil || len(parsed.Choices) == 0 {
-		return nil, errors.New("翻译模型的返回格式不正确（需要 OpenAI Chat Completions 格式）")
+		return "", errors.New("整理模型的返回格式不正确（需要 OpenAI Chat Completions 格式）")
 	}
-	return parseTitleTranslations(parsed.Choices[0].Message.Content, titles), nil
+	return parsed.Choices[0].Message.Content, nil
 }
 
 // parseTitleTranslations reads the model's JSON object (tolerating code fences and chatter) and
@@ -348,4 +386,90 @@ func BundledPromptScenes() map[string][]string {
 		}
 	})
 	return bundledScenes
+}
+
+func (t *PromptTitleTranslator) checkScenes(ctx context.Context, cfg promptTranslateSecrets, max int) (int, error) {
+	items, err := t.repo.UncheckedScenePrompts(ctx, max)
+	if err != nil {
+		return 0, err
+	}
+	checked := 0
+	failures := 0
+	for start := 0; start < len(items); start += promptSceneBatch {
+		batch := items[start:min(start+promptSceneBatch, len(items))]
+		input := make([]map[string]any, len(batch))
+		for i, item := range batch {
+			input[i] = map[string]any{"k": strconv.FormatInt(item.ID, 10), "t": item.Title, "d": item.Description, "p": item.Prompt, "s": item.Scenes}
+		}
+		content, err := t.callModel(ctx, cfg, promptSceneInstruction, input)
+		if err != nil {
+			failures++
+			if failures >= 3 && checked == 0 {
+				return checked, err
+			}
+			continue
+		}
+		n, err := t.repo.ApplyCheckedScenes(ctx, parseSceneLabels(content, batch))
+		if err != nil {
+			return checked, err
+		}
+		checked += int(n)
+	}
+	return checked, nil
+}
+
+// promptSceneInstruction is the guide the bundled corrections were made with.
+const promptSceneInstruction = `You label prompts of a Chinese AI-image prompt library with scenes.
+Input: a JSON array of {"k": key, "t": title, "d": description (cut), "p": start of the prompt (cut), "s": current automatic scenes (often wrong)}.
+Assign each item 1-3 scene ids, the FIRST being the main one. Allowed ids only:
+poster: posters, flyers, covers, banners, YouTube/video thumbnails, typography / lettering layouts, event & movie posters, magazine covers
+ecommerce: product shots, e-commerce main images, ads for a product, packaging, product mockups, exploded product views
+ui: app / web / dashboard UI, landing pages, game HUD or screenshots, phone screen mockups
+infographic: infographics, slides / PPT, diagrams, charts, tutorials, educational explainers, notes, maps with labels, recipe cards, comparison sheets
+portrait: a person (or the user's own photo) as the subject: portraits, avatars, profile pictures, ID photos, selfies, fashion/outfit shots of a person, character-from-photo transforms
+photo: realistic photography where the photo style itself matters and it is not mainly a person portrait: street, landscape, food, animal, macro, film/analog look, cinematic stills
+illustration: illustration, anime, manga / comics, storyboards, children's book art, watercolor / ink painting, cards, stickers drawn by hand
+3d: 3D renders, figurines / action figures, miniatures, dioramas, isometric scenes, clay / plush / LEGO / toy looks, blind boxes, sculptures
+brand: logos, brand identity / VI systems, mascots for a brand, brand guidelines, merchandise design for a brand
+social: memes, emoji / sticker packs, social-media post formats (Instagram grid, 朋友圈九宫格, Xiaohongshu cover), reaction images, funny social content
+life: interiors, architecture, home & room design, travel scenes, food scenes, everyday life spaces
+history: Chinese traditional / 国风 / ancient costume, historical scenes, classical art styles, dynasties, ink-wash heritage
+creative: surreal / conceptual / playful ideas, visual tricks, mashups, game assets & concept art, sci-fi or fantasy worlds
+video: prompts for generating video (shots, camera moves, seconds)
+other: only if nothing above fits
+Judge from what the prompt actually makes, not from "s". Use 1 scene when one clearly fits; add a 2nd/3rd only when they genuinely apply (a 3D figurine of the user's photo: ["3d","portrait"]; a movie poster with a realistic actor: ["poster","portrait"]). Avoid "social" unless it is really memes/stickers/social-post formats. Avoid "other".
+Output ONLY a JSON object {key: [scene ids]} covering every input key.`
+
+// parseSceneLabels reads the model's JSON object and keeps valid scenes for items that were asked for.
+func parseSceneLabels(content string, asked []PromptSceneCandidate) map[int64][]string {
+	out := map[int64][]string{}
+	startIdx := strings.Index(content, "{")
+	endIdx := strings.LastIndex(content, "}")
+	if startIdx < 0 || endIdx <= startIdx {
+		return out
+	}
+	var got map[string][]string
+	if err := json.Unmarshal([]byte(content[startIdx:endIdx+1]), &got); err != nil {
+		return out
+	}
+	want := make(map[int64]bool, len(asked))
+	for _, item := range asked {
+		want[item.ID] = true
+	}
+	for key, scenes := range got {
+		id, err := strconv.ParseInt(strings.TrimSpace(key), 10, 64)
+		if err != nil || !want[id] {
+			continue
+		}
+		clean := make([]string, 0, len(scenes))
+		for _, scene := range scenes {
+			if scene = strings.ToLower(strings.TrimSpace(scene)); IsPromptScene(scene) {
+				clean = append(clean, scene)
+			}
+		}
+		if clean = uniquePromptStrings(clean, promptMaxScenes); len(clean) > 0 {
+			out[id] = clean
+		}
+	}
+	return out
 }

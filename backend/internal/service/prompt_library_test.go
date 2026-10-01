@@ -253,11 +253,28 @@ func TestPublicListingIsCachedBriefly(t *testing.T) {
 
 type translateRepo struct {
 	PromptLibraryRepository
-	pending []string
-	applied map[string]string
+	pending       []string
+	applied       map[string]string
+	sceneItems    []PromptSceneCandidate
+	appliedScenes map[int64][]string
 }
 
-func (r *translateRepo) UntranslatedTitles(context.Context, int) ([]string, error) { return r.pending, nil }
+func (r *translateRepo) UncheckedScenePrompts(context.Context, int) ([]PromptSceneCandidate, error) {
+	return r.sceneItems, nil
+}
+func (r *translateRepo) ApplyCheckedScenes(_ context.Context, m map[int64][]string) (int64, error) {
+	if r.appliedScenes == nil {
+		r.appliedScenes = map[int64][]string{}
+	}
+	for k, v := range m {
+		r.appliedScenes[k] = v
+	}
+	return int64(len(m)), nil
+}
+
+func (r *translateRepo) UntranslatedTitles(context.Context, int) ([]string, error) {
+	return r.pending, nil
+}
 func (r *translateRepo) ApplyTitleTranslations(_ context.Context, m map[string]string) (int64, error) {
 	for k, v := range m {
 		r.applied[k] = v
@@ -287,6 +304,35 @@ func TestPromptTitleTranslatorUsesTheConfiguredModel(t *testing.T) {
 	require.Equal(t, map[string]string{"Cat poster": "猫咪海报"}, repo.applied, "untranslated echoes, empty and unasked titles are dropped")
 	require.Equal(t, "Bearer k", gotAuth)
 	require.Equal(t, "gpt-mini", gotModel)
+}
+
+func TestPromptTitleTranslatorChecksScenesOfNewItems(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Messages []struct {
+				Content string `json:"content"`
+			} `json:"messages"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		require.Contains(t, body.Messages[0].Content, "scene ids")
+		var input []map[string]any
+		require.NoError(t, json.Unmarshal([]byte(body.Messages[1].Content), &input))
+		require.Len(t, input, 3)
+		require.Equal(t, "11", input[0]["k"])
+		content := `{"11": ["3d", "Portrait", "nope"], "12": ["nope"], "13": [], "99": ["poster"]}`
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": content}}}})
+	}))
+	defer srv.Close()
+	repo := &translateRepo{applied: map[string]string{}, sceneItems: []PromptSceneCandidate{
+		{ID: 11, Title: "手办", Prompt: "turn my photo into a figurine", Scenes: []string{"social"}},
+		{ID: 12, Title: "x", Prompt: "y", Scenes: []string{"other"}},
+		{ID: 13, Title: "z", Prompt: "w", Scenes: []string{"other"}},
+	}}
+	tr := NewPromptTitleTranslator(repo, nil)
+	_, err := tr.run(context.Background(), promptTranslateSecrets{PromptTranslateConfig: PromptTranslateConfig{BaseURL: srv.URL + "/v1", Model: "m"}, apiKey: "k"}, 100)
+	require.NoError(t, err)
+	require.Equal(t, map[int64][]string{11: {"3d", "portrait"}}, repo.appliedScenes, "invalid scenes and unasked or empty items are dropped")
+	require.Equal(t, 1, tr.lastScenes)
 }
 
 func TestBundledScenesAreValid(t *testing.T) {

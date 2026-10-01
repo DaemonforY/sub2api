@@ -107,18 +107,19 @@ export default {
       saved: 'Saved'
     },
     translation: {
-      title: 'Translate English titles',
-      hint: 'English titles known at release time ship with Chinese translations. Prompts synced later can be translated by any OpenAI-compatible model, e.g. this gateway (base URL http://127.0.0.1:8080/v1 with an admin API key and a cheap model); new titles are translated after every sync.',
+      title: 'AI curation: titles and scenes',
+      hint: 'Chinese titles and checked scenes of the prompts known at release time ship with this version. Prompts synced later get their English titles translated and their scenes checked by any OpenAI-compatible model configured here, e.g. this gateway (base URL http://127.0.0.1:8080/v1 with an admin API key and a cheap model). This runs after every sync; without a model new prompts keep the keyword-based scenes. Admin edits are never overwritten.',
       baseUrl: 'Base URL',
       model: 'Model',
       apiKey: 'API key',
-      apiKeyPlaceholder: 'Key for the translation model',
+      apiKeyPlaceholder: 'Key for the curation model',
       apiKeyKeep: 'Configured; leave empty to keep',
       left: '{n} English titles left',
-      running: 'Translating…',
-      lastRun: 'Last run {time}: {n} translated',
-      run: 'Translate remaining titles',
-      started: 'Translation started; refresh to see progress'
+      running: 'Curating…',
+      scenesLeft: '{n} new prompts with unchecked scenes',
+      lastRun: 'Last run {time}: {n} titles translated, {scenes} scenes checked',
+      run: 'Curate remaining prompts',
+      started: 'Curation started; refresh to see progress'
     },
     review: {
       empty: 'Nothing to review',

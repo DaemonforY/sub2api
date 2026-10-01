@@ -281,9 +281,14 @@ type PromptLibraryRepository interface {
 	// ApplyTitleTranslations fills title_zh for source items whose title matches a key.
 	ApplyTitleTranslations(ctx context.Context, translations map[string]string) (int64, error)
 	UntranslatedTitles(ctx context.Context, limit int) ([]string, error)
-	// ApplySceneOverrides sets scenes by "<source_id>:<external_id>" on items no admin has edited.
+	// ApplySceneOverrides sets scenes by "<source_id>:<external_id>" on items no admin or model has checked.
 	ApplySceneOverrides(ctx context.Context, scenes map[string][]string) (int64, error)
 	CountUntranslated(ctx context.Context) (int64, error)
+	// UncheckedScenePrompts lists source items whose automatic scenes no model or admin has checked.
+	UncheckedScenePrompts(ctx context.Context, limit int) ([]PromptSceneCandidate, error)
+	CountUncheckedScenes(ctx context.Context) (int64, error)
+	// ApplyCheckedScenes stores model-checked scenes (main scene first) by item id.
+	ApplyCheckedScenes(ctx context.Context, scenes map[int64][]string) (int64, error)
 
 	InsertCover(ctx context.Context, file string, userID, size int64) error
 	CountCoversSince(ctx context.Context, userID int64, since time.Time) (int, error)

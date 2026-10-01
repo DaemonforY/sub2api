@@ -165,9 +165,11 @@ export interface PromptTranslationStatus {
   model: string
   api_key_configured: boolean
   untranslated: number
+  unchecked_scenes: number
   running: boolean
   last_run_at?: string
   last_translated: number
+  last_scenes: number
   last_error: string
 }
 

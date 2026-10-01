@@ -169,9 +169,10 @@
             </div>
             <div class="text-right text-sm">
               <div class="text-gray-900 dark:text-white">{{ t('admin.promptLibrary.translation.left', { n: (translation?.untranslated || 0).toLocaleString() }) }}</div>
+              <div class="text-gray-900 dark:text-white">{{ t('admin.promptLibrary.translation.scenesLeft', { n: (translation?.unchecked_scenes || 0).toLocaleString() }) }}</div>
               <div v-if="translation?.running" class="text-xs text-primary-600">{{ t('admin.promptLibrary.translation.running') }}</div>
               <div v-else-if="translation?.last_run_at" class="text-xs text-gray-500">
-                {{ t('admin.promptLibrary.translation.lastRun', { time: formatTime(translation.last_run_at), n: translation.last_translated }) }}
+                {{ t('admin.promptLibrary.translation.lastRun', { time: formatTime(translation.last_run_at), n: translation.last_translated, scenes: translation.last_scenes }) }}
               </div>
               <div v-if="translation?.last_error" class="mt-1 max-w-sm truncate text-xs text-red-500" :title="translation.last_error">{{ translation.last_error }}</div>
             </div>
