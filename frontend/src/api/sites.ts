@@ -58,12 +58,8 @@ export interface MySites {
 export const SITE_REPORT_REASONS = ['phishing', 'fraud', 'gambling', 'porn', 'malware', 'copyright', 'other'] as const
 export type SiteReportReason = (typeof SITE_REPORT_REASONS)[number]
 
-/**
- * Uploads take a while on slow connections (up to the size limit). The explicit multipart type
- * stops axios from turning the FormData into JSON (the client defaults to application/json);
- * the browser then fills in the boundary.
- */
-const UPLOAD_CONFIG = { timeout: 5 * 60 * 1000, headers: { 'Content-Type': 'multipart/form-data' } }
+/** Uploads take a while on slow connections (up to the size limit). */
+const UPLOAD_CONFIG = { timeout: 5 * 60 * 1000 }
 
 function uploadForm(title: string, file?: File | null): FormData {
   const form = new FormData()

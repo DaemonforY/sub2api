@@ -51,6 +51,12 @@ apiClient.interceptors.request.use(
       config.headers['Accept-Language'] = getLocale()
     }
 
+    // Uploads: with the instance's default JSON content type axios would serialize FormData into
+    // JSON (dropping the files). Drop it so the browser sends multipart with its own boundary.
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData && config.headers) {
+      config.headers.setContentType(false)
+    }
+
     // Attach timezone for all GET requests (backend may use it for default date ranges)
     if (config.method === 'get') {
       if (!config.params) {

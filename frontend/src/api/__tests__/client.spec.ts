@@ -39,6 +39,30 @@ describe('API Client', () => {
       )
     })
 
+    it('FormData 以 multipart 发送，不被默认的 JSON 类型转成 JSON', async () => {
+      const adapter = vi.fn().mockResolvedValue({
+        status: 200,
+        data: { code: 0, data: {} },
+        headers: {},
+        config: {},
+        statusText: 'OK',
+      })
+      apiClient.defaults.adapter = adapter
+      const form = new FormData()
+      form.append('title', 't')
+      form.append('image', new File(['x'], 'a.png', { type: 'image/png' }))
+
+      await apiClient.post('/contests/1/entries', form)
+      await apiClient.post('/test', { a: 1 })
+
+      const upload = adapter.mock.calls[0][0]
+      expect(upload.data).toBeInstanceOf(FormData)
+      expect(String(upload.headers.get('Content-Type') || '')).not.toContain('application/json')
+      const json = adapter.mock.calls[1][0]
+      expect(json.data).toBe('{"a":1}')
+      expect(json.headers.get('Content-Type')).toContain('application/json')
+    })
+
     it('自动附加 Authorization 头', async () => {
       localStorage.setItem('auth_token', 'my-jwt-token')
 
