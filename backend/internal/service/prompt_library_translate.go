@@ -162,6 +162,11 @@ func (t *PromptTitleTranslator) SaveConfig(ctx context.Context, in PromptTransla
 // AfterSync applies the bundled dictionary and, when a model is configured, translates a few
 // hundred new titles. Called by the sync job; errors are logged, not returned.
 func (t *PromptTitleTranslator) AfterSync(ctx context.Context) {
+	if n, err := t.repo.ApplySceneOverrides(ctx, BundledPromptScenes()); err != nil {
+		slog.Warn("prompt library: apply bundled scenes failed", "error", err)
+	} else if n > 0 {
+		slog.Info("prompt library: applied bundled scenes", "items", n)
+	}
 	if n, err := t.repo.ApplyTitleTranslations(ctx, BundledPromptTitleTranslations()); err != nil {
 		slog.Warn("prompt library: apply bundled titles failed", "error", err)
 	} else if n > 0 {
@@ -309,4 +314,38 @@ func parseTitleTranslations(content string, asked []string) map[string]string {
 		out[en] = zh
 	}
 	return out
+}
+
+// Scene corrections made with a model for the entries known at release time (key
+// "<source_id>:<external_id>" → scenes, main scene first). Applied after every sync to items an
+// admin has not edited; entries that arrive later keep the automatic classification.
+//
+//go:embed prompt_scenes.json.gz
+var bundledPromptScenes []byte
+
+var (
+	bundledScenesOnce sync.Once
+	bundledScenes     map[string][]string
+)
+
+func BundledPromptScenes() map[string][]string {
+	bundledScenesOnce.Do(func() {
+		raw := map[string][]string{}
+		zr, err := gzip.NewReader(bytes.NewReader(bundledPromptScenes))
+		if err == nil {
+			err = json.NewDecoder(zr).Decode(&raw)
+			_ = zr.Close()
+		}
+		if err != nil {
+			slog.Warn("prompt library: bundled scenes unreadable", "error", err)
+		}
+		bundledScenes = make(map[string][]string, len(raw))
+		for key, scenes := range raw {
+			clean, err := normalizePromptScenes(scenes)
+			if err == nil && len(clean) > 0 {
+				bundledScenes[key] = clean
+			}
+		}
+	})
+	return bundledScenes
 }

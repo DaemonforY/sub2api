@@ -1963,7 +1963,11 @@ func (h *GatewayHandler) mapUpstreamError(statusCode int) (int, string, string) 
 		return http.StatusTooManyRequests, "rate_limit_error", msgUpstreamRateLimited
 	case 529:
 		return http.StatusServiceUnavailable, "overloaded_error", msgUpstreamOverloaded
-	case 500, 502, 503, 504:
+	case 413:
+		return http.StatusRequestEntityTooLarge, "invalid_request_error", msgUpstreamTooLarge
+	case 408, 504, 524:
+		return http.StatusGatewayTimeout, "upstream_error", msgUpstreamTimeout
+	case 500, 502, 503:
 		return http.StatusBadGateway, "upstream_error", msgUpstreamUnavailable
 	default:
 		return http.StatusBadGateway, "upstream_error", msgUpstreamFailed

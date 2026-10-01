@@ -694,7 +694,11 @@ func mapGeminiUpstreamError(statusCode int) (int, string) {
 		return http.StatusTooManyRequests, msgUpstreamRateLimited
 	case 529:
 		return http.StatusServiceUnavailable, msgUpstreamOverloaded
-	case 500, 502, 503, 504:
+	case 413:
+		return http.StatusRequestEntityTooLarge, msgUpstreamTooLarge
+	case 408, 504, 524:
+		return http.StatusGatewayTimeout, msgUpstreamTimeout
+	case 500, 502, 503:
 		return http.StatusBadGateway, msgUpstreamUnavailable
 	default:
 		return http.StatusBadGateway, msgUpstreamFailed

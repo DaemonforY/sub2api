@@ -159,6 +159,16 @@ func TestPromptLibraryRepository(t *testing.T) {
 	require.Empty(t, got.OriginalTitle)
 	require.NoError(t, repo.Delete(ctx, got.ID))
 
+	// Bundled scene corrections apply to items no admin has edited, and only when they differ.
+	changed, err := repo.ApplySceneOverrides(ctx, map[string][]string{src + ":b": {"photo", "ecommerce"}, src + ":a": {"video"}})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), changed, "a is curated")
+	got, _ = repo.Get(ctx, byExternal["b"])
+	require.Equal(t, []string{"photo", "ecommerce"}, got.Scenes)
+	changed, err = repo.ApplySceneOverrides(ctx, map[string][]string{src + ":b": {"photo", "ecommerce"}})
+	require.NoError(t, err)
+	require.Equal(t, int64(0), changed)
+
 	// Batch edits keep scene order and fall back to {other}.
 	updated, err := repo.Batch(ctx, []int64{byExternal["b"], byExternal["c"]}, service.PromptBatchOp{Action: "add_scenes", Scenes: []string{"poster", "3d"}})
 	require.NoError(t, err)

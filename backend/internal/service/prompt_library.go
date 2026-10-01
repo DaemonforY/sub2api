@@ -281,6 +281,8 @@ type PromptLibraryRepository interface {
 	// ApplyTitleTranslations fills title_zh for source items whose title matches a key.
 	ApplyTitleTranslations(ctx context.Context, translations map[string]string) (int64, error)
 	UntranslatedTitles(ctx context.Context, limit int) ([]string, error)
+	// ApplySceneOverrides sets scenes by "<source_id>:<external_id>" on items no admin has edited.
+	ApplySceneOverrides(ctx context.Context, scenes map[string][]string) (int64, error)
 	CountUntranslated(ctx context.Context) (int64, error)
 
 	InsertCover(ctx context.Context, file string, userID, size int64) error

@@ -289,6 +289,16 @@ func TestPromptTitleTranslatorUsesTheConfiguredModel(t *testing.T) {
 	require.Equal(t, "gpt-mini", gotModel)
 }
 
+func TestBundledScenesAreValid(t *testing.T) {
+	for key, scenes := range BundledPromptScenes() {
+		require.Contains(t, key, ":")
+		require.NotEmpty(t, scenes)
+		for _, scene := range scenes {
+			require.True(t, IsPromptScene(scene), "%s → %v", key, scenes)
+		}
+	}
+}
+
 func TestBundledTitleDictionaryLoads(t *testing.T) {
 	m := BundledPromptTitleTranslations()
 	require.NotNil(t, m)

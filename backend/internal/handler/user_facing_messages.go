@@ -9,6 +9,8 @@ const (
 	msgUpstreamRateLimited = "上游模型服务限流中，请过 1–2 分钟再试；本次请求未扣费（Upstream rate limit exceeded, please retry later）"
 	msgUpstreamOverloaded  = "上游模型服务过载，请稍后重试；本次请求未扣费（Upstream service overloaded, please retry later）"
 	msgUpstreamUnavailable = "上游模型服务暂时不可用（已自动切换账号重试仍失败），请稍后重试；本次请求未扣费（Upstream service temporarily unavailable）"
+	msgUpstreamTooLarge    = "请求内容太大：上游单次请求上限约 20MB，请压缩参考图或减少参考图数量后再试；本次请求未扣费（Request body too large）"
+	msgUpstreamTimeout     = "上游生成超时（超过 2 分钟没有返回），通常是上游繁忙或尺寸、质量设置较高，请稍后重试或调低尺寸/质量；本次请求未扣费（Upstream request timed out）"
 	msgUpstreamFailed      = "上游请求失败，请稍后重试；如持续出现请联系客服；本次请求未扣费（Upstream request failed）"
 	msgQueueFull           = "排队的请求太多，请等正在进行的请求完成后再试（Too many pending requests, please retry later）"
 	msgServiceBusyRetry    = "服务繁忙，请稍后重试（Service temporarily unavailable, please retry later）"

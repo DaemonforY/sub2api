@@ -670,3 +670,30 @@ func (r *promptLibraryRepository) CountUntranslated(ctx context.Context) (int64,
 	err := r.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT title) `+promptUntranslated).Scan(&n)
 	return n, err
 }
+
+func (r *promptLibraryRepository) ApplySceneOverrides(ctx context.Context, overrides map[string][]string) (int64, error) {
+	keys := make([]string, 0, len(overrides))
+	values := make([]string, 0, len(overrides))
+	for key, scenes := range overrides {
+		if key != "" && len(scenes) > 0 {
+			keys = append(keys, key)
+			values = append(values, strings.Join(scenes, ","))
+		}
+	}
+	if len(keys) == 0 {
+		return 0, nil
+	}
+	res, err := r.db.ExecContext(ctx, `
+UPDATE prompt_items p
+SET scenes = string_to_array(t.sc, ','),
+    kind = CASE WHEN split_part(t.sc, ',', 1) = 'video' THEN 'video' ELSE 'image' END,
+    updated_at = NOW()
+FROM unnest($1::text[], $2::text[]) AS t(k, sc)
+WHERE p.source_id || ':' || p.external_id = t.k
+  AND NOT p.curated AND p.source_id NOT IN ('user', 'official')
+  AND p.scenes IS DISTINCT FROM string_to_array(t.sc, ',')`, pq.Array(keys), pq.Array(values))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
