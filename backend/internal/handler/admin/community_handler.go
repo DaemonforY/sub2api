@@ -71,6 +71,16 @@ func (h *CommunityHandler) Ban(c *gin.Context) {
 	response.Success(c, gin.H{"ok": true})
 }
 
+// Restricted GET /api/v1/admin/community/restricted — authors who cannot publish (lift with Ban {banned:false}).
+func (h *CommunityHandler) Restricted(c *gin.Context) {
+	list, err := h.svc.AdminRestricted(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, list)
+}
+
 // Reports GET /api/v1/admin/community/reports?status=open|resolved|dismissed&page=
 func (h *CommunityHandler) Reports(c *gin.Context) {
 	page, _ := strconv.Atoi(c.Query("page"))

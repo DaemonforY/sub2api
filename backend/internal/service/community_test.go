@@ -97,3 +97,26 @@ func TestWorkVisibility(t *testing.T) {
 }
 
 func openForTest(path string) (*os.File, error) { return os.Open(path) }
+
+func TestRenderShareMetaEscapesAndResolvesImages(t *testing.T) {
+	out := renderShareMeta(&ShareCard{Title: `月光 "庭院" <b>`, Description: "a & b", Image: "/api/v1/community/media/x_t.jpg", ImageWidth: 640, ImageHeight: 360, Type: "article"}, "https://hivegpt.cn/", "https://canvas.hivegpt.cn/w/1")
+	require.Contains(t, out, `<meta property="og:title" content="月光 &#34;庭院&#34; &lt;b&gt;" />`)
+	require.Contains(t, out, `content="a &amp; b"`)
+	require.Contains(t, out, `<meta property="og:image" content="https://hivegpt.cn/api/v1/community/media/x_t.jpg" />`)
+	require.Contains(t, out, `<meta property="og:url" content="https://canvas.hivegpt.cn/w/1" />`)
+	require.Contains(t, out, `summary_large_image`)
+	require.NotContains(t, out, "<b>")
+
+	noImage := renderShareMeta(&ShareCard{Title: "x", Type: "profile"}, "https://hivegpt.cn", "")
+	require.NotContains(t, noImage, "og:image")
+	require.NotContains(t, noImage, "og:url")
+}
+
+func TestTrustedShareURL(t *testing.T) {
+	allowed := []string{"https://canvas.hivegpt.cn", " https://canvas2.example.com/ "}
+	require.Equal(t, "https://canvas.hivegpt.cn/w/12", TrustedShareURL("https://canvas.hivegpt.cn/w/12?utm=1#x", allowed))
+	require.Equal(t, "https://canvas2.example.com/u/a", TrustedShareURL("https://canvas2.example.com/u/a", allowed))
+	require.Empty(t, TrustedShareURL("https://evil.example/w/1", allowed))
+	require.Empty(t, TrustedShareURL("http://canvas.hivegpt.cn/w/1", allowed))
+	require.Empty(t, TrustedShareURL("javascript:alert(1)", allowed))
+}

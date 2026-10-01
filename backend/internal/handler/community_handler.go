@@ -74,6 +74,24 @@ func (h *CommunityHandler) Media(c *gin.Context) {
 	c.File(path)
 }
 
+// ShareMeta GET /api/v1/community/share-meta/*path — the <head> tags of a canvas page's share card
+// (called by the canvas site's nginx through SSI). X-Share-Url, when it is on a canvas origin, becomes og:url.
+func (h *CommunityHandler) ShareMeta(c *gin.Context, canvasOrigins []string) {
+	scheme := "https"
+	if c.Request.TLS == nil && c.GetHeader("X-Forwarded-Proto") == "http" {
+		scheme = "http"
+	}
+	mainSite := scheme + "://" + c.Request.Host
+	pageURL := service.TrustedShareURL(c.GetHeader("X-Share-Url"), canvasOrigins)
+	out, err := h.svc.ShareMetaHTML(c.Request.Context(), c.Param("path"), mainSite, pageURL)
+	if err != nil {
+		out = ""
+	}
+	c.Header("Cache-Control", "public, max-age=60")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(out))
+}
+
 // Me GET /community/me — the viewer's profile (null before the first publish) and unread notices.
 func (h *CommunityHandler) Me(c *gin.Context) {
 	uid, ok := mustViewer(c)

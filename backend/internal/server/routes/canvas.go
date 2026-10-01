@@ -28,6 +28,8 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 	if h.Community != nil {
 		// Work images are plain public files (loaded by <img> from the canvas).
 		v1.GET("/community/media/:file", h.Community.Media)
+		// Share-card <head> tags for the canvas site's nginx (public content only, cached briefly).
+		v1.GET("/community/share-meta/*path", func(c *gin.Context) { h.Community.ShareMeta(c, canvasOrigins) })
 	}
 
 	canvas := v1.Group("/canvas")

@@ -154,6 +154,7 @@ type CommunityRepository interface {
 	CreateProfile(ctx context.Context, p *CommunityProfile) error
 	UpdateProfile(ctx context.Context, p *CommunityProfile) error
 	SetProfileStatus(ctx context.Context, userID int64, status string) error
+	ListRestrictedProfiles(ctx context.Context, limit int) ([]RestrictedAuthor, error)
 	UserCreatedAt(ctx context.Context, userID int64) (time.Time, error)
 	AccountAvatarURL(ctx context.Context, userID int64) (string, error)
 
@@ -198,10 +199,11 @@ type CommunityRepository interface {
 }
 
 type CommunityService struct {
-	repo     CommunityRepository
-	media    *CommunityMediaStore
-	settings imageToolSettings
-	now      func() time.Time
+	repo       CommunityRepository
+	media      *CommunityMediaStore
+	settings   imageToolSettings
+	now        func() time.Time
+	shareCache shareMetaCache
 }
 
 func NewCommunityService(repo CommunityRepository, media *CommunityMediaStore, settings imageToolSettings) *CommunityService {

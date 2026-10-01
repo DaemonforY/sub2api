@@ -35,6 +35,15 @@ export interface AdminWorkReport {
   created_at: string
 }
 
+export interface RestrictedAuthor {
+  user_id: number
+  email: string
+  handle: string
+  display_name: string
+  works_count: number
+  updated_at: string
+}
+
 export type ModerateAction = 'approve' | 'reject' | 'hide' | 'feature' | 'unfeature'
 
 export async function works(status: string, page = 1): Promise<AdminCommunityWork[]> {
@@ -46,6 +55,10 @@ export async function moderate(id: number, action: ModerateAction, reason = ''):
 }
 export async function ban(userId: number, banned: boolean): Promise<void> {
   await apiClient.post(`/admin/community/users/${userId}/ban`, { banned })
+}
+export async function restricted(): Promise<RestrictedAuthor[]> {
+  const { data } = await apiClient.get('/admin/community/restricted')
+  return data
 }
 export async function reports(status: string, page = 1): Promise<AdminWorkReport[]> {
   const { data } = await apiClient.get('/admin/community/reports', { params: { status: status || undefined, page } })
@@ -63,4 +76,4 @@ export async function saveSettings(reviewAll: boolean): Promise<{ review_all: bo
   return data
 }
 
-export default { works, moderate, ban, reports, setReport, getSettings, saveSettings }
+export default { works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings }

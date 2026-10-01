@@ -3,10 +3,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import CommunityView from '../CommunityView.vue'
 
-const { works, moderate, ban, reports, setReport, getSettings, saveSettings, showSuccess, showError } = vi.hoisted(() => ({
+const { works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings, showSuccess, showError } = vi.hoisted(() => ({
   works: vi.fn(),
   moderate: vi.fn(),
   ban: vi.fn(),
+  restricted: vi.fn(),
   reports: vi.fn(),
   setReport: vi.fn(),
   getSettings: vi.fn(),
@@ -15,7 +16,7 @@ const { works, moderate, ban, reports, setReport, getSettings, saveSettings, sho
   showError: vi.fn()
 }))
 
-vi.mock('@/api/admin', () => ({ adminAPI: { community: { works, moderate, ban, reports, setReport, getSettings, saveSettings } } }))
+vi.mock('@/api/admin', () => ({ adminAPI: { community: { works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings } } }))
 vi.mock('@/stores', () => ({ useAppStore: () => ({ showSuccess, showError }) }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))
 
@@ -29,7 +30,7 @@ const pendingWork = {
 
 describe('admin CommunityView', () => {
   beforeEach(() => {
-    for (const fn of [works, moderate, ban, reports, setReport, getSettings, saveSettings]) fn.mockReset()
+    for (const fn of [works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings]) fn.mockReset()
     moderate.mockResolvedValue(undefined)
   })
 
@@ -68,5 +69,22 @@ describe('admin CommunityView', () => {
     await wrapper.get('[data-testid="community-settings"] button').trigger('click')
     await flushPromises()
     expect(saveSettings).toHaveBeenCalledWith(true)
+  })
+
+  it('lists restricted authors and lifts a restriction', async () => {
+    works.mockResolvedValue([])
+    restricted.mockResolvedValue([{ user_id: 3, email: 'a@x.test', handle: 'xiaolin', display_name: '小林', works_count: 4, updated_at: '2026-10-02T00:00:00Z' }])
+    ban.mockResolvedValue(undefined)
+    const wrapper = mount(CommunityView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'admin.community.tabs.restricted')!.trigger('click')
+    await flushPromises()
+    const row = wrapper.get('[data-testid="community-restricted-row"]')
+    expect(row.text()).toContain('@xiaolin')
+    await row.get('button').trigger('click')
+    await flushPromises()
+    expect(ban).toHaveBeenCalledWith(3, false)
+    expect(wrapper.find('[data-testid="community-restricted-row"]').exists()).toBe(false)
+    expect(showSuccess).toHaveBeenCalled()
   })
 })

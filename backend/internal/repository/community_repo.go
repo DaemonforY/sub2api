@@ -80,6 +80,27 @@ func (r *communityRepository) SetProfileStatus(ctx context.Context, userID int64
 	return err
 }
 
+func (r *communityRepository) ListRestrictedProfiles(ctx context.Context, limit int) ([]service.RestrictedAuthor, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT p.user_id, COALESCE(u.email, ''), p.handle, p.display_name,
+       (SELECT COUNT(*) FROM works w WHERE w.user_id = p.user_id), p.updated_at
+FROM user_profiles p LEFT JOIN users u ON u.id = p.user_id
+WHERE p.status = 'banned' ORDER BY p.updated_at DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []service.RestrictedAuthor
+	for rows.Next() {
+		var a service.RestrictedAuthor
+		if err := rows.Scan(&a.UserID, &a.Email, &a.Handle, &a.DisplayName, &a.WorksCount, &a.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
 func (r *communityRepository) UserCreatedAt(ctx context.Context, userID int64) (time.Time, error) {
 	var at time.Time
 	err := r.db.QueryRowContext(ctx, `SELECT created_at FROM users WHERE id = $1`, userID).Scan(&at)

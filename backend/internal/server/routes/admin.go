@@ -210,6 +210,7 @@ func registerCommunityAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/works", h.Admin.Community.Works)
 		g.POST("/works/:id/moderate", h.Admin.Community.Moderate)
 		g.POST("/users/:id/ban", h.Admin.Community.Ban)
+		g.GET("/restricted", h.Admin.Community.Restricted)
 		g.GET("/reports", h.Admin.Community.Reports)
 		g.PUT("/reports/:id", h.Admin.Community.SetReport)
 		g.GET("/settings", h.Admin.Community.Settings)

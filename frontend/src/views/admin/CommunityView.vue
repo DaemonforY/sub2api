@@ -16,6 +16,35 @@
         <button class="btn btn-primary btn-sm" :disabled="busy" @click="saveSettings">{{ t('common.save') }}</button>
       </div>
 
+      <div v-else-if="tab === 'restricted'" class="card overflow-x-auto" data-testid="community-restricted">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-xs text-gray-500 dark:text-dark-400">
+            <tr>
+              <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.author') }}</th>
+              <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.email') }}</th>
+              <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.works') }}</th>
+              <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.since') }}</th>
+              <th class="px-4 py-2" />
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+            <tr v-for="a in restrictedList" :key="a.user_id" data-testid="community-restricted-row">
+              <td class="px-4 py-2">
+                <span class="font-medium text-gray-900 dark:text-white">{{ a.display_name || a.handle }}</span>
+                <span class="ml-1 text-xs text-gray-500">@{{ a.handle }}</span>
+              </td>
+              <td class="px-4 py-2 text-gray-600 dark:text-dark-300">{{ a.email }}</td>
+              <td class="px-4 py-2">{{ a.works_count }}</td>
+              <td class="px-4 py-2 text-gray-500">{{ formatDateTime(a.updated_at) }}</td>
+              <td class="px-4 py-2 text-right">
+                <button class="btn btn-primary btn-sm" :disabled="busy" @click="unrestrict(a)">{{ t('admin.community.actions.unban') }}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="!restrictedList.length" class="p-6 text-center text-sm text-gray-500">{{ t('admin.community.noRestricted') }}</p>
+      </div>
+
       <div v-else-if="tab === 'reports'" class="card overflow-x-auto" data-testid="community-reports">
         <table class="min-w-full text-sm">
           <thead class="text-left text-xs text-gray-500 dark:text-dark-400">
@@ -98,14 +127,14 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { adminAPI } from '@/api/admin'
-import type { AdminCommunityWork, AdminWorkReport, CommunityWorkStatus, ModerateAction } from '@/api/admin/community'
+import type { AdminCommunityWork, AdminWorkReport, CommunityWorkStatus, ModerateAction, RestrictedAuthor } from '@/api/admin/community'
 import { CANVAS_SITE_URL } from '@/constants/crossSites'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatDateTime } from '@/utils/format'
 
-type Tab = 'pending' | 'reported' | 'approved' | 'hidden' | 'reports' | 'settings'
-const tabs: Tab[] = ['pending', 'reported', 'approved', 'hidden', 'reports', 'settings']
+type Tab = 'pending' | 'reported' | 'approved' | 'hidden' | 'reports' | 'restricted' | 'settings'
+const tabs: Tab[] = ['pending', 'reported', 'approved', 'hidden', 'reports', 'restricted', 'settings']
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -114,6 +143,7 @@ const page = ref(1)
 const busy = ref(false)
 const workList = ref<AdminCommunityWork[]>([])
 const reportList = ref<AdminWorkReport[]>([])
+const restrictedList = ref<RestrictedAuthor[]>([])
 const reviewAll = ref(false)
 const reasonFor = ref<{ work: AdminCommunityWork; action: 'reject' | 'hide' } | null>(null)
 const reason = ref('')
@@ -133,6 +163,7 @@ async function load() {
   try {
     if (tab.value === 'settings') reviewAll.value = (await adminAPI.community.getSettings()).review_all
     else if (tab.value === 'reports') reportList.value = await adminAPI.community.reports('', page.value)
+    else if (tab.value === 'restricted') restrictedList.value = await adminAPI.community.restricted()
     else workList.value = await adminAPI.community.works(tab.value, page.value)
   } catch (error) {
     showError(error)
@@ -181,6 +212,19 @@ async function banAuthor(work: AdminCommunityWork) {
   try {
     await adminAPI.community.ban(work.owner_id, true)
     appStore.showSuccess(t('admin.community.banned'))
+  } catch (error) {
+    showError(error)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function unrestrict(author: RestrictedAuthor) {
+  busy.value = true
+  try {
+    await adminAPI.community.ban(author.user_id, false)
+    restrictedList.value = restrictedList.value.filter((a) => a.user_id !== author.user_id)
+    appStore.showSuccess(t('admin.community.unrestricted', { handle: author.handle }))
   } catch (error) {
     showError(error)
   } finally {
