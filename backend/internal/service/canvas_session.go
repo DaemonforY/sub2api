@@ -142,6 +142,8 @@ type CanvasMe struct {
 	AvatarURL     string               `json:"avatar_url"`
 	Balance       float64              `json:"balance"`
 	Subscriptions []CanvasSubscription `json:"subscriptions"`
+	// AffCode: the user's invite code, when invites are enabled (set by the handler).
+	AffCode string `json:"aff_code,omitempty"`
 }
 
 type CanvasSubscription struct {

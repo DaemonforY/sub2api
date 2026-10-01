@@ -352,7 +352,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	handlerSiteHostingHandler := handler.NewSiteHostingHandler(siteHostingService)
 	canvasSessionRepository := repository.NewCanvasSessionRepository(db)
 	canvasSessionService := service.ProvideCanvasSessionService(canvasSessionRepository, userService, userSubscriptionRepository)
-	canvasSessionHandler := handler.NewCanvasSessionHandler(canvasSessionService)
+	canvasSessionHandler := handler.NewCanvasSessionHandler(canvasSessionService, affiliateService)
 	handlerCommunityHandler := handler.NewCommunityHandler(communityService)
 	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)

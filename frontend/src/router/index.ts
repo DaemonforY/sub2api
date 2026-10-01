@@ -13,6 +13,7 @@ import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
+import { pickOAuthAffiliateCode, storeAffiliateReferralCode } from '@/utils/oauthAffiliate'
 
 /**
  * Route definitions with lazy loading
@@ -945,6 +946,12 @@ router.beforeEach(async (to, _from, next) => {
   if (!authInitialized) {
     authStore.checkAuth()
     authInitialized = true
+  }
+
+  // Invite links may land on any page (e.g. shared from the canvas): keep the code for registration.
+  const affCode = pickOAuthAffiliateCode(to.query?.aff, to.query?.aff_code)
+  if (affCode) {
+    storeAffiliateReferralCode(affCode)
   }
 
   // Set page title

@@ -14,11 +14,12 @@ import (
 
 // CanvasSessionHandler signs the canvas in with a HiveGPT account (see service.CanvasSessionService).
 type CanvasSessionHandler struct {
-	sessions *service.CanvasSessionService
+	sessions   *service.CanvasSessionService
+	affiliates *service.AffiliateService
 }
 
-func NewCanvasSessionHandler(sessions *service.CanvasSessionService) *CanvasSessionHandler {
-	return &CanvasSessionHandler{sessions: sessions}
+func NewCanvasSessionHandler(sessions *service.CanvasSessionService, affiliates *service.AffiliateService) *CanvasSessionHandler {
+	return &CanvasSessionHandler{sessions: sessions, affiliates: affiliates}
 }
 
 // Sessions is the service behind the handler (the routes build the cookie middleware from it).
@@ -101,6 +102,12 @@ func (h *CanvasSessionHandler) Me(c *gin.Context) {
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
+	}
+	// The canvas appends the invite code to the links it shares, so sign-ups through them count as invites.
+	if h.affiliates != nil && h.affiliates.IsEnabled(c.Request.Context()) {
+		if summary, err := h.affiliates.EnsureUserAffiliate(c.Request.Context(), user.ID); err == nil && summary != nil {
+			me.AffCode = summary.AffCode
+		}
 	}
 	response.Success(c, me)
 }

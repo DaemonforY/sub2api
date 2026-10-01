@@ -110,7 +110,7 @@ func newCanvasTestRouter(t *testing.T) (*gin.Engine, *memCanvasSessions, *servic
 	gin.SetMode(gin.TestMode)
 	user := &service.User{ID: 7, Email: "alice@example.com", Username: "alice", Balance: 12.5, Status: service.StatusActive, Role: "user"}
 	repo := &memCanvasSessions{byHash: map[string]*service.CanvasSession{}}
-	h := NewCanvasSessionHandler(service.NewCanvasSessionService(repo, canvasUsers{users: map[int64]*service.User{7: user}}, canvasSubs{}))
+	h := NewCanvasSessionHandler(service.NewCanvasSessionService(repo, canvasUsers{users: map[int64]*service.User{7: user}}, canvasSubs{}), nil)
 	r := gin.New()
 	r.Use(middleware.CORS(config.CORSConfig{AllowedOrigins: []string{canvasOrigin}}))
 	// Stand-in for the panel JWT: the connect popup is signed in as user 7.
