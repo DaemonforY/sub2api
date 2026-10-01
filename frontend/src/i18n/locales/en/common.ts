@@ -210,6 +210,8 @@ export default {
     contests: 'Contests',
     contestAdmin: 'Contests',
     promptLibraryAdmin: 'Prompt library',
+    imageToolsAdmin: 'Image tools',
+    imageToolUses: 'Image tool records',
   },
 
   // Auth

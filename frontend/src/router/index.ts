@@ -253,6 +253,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/image-tool-uses',
+    name: 'ImageToolUses',
+    component: () => import('@/views/user/ImageToolUsesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Image tool records',
+      titleKey: 'imageToolUses.title',
+      descriptionKey: 'imageToolUses.description'
+    }
+  },
+  {
     path: '/redeem',
     name: 'Redeem',
     component: () => import('@/views/user/RedeemView.vue'),
@@ -470,6 +482,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Prompt library',
       titleKey: 'admin.promptLibrary.title',
       descriptionKey: 'admin.promptLibrary.description'
+    }
+  },
+  {
+    path: '/admin/image-tools',
+    name: 'AdminImageTools',
+    component: () => import('@/views/admin/ImageToolsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Image tools',
+      titleKey: 'admin.imageTools.title',
+      descriptionKey: 'admin.imageTools.description'
     }
   },
   {

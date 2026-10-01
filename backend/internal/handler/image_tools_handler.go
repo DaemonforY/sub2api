@@ -92,3 +92,25 @@ func (h *ImageToolsHandler) run(c *gin.Context, tool string, opts service.ImageT
 	c.Header("Cache-Control", "no-store")
 	c.Data(http.StatusOK, res.ContentType, res.Data)
 }
+
+// MyUses GET /api/v1/user/image-tools/uses — the signed-in user's runs and what they cost.
+func (h *ImageToolsHandler) MyUses(c *gin.Context) {
+	subject, ok := middleware.GetAuthSubjectFromContext(c)
+	if !ok || subject.UserID <= 0 {
+		response.Unauthorized(c, "请先登录")
+		return
+	}
+	page, _ := strconv.Atoi(c.Query("page"))
+	pageSize, _ := strconv.Atoi(c.Query("page_size"))
+	list, err := h.service.ListUses(c.Request.Context(), service.ImageToolUseQuery{UserID: subject.UserID, Tool: c.Query("tool"), Page: page, PageSize: pageSize})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	summary, err := h.service.UserSummary(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"items": list.Items, "total": list.Total, "page": list.Page, "page_size": list.PageSize, "summary": summary})
+}

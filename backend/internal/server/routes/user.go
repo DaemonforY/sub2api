@@ -32,6 +32,9 @@ func RegisterUserRoutes(
 			user.PUT("/password", h.User.ChangePassword)
 			user.PUT("", h.User.UpdateProfile)
 			user.GET("/aff", h.User.GetAffiliate)
+			if h.ImageTools != nil {
+				user.GET("/image-tools/uses", h.ImageTools.MyUses)
+			}
 			user.POST("/aff/transfer", h.User.TransferAffiliateQuota)
 			if h.Growth != nil {
 				user.GET("/aff/leaderboard", h.Growth.Leaderboard)

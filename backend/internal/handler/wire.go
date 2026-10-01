@@ -51,6 +51,7 @@ func ProvideAdminHandlers(
 	adminContestHandler *admin.ContestHandler,
 	adminGrowthHandler *admin.GrowthHandler,
 	adminPromptLibraryHandler *admin.PromptLibraryHandler,
+	adminImageToolsHandler *admin.ImageToolsHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
 ) *AdminHandlers {
@@ -97,6 +98,7 @@ func ProvideAdminHandlers(
 		Contest:                adminContestHandler,
 		Growth:                 adminGrowthHandler,
 		PromptLibrary:          adminPromptLibraryHandler,
+		ImageTools:             adminImageToolsHandler,
 	}
 }
 
@@ -309,6 +311,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewGatewayRequestLogHandler,
 	admin.NewContestHandler,
 	admin.NewPromptLibraryHandler,
+	admin.NewImageToolsHandler,
 	admin.NewGrowthHandler,
 
 	// AdminHandlers and Handlers constructors

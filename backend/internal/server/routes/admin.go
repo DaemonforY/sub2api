@@ -133,6 +133,7 @@ func RegisterAdminRoutes(
 		registerGatewayRequestLogRoutes(admin, h)
 		registerContestAdminRoutes(admin, h)
 		registerPromptLibraryAdminRoutes(admin, h)
+		registerImageToolsAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -175,6 +176,20 @@ func registerAuditLogRoutes(admin *gin.RouterGroup, h *handler.Handlers, _ middl
 		auditLogs.GET("/:id", h.Admin.AuditLog.Get)
 		// 清空需现场 TOTP 校验（在 handler 内强制），不复用 step-up sudo 窗口
 		auditLogs.POST("/clear", h.Admin.AuditLog.Clear)
+	}
+}
+
+// registerImageToolsAdminRoutes 图片工具（抠图 / 超分）：价格、每日免费次数、开关与扣费明细。
+func registerImageToolsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.ImageTools == nil {
+		return
+	}
+	g := admin.Group("/image-tools")
+	{
+		g.GET("/settings", h.Admin.ImageTools.Settings)
+		g.PUT("/settings", h.Admin.ImageTools.SaveSettings)
+		g.GET("/stats", h.Admin.ImageTools.Stats)
+		g.GET("/uses", h.Admin.ImageTools.Uses)
 	}
 }
 

@@ -210,6 +210,8 @@ export default {
     contests: '活动',
     contestAdmin: '活动管理',
     promptLibraryAdmin: '提示词库',
+    imageToolsAdmin: '图片工具',
+    imageToolUses: '图片工具记录',
   },
 
   // Auth

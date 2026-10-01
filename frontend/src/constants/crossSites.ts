@@ -30,8 +30,8 @@ export interface CanvasUrlOptions {
    * 用户只需再粘贴自己的 API Key。
    */
   baseUrl?: string
-  /** 画布内页面：'/'（首页）、'/image'（生图工作台）、'/video'（视频工作台） */
-  path?: '/' | '/image' | '/video'
+  /** 画布内页面：'/'（首页）、'/image'（生图工作台）、'/video'（视频工作台）、'/tools'（图片工具） */
+  path?: '/' | '/image' | '/video' | '/tools'
   /** 预填到生图工作台的提示词（仅 path 为 /image 时生效） */
   prompt?: string
 }

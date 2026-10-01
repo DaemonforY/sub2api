@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -47,6 +48,23 @@ type ImageToolsConfig struct {
 	PriceRemoveBg float64
 	PriceUpscale  float64
 	FreeDaily     int
+	// Disabled is the admin's off switch (the tools also need a BaseURL).
+	Disabled bool
+}
+
+const (
+	settingImageToolsEnabled       = "image_tools_enabled"
+	settingImageToolsPriceRemoveBg = "image_tools_price_remove_bg"
+	settingImageToolsPriceUpscale  = "image_tools_price_upscale"
+	settingImageToolsFreeDaily     = "image_tools_free_daily"
+	imageToolSettingsTTL           = 30 * time.Second
+	imageToolMaxPrice              = 100
+	imageToolMaxFreeDaily          = 1000
+)
+
+type imageToolSettings interface {
+	GetMultiple(ctx context.Context, keys []string) (map[string]string, error)
+	SetMultiple(ctx context.Context, settings map[string]string) error
 }
 
 type ImageToolsQuota struct {
@@ -78,6 +96,9 @@ type ImageToolsRepository interface {
 	// Charge records a run: free while a subscriber has free runs left today (decided under a per-user
 	// lock), otherwise the price is taken from the balance. ErrInsufficientBalance when it can't be.
 	Charge(ctx context.Context, use ImageToolUse, freeDaily int, since time.Time) (free bool, err error)
+	ListUses(ctx context.Context, q ImageToolUseQuery) ([]ImageToolUseRecord, int64, error)
+	// Stats sums runs since a time by tool, for one user or (userID 0) everyone.
+	Stats(ctx context.Context, userID int64, since time.Time) ([]ImageToolStat, error)
 }
 
 type imageToolSubscriptions interface {
@@ -103,6 +124,11 @@ type ImageToolResult struct {
 }
 
 type ImageToolsService struct {
+	settings imageToolSettings
+	cacheMu  sync.Mutex
+	cached   *ImageToolsConfig
+	cachedAt time.Time
+
 	repo    ImageToolsRepository
 	subs    imageToolSubscriptions
 	cache   imageToolBalanceCache
@@ -117,11 +143,50 @@ func NewImageToolsService(repo ImageToolsRepository, subs imageToolSubscriptions
 	return &ImageToolsService{repo: repo, subs: subs, cache: cache, cfg: cfg, client: &http.Client{Timeout: 3 * time.Minute}, now: timezone.Now}
 }
 
-func (s *ImageToolsService) price(tool string) float64 {
-	if tool == ImageToolUpscale {
-		return s.cfg.PriceUpscale
+// WithSettings lets admins override prices, the free allowance and the on/off switch at runtime.
+func (s *ImageToolsService) WithSettings(settings imageToolSettings) *ImageToolsService {
+	s.settings = settings
+	return s
+}
+
+// config is the file / env configuration with the admin's overrides on top (cached briefly).
+func (s *ImageToolsService) config(ctx context.Context) ImageToolsConfig {
+	if s.settings == nil {
+		return s.cfg
 	}
-	return s.cfg.PriceRemoveBg
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	if s.cached != nil && time.Since(s.cachedAt) < imageToolSettingsTTL {
+		return *s.cached
+	}
+	c := s.cfg
+	values, err := s.settings.GetMultiple(ctx, []string{settingImageToolsEnabled, settingImageToolsPriceRemoveBg, settingImageToolsPriceUpscale, settingImageToolsFreeDaily})
+	if err != nil {
+		return c
+	}
+	if values[settingImageToolsEnabled] == "false" {
+		c.Disabled = true
+	}
+	if v, err := strconv.ParseFloat(values[settingImageToolsPriceRemoveBg], 64); err == nil && v >= 0 {
+		c.PriceRemoveBg = v
+	}
+	if v, err := strconv.ParseFloat(values[settingImageToolsPriceUpscale], 64); err == nil && v >= 0 {
+		c.PriceUpscale = v
+	}
+	if v, err := strconv.Atoi(values[settingImageToolsFreeDaily]); err == nil && v >= 0 {
+		c.FreeDaily = v
+	}
+	s.cached, s.cachedAt = &c, time.Now()
+	return c
+}
+
+func (c ImageToolsConfig) enabled() bool { return c.BaseURL != "" && !c.Disabled }
+
+func (c ImageToolsConfig) price(tool string) float64 {
+	if tool == ImageToolUpscale {
+		return c.PriceUpscale
+	}
+	return c.PriceRemoveBg
 }
 
 func (s *ImageToolsService) subscribed(ctx context.Context, userID int64) (bool, error) {
@@ -146,10 +211,11 @@ func (s *ImageToolsService) Quota(ctx context.Context, userID int64) (*ImageTool
 	if err != nil {
 		return nil, err
 	}
-	q := &ImageToolsQuota{Enabled: s.cfg.BaseURL != "", Subscribed: subscribed, FreeDaily: s.cfg.FreeDaily, FreeUsed: used, Balance: balance,
-		Prices: map[string]float64{ImageToolRemoveBg: s.cfg.PriceRemoveBg, ImageToolUpscale: s.cfg.PriceUpscale}}
+	c := s.config(ctx)
+	q := &ImageToolsQuota{Enabled: c.enabled(), Subscribed: subscribed, FreeDaily: c.FreeDaily, FreeUsed: used, Balance: balance,
+		Prices: map[string]float64{ImageToolRemoveBg: c.PriceRemoveBg, ImageToolUpscale: c.PriceUpscale}}
 	if subscribed {
-		q.FreeLeft = max(0, s.cfg.FreeDaily-used)
+		q.FreeLeft = max(0, c.FreeDaily-used)
 	}
 	return q, nil
 }
@@ -159,7 +225,7 @@ func (s *ImageToolsService) insufficient(q *ImageToolsQuota, price float64) erro
 	if q.Subscribed {
 		return infraerrors.Forbidden("IMAGE_TOOLS_INSUFFICIENT_BALANCE", fmt.Sprintf("今天的 %d 次免费额度已用完，本次需要 ¥%s，余额不足：请到 hivegpt.cn 充值后再试（Insufficient balance）", q.FreeDaily, need))
 	}
-	return infraerrors.Forbidden("IMAGE_TOOLS_INSUFFICIENT_BALANCE", fmt.Sprintf("本次需要 ¥%s，余额不足：请到 hivegpt.cn 充值，订阅用户每天还可免费使用 %d 次（Insufficient balance）", need, s.cfg.FreeDaily))
+	return infraerrors.Forbidden("IMAGE_TOOLS_INSUFFICIENT_BALANCE", fmt.Sprintf("本次需要 ¥%s，余额不足：请到 hivegpt.cn 充值，订阅用户每天还可免费使用 %d 次（Insufficient balance）", need, q.FreeDaily))
 }
 
 // Run processes one image and charges for it once it succeeded.
@@ -174,14 +240,15 @@ func (s *ImageToolsService) Run(ctx context.Context, userID, apiKeyID int64, too
 	if len(image) > ImageToolMaxInputBytes {
 		return nil, ErrImageToolsTooLarge
 	}
-	if s.cfg.BaseURL == "" {
+	c := s.config(ctx)
+	if !c.enabled() {
 		return nil, ErrImageToolsDisabled
 	}
 	quota, err := s.Quota(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	price := s.price(tool)
+	price := c.price(tool)
 	if quota.FreeLeft == 0 && quota.Balance < price {
 		return nil, s.insufficient(quota, price)
 	}
@@ -197,7 +264,7 @@ func (s *ImageToolsService) Run(ctx context.Context, userID, apiKeyID int64, too
 	}
 	use := ImageToolUse{UserID: userID, APIKeyID: apiKeyID, Tool: tool, Price: price, Subscribed: quota.Subscribed,
 		InputBytes: len(image), OutputBytes: len(data), DurationMs: int(time.Since(started).Milliseconds())}
-	free, err := s.repo.Charge(ctx, use, s.cfg.FreeDaily, timezone.StartOfDay(s.now()))
+	free, err := s.repo.Charge(ctx, use, c.FreeDaily, timezone.StartOfDay(s.now()))
 	if err != nil {
 		if errors.Is(err, ErrInsufficientBalance) {
 			return nil, s.insufficient(quota, price)

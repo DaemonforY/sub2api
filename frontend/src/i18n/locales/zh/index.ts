@@ -7,6 +7,7 @@ import admin from './admin'
 import misc from './misc'
 import contests from './contests'
 import growth from './growth'
+import imageToolUses from './imageToolUses'
 
 export default {
   ...landing,
@@ -18,4 +19,5 @@ export default {
   ...misc,
   ...contests,
   ...growth,
+  ...imageToolUses,
 }

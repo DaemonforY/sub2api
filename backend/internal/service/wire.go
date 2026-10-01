@@ -601,7 +601,7 @@ func ProvidePromptLibraryService(repo PromptLibraryRepository, cfg *config.Confi
 }
 
 // ProvideImageToolsService wires the canvas image tools (IMAGE_TOOLS_BASE_URL enables them).
-func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRepository, cache *BillingCacheService, cfg *config.Config) *ImageToolsService {
+func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *ImageToolsService {
 	c := ImageToolsConfig{PriceRemoveBg: 0.02, PriceUpscale: 0.05, FreeDaily: 3}
 	if cfg != nil {
 		c = ImageToolsConfig{BaseURL: cfg.ImageTools.BaseURL, PriceRemoveBg: cfg.ImageTools.PriceRemoveBg, PriceUpscale: cfg.ImageTools.PriceUpscale, FreeDaily: cfg.ImageTools.FreeDaily}
@@ -610,7 +610,11 @@ func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRe
 	if cache != nil {
 		balanceCache = cache
 	}
-	return NewImageToolsService(repo, subs, balanceCache, c)
+	svc := NewImageToolsService(repo, subs, balanceCache, c)
+	if settings != nil {
+		svc.WithSettings(settings)
+	}
+	return svc
 }
 
 // ProvidePromptLibrarySyncService creates and starts the daily community-source sync.

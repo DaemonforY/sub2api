@@ -47,4 +47,22 @@ func TestImageToolsRepositoryCharge(t *testing.T) {
 	var rows int
 	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM image_tool_uses WHERE user_id = $1`, user.ID).Scan(&rows))
 	require.Equal(t, 3, rows)
+
+	list, total, err := repo.ListUses(ctx, service.ImageToolUseQuery{UserID: user.ID, Page: 1, PageSize: 2})
+	require.NoError(t, err)
+	require.Equal(t, int64(3), total)
+	require.Len(t, list, 2)
+	require.Equal(t, user.Email, list[0].UserEmail)
+	require.False(t, list[0].Free, "newest first")
+	require.InDelta(t, 0.02, list[0].Cost, 1e-9)
+	list, total, err = repo.ListUses(ctx, service.ImageToolUseQuery{Keyword: "imgtools-" + suffix, Tool: service.ImageToolUpscale, Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Zero(t, total)
+	require.Empty(t, list)
+	stats, err := repo.Stats(ctx, user.ID, today)
+	require.NoError(t, err)
+	require.Equal(t, []service.ImageToolStat{{Tool: service.ImageToolRemoveBg, Runs: 3, FreeRuns: 2, Cost: 0.02, Users: 1}}, stats)
+	all, err := repo.Stats(ctx, 0, today)
+	require.NoError(t, err)
+	require.NotEmpty(t, all)
 }

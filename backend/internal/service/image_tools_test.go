@@ -36,6 +36,31 @@ func (r *imageToolsRepoStub) Charge(_ context.Context, use ImageToolUse, freeDai
 	return false, nil
 }
 
+func (r *imageToolsRepoStub) ListUses(context.Context, ImageToolUseQuery) ([]ImageToolUseRecord, int64, error) {
+	return nil, 0, nil
+}
+func (r *imageToolsRepoStub) Stats(context.Context, int64, time.Time) ([]ImageToolStat, error) {
+	return nil, nil
+}
+
+type imageToolSettingsStub struct{ values map[string]string }
+
+func (s *imageToolSettingsStub) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, k := range keys {
+		if v, ok := s.values[k]; ok {
+			out[k] = v
+		}
+	}
+	return out, nil
+}
+func (s *imageToolSettingsStub) SetMultiple(_ context.Context, values map[string]string) error {
+	for k, v := range values {
+		s.values[k] = v
+	}
+	return nil
+}
+
 type imageToolSubsStub struct{ active bool }
 
 func (s imageToolSubsStub) ListActiveByUserID(context.Context, int64) ([]UserSubscription, error) {
@@ -144,4 +169,38 @@ func TestImageToolsRejectBadInput(t *testing.T) {
 	disabled := NewImageToolsService(&imageToolsRepoStub{}, nil, nil, ImageToolsConfig{})
 	_, err = disabled.Run(ctx, 7, 0, ImageToolRemoveBg, ImageToolOptions{}, []byte("img"))
 	require.ErrorIs(t, err, ErrImageToolsDisabled)
+}
+
+func TestImageToolsAdminSettingsOverrideTheConfig(t *testing.T) {
+	repo := &imageToolsRepoStub{freeUsed: 1, balance: 1}
+	svc, _, _ := newImageToolsTest(t, repo, true, okImage)
+	settings := &imageToolSettingsStub{values: map[string]string{}}
+	svc.WithSettings(settings)
+	ctx := context.Background()
+
+	got := svc.Settings(ctx)
+	require.Equal(t, ImageToolsSettings{Enabled: true, PriceRemoveBg: 0.02, PriceUpscale: 0.05, FreeDaily: 3, ServiceConfigured: true}, got, "defaults come from the config")
+
+	_, err := svc.SaveSettings(ctx, ImageToolsSettingsInput{Enabled: true, PriceRemoveBg: -1, PriceUpscale: 0.05, FreeDaily: 3})
+	require.ErrorIs(t, err, ErrImageToolsInvalidPrice)
+	_, err = svc.SaveSettings(ctx, ImageToolsSettingsInput{Enabled: true, PriceRemoveBg: 0.1, PriceUpscale: 0.05, FreeDaily: 5000})
+	require.ErrorIs(t, err, ErrImageToolsInvalidFreeDaily)
+
+	got, err = svc.SaveSettings(ctx, ImageToolsSettingsInput{Enabled: true, PriceRemoveBg: 0.1, PriceUpscale: 0.3, FreeDaily: 1})
+	require.NoError(t, err)
+	require.Equal(t, 0.1, got.PriceRemoveBg)
+	q, err := svc.Quota(ctx, 7)
+	require.NoError(t, err)
+	require.Equal(t, 0, q.FreeLeft, "the new allowance applies at once")
+	require.Equal(t, 0.3, q.Prices[ImageToolUpscale])
+	res, err := svc.Run(ctx, 7, 0, ImageToolRemoveBg, ImageToolOptions{}, []byte("img"))
+	require.NoError(t, err)
+	require.Equal(t, 0.1, res.Cost)
+
+	_, err = svc.SaveSettings(ctx, ImageToolsSettingsInput{Enabled: false, PriceRemoveBg: 0.1, PriceUpscale: 0.3, FreeDaily: 1})
+	require.NoError(t, err)
+	_, err = svc.Run(ctx, 7, 0, ImageToolRemoveBg, ImageToolOptions{}, []byte("img"))
+	require.ErrorIs(t, err, ErrImageToolsDisabled, "admins can switch the tools off")
+	q, _ = svc.Quota(ctx, 7)
+	require.False(t, q.Enabled)
 }

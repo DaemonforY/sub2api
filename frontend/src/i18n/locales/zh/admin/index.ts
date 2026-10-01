@@ -10,6 +10,7 @@ import contests from './contests'
 import promptAudit from './promptAudit'
 import plugins from './plugins'
 import promptLibrary from './promptLibrary'
+import imageTools from './imageTools'
 
 export default {
   ...overview,
@@ -24,4 +25,5 @@ export default {
   ...promptAudit,
   ...plugins,
   ...promptLibrary,
+  ...imageTools,
 }

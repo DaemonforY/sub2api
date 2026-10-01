@@ -47,6 +47,7 @@ type AdminHandlers struct {
 	Contest                *admin.ContestHandler
 	Growth                 *admin.GrowthHandler
 	PromptLibrary          *admin.PromptLibraryHandler
+	ImageTools             *admin.ImageToolsHandler
 }
 
 // Handlers contains all HTTP handlers
