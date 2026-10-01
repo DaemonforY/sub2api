@@ -214,6 +214,7 @@ export default {
     imageToolUses: 'Image tool records',
     mySites: 'My sites',
     sitesAdmin: 'Site hosting',
+    communityAdmin: 'Canvas community',
   },
 
   // Auth

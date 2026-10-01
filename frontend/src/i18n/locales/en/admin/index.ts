@@ -12,6 +12,7 @@ import plugins from './plugins'
 import promptLibrary from './promptLibrary'
 import imageTools from './imageTools'
 import sites from './sites'
+import community from './community'
 
 export default {
   ...overview,
@@ -28,4 +29,5 @@ export default {
   ...promptLibrary,
   ...imageTools,
   ...sites,
+  ...community,
 }

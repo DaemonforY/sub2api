@@ -507,6 +507,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/community',
+    name: 'AdminCommunity',
+    component: () => import('@/views/admin/CommunityView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Community',
+      titleKey: 'admin.community.title',
+      descriptionKey: 'admin.community.description'
+    }
+  },
+  {
     path: '/admin/sites',
     name: 'AdminSites',
     component: () => import('@/views/admin/SitesView.vue'),

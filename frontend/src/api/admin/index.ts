@@ -41,6 +41,7 @@ import pluginsAPI from './plugins'
 import promptLibraryAPI from './promptLibrary'
 import imageToolsAPI from './imageTools'
 import sitesAPI from './sites'
+import communityAPI from './community'
 
 /**
  * Unified admin API object for convenient access
@@ -83,7 +84,8 @@ export const adminAPI = {
   plugins: pluginsAPI,
   promptLibrary: promptLibraryAPI,
   imageTools: imageToolsAPI,
-  sites: sitesAPI
+  sites: sitesAPI,
+  community: communityAPI
 }
 
 export {
