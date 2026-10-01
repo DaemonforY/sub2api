@@ -94,7 +94,7 @@ func setSiteSecurityHeaders(h http.Header) {
 func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, name, clientIP string) {
 	setSiteSecurityHeaders(w.Header())
 	unlock := r.URL.Path == siteUnlockPath
-	if r.Method != http.MethodGet && r.Method != http.MethodHead && !(unlock && r.Method == http.MethodPost) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && (!unlock || r.Method != http.MethodPost) {
 		w.Header().Set("Allow", "GET, HEAD")
 		s.statusPage(w, http.StatusMethodNotAllowed, "不支持的请求", "托管的网站是静态网页，只支持浏览。")
 		return

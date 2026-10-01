@@ -229,7 +229,7 @@ func (s *SiteHostingService) AdminReject(ctx context.Context, siteID int64, vers
 
 func (s *SiteHostingService) sign(parts ...string) string {
 	mac := hmac.New(sha256.New, s.secret)
-	mac.Write([]byte(strings.Join(parts, "|")))
+	_, _ = mac.Write([]byte(strings.Join(parts, "|")))
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }
 
