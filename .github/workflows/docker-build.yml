@@ -38,3 +38,6 @@ jobs:
           tags: |
             yongbinm1028/sub2api:latest
             yongbinm1028/sub2api:${{ github.sha }}
+          # Reuse layers (Go modules, pnpm store, unchanged build stages) between runs.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
