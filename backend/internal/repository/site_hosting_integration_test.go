@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -273,4 +274,66 @@ func TestSiteHostingReviewVersionsAndStats(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stats.Views, mine.Sites[0].Views7d)
 	require.NoError(t, svc.AdminDelete(ctx, site.ID))
+}
+
+func TestSiteHostingChosenNamesAndRenames(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "sitename-" + suffix + "@test.local", Username: "sn" + suffix[len(suffix)-6:]})
+	other := mustCreateUser(t, integrationEntClient, &service.User{Email: "sitename2-" + suffix + "@test.local", Username: "so" + suffix[len(suffix)-6:]})
+	repo := NewSiteHostingRepository(integrationDB)
+	subs := &siteSubs{active: map[int64]bool{user.ID: true, other.ID: true}}
+	cfg := service.DefaultSiteHostingConfig("s.example.test")
+	cfg.MaxPerUser, cfg.FreePerUser = 3, 3
+	svc := service.NewSiteHostingService(repo, subs, nil, nil, cfg, t.TempDir(), "https://hivegpt.cn")
+	reason := func(err error) string { return infraerrors.Reason(err) }
+	name := "my-page-" + suffix[len(suffix)-6:]
+	upload := func(chosen string) service.SiteUpload {
+		return service.SiteUpload{Title: "页面", Name: chosen, FileName: "index.html", Data: []byte("<html><body>hi</body></html>")}
+	}
+
+	site, err := svc.Create(ctx, user.ID, upload(strings.ToUpper(name)))
+	require.NoError(t, err)
+	require.Equal(t, name, site.Name, "names are lower-cased")
+	require.Equal(t, "https://"+name+".s.example.test", site.URL)
+
+	_, err = svc.Create(ctx, other.ID, upload(name))
+	require.Equal(t, "SITE_NAME_TAKEN", reason(err))
+	_, err = svc.Create(ctx, other.ID, upload("hivegpt-pay"))
+	require.Equal(t, "SITE_NAME_RESERVED", reason(err))
+	check, err := svc.CheckName(ctx, 0, name)
+	require.NoError(t, err)
+	require.False(t, check.Available)
+	require.NotEmpty(t, check.Reason)
+	check, err = svc.CheckName(ctx, site.ID, name)
+	require.NoError(t, err)
+	require.True(t, check.Available, "a site may keep its own name")
+
+	renamed := name + "-v2"
+	got, err := svc.Rename(ctx, user.ID, site.ID, renamed)
+	require.NoError(t, err)
+	require.Equal(t, renamed, got.Name)
+	require.Equal(t, name, got.PreviousName)
+	require.NotNil(t, got.RenameAfter, "the next rename waits 7 days")
+
+	// The old name is held for the site and redirects to the new one.
+	_, err = svc.Create(ctx, other.ID, upload(name))
+	require.Equal(t, "SITE_NAME_TAKEN", reason(err))
+	require.True(t, svc.KnownSite(ctx, name+".s.example.test"))
+	rec := httptest.NewRecorder()
+	svc.ServeSite(rec, httptest.NewRequest(http.MethodGet, "http://"+name+".s.example.test/a/b?x=1", nil), name, "1.2.3.4")
+	require.Equal(t, http.StatusFound, rec.Code)
+	require.Equal(t, "https://"+renamed+".s.example.test/a/b?x=1", rec.Header().Get("Location"))
+
+	_, err = svc.Rename(ctx, user.ID, site.ID, name+"-v3")
+	require.Equal(t, "SITE_RENAME_TOO_SOON", reason(err))
+	_, err = svc.Rename(ctx, other.ID, site.ID, name+"-v3")
+	require.Equal(t, "SITE_NOT_FOUND", reason(err))
+
+	// After the hold the old name is free again.
+	_, err = integrationDB.ExecContext(ctx, `UPDATE sites SET renamed_at = NOW() - INTERVAL '31 days' WHERE id = $1`, site.ID)
+	require.NoError(t, err)
+	freed, err := svc.Create(ctx, other.ID, upload(name))
+	require.NoError(t, err)
+	require.Equal(t, name, freed.Name)
 }

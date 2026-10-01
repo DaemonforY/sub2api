@@ -15,9 +15,22 @@ export default {
       limits: '单个网站',
       limitsValue: '最大 {mb}MB，最多 {files} 个文件'
     },
+    name: {
+      label: '网址（可选）',
+      placeholder: '留空自动生成，例如 my-shop',
+      rule: '3–30 个字符：小写字母、数字和中间的短横线，以字母开头',
+      checking: '正在检查…',
+      available: '可以使用',
+      taken: '已被使用，请换一个',
+      renameTitle: '修改网址',
+      renameHint: '改名后旧网址会自动跳转到新网址 30 天，这期间别人也不能使用旧网址。每 7 天只能改一次。',
+      tooSoon: '每 7 天只能改一次，{date} 之后可以再改。',
+      renamed: '网址已改为 {url}',
+      redirecting: '旧网址 {name} 会跳转到这里，直到 {date}'
+    },
     create: {
       title: '发布新网站',
-      hint: '网站地址会自动生成，形如 https://abc1234.{domain}。压缩包里要有 index.html 作为首页，可以带 CSS、JS、图片、字体等文件。',
+      hint: '可以自己起网址（如 https://my-shop.{domain}），留空就自动生成。压缩包里要有 index.html 作为首页，可以带 CSS、JS、图片、字体等文件。',
       name: '网站名称（只有你能看到）',
       namePlaceholder: '例如：活动落地页',
       file: '网页文件（.html 或 .zip）',
@@ -77,7 +90,7 @@ export default {
       zip: '或者上传 .zip 压缩包'
     },
     status: { active: '访问中', disabled: '已下线', unpaid: '欠费暂停', lapsed: '订阅到期暂停', pending: '审核中' },
-    actions: { versions: '版本', password: '访问密码', stats: '统计', copy: '复制网址', update: '更新', renew: '续费 ¥{price}', delete: '删除' },
+    actions: { versions: '版本', password: '访问密码', stats: '统计', copy: '复制网址', rename: '改网址', update: '更新', renew: '续费 ¥{price}', delete: '删除' },
     edit: { title: '更新网站', file: '新的网页文件（可选）', fileHint: '不选文件就只修改名称；上传后网址不变，立刻替换成新内容。' },
     deleteConfirm: '删除后 {url} 立即无法访问，文件也会被删除，不能恢复。确定删除吗？',
     charges: { title: '扣费记录', time: '时间', site: '网站', amount: '金额', until: '有效期至' }

@@ -26,6 +26,7 @@ func RegisterSiteRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth middle
 	mine.Use(panelRateLimiter.Global())
 	{
 		mine.GET("", h.SiteHosting.Mine)
+		mine.GET("/name-check", h.SiteHosting.CheckName)
 		mine.POST("", h.SiteHosting.Create)
 		mine.PUT("/:id", h.SiteHosting.Update)
 		mine.DELETE("/:id", h.SiteHosting.Delete)
@@ -33,6 +34,7 @@ func RegisterSiteRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth middle
 		mine.GET("/:id/versions", h.SiteHosting.Versions)
 		mine.POST("/:id/rollback", h.SiteHosting.Rollback)
 		mine.PUT("/:id/password", h.SiteHosting.SetPassword)
+		mine.PUT("/:id/name", h.SiteHosting.Rename)
 		mine.GET("/:id/stats", h.SiteHosting.Stats)
 	}
 

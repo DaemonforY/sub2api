@@ -30,6 +30,25 @@ export interface Site {
   url: string
   /** Opens the pending version (owner only). */
   preview_url?: string
+  /** The name before the last rename; it redirects here for 30 days. */
+  previous_name?: string
+  renamed_at?: string
+  /** When the next rename is allowed (absent: now). */
+  rename_after?: string
+}
+
+export interface SiteNameCheck {
+  name: string
+  available: boolean
+  /** Why not (user-facing). */
+  reason?: string
+}
+
+/** Same rule as the server: 3–30 lowercase letters, digits and inner hyphens, starting with a letter. */
+export const SITE_NAME_PATTERN = /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/
+
+export function normalizeSiteName(name: string): string {
+  return name.trim().toLowerCase()
 }
 
 export interface SiteVersion {
@@ -94,9 +113,10 @@ export type SiteReportReason = (typeof SITE_REPORT_REASONS)[number]
 /** Uploads take a while on slow connections (up to the size limit). */
 const UPLOAD_CONFIG = { timeout: 5 * 60 * 1000 }
 
-function uploadForm(title: string, file?: File | null): FormData {
+function uploadForm(title: string, file?: File | null, name?: string): FormData {
   const form = new FormData()
   form.append('title', title)
+  if (name) form.append('name', name)
   if (file) form.append('file', file)
   return form
 }
@@ -115,8 +135,16 @@ export async function mySites(): Promise<MySites> {
   const { data } = await apiClient.get('/sites')
   return data
 }
-export async function createSite(title: string, file: File): Promise<Site> {
-  const { data } = await apiClient.post('/sites', uploadForm(title, file), UPLOAD_CONFIG)
+export async function createSite(title: string, file: File, name = ''): Promise<Site> {
+  const { data } = await apiClient.post('/sites', uploadForm(title, file, name), UPLOAD_CONFIG)
+  return data
+}
+export async function checkSiteName(name: string, siteId = 0): Promise<SiteNameCheck> {
+  const { data } = await apiClient.get('/sites/name-check', { params: { name, site_id: siteId || undefined } })
+  return data
+}
+export async function renameSite(id: number, name: string): Promise<Site> {
+  const { data } = await apiClient.put(`/sites/${id}/name`, { name })
   return data
 }
 export async function updateSite(id: number, title: string, file?: File | null): Promise<Site> {
@@ -157,4 +185,4 @@ export async function reportSite(input: { site: string; reason: SiteReportReason
   await apiClient.post('/site-reports', input)
 }
 
-export default { mySites, createSite, updateSite, deleteSite, renewSite, reportSite, siteVersions, rollbackSite, setSitePassword, siteStats }
+export default { mySites, createSite, checkSiteName, renameSite, updateSite, deleteSite, renewSite, reportSite, siteVersions, rollbackSite, setSitePassword, siteStats }

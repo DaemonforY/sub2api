@@ -31,16 +31,22 @@
         <div v-else-if="data.quota.used < data.quota.max_sites" class="card space-y-3 p-5">
           <h3 class="font-semibold text-gray-900 dark:text-white">{{ t('sites.create.title') }}</h3>
           <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('sites.create.hint', { domain: data.quota.domain }) }}</p>
-          <div class="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+          <div class="grid gap-3 md:grid-cols-2">
             <div>
               <label class="input-label">{{ t('sites.create.name') }}</label>
               <input v-model="createTitle" class="input" maxlength="60" :placeholder="t('sites.create.namePlaceholder')" />
             </div>
             <div>
+              <label class="input-label">{{ t('sites.name.label') }}</label>
+              <SiteNameInput v-model="createName" v-model:valid="createNameValid" :domain="data.quota.domain" :placeholder="t('sites.name.placeholder')" />
+            </div>
+          </div>
+          <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+            <div>
               <label class="input-label">{{ t('sites.create.file') }}</label>
               <input ref="createInput" type="file" accept=".html,.htm,.zip" class="block w-full text-sm text-gray-600 dark:text-gray-300" data-testid="site-file" @change="onCreateFile" />
             </div>
-            <button class="btn btn-primary" :disabled="busy || !createFile" data-testid="site-publish" @click="create">
+            <button class="btn btn-primary" :disabled="busy || !createFile || !createNameValid" data-testid="site-publish" @click="create">
               {{ busy ? t('sites.publishing') : nextPaid ? t('sites.create.publishPaid', { price: data.quota.extra_price }) : t('sites.create.publish') }}
             </button>
           </div>
@@ -61,6 +67,7 @@
                   <a v-if="site.preview_url" :href="site.preview_url" target="_blank" rel="noopener" class="text-xs text-primary-600 hover:underline">{{ t('sites.preview') }}</a>
                 </div>
                 <a :href="site.url" target="_blank" rel="noopener" class="mt-1 block break-all text-sm text-primary-600 hover:underline">{{ site.url }}</a>
+                <p v-if="site.previous_name && site.renamed_at" class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">{{ t('sites.name.redirecting', { name: site.previous_name, date: formatDateOnly(holdUntil(site.renamed_at)) }) }}</p>
                 <p v-if="site.status_reason" class="mt-1 text-sm text-amber-700 dark:text-amber-300">{{ site.status_reason }}</p>
                 <p v-if="site.version" class="mt-1 text-xs text-gray-500 dark:text-dark-400">
                   {{ t('sites.meta', { size: formatBytes(site.size_bytes, 1), files: site.file_count, version: site.version, time: formatDateTime(site.updated_at) }) }}
@@ -70,6 +77,7 @@
               <div class="flex flex-wrap gap-2">
                 <button class="btn btn-secondary btn-sm" @click="copy(site.url)">{{ t('sites.actions.copy') }}</button>
                 <button v-if="site.status !== 'disabled'" class="btn btn-secondary btn-sm" :disabled="!data.quota.subscribed" @click="openEdit(site)">{{ t('sites.actions.update') }}</button>
+                <button v-if="site.status !== 'disabled'" class="btn btn-secondary btn-sm" data-testid="site-rename" @click="openRename(site)">{{ t('sites.actions.rename') }}</button>
                 <button class="btn btn-secondary btn-sm" @click="openVersions(site)">{{ t('sites.actions.versions') }}</button>
                 <button class="btn btn-secondary btn-sm" @click="openPassword(site)">{{ t('sites.actions.password') }}</button>
                 <button class="btn btn-secondary btn-sm" @click="openStats(site)">{{ t('sites.actions.stats') }}</button>
@@ -127,6 +135,20 @@
         <div class="flex justify-end gap-3">
           <button class="btn btn-secondary" @click="editing = null">{{ t('common.cancel') }}</button>
           <button class="btn btn-primary" :disabled="busy" @click="saveEdit">{{ busy ? t('sites.publishing') : t('common.save') }}</button>
+        </div>
+      </template>
+    </BaseDialog>
+
+    <BaseDialog :show="!!renaming" :title="t('sites.name.renameTitle')" width="narrow" @close="renaming = null">
+      <div v-if="renaming && data" class="space-y-3">
+        <p v-if="renaming.rename_after" class="text-sm text-amber-700 dark:text-amber-300">{{ t('sites.name.tooSoon', { date: formatDateTime(renaming.rename_after) }) }}</p>
+        <SiteNameInput v-model="renameName" v-model:valid="renameValid" :domain="data.quota.domain" :site-id="renaming.id" :current="renaming.name" />
+        <p class="text-xs leading-5 text-gray-500 dark:text-dark-400">{{ t('sites.name.renameHint') }}</p>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button class="btn btn-secondary" @click="renaming = null">{{ t('common.cancel') }}</button>
+          <button class="btn btn-primary" :disabled="busy || !renameValid || !!renaming?.rename_after" data-testid="site-rename-save" @click="saveRename">{{ t('common.save') }}</button>
         </div>
       </template>
     </BaseDialog>
@@ -212,11 +234,12 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import SiteNameInput from '@/components/user/SiteNameInput.vue'
 import { useAppStore } from '@/stores'
 import { useClipboard } from '@/composables/useClipboard'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatBytes, formatDateOnly, formatDateTime } from '@/utils/format'
-import { createSite, deleteSite, isSiteUploadFile, mySites, nextSiteIsPaid, renewSite, rollbackSite, setSitePassword, siteStats, siteVersions, statBars, updateSite, type MySites, type Site, type SiteStats, type SiteStatus, type SiteVersion } from '@/api/sites'
+import { createSite, deleteSite, renameSite, isSiteUploadFile, mySites, nextSiteIsPaid, renewSite, rollbackSite, setSitePassword, siteStats, siteVersions, statBars, updateSite, type MySites, type Site, type SiteStats, type SiteStatus, type SiteVersion } from '@/api/sites'
 import { buildApiUrl } from '@/api/client'
 
 const { t } = useI18n()
@@ -228,6 +251,11 @@ const busy = ref(false)
 const createTitle = ref('')
 const createFile = ref<File | null>(null)
 const createInput = ref<HTMLInputElement | null>(null)
+const createName = ref('')
+const createNameValid = ref(true)
+const renaming = ref<Site | null>(null)
+const renameName = ref('')
+const renameValid = ref(false)
 const editing = ref<Site | null>(null)
 const editTitle = ref('')
 const editFile = ref<File | null>(null)
@@ -348,11 +376,38 @@ async function create() {
   if (!createFile.value) return
   busy.value = true
   try {
-    const site = await createSite(createTitle.value, createFile.value)
+    const site = await createSite(createTitle.value, createFile.value, createName.value)
     appStore.showSuccess(t('sites.published', { url: site.url }))
     createTitle.value = ''
+    createName.value = ''
     createFile.value = null
     if (createInput.value) createInput.value.value = ''
+    await load()
+  } catch (error) {
+    showError(error)
+  } finally {
+    busy.value = false
+  }
+}
+
+/** The old name keeps redirecting (and stays reserved) for 30 days after a rename. */
+function holdUntil(renamedAt: string): string {
+  return new Date(new Date(renamedAt).getTime() + 30 * 24 * 3600 * 1000).toISOString()
+}
+
+function openRename(site: Site) {
+  renaming.value = site
+  renameName.value = site.name
+  renameValid.value = false
+}
+
+async function saveRename() {
+  if (!renaming.value) return
+  busy.value = true
+  try {
+    const site = await renameSite(renaming.value.id, renameName.value)
+    appStore.showSuccess(t('sites.name.renamed', { url: site.url }))
+    renaming.value = null
     await load()
   } catch (error) {
     showError(error)

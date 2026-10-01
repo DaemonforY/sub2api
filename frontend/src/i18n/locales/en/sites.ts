@@ -15,9 +15,22 @@ export default {
       limits: 'Per site',
       limitsValue: 'up to {mb}MB and {files} files'
     },
+    name: {
+      label: 'Address (optional)',
+      placeholder: 'Leave empty for a random one, e.g. my-shop',
+      rule: '3–30 characters: lowercase letters, digits and inner hyphens, starting with a letter',
+      checking: 'Checking…',
+      available: 'Available',
+      taken: 'Taken, please choose another',
+      renameTitle: 'Change address',
+      renameHint: 'The old address redirects to the new one for 30 days and nobody else can take it meanwhile. You can change it once every 7 days.',
+      tooSoon: 'You can change it once every 7 days; next change after {date}.',
+      renamed: 'Address changed to {url}',
+      redirecting: 'The old address {name} redirects here until {date}'
+    },
     create: {
       title: 'Publish a new site',
-      hint: 'The address is generated for you, like https://abc1234.{domain}. A zip needs an index.html as the home page and may include CSS, JS, images and fonts.',
+      hint: 'Pick an address (like https://my-shop.{domain}) or leave it empty for a random one. A zip needs an index.html as the home page and may include CSS, JS, images and fonts.',
       name: 'Name (only you see it)',
       namePlaceholder: 'e.g. Launch page',
       file: 'Page file (.html or .zip)',
@@ -77,7 +90,7 @@ export default {
       zip: 'or upload a .zip archive'
     },
     status: { active: 'Online', disabled: 'Taken down', unpaid: 'Paused (unpaid)', lapsed: 'Paused (subscription ended)', pending: 'In review' },
-    actions: { versions: 'Versions', password: 'Password', stats: 'Stats', copy: 'Copy link', update: 'Update', renew: 'Renew ¥{price}', delete: 'Delete' },
+    actions: { versions: 'Versions', password: 'Password', stats: 'Stats', copy: 'Copy link', rename: 'Change address', update: 'Update', renew: 'Renew ¥{price}', delete: 'Delete' },
     edit: { title: 'Update site', file: 'New page file (optional)', fileHint: 'Without a file only the name changes; a new file replaces the content at the same address.' },
     deleteConfirm: '{url} goes offline at once and its files are deleted for good. Delete it?',
     charges: { title: 'Charges', time: 'Time', site: 'Site', amount: 'Amount', until: 'Paid until' }

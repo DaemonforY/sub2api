@@ -61,11 +61,11 @@ func sitePathID(c *gin.Context) (int64, bool) {
 	return id, true
 }
 
-// readSiteUpload reads the multipart form: "file" (optional when only the title changes) and "title".
+// readSiteUpload reads the multipart form: "file" (optional when only the title changes), "title" and "name" (creating only).
 func (h *SiteHostingHandler) readSiteUpload(c *gin.Context, requireFile bool) (service.SiteUpload, bool) {
 	limit := int64(h.service.Config(c.Request.Context()).MaxMB) << 20
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit+1<<20)
-	up := service.SiteUpload{Title: c.PostForm("title")}
+	up := service.SiteUpload{Title: c.PostForm("title"), Name: c.PostForm("name")}
 	file, err := c.FormFile("file")
 	if err != nil {
 		var tooLarge *http.MaxBytesError
@@ -94,6 +94,45 @@ func (h *SiteHostingHandler) readSiteUpload(c *gin.Context, requireFile bool) (s
 	return up, true
 }
 
+// CheckName GET /api/v1/sites/name-check?name=&site_id= — whether a name can be used (site_id: renaming that site).
+func (h *SiteHostingHandler) CheckName(c *gin.Context) {
+	if _, ok := siteUserID(c); !ok {
+		return
+	}
+	siteID, _ := strconv.ParseInt(c.Query("site_id"), 10, 64)
+	res, err := h.service.CheckName(c.Request.Context(), siteID, c.Query("name"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, res)
+}
+
+// Rename PUT /api/v1/sites/:id/name {name}
+func (h *SiteHostingHandler) Rename(c *gin.Context) {
+	userID, ok := siteUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := sitePathID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrSiteNameInvalid)
+		return
+	}
+	site, err := h.service.Rename(c.Request.Context(), userID, id, in.Name)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, site)
+}
+
 // Mine GET /api/v1/sites
 func (h *SiteHostingHandler) Mine(c *gin.Context) {
 	userID, ok := siteUserID(c)
@@ -108,7 +147,7 @@ func (h *SiteHostingHandler) Mine(c *gin.Context) {
 	response.Success(c, res)
 }
 
-// Create POST /api/v1/sites (multipart "file" + "title")
+// Create POST /api/v1/sites (multipart "file" + "title", optional "name")
 func (h *SiteHostingHandler) Create(c *gin.Context) {
 	userID, ok := siteUserID(c)
 	if !ok {
@@ -300,13 +339,14 @@ func (h *SiteHostingHandler) keyUpload(c *gin.Context, requireContent bool) (ser
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit+1<<20)
 	var in struct {
 		Title string `json:"title"`
+		Name  string `json:"name"`
 		HTML  string `json:"html"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil || (requireContent && strings.TrimSpace(in.HTML) == "") {
 		response.ErrorFrom(c, service.ErrSiteUploadInvalid)
 		return service.SiteUpload{}, false
 	}
-	up := service.SiteUpload{Title: in.Title}
+	up := service.SiteUpload{Title: in.Title, Name: in.Name}
 	if strings.TrimSpace(in.HTML) != "" {
 		up.FileName, up.Data = "index.html", []byte(in.HTML)
 	}

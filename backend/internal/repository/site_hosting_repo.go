@@ -23,16 +23,16 @@ func NewSiteHostingRepository(db *sql.DB) service.SiteHostingRepository {
 
 const siteSelect = `
 SELECT s.id, s.user_id, COALESCE(u.email, ''), s.name, s.title, s.status, s.status_reason, s.version, s.size_bytes, s.file_count,
-       s.paid, s.paid_until, s.lapsed_at, s.created_at, s.updated_at, s.pending_version, s.password_hash,
+       s.paid, s.paid_until, s.lapsed_at, s.created_at, s.updated_at, s.pending_version, s.password_hash, s.previous_name, s.renamed_at,
        COALESCE((SELECT SUM(views) FROM site_daily_stats d WHERE d.site_id = s.id AND d.day >= CURRENT_DATE - 6), 0),
        COALESCE((SELECT SUM(views) FROM site_daily_stats d WHERE d.site_id = s.id), 0)
 FROM sites s LEFT JOIN users u ON u.id = s.user_id`
 
 func scanSite(row rowScanner) (*service.Site, error) {
 	var site service.Site
-	var paidUntil, lapsedAt sql.NullTime
+	var paidUntil, lapsedAt, renamedAt sql.NullTime
 	if err := row.Scan(&site.ID, &site.UserID, &site.UserEmail, &site.Name, &site.Title, &site.Status, &site.StatusReason, &site.Version,
-		&site.SizeBytes, &site.FileCount, &site.Paid, &paidUntil, &lapsedAt, &site.CreatedAt, &site.UpdatedAt, &site.PendingVersion, &site.PasswordHash,
+		&site.SizeBytes, &site.FileCount, &site.Paid, &paidUntil, &lapsedAt, &site.CreatedAt, &site.UpdatedAt, &site.PendingVersion, &site.PasswordHash, &site.PreviousName, &renamedAt,
 		&site.Views7d, &site.ViewsTotal); err != nil {
 		return nil, err
 	}
@@ -42,6 +42,9 @@ func scanSite(row rowScanner) (*service.Site, error) {
 	}
 	if lapsedAt.Valid {
 		site.LapsedAt = &lapsedAt.Time
+	}
+	if renamedAt.Valid {
+		site.RenamedAt = &renamedAt.Time
 	}
 	return &site, nil
 }
@@ -72,9 +75,38 @@ func (r *siteHostingRepository) getOne(ctx context.Context, where string, arg an
 }
 
 func (r *siteHostingRepository) CreateSite(ctx context.Context, site *service.Site) error {
-	return r.db.QueryRowContext(ctx, `
+	err := r.db.QueryRowContext(ctx, `
 INSERT INTO sites (user_id, name, title, status, paid) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`,
 		site.UserID, site.Name, site.Title, site.Status, site.Paid).Scan(&site.ID, &site.CreatedAt, &site.UpdatedAt)
+	if isUniqueViolation(err) {
+		return service.ErrSiteNameTaken
+	}
+	return err
+}
+
+func (r *siteHostingRepository) SiteNameTaken(ctx context.Context, name string, exceptSiteID int64, holdSince time.Time) (bool, error) {
+	var taken bool
+	err := r.db.QueryRowContext(ctx, `
+SELECT EXISTS (SELECT 1 FROM sites WHERE id <> $2 AND (name = $1 OR (previous_name = $1 AND renamed_at > $3)))`,
+		name, exceptSiteID, holdSince).Scan(&taken)
+	return taken, err
+}
+
+func (r *siteHostingRepository) RenameSite(ctx context.Context, id int64, name string, at time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
+UPDATE sites SET previous_name = name, name = $2, renamed_at = $3, updated_at = NOW() WHERE id = $1`, id, name, at)
+	if isUniqueViolation(err) {
+		return service.ErrSiteNameTaken
+	}
+	return err
+}
+
+func (r *siteHostingRepository) GetSiteByPreviousName(ctx context.Context, name string, holdSince time.Time) (*service.Site, error) {
+	site, err := scanSite(r.db.QueryRowContext(ctx, siteSelect+" WHERE s.previous_name = $1 AND s.renamed_at > $2 ORDER BY s.renamed_at DESC LIMIT 1", name, holdSince))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return site, err
 }
 
 func (r *siteHostingRepository) GetSite(ctx context.Context, id int64) (*service.Site, error) {

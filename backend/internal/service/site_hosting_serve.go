@@ -51,6 +51,10 @@ func (s *SiteHostingService) KnownSite(ctx context.Context, host string) bool {
 		return false
 	}
 	site, err := s.lookup(ctx, name)
+	if err == nil && site == nil {
+		// A recently renamed site's old name answers with a redirect, which needs a certificate too.
+		site, err = s.renamedTo(ctx, name)
+	}
 	return err == nil && site != nil
 }
 
@@ -109,6 +113,12 @@ func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, n
 		return
 	}
 	if site == nil {
+		if moved, err := s.renamedTo(r.Context(), name); err == nil && moved != nil {
+			target := s.siteURL(moved.Name) + r.URL.RequestURI()
+			// 302, not 301: a cached permanent redirect would loop if the owner later renames back.
+			http.Redirect(w, r, target, http.StatusFound)
+			return
+		}
 		s.statusPage(w, http.StatusNotFound, "网站不存在", "这个网站不存在或已被删除。")
 		return
 	}

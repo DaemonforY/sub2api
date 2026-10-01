@@ -97,6 +97,11 @@ type Site struct {
 	URL            string     `json:"url"`
 	// PreviewURL opens the pending version (owner and admins only).
 	PreviewURL string `json:"preview_url,omitempty"`
+	// PreviousName redirects to this site for siteNameHold after a rename (and stays reserved for it).
+	PreviousName string     `json:"previous_name,omitempty"`
+	RenamedAt    *time.Time `json:"renamed_at,omitempty"`
+	// RenameAfter is when the owner may rename again (absent: now).
+	RenameAfter *time.Time `json:"rename_after,omitempty"`
 }
 
 type SiteCharge struct {
@@ -151,6 +156,11 @@ type SiteHostingRepository interface {
 	AddDailyStats(ctx context.Context, stats []SiteDailyStat) error
 	ListDailyStats(ctx context.Context, siteID int64, since time.Time) ([]SiteDailyStat, error)
 	SetSiteTitle(ctx context.Context, id int64, title string) error
+	// SiteNameTaken: another site uses the name, or held it as its previous name since holdSince.
+	SiteNameTaken(ctx context.Context, name string, exceptSiteID int64, holdSince time.Time) (bool, error)
+	// RenameSite keeps the old name as previous_name; ErrSiteNameTaken on a unique violation.
+	RenameSite(ctx context.Context, id int64, name string, at time.Time) error
+	GetSiteByPreviousName(ctx context.Context, name string, holdSince time.Time) (*Site, error)
 	SetSiteStatus(ctx context.Context, id int64, status, reason string) error
 	SetSiteFree(ctx context.Context, id int64) error
 	SetLapsedAt(ctx context.Context, userID int64, at *time.Time) error
@@ -327,6 +337,11 @@ func (s *SiteHostingService) decorate(sites []Site) []Site {
 
 func (s *SiteHostingService) decorateOne(site *Site) {
 	site.URL = s.siteURL(site.Name)
+	if site.RenamedAt != nil {
+		if next := site.RenamedAt.Add(siteRenameCooldown); next.After(s.now()) {
+			site.RenameAfter = &next
+		}
+	}
 	if site.PendingVersion > 0 {
 		site.PreviewURL = s.PreviewURL(site.Name, site.ID, site.PendingVersion)
 	}
@@ -398,7 +413,9 @@ func (s *SiteHostingService) Mine(ctx context.Context, userID int64) (*MySites, 
 
 // SiteUpload is a new version: the uploaded file (optional when only the title changes) and a title.
 type SiteUpload struct {
-	Title    string
+	Title string
+	// Name is the chosen site name ("" picks a random one); only used when creating.
+	Name     string
 	FileName string
 	Data     []byte
 }
@@ -452,14 +469,24 @@ func (s *SiteHostingService) Create(ctx context.Context, userID int64, up SiteUp
 		return nil, err
 	}
 	site := &Site{UserID: userID, Title: cleanSiteTitle(up.Title), Status: SiteStatusActive, Paid: paid}
-	for attempt := 0; ; attempt++ {
-		site.Name = randomSiteName()
-		if err = s.repo.CreateSite(ctx, site); err == nil || attempt >= 4 {
-			break
+	if up.Name != "" {
+		site.Name = normalizeSiteName(up.Name)
+		if err := s.checkNameFree(ctx, site.Name, 0); err != nil {
+			return nil, err
 		}
-	}
-	if err != nil {
-		return nil, err
+		if err := s.repo.CreateSite(ctx, site); err != nil {
+			return nil, err
+		}
+	} else {
+		for attempt := 0; ; attempt++ {
+			site.Name = randomSiteName()
+			if err = s.repo.CreateSite(ctx, site); err == nil || attempt >= 4 {
+				break
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 	if err := s.publish(ctx, site, files); err != nil {
 		_ = s.remove(ctx, site)

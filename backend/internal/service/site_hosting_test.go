@@ -106,6 +106,10 @@ func (r *serveRepo) GetSiteByName(_ context.Context, name string) (*Site, error)
 	return r.sites[name], nil
 }
 
+func (r *serveRepo) GetSiteByPreviousName(context.Context, string, time.Time) (*Site, error) {
+	return nil, nil
+}
+
 func TestServeSite(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "5", "v2")
@@ -320,4 +324,17 @@ func TestSiteStatsCollector(t *testing.T) {
 	c.record(1, "a", true, 10)
 	require.Equal(t, int64(1), c.drain()[0].Visitors, "a new day counts visitors again")
 	require.Empty(t, c.drain())
+}
+
+func TestValidateSiteName(t *testing.T) {
+	for _, ok := range []string{"abc", "my-page", "shop2026", "a1-b2-c3", "abcdefghijklmnopqrstuvwxyz1234"} {
+		require.NoError(t, validateSiteName(ok), ok)
+	}
+	for _, bad := range []string{"ab", "1abc", "-abc", "abc-", "a--b", "my_page", "我的", "abcdefghijklmnopqrstuvwxyz12345", "My-Page"} {
+		require.ErrorIs(t, validateSiteName(bad), ErrSiteNameInvalid, bad)
+	}
+	for _, reserved := range []string{"www", "admin", "hivegpt", "my-hivegpt-shop", "alipay-login", "bank-of-x", "police-notice"} {
+		require.ErrorIs(t, validateSiteName(reserved), ErrSiteNameReserved, reserved)
+	}
+	require.Equal(t, "my-page", normalizeSiteName("  My-Page "))
 }
