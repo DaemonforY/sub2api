@@ -5,6 +5,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -86,7 +87,9 @@ func (m *memCanvasSessions) ListCanvasSessions(_ context.Context, userID int64, 
 	return out, nil
 }
 
-func (m *memCanvasSessions) TrimCanvasSessions(context.Context, int64, int, time.Time) error { return nil }
+func (m *memCanvasSessions) TrimCanvasSessions(context.Context, int64, int, time.Time) error {
+	return nil
+}
 
 type canvasUsers struct{ users map[int64]*service.User }
 
@@ -103,6 +106,24 @@ func (canvasSubs) ListActiveByUserID(context.Context, int64) ([]service.UserSubs
 	return []service.UserSubscription{{Status: service.SubscriptionStatusActive, ExpiresAt: time.Now().Add(48 * time.Hour), Group: &service.Group{Name: "畅享版"}}}, nil
 }
 
+type canvasSettings struct {
+	service.SettingRepository
+	values map[string]string
+}
+
+func (s canvasSettings) GetValue(_ context.Context, key string) (string, error) {
+	if v, ok := s.values[key]; ok {
+		return v, nil
+	}
+	return "", errors.New("setting not found")
+}
+
+type canvasAffiliates struct{ service.AffiliateRepository }
+
+func (canvasAffiliates) EnsureUserAffiliate(_ context.Context, userID int64) (*service.AffiliateSummary, error) {
+	return &service.AffiliateSummary{UserID: userID, AffCode: "ALICE2024"}, nil
+}
+
 const canvasOrigin = "https://canvas.example.test"
 
 func newCanvasTestRouter(t *testing.T) (*gin.Engine, *memCanvasSessions, *service.User) {
@@ -110,7 +131,9 @@ func newCanvasTestRouter(t *testing.T) (*gin.Engine, *memCanvasSessions, *servic
 	gin.SetMode(gin.TestMode)
 	user := &service.User{ID: 7, Email: "alice@example.com", Username: "alice", Balance: 12.5, Status: service.StatusActive, Role: "user"}
 	repo := &memCanvasSessions{byHash: map[string]*service.CanvasSession{}}
-	h := NewCanvasSessionHandler(service.NewCanvasSessionService(repo, canvasUsers{users: map[int64]*service.User{7: user}}, canvasSubs{}), nil)
+	settings := service.NewSettingService(canvasSettings{values: map[string]string{service.SettingKeyAffiliateEnabled: "true"}}, &config.Config{})
+	affiliates := service.NewAffiliateService(canvasAffiliates{}, settings, nil, nil)
+	h := NewCanvasSessionHandler(service.NewCanvasSessionService(repo, canvasUsers{users: map[int64]*service.User{7: user}}, canvasSubs{}), affiliates)
 	r := gin.New()
 	r.Use(middleware.CORS(config.CORSConfig{AllowedOrigins: []string{canvasOrigin}}))
 	// Stand-in for the panel JWT: the connect popup is signed in as user 7.
@@ -168,6 +191,7 @@ func TestCanvasSessionSignInMeAndLogout(t *testing.T) {
 	require.InDelta(t, 12.5, body.Data.Balance, 1e-9)
 	require.Len(t, body.Data.Subscriptions, 1)
 	require.Equal(t, "畅享版", body.Data.Subscriptions[0].GroupName)
+	require.Equal(t, "ALICE2024", body.Data.AffCode, "the canvas adds the invite code to shared links")
 
 	rec = httptest.NewRecorder()
 	r.ServeHTTP(rec, canvasRequest(http.MethodPost, "/api/v1/canvas/logout", token, nil))
