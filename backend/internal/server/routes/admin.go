@@ -194,6 +194,8 @@ func registerSiteHostingAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 		g.DELETE("/:id", h.Admin.SiteHosting.Delete)
 		g.GET("/reports", h.Admin.SiteHosting.Reports)
 		g.PUT("/reports/:id", h.Admin.SiteHosting.SetReportStatus)
+		g.GET("/reviews", h.Admin.SiteHosting.Reviews)
+		g.POST("/:id/review", h.Admin.SiteHosting.Review)
 	}
 }
 

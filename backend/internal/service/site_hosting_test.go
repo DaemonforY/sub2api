@@ -16,6 +16,7 @@ import (
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type zipEntry struct {
@@ -128,7 +129,7 @@ func TestServeSite(t *testing.T) {
 			m = method[0]
 		}
 		w := httptest.NewRecorder()
-		svc.ServeSite(w, httptest.NewRequest(m, path, nil), name)
+		svc.ServeSite(w, httptest.NewRequest(m, path, nil), name, "203.0.113.1")
 		return w
 	}
 
@@ -172,4 +173,151 @@ func TestRandomSiteNamesAreValid(t *testing.T) {
 		require.Regexp(t, `^[a-z][a-z0-9]{6}$`, name)
 		require.True(t, siteNameRe.MatchString(name))
 	}
+}
+
+func TestCheckSiteContentFlagsRiskyPages(t *testing.T) {
+	page := func(body string) []siteFile {
+		return []siteFile{{Path: "index.html", Data: []byte("<html><head><title>T</title><style>.x{}</style></head><body>" + body + "<script>var a='博彩'</script></body></html>")}}
+	}
+	flags, excerpt, risky := checkSiteContent(page("<h1>我的作品集</h1><p>欢迎来到我的主页</p>"))
+	require.False(t, risky, "%v", flags)
+	require.Contains(t, excerpt, "我的作品集")
+	require.NotContains(t, excerpt, "博彩", "scripts are not page text")
+
+	cases := map[string]string{
+		"password_field":   `<form><input name="u"><input type="password" name="p"></form>`,
+		"card_or_id_field": `<input name="idcard" placeholder="身份证号">`,
+		"gambling:百家乐":     `<p>真钱百家乐，充值即送</p>`,
+		"brand_login:工商银行": `<h1>中国工商银行 账户安全中心</h1><p>请输入验证码完成身份验证</p>`,
+		"fraud:刷单":         `<p>在家刷单，日结</p>`,
+	}
+	for want, body := range cases {
+		flags, _, risky := checkSiteContent(page(body))
+		require.True(t, risky, want)
+		require.Contains(t, flags, want)
+	}
+	require.Equal(t, "疑似赌博、密码输入框", siteFlagSummary([]string{"gambling:x", "password_field", "gambling:y"}))
+}
+
+func TestSiteReviewModelDecides(t *testing.T) {
+	var verdict string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v1/chat/completions", r.URL.Path)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"{\"verdict\":\"` + verdict + `\",\"reason\":\"仿冒银行登录\"}"}}]}`))
+	}))
+	defer srv.Close()
+	settings := &siteSettingsStub{values: map[string]string{settingSitesReviewBaseURL: srv.URL + "/v1", settingSitesReviewModel: "m", settingSitesReviewAPIKey: "k"}}
+	svc := NewSiteHostingService(nil, nil, nil, settings, DefaultSiteHostingConfig("s.example.test"), t.TempDir(), "")
+	ctx := context.Background()
+	login := []siteFile{{Path: "index.html", Data: []byte(`<p>登录演示</p><input type="password">`)}}
+
+	verdict = "allow"
+	review := svc.reviewSite(ctx, svc.Config(ctx), login)
+	require.Equal(t, SiteReviewApproved, review.Status, "the model can clear a keyword false positive")
+	require.Equal(t, "model", review.By)
+	verdict = "review"
+	review = svc.reviewSite(ctx, svc.Config(ctx), []siteFile{{Path: "index.html", Data: []byte(`<p>hello</p>`)}})
+	require.Equal(t, SiteReviewPending, review.Status)
+	require.Contains(t, review.Reason, "仿冒银行登录")
+
+	settings.values[settingSitesReviewAll] = "true"
+	verdict = "allow"
+	svc.cfg = nil
+	review = svc.reviewSite(ctx, svc.Config(ctx), []siteFile{{Path: "index.html", Data: []byte(`<p>hello</p>`)}})
+	require.Equal(t, SiteReviewPending, review.Status, "review-all queues everything")
+}
+
+type siteSettingsStub struct{ values map[string]string }
+
+func (s *siteSettingsStub) GetMultiple(_ context.Context, keys []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, k := range keys {
+		out[k] = s.values[k]
+	}
+	return out, nil
+}
+func (s *siteSettingsStub) SetMultiple(_ context.Context, values map[string]string) error {
+	for k, v := range values {
+		s.values[k] = v
+	}
+	return nil
+}
+
+func TestSitePasswordGateAndPreview(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, writeSiteFiles(filepath.Join(dir, "5", "v1"), []siteFile{{Path: "index.html", Data: []byte("<body>online</body>")}}))
+	require.NoError(t, writeSiteFiles(filepath.Join(dir, "5", "v2"), []siteFile{{Path: "index.html", Data: []byte("<body>pending</body>")}}))
+	hash, _ := bcrypt.GenerateFromPassword([]byte("open-sesame"), bcrypt.MinCost)
+	site := &Site{ID: 5, Name: "abc1234", Status: SiteStatusActive, Version: 1, PendingVersion: 2, PasswordHash: string(hash), UpdatedAt: time.Now()}
+	svc := NewSiteHostingService(&serveRepo{sites: map[string]*Site{"abc1234": site}}, nil, nil, nil, DefaultSiteHostingConfig("s.example.test"), dir, "https://hivegpt.cn").WithSecret("k")
+	serve := func(req *http.Request) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		svc.ServeSite(w, req, "abc1234", "198.51.100.7")
+		return w
+	}
+
+	w := serve(httptest.NewRequest(http.MethodGet, "/docs/", nil))
+	require.Equal(t, http.StatusUnauthorized, w.Code)
+	require.Contains(t, w.Body.String(), "需要访问密码")
+	require.Contains(t, w.Body.String(), `value="/docs/"`)
+
+	form := func(pw string) *http.Request {
+		req := httptest.NewRequest(http.MethodPost, siteUnlockPath, strings.NewReader("password="+pw+"&next=/"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		return req
+	}
+	require.Contains(t, serve(form("wrong")).Body.String(), "密码不正确")
+	w = serve(form("open-sesame"))
+	require.Equal(t, http.StatusSeeOther, w.Code)
+	cookie := w.Result().Cookies()[0]
+	require.Equal(t, siteAuthCookie, cookie.Name)
+	require.True(t, cookie.HttpOnly)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(cookie)
+	w = serve(req)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), "online")
+
+	// Changing the password logs visitors out.
+	hash2, _ := bcrypt.GenerateFromPassword([]byte("other-pass"), bcrypt.MinCost)
+	site.PasswordHash = string(hash2)
+	require.Equal(t, http.StatusUnauthorized, serve(req).Code)
+
+	// Too many wrong passwords from one visitor are refused.
+	for i := 0; i < siteUnlockAttempts; i++ {
+		serve(form("nope"))
+	}
+	require.Contains(t, serve(form("other-pass")).Body.String(), "尝试次数太多")
+
+	// A signed preview link shows the pending version (no password, no caching) and remembers it.
+	preview := strings.TrimPrefix(svc.PreviewURL("abc1234", 5, 2), "https://abc1234.s.example.test")
+	w = serve(httptest.NewRequest(http.MethodGet, preview, nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Contains(t, w.Body.String(), "pending")
+	require.Contains(t, w.Body.String(), "预览：第 2 版")
+	require.Equal(t, "no-store", w.Header().Get("Cache-Control"))
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(w.Result().Cookies()[0])
+	require.Contains(t, serve(req).Body.String(), "pending")
+	require.Equal(t, http.StatusUnauthorized, serve(httptest.NewRequest(http.MethodGet, "/?"+sitePreviewParam+"=2.9999999999.forged", nil)).Code)
+}
+
+func TestSiteStatsCollector(t *testing.T) {
+	now := time.Date(2026, 10, 2, 10, 0, 0, 0, time.Local)
+	c := newSiteStatsCollector(func() time.Time { return now })
+	c.record(1, "a", true, 100)
+	c.record(1, "a", true, 100)
+	c.record(1, "b", true, 100)
+	c.record(1, "b", false, 50)
+	got := c.drain()
+	require.Len(t, got, 1)
+	require.Equal(t, int64(3), got[0].Views)
+	require.Equal(t, int64(2), got[0].Visitors)
+	require.Equal(t, int64(350), got[0].Bytes)
+	c.record(1, "a", true, 10)
+	require.Equal(t, int64(0), c.drain()[0].Visitors, "the same visitor is counted once a day")
+	now = now.Add(24 * time.Hour)
+	c.record(1, "a", true, 10)
+	require.Equal(t, int64(1), c.drain()[0].Visitors, "a new day counts visitors again")
+	require.Empty(t, c.drain())
 }

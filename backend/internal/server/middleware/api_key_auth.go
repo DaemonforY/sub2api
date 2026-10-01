@@ -175,7 +175,9 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			isContestKeyEntrySubmission(c.Request.Method, c.Request.URL.Path) || strings.HasPrefix(c.Request.URL.Path, "/api/v1/app-state/") ||
 			strings.HasPrefix(c.Request.URL.Path, "/api/v1/prompt-library/") ||
 			// Image tools bill the balance themselves after a run succeeds (subscribers get free runs).
-			strings.HasPrefix(c.Request.URL.Path, "/api/v1/image-tools/")
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/image-tools/") ||
+			// Site hosting bills the balance itself (extra sites) and checks the subscription.
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/hosting/")
 
 		// ── 4. SimpleMode → early return ─────────────────────────────
 

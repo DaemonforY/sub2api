@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Serving the hosted sites at <name>.<domain>. Every response carries headers that keep the pages
@@ -89,9 +91,10 @@ func setSiteSecurityHeaders(h http.Header) {
 }
 
 // ServeSite answers a request for a hosted site (name "" = the bare hosting domain).
-func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, name string) {
+func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, name, clientIP string) {
 	setSiteSecurityHeaders(w.Header())
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+	unlock := r.URL.Path == siteUnlockPath
+	if r.Method != http.MethodGet && r.Method != http.MethodHead && !(unlock && r.Method == http.MethodPost) {
 		w.Header().Set("Allow", "GET, HEAD")
 		s.statusPage(w, http.StatusMethodNotAllowed, "不支持的请求", "托管的网站是静态网页，只支持浏览。")
 		return
@@ -105,20 +108,52 @@ func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, n
 		s.statusPage(w, http.StatusServiceUnavailable, "暂时无法访问", "请稍后刷新重试。")
 		return
 	}
-	if site == nil || site.Version == 0 {
+	if site == nil {
 		s.statusPage(w, http.StatusNotFound, "网站不存在", "这个网站不存在或已被删除。")
 		return
 	}
-	switch site.Status {
-	case SiteStatusActive:
-	case SiteStatusDisabled:
-		s.statusPage(w, http.StatusGone, "网站已下线", "该网站因违反使用规范已被下线。")
-		return
-	default:
-		s.statusPage(w, http.StatusServiceUnavailable, "网站已暂停", "站长的订阅已到期或未续费，网站暂时无法访问。")
+	// A signed preview link (review queue, the owner's pending upload) opens a version that is not
+	// online yet; it is remembered in a cookie so the page's own links keep working.
+	version := site.Version
+	preview := 0
+	if token := r.URL.Query().Get(sitePreviewParam); token != "" {
+		if preview = s.previewVersion(site, token); preview > 0 {
+			http.SetCookie(w, &http.Cookie{Name: sitePreviewCookie, Value: token, Path: "/", MaxAge: 3600, HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+		}
+	} else if c, err := r.Cookie(sitePreviewCookie); err == nil {
+		preview = s.previewVersion(site, c.Value)
+	}
+	if preview > 0 {
+		version = preview
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Robots-Tag", "noindex")
+	} else {
+		switch site.Status {
+		case SiteStatusActive:
+		case SiteStatusPending:
+			s.statusPage(w, http.StatusServiceUnavailable, "网站审核中", "这个网站刚刚发布，正在审核，通过后即可访问。")
+			return
+		case SiteStatusDisabled:
+			s.statusPage(w, http.StatusGone, "网站已下线", "该网站因违反使用规范已被下线。")
+			return
+		default:
+			s.statusPage(w, http.StatusServiceUnavailable, "网站已暂停", "站长的订阅已到期或未续费，网站暂时无法访问。")
+			return
+		}
+		if site.PasswordHash != "" && !s.unlocked(r, site) {
+			s.passwordGate(w, r, site, clientIP, unlock)
+			return
+		}
+	}
+	if version == 0 {
+		s.statusPage(w, http.StatusNotFound, "网站不存在", "这个网站还没有可以显示的内容。")
 		return
 	}
-	root := s.versionDir(site.ID, site.Version)
+	if unlock {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	root := s.versionDir(site.ID, version)
 	reqPath := path.Clean("/" + r.URL.Path)
 	file, redirect := resolveSiteFile(root, reqPath, strings.HasSuffix(r.URL.Path, "/"))
 	if redirect {
@@ -138,7 +173,81 @@ func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, n
 		}
 		status = http.StatusNotFound
 	}
-	s.serveFile(w, r, site, file, status)
+	s.serveFile(w, r, site, version, preview > 0, file, status, clientIP)
+}
+
+func (s *SiteHostingService) unlocked(r *http.Request, site *Site) bool {
+	c, err := r.Cookie(siteAuthCookie)
+	return err == nil && s.validAuthToken(site, c.Value)
+}
+
+const (
+	siteUnlockWindow   = 15 * time.Minute
+	siteUnlockAttempts = 10
+)
+
+// passwordGate shows the password form, or checks a submitted password (rate limited per visitor).
+func (s *SiteHostingService) passwordGate(w http.ResponseWriter, r *http.Request, site *Site, clientIP string, submit bool) {
+	message := ""
+	if submit && r.Method == http.MethodPost {
+		key := site.Name + "|" + clientIP
+		if !s.allowUnlockAttempt(key) {
+			message = "尝试次数太多，请 15 分钟后再试。"
+		} else if bcrypt.CompareHashAndPassword([]byte(site.PasswordHash), []byte(r.PostFormValue("password"))) == nil {
+			exp := s.now().Add(siteAuthTTL).Unix()
+			http.SetCookie(w, &http.Cookie{Name: siteAuthCookie, Value: s.authToken(site, exp), Path: "/", MaxAge: int(siteAuthTTL.Seconds()), HttpOnly: true,
+				Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteLaxMode})
+			next := r.PostFormValue("next")
+			if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, "/\\") {
+				next = "/"
+			}
+			http.Redirect(w, r, next, http.StatusSeeOther)
+			return
+		} else {
+			message = "密码不正确，请重试。"
+		}
+	}
+	next := r.URL.Path
+	if submit {
+		next = r.PostFormValue("next")
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/html; charset=utf-8")
+	h.Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusUnauthorized)
+	errHTML := ""
+	if message != "" {
+		errHTML = `<p style="color:#dc2626;margin:0 0 12px">` + html.EscapeString(message) + `</p>`
+	}
+	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>需要访问密码</title></head>`+
+		`<body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:#f5f5f4;color:#1c1917">`+
+		`<form method="post" action="%s" style="background:#fff;padding:28px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);width:min(340px,90vw)">`+
+		`<h1 style="font-size:20px;margin:0 0 8px">需要访问密码</h1><p style="margin:0 0 16px;color:#57534e">站长为这个网站设置了密码，请输入后访问。</p>%s`+
+		`<input type="hidden" name="next" value="%s"><input type="password" name="password" autofocus required placeholder="访问密码" style="box-sizing:border-box;width:100%%;padding:10px;border:1px solid #d6d3d1;border-radius:8px;font-size:15px">`+
+		`<button type="submit" style="margin-top:12px;width:100%%;padding:10px;border:0;border-radius:8px;background:#0d9488;color:#fff;font-size:15px;cursor:pointer">进入网站</button>`+
+		`<p style="margin:16px 0 0;font-size:12px;color:#78716c">由 HiveGPT 提供网站托管 · <a href="%s" style="color:#78716c">举报</a></p></form></body></html>`,
+		siteUnlockPath, errHTML, html.EscapeString(next), html.EscapeString(s.reportURL(site.Name)))
+}
+
+func (s *SiteHostingService) allowUnlockAttempt(key string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.unlockTries == nil || len(s.unlockTries) > 50000 {
+		s.unlockTries = map[string][]time.Time{}
+	}
+	now := s.now()
+	recent := s.unlockTries[key][:0]
+	for _, t := range s.unlockTries[key] {
+		if now.Sub(t) < siteUnlockWindow {
+			recent = append(recent, t)
+		}
+	}
+	if len(recent) >= siteUnlockAttempts {
+		s.unlockTries[key] = recent
+		return false
+	}
+	s.unlockTries[key] = append(recent, now)
+	return true
 }
 
 // resolveSiteFile maps a URL path to a file: /a/ → a/index.html, /a → a, a.html or (redirect) a/.
@@ -168,7 +277,7 @@ func resolveSiteFile(root, reqPath string, trailingSlash bool) (file string, red
 	return "", false
 }
 
-func (s *SiteHostingService) serveFile(w http.ResponseWriter, r *http.Request, site *Site, file string, status int) {
+func (s *SiteHostingService) serveFile(w http.ResponseWriter, r *http.Request, site *Site, version int, preview bool, file string, status int, clientIP string) {
 	ctype := SiteContentType(file)
 	if ctype == "" {
 		s.statusPage(w, http.StatusNotFound, "页面不存在", "这个网站里没有这个页面。")
@@ -181,11 +290,25 @@ func (s *SiteHostingService) serveFile(w http.ResponseWriter, r *http.Request, s
 	}
 	h := w.Header()
 	h.Set("Content-Type", ctype)
-	if strings.HasPrefix(ctype, "text/html") {
+	page := strings.HasPrefix(ctype, "text/html")
+	switch {
+	case preview:
+		if page {
+			data = injectSiteBadge(data, s.previewBadge(version))
+		}
+	case page:
 		data = injectSiteBadge(data, s.badge(site.Name))
 		h.Set("Cache-Control", "public, max-age=60")
-	} else {
+	case site.PasswordHash != "":
+		h.Set("Cache-Control", "private, max-age=300")
+	default:
 		h.Set("Cache-Control", "public, max-age=300")
+	}
+	if page && site.PasswordHash != "" && !preview {
+		h.Set("Cache-Control", "private, no-cache")
+	}
+	if !preview {
+		s.stats.record(site.ID, clientIP, page && status == http.StatusOK, len(data))
 	}
 	if status != http.StatusOK {
 		w.WriteHeader(status)
@@ -194,7 +317,7 @@ func (s *SiteHostingService) serveFile(w http.ResponseWriter, r *http.Request, s
 		}
 		return
 	}
-	h.Set("ETag", fmt.Sprintf(`"%d-%d-%x"`, site.ID, site.Version, len(data)))
+	h.Set("ETag", fmt.Sprintf(`"%d-%d-%x"`, site.ID, version, len(data)))
 	http.ServeContent(w, r, "", site.UpdatedAt.Truncate(time.Second), bytes.NewReader(data))
 }
 
@@ -206,6 +329,11 @@ func (s *SiteHostingService) badge(name string) []byte {
 	return []byte(`<a href="` + html.EscapeString(s.reportURL(name)) + `" target="_blank" rel="noopener" data-hivegpt-badge ` +
 		`style="all:initial;position:fixed;right:8px;bottom:8px;z-index:2147483647;font:12px/20px -apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;` +
 		`background:rgba(0,0,0,.55);color:#fff;padding:0 8px;border-radius:10px;text-decoration:none;cursor:pointer">由 HiveGPT 托管 · 举报</a>`)
+}
+
+func (s *SiteHostingService) previewBadge(version int) []byte {
+	return []byte(fmt.Sprintf(`<div data-hivegpt-badge style="all:initial;position:fixed;left:8px;top:8px;z-index:2147483647;font:13px/22px -apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;`+
+		`background:#d97706;color:#fff;padding:0 10px;border-radius:11px">预览：第 %d 版（未上线）</div>`, version))
 }
 
 // injectSiteBadge puts the badge right before the last </body> (or at the end).

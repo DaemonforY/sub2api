@@ -4,7 +4,7 @@
  */
 import { apiClient } from './client'
 
-export type SiteStatus = 'active' | 'disabled' | 'unpaid' | 'lapsed'
+export type SiteStatus = 'active' | 'disabled' | 'unpaid' | 'lapsed' | 'pending'
 
 export interface Site {
   id: number
@@ -15,6 +15,11 @@ export interface Site {
   status: SiteStatus
   status_reason: string
   version: number
+  /** Uploaded version waiting for review (0: none). */
+  pending_version: number
+  has_password: boolean
+  views_7d: number
+  views_total: number
   size_bytes: number
   file_count: number
   paid: boolean
@@ -23,6 +28,34 @@ export interface Site {
   created_at: string
   updated_at: string
   url: string
+  /** Opens the pending version (owner only). */
+  preview_url?: string
+}
+
+export interface SiteVersion {
+  version: number
+  size_bytes: number
+  file_count: number
+  review_status: 'approved' | 'pending' | 'rejected' | 'superseded'
+  review_reason: string
+  reviewed_by: string
+  created_at: string
+  current: boolean
+  available: boolean
+}
+
+export interface SiteDailyStat {
+  day: string
+  views: number
+  visitors: number
+  bytes: number
+}
+
+export interface SiteStats {
+  days: SiteDailyStat[]
+  views: number
+  visitors: number
+  bytes: number
 }
 
 export interface SiteCharge {
@@ -97,8 +130,31 @@ export async function renewSite(id: number): Promise<Site> {
   const { data } = await apiClient.post(`/sites/${id}/renew`)
   return data
 }
+export async function siteVersions(id: number): Promise<SiteVersion[]> {
+  const { data } = await apiClient.get(`/sites/${id}/versions`)
+  return data
+}
+export async function rollbackSite(id: number, version: number): Promise<Site> {
+  const { data } = await apiClient.post(`/sites/${id}/rollback`, { version })
+  return data
+}
+export async function setSitePassword(id: number, password: string): Promise<Site> {
+  const { data } = await apiClient.put(`/sites/${id}/password`, { password })
+  return data
+}
+export async function siteStats(id: number, days = 30): Promise<SiteStats> {
+  const { data } = await apiClient.get(`/sites/${id}/stats`, { params: { days } })
+  return data
+}
+
+/** Bar heights (0–100) for a stats chart, scaled to the busiest day. */
+export function statBars(days: SiteDailyStat[]): number[] {
+  const max = Math.max(1, ...days.map((d) => d.views))
+  return days.map((d) => Math.round((d.views / max) * 100))
+}
+
 export async function reportSite(input: { site: string; reason: SiteReportReason; detail: string; contact: string }): Promise<void> {
   await apiClient.post('/site-reports', input)
 }
 
-export default { mySites, createSite, updateSite, deleteSite, renewSite, reportSite }
+export default { mySites, createSite, updateSite, deleteSite, renewSite, reportSite, siteVersions, rollbackSite, setSitePassword, siteStats }

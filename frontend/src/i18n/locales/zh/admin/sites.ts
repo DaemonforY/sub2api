@@ -2,10 +2,10 @@ export default {
   sites: {
     title: '网站托管',
     description: '订阅用户发布的网站：查看和下线违规网站、处理访客举报、设置配额和价格。',
-    tabs: { sites: '网站', reports: '举报', settings: '设置' },
+    tabs: { sites: '网站', reviews: '审核', reports: '举报', settings: '设置' },
     search: '搜索网站名、名称或用户邮箱',
     allStatuses: '全部状态',
-    status: { active: '访问中', disabled: '已下线', unpaid: '欠费暂停', lapsed: '订阅到期暂停' },
+    status: { active: '访问中', disabled: '已下线', unpaid: '欠费暂停', lapsed: '订阅到期暂停', pending: '待审核' },
     columns: { site: '网站', owner: '用户', status: '状态', size: '大小 · 文件数', billing: '计费', updated: '更新时间' },
     free: '赠送',
     paidUntil: '付费至 {date}',
@@ -16,6 +16,17 @@ export default {
     disabled: '已下线',
     enabled: '已恢复上线',
     deleteConfirm: '删除 {url} 和它的全部文件，不能恢复。确定吗？',
+    reviews: {
+      version: '第 {version} 版',
+      preview: '预览',
+      approve: '通过',
+      reject: '不通过',
+      rejectPlaceholder: '原因（会显示给用户），例如：仿冒银行登录页',
+      approved: '已通过，网站已显示这个版本',
+      rejected: '已拒绝',
+      noText: '（页面没有可读的文字）',
+      empty: '没有待审核的网站'
+    },
     reports: {
       time: '时间',
       site: '网站',
@@ -38,6 +49,14 @@ export default {
       max_files: '单个网站文件数上限',
       grace_days: '订阅到期后保留天数',
       retention_days: '暂停后保留天数（之后删除）',
+      reviewTitle: '内容审核',
+      reviewHint: '每次上传都会自动检查：含有密码 / 银行卡输入框、赌博或色情字样、知名品牌加登录字样的页面会先进入「审核」等待人工处理，期间网站继续显示上一个版本。配置一个兼容 OpenAI 接口的模型后（例如本站网关 http://127.0.0.1:8080/v1 加管理员自己的 API Key），由模型阅读页面内容来判断，误判更少。',
+      reviewAll: '所有上传都需要人工审核',
+      reviewBaseUrl: '审核模型接口地址',
+      reviewModel: '审核模型',
+      reviewApiKey: '审核模型 API Key',
+      reviewKeyKeep: '已配置，留空不修改',
+      reviewKeyNone: '不填则只用关键词检查',
       saved: '已保存'
     }
   }

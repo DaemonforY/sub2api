@@ -2,10 +2,10 @@ export default {
   sites: {
     title: 'Site hosting',
     description: 'Sites published by subscribers: review and take down abusive sites, handle visitor reports, set quotas and prices.',
-    tabs: { sites: 'Sites', reports: 'Reports', settings: 'Settings' },
+    tabs: { sites: 'Sites', reviews: 'Review', reports: 'Reports', settings: 'Settings' },
     search: 'Search site name, title or user email',
     allStatuses: 'All statuses',
-    status: { active: 'Online', disabled: 'Taken down', unpaid: 'Paused (unpaid)', lapsed: 'Paused (subscription ended)' },
+    status: { active: 'Online', disabled: 'Taken down', unpaid: 'Paused (unpaid)', lapsed: 'Paused (subscription ended)', pending: 'In review' },
     columns: { site: 'Site', owner: 'User', status: 'Status', size: 'Size · files', billing: 'Billing', updated: 'Updated' },
     free: 'Included',
     paidUntil: 'Paid until {date}',
@@ -16,6 +16,17 @@ export default {
     disabled: 'Taken down',
     enabled: 'Back online',
     deleteConfirm: 'Delete {url} and all its files for good?',
+    reviews: {
+      version: 'version {version}',
+      preview: 'Preview',
+      approve: 'Approve',
+      reject: 'Reject',
+      rejectPlaceholder: 'Reason (shown to the owner), e.g. imitates a bank login page',
+      approved: 'Approved; the site now shows this version',
+      rejected: 'Rejected',
+      noText: '(no readable text on the pages)',
+      empty: 'Nothing waiting for review'
+    },
     reports: {
       time: 'Time',
       site: 'Site',
@@ -38,6 +49,14 @@ export default {
       max_files: 'Max files per site',
       grace_days: 'Days kept after a subscription ends',
       retention_days: 'Days kept while paused (then deleted)',
+      reviewTitle: 'Content review',
+      reviewHint: 'Every upload is checked: pages with password / card fields, gambling or adult wording, or a well-known brand next to login wording wait in Review for an admin, while the site keeps showing the previous version. With an OpenAI-compatible model configured (e.g. this gateway at http://127.0.0.1:8080/v1 with an admin API key) the model reads the pages and decides, with fewer false alarms.',
+      reviewAll: 'Every upload needs manual review',
+      reviewBaseUrl: 'Review model base URL',
+      reviewModel: 'Review model',
+      reviewApiKey: 'Review model API key',
+      reviewKeyKeep: 'Configured; leave empty to keep',
+      reviewKeyNone: 'Leave empty to use the keyword check only',
       saved: 'Saved'
     }
   }

@@ -83,7 +83,7 @@ func TestSiteHostingLifecycle(t *testing.T) {
 	w := httptest.NewRecorder()
 	name, ok := svc.SiteNameFromHost(free.Name + ".s.example.test")
 	require.True(t, ok)
-	svc.ServeSite(w, httptest.NewRequest(http.MethodGet, "/", nil), name)
+	svc.ServeSite(w, httptest.NewRequest(http.MethodGet, "/", nil), name, "203.0.113.1")
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Contains(t, w.Body.String(), "v5")
 	require.True(t, svc.KnownSite(ctx, free.Name+".s.example.test"))
@@ -158,5 +158,119 @@ func TestSiteHostingLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(1), total)
 	require.Equal(t, "钓鱼页面", list[0].StatusReason)
+	require.NoError(t, svc.AdminDelete(ctx, site.ID))
+}
+
+func TestSiteHostingReviewVersionsAndStats(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "sites-rv-" + suffix + "@test.local", Username: "sr" + suffix[len(suffix)-6:]})
+	repo := NewSiteHostingRepository(integrationDB)
+	dir := t.TempDir()
+	svc := service.NewSiteHostingService(repo, &siteSubs{active: map[int64]bool{user.ID: true}}, nil, nil, service.DefaultSiteHostingConfig("s.example.test"), dir, "https://hivegpt.cn").WithSecret("k")
+	page := func(body string) service.SiteUpload {
+		return service.SiteUpload{FileName: "index.html", Data: []byte("<html><body>" + body + "</body></html>")}
+	}
+	serve := func(name string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		svc.ServeSite(w, httptest.NewRequest(http.MethodGet, "/", nil), name, "198.51.100.1")
+		return w
+	}
+	get := func(id int64) *service.Site {
+		site, err := repo.GetSite(ctx, id)
+		require.NoError(t, err)
+		return site
+	}
+
+	// A login-looking page waits for review: visitors see "审核中", the queue shows what was found.
+	site, err := svc.Create(ctx, user.ID, page(`<h1>支付宝 账户登录</h1><input type="password">`))
+	require.NoError(t, err)
+	require.Equal(t, service.SiteStatusPending, site.Status)
+	require.Equal(t, 1, site.PendingVersion)
+	require.NotEmpty(t, site.PreviewURL)
+	require.Contains(t, serve(site.Name).Body.String(), "网站审核中")
+	items, _, err := svc.AdminReviews(ctx, 1, 100)
+	require.NoError(t, err)
+	var found *service.SiteReviewItem
+	for i := range items {
+		if items[i].SiteID == site.ID {
+			found = &items[i]
+		}
+	}
+	require.NotNil(t, found)
+	require.Contains(t, found.Flags, "password_field")
+	require.Contains(t, found.Excerpt, "账户登录")
+	require.Equal(t, user.Email, found.OwnerEmail)
+	require.NoError(t, svc.AdminApprove(ctx, site.ID, 1))
+	got := get(site.ID)
+	require.Equal(t, service.SiteStatusActive, got.Status)
+	require.Equal(t, 1, got.Version)
+	require.Zero(t, got.PendingVersion)
+	require.Contains(t, serve(site.Name).Body.String(), "账户登录")
+
+	// A clean update goes online at once; a risky one waits while the previous version stays up.
+	_, err = svc.Update(ctx, user.ID, site.ID, page("v2 作品集"))
+	require.NoError(t, err)
+	require.Equal(t, 2, get(site.ID).Version)
+	_, err = svc.Update(ctx, user.ID, site.ID, page("真钱百家乐"))
+	require.NoError(t, err)
+	got = get(site.ID)
+	require.Equal(t, 2, got.Version)
+	require.Equal(t, 3, got.PendingVersion)
+	require.Contains(t, serve(site.Name).Body.String(), "v2 作品集")
+	require.ErrorIs(t, svc.AdminApprove(ctx, site.ID, 2), service.ErrSiteNothingToReview)
+	require.NoError(t, svc.AdminReject(ctx, site.ID, 3, "赌博内容"))
+	got = get(site.ID)
+	require.Zero(t, got.PendingVersion)
+	require.Equal(t, service.SiteStatusActive, got.Status)
+	require.Contains(t, got.StatusReason, "赌博内容")
+	_, err = os.Stat(filepath.Join(dir, fmt.Sprint(site.ID), "v3"))
+	require.True(t, os.IsNotExist(err), "rejected files are removed")
+
+	// History and rollback: only approved versions still on disk can come back.
+	versions, err := svc.Versions(ctx, user.ID, site.ID)
+	require.NoError(t, err)
+	require.Equal(t, []int{3, 2, 1}, []int{versions[0].Version, versions[1].Version, versions[2].Version})
+	require.Equal(t, service.SiteReviewRejected, versions[0].ReviewStatus)
+	require.True(t, versions[1].Current)
+	_, err = svc.Rollback(ctx, user.ID, site.ID, 3)
+	require.Error(t, err)
+	rolled, err := svc.Rollback(ctx, user.ID, site.ID, 1)
+	require.NoError(t, err)
+	require.Equal(t, 1, rolled.Version)
+	require.Contains(t, serve(site.Name).Body.String(), "账户登录")
+	_, err = svc.Update(ctx, user.ID, site.ID, page("v4"))
+	require.NoError(t, err)
+	require.Equal(t, 4, get(site.ID).Version, "new uploads continue after the newest version")
+
+	// Access password.
+	withPw, err := svc.SetPassword(ctx, user.ID, site.ID, "secret-1")
+	require.NoError(t, err)
+	require.True(t, withPw.HasPassword)
+	require.Equal(t, http.StatusUnauthorized, serve(site.Name).Code)
+	_, err = svc.SetPassword(ctx, user.ID, site.ID, "abc")
+	require.ErrorIs(t, err, service.ErrSitePasswordInvalid)
+	noPw, err := svc.SetPassword(ctx, user.ID, site.ID, "")
+	require.NoError(t, err)
+	require.False(t, noPw.HasPassword)
+
+	// Visits are counted and stored per day (the pages served above count too).
+	svc.FlushStats(ctx)
+	before, err := svc.Stats(ctx, user.ID, site.ID, 7)
+	require.NoError(t, err)
+	for i := 0; i < 3; i++ {
+		require.Equal(t, http.StatusOK, serve(site.Name).Code)
+	}
+	svc.FlushStats(ctx)
+	svc.FlushStats(ctx)
+	stats, err := svc.Stats(ctx, user.ID, site.ID, 7)
+	require.NoError(t, err)
+	require.Len(t, stats.Days, 7)
+	require.Equal(t, before.Views+3, stats.Views)
+	require.Equal(t, int64(1), stats.Visitors, "one visitor, however many pages")
+	require.Equal(t, stats.Views, stats.Days[6].Views, "today is the last day")
+	mine, err := svc.Mine(ctx, user.ID)
+	require.NoError(t, err)
+	require.Equal(t, stats.Views, mine.Sites[0].Views7d)
 	require.NoError(t, svc.AdminDelete(ctx, site.ID))
 }

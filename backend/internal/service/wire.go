@@ -636,6 +636,9 @@ func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscription
 		store = settings
 	}
 	svc := NewSiteHostingService(repo, subs, balanceCache, store, DefaultSiteHostingConfig(domain), dir, mainSite)
+	if cfg != nil {
+		svc.WithSecret(cfg.JWT.Secret)
+	}
 	if svc.Domain() != "" {
 		svc.Start()
 	}

@@ -3,7 +3,7 @@
     <div class="space-y-4">
       <div class="flex gap-2">
         <button v-for="name in tabs" :key="name" :class="['btn btn-sm', tab === name ? 'btn-primary' : 'btn-secondary']" @click="switchTab(name)">
-          {{ t(`admin.sites.tabs.${name}`) }}<span v-if="name === 'reports' && openReports" class="ml-1">({{ openReports }})</span>
+          {{ t(`admin.sites.tabs.${name}`) }}<span v-if="name === 'reports' && openReports" class="ml-1">({{ openReports }})</span><span v-if="name === 'reviews' && pendingReviews" class="ml-1">({{ pendingReviews }})</span>
         </button>
       </div>
 
@@ -55,6 +55,29 @@
           </table>
         </div>
         <Pagination v-if="sitesTotal > pageSize" :page="sitesPage" :total="sitesTotal" :page-size="pageSize" @update:page="(p: number) => { sitesPage = p; loadSites() }" />
+      </template>
+
+      <template v-else-if="tab === 'reviews'">
+        <div v-for="item in reviewItems" :key="`${item.site_id}-${item.version}`" class="card space-y-3 p-4" data-testid="review-item">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white">{{ item.title || item.site_name }} · {{ t('admin.sites.reviews.version', { version: item.version }) }}</div>
+              <div class="text-xs text-gray-500">{{ item.owner_email }} · {{ formatDateTime(item.created_at) }} · {{ formatBytes(item.size_bytes, 1) }} · {{ t(`admin.sites.status.${item.site_status}`) }}</div>
+              <div v-if="item.reason" class="mt-1 text-sm text-amber-700 dark:text-amber-300">{{ item.reason }}</div>
+              <div v-if="item.flags.length" class="mt-1 flex flex-wrap gap-1">
+                <span v-for="flag in item.flags" :key="flag" class="badge badge-gray">{{ flag }}</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a :href="item.preview_url" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{{ t('admin.sites.reviews.preview') }}</a>
+              <button class="btn btn-success btn-sm" @click="approve(item)">{{ t('admin.sites.reviews.approve') }}</button>
+              <button class="btn btn-danger btn-sm" @click="openReject(item)">{{ t('admin.sites.reviews.reject') }}</button>
+            </div>
+          </div>
+          <pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-300">{{ item.excerpt || t('admin.sites.reviews.noText') }}</pre>
+        </div>
+        <div v-if="!reviewItems.length" class="card p-10 text-center text-sm text-gray-500">{{ t('admin.sites.reviews.empty') }}</div>
+        <Pagination v-if="reviewsTotal > pageSize" :page="reviewsPage" :total="reviewsTotal" :page-size="pageSize" @update:page="(p: number) => { reviewsPage = p; loadReviews() }" />
       </template>
 
       <template v-else-if="tab === 'reports'">
@@ -114,9 +137,41 @@
             <input v-model.number="settings[field.key]" type="number" :min="field.min" :max="field.max" :step="field.step" class="input" />
           </div>
         </div>
+        <div class="space-y-3 border-t border-gray-100 pt-4 dark:border-dark-700">
+          <div class="font-medium text-gray-900 dark:text-white">{{ t('admin.sites.settings.reviewTitle') }}</div>
+          <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('admin.sites.settings.reviewHint') }}</p>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="settings.review_all" />
+            {{ t('admin.sites.settings.reviewAll') }}
+          </label>
+          <div class="grid gap-4 md:grid-cols-3">
+            <div>
+              <label class="input-label">{{ t('admin.sites.settings.reviewBaseUrl') }}</label>
+              <input v-model="settings.review_base_url" class="input" placeholder="http://127.0.0.1:8080/v1" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.sites.settings.reviewModel') }}</label>
+              <input v-model="settings.review_model" class="input" placeholder="gpt-5-mini" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.sites.settings.reviewApiKey') }}</label>
+              <input v-model="reviewKey" type="password" autocomplete="new-password" class="input" :placeholder="settings.review_api_key_configured ? t('admin.sites.settings.reviewKeyKeep') : t('admin.sites.settings.reviewKeyNone')" />
+            </div>
+          </div>
+        </div>
         <button class="btn btn-primary" :disabled="saving" @click="saveSettings">{{ t('common.save') }}</button>
       </div>
     </div>
+
+    <BaseDialog :show="!!rejecting" :title="t('admin.sites.reviews.reject')" width="narrow" @close="rejecting = null">
+      <input v-model="rejectReason" class="input" maxlength="200" :placeholder="t('admin.sites.reviews.rejectPlaceholder')" />
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button class="btn btn-secondary" @click="rejecting = null">{{ t('common.cancel') }}</button>
+          <button class="btn btn-danger" @click="reject">{{ t('admin.sites.reviews.reject') }}</button>
+        </div>
+      </template>
+    </BaseDialog>
 
     <BaseDialog :show="!!disabling" :title="t('admin.sites.actions.disable')" width="narrow" @close="disabling = null">
       <div class="space-y-2">
@@ -157,14 +212,14 @@ import { adminAPI } from '@/api/admin'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatBytes, formatDateOnly, formatDateTime } from '@/utils/format'
 import type { Site } from '@/api/sites'
-import type { SiteHostingSettings, SiteReport } from '@/api/admin/sites'
+import type { SiteHostingSettings, SiteReport, SiteReviewItem } from '@/api/admin/sites'
 
-type Tab = 'sites' | 'reports' | 'settings'
-type NumberKey = Exclude<keyof SiteHostingSettings, 'domain' | 'enabled'>
+type Tab = 'sites' | 'reviews' | 'reports' | 'settings'
+type NumberKey = 'max_per_user' | 'max_mb' | 'max_files' | 'free_per_user' | 'extra_price' | 'grace_days' | 'retention_days'
 
 const { t } = useI18n()
 const appStore = useAppStore()
-const tabs: Tab[] = ['sites', 'reports', 'settings']
+const tabs: Tab[] = ['sites', 'reviews', 'reports', 'settings']
 const tab = ref<Tab>('sites')
 const pageSize = 20
 
@@ -182,6 +237,13 @@ const saving = ref(false)
 const disabling = ref<Site | null>(null)
 const disableReason = ref('')
 const confirmDelete = ref<Site | null>(null)
+const reviewItems = ref<SiteReviewItem[]>([])
+const reviewsTotal = ref(0)
+const reviewsPage = ref(1)
+const pendingReviews = ref(0)
+const rejecting = ref<SiteReviewItem | null>(null)
+const rejectReason = ref('')
+const reviewKey = ref('')
 
 const numberFields: { key: NumberKey; min: number; max: number; step: number }[] = [
   { key: 'max_per_user', min: 1, max: 50, step: 1 },
@@ -192,7 +254,7 @@ const numberFields: { key: NumberKey; min: number; max: number; step: number }[]
   { key: 'grace_days', min: 0, max: 365, step: 1 },
   { key: 'retention_days', min: 0, max: 365, step: 1 }
 ]
-const statusOptions = computed(() => [{ value: '', label: t('admin.sites.allStatuses') }, ...['active', 'disabled', 'unpaid', 'lapsed'].map((value) => ({ value, label: t(`admin.sites.status.${value}`) }))])
+const statusOptions = computed(() => [{ value: '', label: t('admin.sites.allStatuses') }, ...['active', 'pending', 'disabled', 'unpaid', 'lapsed'].map((value) => ({ value, label: t(`admin.sites.status.${value}`) }))])
 const reportStatusOptions = computed(() => ['open', 'resolved', 'dismissed', ''].map((value) => ({ value, label: value ? t(`admin.sites.reports.statuses.${value}`) : t('admin.sites.allStatuses') })))
 
 function showError(error: unknown) {
@@ -236,6 +298,45 @@ function switchTab(name: Tab) {
   tab.value = name
   if (name === 'sites') void loadSites()
   if (name === 'reports') void loadReports()
+  if (name === 'reviews') void loadReviews()
+}
+
+async function loadReviews() {
+  try {
+    const res = await adminAPI.sites.reviews({ page: reviewsPage.value, page_size: pageSize })
+    reviewItems.value = res.items
+    reviewsTotal.value = pendingReviews.value = res.total
+  } catch (error) {
+    showError(error)
+  }
+}
+
+async function approve(item: SiteReviewItem) {
+  try {
+    await adminAPI.sites.review(item.site_id, item.version, 'approve')
+    appStore.showSuccess(t('admin.sites.reviews.approved'))
+    await loadReviews()
+  } catch (error) {
+    showError(error)
+  }
+}
+
+function openReject(item: SiteReviewItem) {
+  rejecting.value = item
+  rejectReason.value = ''
+}
+
+async function reject() {
+  const item = rejecting.value
+  rejecting.value = null
+  if (!item) return
+  try {
+    await adminAPI.sites.review(item.site_id, item.version, 'reject', rejectReason.value)
+    appStore.showSuccess(t('admin.sites.reviews.rejected'))
+    await loadReviews()
+  } catch (error) {
+    showError(error)
+  }
 }
 
 function openDisable(site: Site) {
@@ -303,7 +404,8 @@ async function saveSettings() {
   if (!settings.value) return
   saving.value = true
   try {
-    settings.value = await adminAPI.sites.saveSettings(settings.value)
+    settings.value = await adminAPI.sites.saveSettings({ ...settings.value, review_api_key: reviewKey.value || undefined })
+    reviewKey.value = ''
     appStore.showSuccess(t('admin.sites.settings.saved'))
   } catch (error) {
     showError(error)
@@ -321,6 +423,7 @@ onMounted(async () => {
   await Promise.all([loadSites(), (async () => {
     try {
       openReports.value = (await adminAPI.sites.reports({ status: 'open', page: 1, page_size: 1 })).total
+      pendingReviews.value = (await adminAPI.sites.reviews({ page: 1, page_size: 1 })).total
     } catch {
       openReports.value = 0
     }

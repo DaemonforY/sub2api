@@ -37,8 +37,47 @@ export default {
     free: 'Included',
     paidUntil: 'Paid until {date}',
     meta: '{size} · {files} files · version {version} · updated {time}',
-    status: { active: 'Online', disabled: 'Taken down', unpaid: 'Paused (unpaid)', lapsed: 'Paused (subscription ended)' },
-    actions: { copy: 'Copy link', update: 'Update', renew: 'Renew ¥{price}', delete: 'Delete' },
+    locked: 'Password',
+    pendingReview: 'Version {version} in review',
+    preview: 'Preview',
+    views: '{week} visits in 7 days, {total} in total',
+    versions: {
+      title: 'Versions',
+      version: 'Version',
+      time: 'Uploaded',
+      review: 'Review',
+      label: 'Version {version}',
+      current: 'Current',
+      rollback: 'Go back to this version',
+      rolledBack: 'Back to version {version}',
+      cleaned: 'Cleaned up',
+      statuses: { approved: 'Approved', pending: 'In review', rejected: 'Rejected', superseded: 'Replaced' },
+      hint: 'Every upload is a new version. The files of the last 3 versions are kept and you can go back to any approved one.'
+    },
+    password: {
+      title: 'Access password',
+      hintOff: 'Visitors must enter the password to open the site; good for sharing with a few people.',
+      hintOn: 'The site has a password. Enter a new one to change it (visitors then enter it again), or remove it.',
+      placeholder: '4–64 characters',
+      remove: 'Remove password',
+      saved: 'Password set',
+      removed: 'Password removed'
+    },
+    stats: {
+      title: 'Visits: {name}',
+      views: 'Visits (30 days)',
+      visitors: 'Visitors (by IP, per day)',
+      traffic: 'Traffic',
+      hint: 'Page views, updated every minute; previews and blocked requests are not counted.'
+    },
+    api: {
+      title: 'Publish with the API',
+      hint: 'Publish or update sites with an API key, e.g. from scripts or AI agents. Same rules and quota as here; the returned url is the site address. Update with PUT /hosting/sites/SITE_ID.',
+      keyPlaceholder: 'YOUR_API_KEY',
+      zip: 'or upload a .zip archive'
+    },
+    status: { active: 'Online', disabled: 'Taken down', unpaid: 'Paused (unpaid)', lapsed: 'Paused (subscription ended)', pending: 'In review' },
+    actions: { versions: 'Versions', password: 'Password', stats: 'Stats', copy: 'Copy link', update: 'Update', renew: 'Renew ¥{price}', delete: 'Delete' },
     edit: { title: 'Update site', file: 'New page file (optional)', fileHint: 'Without a file only the name changes; a new file replaces the content at the same address.' },
     deleteConfirm: '{url} goes offline at once and its files are deleted for good. Delete it?',
     charges: { title: 'Charges', time: 'Time', site: 'Site', amount: 'Amount', until: 'Paid until' }

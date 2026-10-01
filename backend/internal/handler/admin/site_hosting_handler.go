@@ -123,3 +123,46 @@ func (h *SiteHostingHandler) SetReportStatus(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"status": in.Status})
 }
+
+// Reviews GET /api/v1/admin/sites/reviews — versions waiting for review.
+func (h *SiteHostingHandler) Reviews(c *gin.Context) {
+	page, _ := strconv.Atoi(c.Query("page"))
+	pageSize, _ := strconv.Atoi(c.Query("page_size"))
+	items, total, err := h.service.AdminReviews(c.Request.Context(), page, pageSize)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"items": items, "total": total})
+}
+
+// Review POST /api/v1/admin/sites/:id/review {version, action: approve|reject, reason}
+func (h *SiteHostingHandler) Review(c *gin.Context) {
+	id, ok := adminSiteID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Version int    `json:"version"`
+		Action  string `json:"action"`
+		Reason  string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrSiteNothingToReview)
+		return
+	}
+	var err error
+	switch in.Action {
+	case "approve":
+		err = h.service.AdminApprove(c.Request.Context(), id, in.Version)
+	case "reject":
+		err = h.service.AdminReject(c.Request.Context(), id, in.Version, in.Reason)
+	default:
+		err = service.ErrSiteStatusInvalid
+	}
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"action": in.Action})
+}

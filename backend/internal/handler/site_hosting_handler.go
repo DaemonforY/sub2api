@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -29,7 +30,7 @@ func (h *SiteHostingHandler) HostMiddleware(c *gin.Context) {
 		c.Next()
 		return
 	}
-	h.service.ServeSite(c.Writer, c.Request, name)
+	h.service.ServeSite(c.Writer, c.Request, name, c.ClientIP())
 	c.Abort()
 }
 
@@ -199,4 +200,169 @@ func (h *SiteHostingHandler) Report(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"reported": true})
+}
+
+// Versions GET /api/v1/sites/:id/versions
+func (h *SiteHostingHandler) Versions(c *gin.Context) {
+	userID, ok := siteUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := sitePathID(c)
+	if !ok {
+		return
+	}
+	versions, err := h.service.Versions(c.Request.Context(), userID, id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, versions)
+}
+
+// Rollback POST /api/v1/sites/:id/rollback {version}
+func (h *SiteHostingHandler) Rollback(c *gin.Context) {
+	userID, ok := siteUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := sitePathID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Version int `json:"version"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrSiteVersionNotFound)
+		return
+	}
+	site, err := h.service.Rollback(c.Request.Context(), userID, id, in.Version)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, site)
+}
+
+// SetPassword PUT /api/v1/sites/:id/password {password} ("" removes it)
+func (h *SiteHostingHandler) SetPassword(c *gin.Context) {
+	userID, ok := siteUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := sitePathID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrSitePasswordInvalid)
+		return
+	}
+	site, err := h.service.SetPassword(c.Request.Context(), userID, id, in.Password)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, site)
+}
+
+// Stats GET /api/v1/sites/:id/stats?days=
+func (h *SiteHostingHandler) Stats(c *gin.Context) {
+	userID, ok := siteUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := sitePathID(c)
+	if !ok {
+		return
+	}
+	days, _ := strconv.Atoi(c.Query("days"))
+	stats, err := h.service.Stats(c.Request.Context(), userID, id, days)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, stats)
+}
+
+// Open API (API key) --------------------------------------------------------------------------
+
+// keyUpload reads a publish request from the API: multipart ("file", "title") or JSON {title, html}.
+func (h *SiteHostingHandler) keyUpload(c *gin.Context, requireContent bool) (service.SiteUpload, bool) {
+	if !strings.HasPrefix(c.ContentType(), "application/json") {
+		return h.readSiteUpload(c, requireContent)
+	}
+	limit := int64(h.service.Config(c.Request.Context()).MaxMB) << 20
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit+1<<20)
+	var in struct {
+		Title string `json:"title"`
+		HTML  string `json:"html"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil || (requireContent && strings.TrimSpace(in.HTML) == "") {
+		response.ErrorFrom(c, service.ErrSiteUploadInvalid)
+		return service.SiteUpload{}, false
+	}
+	up := service.SiteUpload{Title: in.Title}
+	if strings.TrimSpace(in.HTML) != "" {
+		up.FileName, up.Data = "index.html", []byte(in.HTML)
+	}
+	return up, true
+}
+
+// KeyList GET /api/v1/hosting/sites — the key owner's sites.
+func (h *SiteHostingHandler) KeyList(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	res, err := h.service.Mine(c.Request.Context(), userID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"sites": res.Sites, "quota": res.Quota})
+}
+
+// KeyCreate POST /api/v1/hosting/sites — publish (JSON {title, html} or multipart).
+func (h *SiteHostingHandler) KeyCreate(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	up, ok := h.keyUpload(c, true)
+	if !ok {
+		return
+	}
+	site, err := h.service.Create(c.Request.Context(), userID, up)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, site)
+}
+
+// KeyUpdate PUT /api/v1/hosting/sites/:id — publish a new version and/or rename.
+func (h *SiteHostingHandler) KeyUpdate(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := sitePathID(c)
+	if !ok {
+		return
+	}
+	up, ok := h.keyUpload(c, false)
+	if !ok {
+		return
+	}
+	site, err := h.service.Update(c.Request.Context(), userID, id, up)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, site)
 }

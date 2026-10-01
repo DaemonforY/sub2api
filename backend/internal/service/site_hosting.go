@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -28,6 +29,7 @@ const (
 	SiteStatusDisabled = "disabled" // taken down by an admin
 	SiteStatusUnpaid   = "unpaid"   // renewal could not be charged
 	SiteStatusLapsed   = "lapsed"   // the owner's subscription ended (after the grace period)
+	SiteStatusPending  = "pending"  // new site waiting for its first review
 
 	sitePeriod        = 30 * 24 * time.Hour
 	siteKeepVersions  = 3
@@ -43,6 +45,10 @@ const (
 	settingSitesExtraPrice    = "sites_extra_price"
 	settingSitesGraceDays     = "sites_grace_days"
 	settingSitesRetentionDays = "sites_retention_days"
+	settingSitesReviewAll     = "sites_review_all"
+	settingSitesReviewBaseURL = "sites_review_base_url"
+	settingSitesReviewModel   = "sites_review_model"
+	settingSitesReviewAPIKey  = "sites_review_api_key"
 )
 
 var (
@@ -67,22 +73,30 @@ func siteLimitReached(max int) error {
 var SiteReportReasons = map[string]bool{"phishing": true, "fraud": true, "gambling": true, "porn": true, "malware": true, "copyright": true, "other": true}
 
 type Site struct {
-	ID           int64      `json:"id"`
-	UserID       int64      `json:"user_id"`
-	UserEmail    string     `json:"user_email,omitempty"`
-	Name         string     `json:"name"`
-	Title        string     `json:"title"`
-	Status       string     `json:"status"`
-	StatusReason string     `json:"status_reason"`
-	Version      int        `json:"version"`
-	SizeBytes    int64      `json:"size_bytes"`
-	FileCount    int        `json:"file_count"`
-	Paid         bool       `json:"paid"`
-	PaidUntil    *time.Time `json:"paid_until,omitempty"`
-	LapsedAt     *time.Time `json:"lapsed_at,omitempty"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
-	URL          string     `json:"url"`
+	ID           int64  `json:"id"`
+	UserID       int64  `json:"user_id"`
+	UserEmail    string `json:"user_email,omitempty"`
+	Name         string `json:"name"`
+	Title        string `json:"title"`
+	Status       string `json:"status"`
+	StatusReason string `json:"status_reason"`
+	Version      int    `json:"version"`
+	// PendingVersion is an uploaded version waiting for review (0: none).
+	PendingVersion int        `json:"pending_version"`
+	HasPassword    bool       `json:"has_password"`
+	PasswordHash   string     `json:"-"`
+	Views7d        int64      `json:"views_7d"`
+	ViewsTotal     int64      `json:"views_total"`
+	SizeBytes      int64      `json:"size_bytes"`
+	FileCount      int        `json:"file_count"`
+	Paid           bool       `json:"paid"`
+	PaidUntil      *time.Time `json:"paid_until,omitempty"`
+	LapsedAt       *time.Time `json:"lapsed_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	URL            string     `json:"url"`
+	// PreviewURL opens the pending version (owner and admins only).
+	PreviewURL string `json:"preview_url,omitempty"`
 }
 
 type SiteCharge struct {
@@ -123,8 +137,19 @@ type SiteHostingRepository interface {
 	ListSitesByUser(ctx context.Context, userID int64) ([]Site, error)
 	ListSites(ctx context.Context, q SiteListQuery) ([]Site, int64, error)
 	ListSiteOwners(ctx context.Context) ([]int64, error)
-	// SetSiteVersion records a new published version and the site's size.
-	SetSiteVersion(ctx context.Context, id int64, version int, size int64, files int) error
+	LatestVersion(ctx context.Context, siteID int64) (int, error)
+	// AddSiteVersion records an uploaded version and its review.
+	AddSiteVersion(ctx context.Context, siteID int64, version int, size int64, files int, review SiteReview) error
+	// ServeSiteVersion switches the site to a version (size and file count follow); clearPending drops the queued one.
+	ServeSiteVersion(ctx context.Context, siteID int64, version int, clearPending bool) error
+	// SetPendingVersion queues a version for review (an older queued one is superseded).
+	SetPendingVersion(ctx context.Context, siteID int64, version int) error
+	SetVersionReview(ctx context.Context, siteID int64, version int, status, reason, by string) error
+	ListVersions(ctx context.Context, siteID int64) ([]SiteVersion, error)
+	ListPendingReviews(ctx context.Context, page, pageSize int) ([]SiteReviewItem, int64, error)
+	SetSitePassword(ctx context.Context, id int64, hash string) error
+	AddDailyStats(ctx context.Context, stats []SiteDailyStat) error
+	ListDailyStats(ctx context.Context, siteID int64, since time.Time) ([]SiteDailyStat, error)
 	SetSiteTitle(ctx context.Context, id int64, title string) error
 	SetSiteStatus(ctx context.Context, id int64, status, reason string) error
 	SetSiteFree(ctx context.Context, id int64) error
@@ -151,6 +176,14 @@ type SiteHostingConfig struct {
 	ExtraPrice    float64 `json:"extra_price"`
 	GraceDays     int     `json:"grace_days"`
 	RetentionDays int     `json:"retention_days"`
+	// ReviewAll sends every upload to the admin review queue.
+	ReviewAll bool `json:"review_all"`
+	// The model that reviews uploads (OpenAI-compatible); the key is write-only.
+	ReviewBaseURL          string `json:"review_base_url"`
+	ReviewModel            string `json:"review_model"`
+	ReviewAPIKeyConfigured bool   `json:"review_api_key_configured"`
+	ReviewAPIKey           string `json:"review_api_key,omitempty"`
+	ClearReviewAPIKey      bool   `json:"clear_review_api_key,omitempty"`
 }
 
 func (c SiteHostingConfig) maxBytes() int64 { return int64(c.MaxMB) << 20 }
@@ -169,14 +202,18 @@ type SiteHostingService struct {
 	defaults    SiteHostingConfig
 	dir         string
 	mainSiteURL string
+	secret      []byte
+	httpClient  *http.Client
+	stats       *siteStatsCollector
 	now         func() time.Time
 
-	mu       sync.Mutex
-	cfg      *SiteHostingConfig
-	cfgAt    time.Time
-	lookups  map[string]siteLookup
-	stopOnce sync.Once
-	stop     chan struct{}
+	mu          sync.Mutex
+	cfg         *SiteHostingConfig
+	cfgAt       time.Time
+	lookups     map[string]siteLookup
+	unlockTries map[string][]time.Time
+	stopOnce    sync.Once
+	stop        chan struct{}
 }
 
 type siteLookup struct {
@@ -186,8 +223,21 @@ type siteLookup struct {
 
 func NewSiteHostingService(repo SiteHostingRepository, subs imageToolSubscriptions, cache imageToolBalanceCache, settings imageToolSettings, defaults SiteHostingConfig, dir, mainSiteURL string) *SiteHostingService {
 	defaults.Domain = strings.Trim(strings.ToLower(strings.TrimSpace(defaults.Domain)), ".")
-	return &SiteHostingService{repo: repo, subs: subs, cache: cache, settings: settings, defaults: defaults, dir: dir,
-		mainSiteURL: strings.TrimRight(mainSiteURL, "/"), now: time.Now, lookups: map[string]siteLookup{}, stop: make(chan struct{})}
+	svc := &SiteHostingService{repo: repo, subs: subs, cache: cache, settings: settings, defaults: defaults, dir: dir,
+		mainSiteURL: strings.TrimRight(mainSiteURL, "/"), httpClient: &http.Client{Timeout: time.Minute}, now: time.Now,
+		lookups: map[string]siteLookup{}, stop: make(chan struct{})}
+	svc.stats = newSiteStatsCollector(svc.now)
+	svc.secret = []byte("hivegpt-sites:" + dir)
+	return svc
+}
+
+// WithSecret sets the key that signs access-password and preview cookies (use a server secret so
+// they survive restarts).
+func (s *SiteHostingService) WithSecret(secret string) *SiteHostingService {
+	if secret != "" {
+		s.secret = []byte("hivegpt-sites:" + secret)
+	}
+	return s
 }
 
 // Domain is the hosting domain ("" when hosting is off).
@@ -202,11 +252,15 @@ func (s *SiteHostingService) Config(ctx context.Context) SiteHostingConfig {
 	}
 	c := s.defaults
 	if s.settings != nil {
-		keys := []string{settingSitesEnabled, settingSitesMaxPerUser, settingSitesMaxMB, settingSitesMaxFiles, settingSitesFreePerUser, settingSitesExtraPrice, settingSitesGraceDays, settingSitesRetentionDays}
+		keys := []string{settingSitesEnabled, settingSitesMaxPerUser, settingSitesMaxMB, settingSitesMaxFiles, settingSitesFreePerUser, settingSitesExtraPrice,
+			settingSitesGraceDays, settingSitesRetentionDays, settingSitesReviewAll, settingSitesReviewBaseURL, settingSitesReviewModel, settingSitesReviewAPIKey}
 		if values, err := s.settings.GetMultiple(ctx, keys); err == nil {
 			if values[settingSitesEnabled] == "false" {
 				c.Enabled = false
 			}
+			c.ReviewAll = values[settingSitesReviewAll] == "true"
+			c.ReviewBaseURL, c.ReviewModel = values[settingSitesReviewBaseURL], values[settingSitesReviewModel]
+			c.ReviewAPIKeyConfigured = values[settingSitesReviewAPIKey] != ""
 			for key, target := range map[string]*int{settingSitesMaxPerUser: &c.MaxPerUser, settingSitesMaxMB: &c.MaxMB, settingSitesMaxFiles: &c.MaxFiles,
 				settingSitesFreePerUser: &c.FreePerUser, settingSitesGraceDays: &c.GraceDays, settingSitesRetentionDays: &c.RetentionDays} {
 				if v, err := strconv.Atoi(values[key]); err == nil {
@@ -231,12 +285,23 @@ func (s *SiteHostingService) SaveConfig(ctx context.Context, in SiteHostingConfi
 		in.RetentionDays < 0 || in.RetentionDays > 365 {
 		return SiteHostingConfig{}, ErrSiteSettingsInvalid
 	}
-	err := s.settings.SetMultiple(ctx, map[string]string{
+	base := strings.TrimRight(strings.TrimSpace(in.ReviewBaseURL), "/")
+	if base != "" && !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
+		return SiteHostingConfig{}, ErrPromptTranslateInvalidURL
+	}
+	values := map[string]string{
 		settingSitesEnabled: strconv.FormatBool(in.Enabled), settingSitesMaxPerUser: strconv.Itoa(in.MaxPerUser), settingSitesMaxMB: strconv.Itoa(in.MaxMB),
 		settingSitesMaxFiles: strconv.Itoa(in.MaxFiles), settingSitesFreePerUser: strconv.Itoa(in.FreePerUser),
 		settingSitesExtraPrice: strconv.FormatFloat(in.ExtraPrice, 'f', -1, 64), settingSitesGraceDays: strconv.Itoa(in.GraceDays),
-		settingSitesRetentionDays: strconv.Itoa(in.RetentionDays),
-	})
+		settingSitesRetentionDays: strconv.Itoa(in.RetentionDays), settingSitesReviewAll: strconv.FormatBool(in.ReviewAll),
+		settingSitesReviewBaseURL: base, settingSitesReviewModel: strings.TrimSpace(in.ReviewModel),
+	}
+	if key := strings.TrimSpace(in.ReviewAPIKey); key != "" {
+		values[settingSitesReviewAPIKey] = key
+	} else if in.ClearReviewAPIKey {
+		values[settingSitesReviewAPIKey] = ""
+	}
+	err := s.settings.SetMultiple(ctx, values)
 	if err != nil {
 		return SiteHostingConfig{}, err
 	}
@@ -255,9 +320,16 @@ func (s *SiteHostingService) siteURL(name string) string {
 
 func (s *SiteHostingService) decorate(sites []Site) []Site {
 	for i := range sites {
-		sites[i].URL = s.siteURL(sites[i].Name)
+		s.decorateOne(&sites[i])
 	}
 	return sites
+}
+
+func (s *SiteHostingService) decorateOne(site *Site) {
+	site.URL = s.siteURL(site.Name)
+	if site.PendingVersion > 0 {
+		site.PreviewURL = s.PreviewURL(site.Name, site.ID, site.PendingVersion)
+	}
 }
 
 func (s *SiteHostingService) subscribed(ctx context.Context, userID int64) (bool, error) {
@@ -503,7 +575,7 @@ func (s *SiteHostingService) mineByID(ctx context.Context, userID, siteID int64)
 	if err != nil {
 		return nil, err
 	}
-	site.URL = s.siteURL(site.Name)
+	s.decorateOne(site)
 	return site, nil
 }
 
@@ -515,9 +587,14 @@ func (s *SiteHostingService) versionDir(id int64, version int) string {
 	return filepath.Join(s.siteDir(id), "v"+strconv.Itoa(version))
 }
 
-// publish writes the files as the next version, switches the site to it and drops old versions.
+// publish writes the files as a new version and reviews it: approved versions are served at once,
+// others wait in the admin queue (the previous version stays online meanwhile).
 func (s *SiteHostingService) publish(ctx context.Context, site *Site, files []siteFile) error {
-	version := site.Version + 1
+	latest, err := s.repo.LatestVersion(ctx, site.ID)
+	if err != nil {
+		return err
+	}
+	version := latest + 1
 	dir := s.versionDir(site.ID, version)
 	_ = os.RemoveAll(dir)
 	if err := writeSiteFiles(dir, files); err != nil {
@@ -528,19 +605,60 @@ func (s *SiteHostingService) publish(ctx context.Context, site *Site, files []si
 	for _, f := range files {
 		size += int64(len(f.Data))
 	}
-	if err := s.repo.SetSiteVersion(ctx, site.ID, version, size, len(files)); err != nil {
+	review := s.reviewSite(ctx, s.Config(ctx), files)
+	if err := s.repo.AddSiteVersion(ctx, site.ID, version, size, len(files), review); err != nil {
 		_ = os.RemoveAll(dir)
 		return err
 	}
-	site.Version, site.SizeBytes, site.FileCount = version, size, len(files)
-	for old := version - siteKeepVersions; old >= 1; old-- {
-		if _, err := os.Stat(s.versionDir(site.ID, old)); err != nil {
-			break
+	if review.Status == SiteReviewApproved {
+		if err := s.repo.ServeSiteVersion(ctx, site.ID, version, true); err != nil {
+			return err
 		}
-		_ = os.RemoveAll(s.versionDir(site.ID, old))
+		site.Version, site.PendingVersion, site.SizeBytes, site.FileCount = version, 0, size, len(files)
+		if site.Status == SiteStatusPending {
+			if err := s.repo.SetSiteStatus(ctx, site.ID, SiteStatusActive, ""); err != nil {
+				return err
+			}
+		} else if site.StatusReason != "" && site.Status == SiteStatusActive {
+			_ = s.repo.SetSiteStatus(ctx, site.ID, SiteStatusActive, "")
+		}
+	} else {
+		if err := s.repo.SetPendingVersion(ctx, site.ID, version); err != nil {
+			return err
+		}
+		site.PendingVersion = version
+		if site.Version == 0 {
+			if err := s.repo.SetSiteStatus(ctx, site.ID, SiteStatusPending, review.Reason); err != nil {
+				return err
+			}
+			site.Status = SiteStatusPending
+		}
+		slog.Info("sites: version waits for review", "site", site.Name, "version", version, "flags", review.Flags, "by", review.By)
 	}
+	s.pruneVersions(site.ID, version, site.Version, site.PendingVersion)
 	s.forget(site.Name)
 	return nil
+}
+
+// pruneVersions keeps the newest few versions plus the served and pending ones on disk.
+func (s *SiteHostingService) pruneVersions(siteID int64, latest int, keep ...int) {
+	entries, err := os.ReadDir(s.siteDir(siteID))
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		v, err := strconv.Atoi(strings.TrimPrefix(e.Name(), "v"))
+		if err != nil || !e.IsDir() || v > latest-siteKeepVersions {
+			continue
+		}
+		kept := false
+		for _, k := range keep {
+			kept = kept || k == v
+		}
+		if !kept {
+			_ = os.RemoveAll(s.versionDir(siteID, v))
+		}
+	}
 }
 
 func (s *SiteHostingService) remove(ctx context.Context, site *Site) error {
@@ -671,8 +789,9 @@ func (s *SiteHostingService) AdminSetReportStatus(ctx context.Context, id int64,
 
 // Maintenance -----------------------------------------------------------------------------------
 
-// Start runs Maintain every hour (first run a minute after boot).
+// Start runs Maintain every hour (first run a minute after boot) and saves visit stats every minute.
 func (s *SiteHostingService) Start() {
+	s.startStatsFlusher()
 	go func() {
 		timer := time.NewTimer(time.Minute)
 		defer timer.Stop()
@@ -739,7 +858,7 @@ func (s *SiteHostingService) maintainOwner(ctx context.Context, userID int64, c 
 				if err := s.remove(ctx, site); err != nil {
 					return err
 				}
-			case elapsed > grace && (site.Status == SiteStatusActive || site.Status == SiteStatusUnpaid):
+			case elapsed > grace && (site.Status == SiteStatusActive || site.Status == SiteStatusUnpaid || site.Status == SiteStatusPending):
 				if err := s.repo.SetSiteStatus(ctx, site.ID, SiteStatusLapsed, fmt.Sprintf("订阅已到期超过 %d 天，网站已暂停；续订后自动恢复", c.GraceDays)); err != nil {
 					return err
 				}

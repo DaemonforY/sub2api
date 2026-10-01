@@ -290,29 +290,35 @@ If a title is meaningless (punctuation, timestamps, template fragments), map it 
 
 // callModel sends one Chat Completions request and returns the reply text.
 func (t *PromptTitleTranslator) callModel(ctx context.Context, cfg promptTranslateSecrets, instruction string, payload any) (string, error) {
+	return openAIChat(ctx, t.client, cfg.BaseURL, cfg.apiKey, cfg.Model, instruction, payload)
+}
+
+// openAIChat sends one OpenAI-compatible Chat Completions request (payload JSON-encoded as the user
+// message) and returns the reply text. Used by the admin-configured helper models.
+func openAIChat(ctx context.Context, client *http.Client, baseURL, apiKey, model, instruction string, payload any) (string, error) {
 	input, _ := json.Marshal(payload)
 	body, _ := json.Marshal(map[string]any{
-		"model":       cfg.Model,
+		"model":       model,
 		"temperature": 0.2,
 		"messages": []map[string]string{
 			{"role": "system", "content": instruction},
 			{"role": "user", "content": string(input)},
 		},
 	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.BaseURL+"/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(baseURL, "/")+"/chat/completions", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+cfg.apiKey)
-	resp, err := t.client.Do(req)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("调用整理模型失败：%w", err)
+		return "", fmt.Errorf("调用模型失败：%w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("整理模型返回 HTTP %d：%s", resp.StatusCode, truncateRunes(strings.TrimSpace(string(raw)), 200))
+		return "", fmt.Errorf("模型返回 HTTP %d：%s", resp.StatusCode, truncateRunes(strings.TrimSpace(string(raw)), 200))
 	}
 	var parsed struct {
 		Choices []struct {
@@ -322,7 +328,7 @@ func (t *PromptTitleTranslator) callModel(ctx context.Context, cfg promptTransla
 		} `json:"choices"`
 	}
 	if err := json.Unmarshal(raw, &parsed); err != nil || len(parsed.Choices) == 0 {
-		return "", errors.New("整理模型的返回格式不正确（需要 OpenAI Chat Completions 格式）")
+		return "", errors.New("模型的返回格式不正确（需要 OpenAI Chat Completions 格式）")
 	}
 	return parsed.Choices[0].Message.Content, nil
 }

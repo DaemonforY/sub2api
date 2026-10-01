@@ -12,6 +12,29 @@ export interface SiteHostingSettings {
   extra_price: number
   grace_days: number
   retention_days: number
+  review_all: boolean
+  review_base_url: string
+  review_model: string
+  review_api_key_configured: boolean
+  /** Write-only: a new key for the review model. */
+  review_api_key?: string
+  clear_review_api_key?: boolean
+}
+
+export interface SiteReviewItem {
+  site_id: number
+  site_name: string
+  title: string
+  owner_email: string
+  site_status: string
+  version: number
+  size_bytes: number
+  file_count: number
+  reason: string
+  flags: string[]
+  excerpt: string
+  created_at: string
+  preview_url: string
 }
 
 export interface SiteReport {
@@ -60,4 +83,12 @@ export async function setReportStatus(id: number, status: SiteReport['status']):
   await apiClient.put(`/admin/sites/reports/${id}`, { status })
 }
 
-export default { getSettings, saveSettings, list, setStatus, remove, reports, setReportStatus }
+export async function reviews(params: { page?: number; page_size?: number }): Promise<Paged<SiteReviewItem>> {
+  const { data } = await apiClient.get('/admin/sites/reviews', { params })
+  return data
+}
+export async function review(siteId: number, version: number, action: 'approve' | 'reject', reason = ''): Promise<void> {
+  await apiClient.post(`/admin/sites/${siteId}/review`, { version, action, reason })
+}
+
+export default { getSettings, saveSettings, list, setStatus, remove, reports, setReportStatus, reviews, review }

@@ -37,8 +37,47 @@ export default {
     free: '赠送',
     paidUntil: '已付费至 {date}',
     meta: '{size} · {files} 个文件 · 第 {version} 版 · 更新于 {time}',
-    status: { active: '访问中', disabled: '已下线', unpaid: '欠费暂停', lapsed: '订阅到期暂停' },
-    actions: { copy: '复制网址', update: '更新', renew: '续费 ¥{price}', delete: '删除' },
+    locked: '已设密码',
+    pendingReview: '第 {version} 版审核中',
+    preview: '预览',
+    views: '近 7 天 {week} 次访问，累计 {total} 次',
+    versions: {
+      title: '历史版本',
+      version: '版本',
+      time: '上传时间',
+      review: '审核',
+      label: '第 {version} 版',
+      current: '当前',
+      rollback: '回到这个版本',
+      rolledBack: '已回到第 {version} 版',
+      cleaned: '已清理',
+      statuses: { approved: '已通过', pending: '审核中', rejected: '未通过', superseded: '已被新版本替代' },
+      hint: '每次上传都会生成新版本，服务器保留最近 3 个版本的文件，可以随时回到其中审核通过的版本。'
+    },
+    password: {
+      title: '访问密码',
+      hintOff: '设置后，访客需要输入密码才能打开网站，适合只给特定的人看。',
+      hintOn: '网站已设置访问密码。输入新密码可以修改（修改后已登录的访客需要重新输入），也可以取消密码。',
+      placeholder: '4–64 个字符',
+      remove: '取消密码',
+      saved: '已设置访问密码',
+      removed: '已取消访问密码'
+    },
+    stats: {
+      title: '访问统计：{name}',
+      views: '近 30 天访问',
+      visitors: '访客（按 IP 每天去重）',
+      traffic: '流量',
+      hint: '统计页面打开次数，每分钟更新一次；预览和被拦截的访问不计入。'
+    },
+    api: {
+      title: '用 API 发布',
+      hint: '用 API Key 发布或更新网站，适合脚本、AI Agent 自动部署。规则和配额与这里相同，返回的 url 就是网站地址；更新用 PUT /hosting/sites/网站ID。',
+      keyPlaceholder: '你的 API Key',
+      zip: '或者上传 .zip 压缩包'
+    },
+    status: { active: '访问中', disabled: '已下线', unpaid: '欠费暂停', lapsed: '订阅到期暂停', pending: '审核中' },
+    actions: { versions: '版本', password: '访问密码', stats: '统计', copy: '复制网址', update: '更新', renew: '续费 ¥{price}', delete: '删除' },
     edit: { title: '更新网站', file: '新的网页文件（可选）', fileHint: '不选文件就只修改名称；上传后网址不变，立刻替换成新内容。' },
     deleteConfirm: '删除后 {url} 立即无法访问，文件也会被删除，不能恢复。确定删除吗？',
     charges: { title: '扣费记录', time: '时间', site: '网站', amount: '金额', until: '有效期至' }
