@@ -76,9 +76,9 @@ export default {
     }
   },
   canvasConnect: {
-    title: '授权无限画布使用 API Key',
+    title: '登录 HiveGPT 无限画布',
     subtitle: '来自 canvas.hivegpt.cn 的连接请求 · {site}',
-    explain: '选择一个支持画图的 Key 授权给无限画布。画布会用它在你的浏览器里直接调用 {site} 出图，按 Key 所在分组计费。',
+    explain: '用你的 {site} 账号登录无限画布，就能在画布里看到余额、发布作品、同步收藏。再选一个支持画图的 Key，画布会用它在你的浏览器里直接调用 {site} 出图，按 Key 所在分组计费。',
     canDraw: '可画图',
     cannotDraw: '该分组不支持画图',
     inactive: 'Key 已停用或额度用完',
@@ -93,11 +93,13 @@ export default {
     topUp: '去充值',
     noDrawableGroup: '你当前没有支持画图的分组。购买 Codex 订阅或充值后即可使用。',
     buyPlan: '去购买',
-    authorize: '授权',
+    authorize: '登录并连接 Key',
+    signInOnly: '仅登录',
+    signInOnlyHint: '暂时没有可以画图的 Key 也可以先登录，浏览和发布作品；画图前再来连接 Key。',
     privacy: 'Key 只会发送给 {canvas}，保存在你这台电脑的浏览器里；随时可以在「API 密钥」页停用。',
-    done: '已连接无限画布',
+    done: '已登录无限画布',
     doneHint: '这个窗口会自动关闭，回到画布就能开始画图。',
-    openFromCanvas: '请从无限画布里点「一键连接」打开本页。',
+    openFromCanvas: '请从无限画布右上角点「登录」打开本页。',
     goCanvas: '打开无限画布'
   },
   growth: {

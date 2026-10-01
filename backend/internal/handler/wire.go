@@ -212,6 +212,7 @@ func ProvideHandlers(
 	promptLibraryHandler *PromptLibraryHandler,
 	imageToolsHandler *ImageToolsHandler,
 	siteHostingHandler *SiteHostingHandler,
+	canvasSessionHandler *CanvasSessionHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -244,6 +245,7 @@ func ProvideHandlers(
 		PromptLibrary:    promptLibraryHandler,
 		ImageTools:       imageToolsHandler,
 		SiteHosting:      siteHostingHandler,
+		CanvasSession:    canvasSessionHandler,
 	}
 }
 
@@ -276,6 +278,7 @@ var ProviderSet = wire.NewSet(
 	NewPromptLibraryHandler,
 	NewImageToolsHandler,
 	NewSiteHostingHandler,
+	NewCanvasSessionHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

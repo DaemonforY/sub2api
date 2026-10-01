@@ -112,9 +112,9 @@ export default {
     },
     // 无限画布（互推站点，子域名部署）
     canvas: {
-      navLabel: 'AI 画布',
+      navLabel: '无限画布',
       card: {
-        title: '无限画布 · AI 生图工作台',
+        title: 'HiveGPT 无限画布 · AI 创作工作台',
         desc: '在无限画布上用本站 Key 直接文生图、图生图、参考图编辑与视频生成，节点连线编排完整创作流程。',
         tags: '文生图,图生图,参考图编辑,视频生成,画布编排',
         cta: '打开画布'
@@ -283,7 +283,7 @@ export default {
         desc: '一个 Key 畅用顶级 AI：画图、视频、编程助手一站搞定。',
         product: '产品',
         support: '支持',
-        canvas: 'AI 画布',
+        canvas: '无限画布',
         contests: '创作比赛',
         plaza: '模型广场',
         batch: '批量生图',

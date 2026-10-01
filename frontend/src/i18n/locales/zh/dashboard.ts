@@ -840,6 +840,16 @@ export default {
       codeSent: '验证码已发送到您的邮箱',
       sendCodeFailed: '发送验证码失败'
     },
+    canvasSessions: {
+      title: '已登录的无限画布',
+      description: '用这个账号登录了 HiveGPT 无限画布的浏览器。不认识的设备可以直接退出。',
+      empty: '当前没有已登录的无限画布。',
+      open: '打开无限画布',
+      unknownDevice: '未知设备',
+      meta: 'IP {ip} · 最近使用 {used} · 登录于 {created}',
+      signOut: '退出',
+      signedOut: '已退出该设备'
+    },
     passkey: {
       title: 'Passkey',
       description: '使用面容 ID、触控 ID、Windows Hello 或安全密钥免密码登录。',

@@ -92,8 +92,9 @@ export function getLocale(): LocaleCode {
 }
 
 export const availableLocales = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' }
+  // Short text labels instead of national flags.
+  { code: 'en', name: 'English', short: 'EN' },
+  { code: 'zh', name: '中文', short: '中' }
 ] as const
 
 export default i18n

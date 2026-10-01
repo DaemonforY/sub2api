@@ -83,6 +83,7 @@ describe('ProfileView', () => {
           ProfileBalanceNotifyCard: { template: '<div data-testid="profile-balance-notify-card" />' },
           ProfilePasswordForm: { template: '<div data-testid="profile-password-form" />' },
           ProfileTotpCard: { template: '<div data-testid="profile-totp-card" />' },
+          ProfileCanvasSessionsCard: { template: '<div data-testid="profile-canvas-sessions-card" />' },
           Icon: true
         }
       }

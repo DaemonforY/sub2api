@@ -76,9 +76,9 @@ export default {
     }
   },
   canvasConnect: {
-    title: 'Authorize the canvas to use an API key',
+    title: 'Sign in to HiveGPT Infinite Canvas',
     subtitle: 'Connection request from canvas.hivegpt.cn · {site}',
-    explain: 'Pick an image-capable key for Infinite Canvas. It calls {site} directly from your browser with this key, billed by the key’s group.',
+    explain: 'Sign in to Infinite Canvas with your {site} account to see your balance, publish works and sync favorites there. Pick an image-capable key too: the canvas calls {site} directly from your browser with it, billed by the key’s group.',
     canDraw: 'Can draw',
     cannotDraw: 'group can’t generate images',
     inactive: 'key disabled or out of quota',
@@ -93,11 +93,13 @@ export default {
     topUp: 'Top up',
     noDrawableGroup: 'None of your groups can generate images yet. Buy a Codex plan or top up first.',
     buyPlan: 'Buy',
-    authorize: 'Authorize',
+    authorize: 'Sign in and connect key',
+    signInOnly: 'Sign in only',
+    signInOnlyHint: 'No image-capable key yet? Sign in anyway to browse and publish; connect a key before drawing.',
     privacy: 'The key is sent only to {canvas} and stays in this browser; you can disable it anytime on the API keys page.',
-    done: 'Canvas connected',
+    done: 'Signed in to the canvas',
     doneHint: 'This window closes automatically — head back to the canvas to start drawing.',
-    openFromCanvas: 'Open this page from the canvas “Connect” button.',
+    openFromCanvas: 'Open this page from the “Sign in” button at the top right of the canvas.',
     goCanvas: 'Open the canvas'
   },
   growth: {

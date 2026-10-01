@@ -12,6 +12,8 @@ import (
 
 var corsWarningOnce sync.Once
 
+const canvasCredentialPathPrefix = "/api/v1/canvas/"
+
 // CORS 跨域中间件
 func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 	allowedOrigins := normalizeOrigins(cfg.AllowedOrigins)
@@ -52,7 +54,7 @@ func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 	}
 	allowHeaders := []string{
 		"Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization",
-		"accept", "origin", "Cache-Control", "X-Requested-With", "X-API-Key", "X-Admin-UI-Request", "X-User-UI-Request",
+		"accept", "origin", "Cache-Control", "X-Requested-With", "X-API-Key", "X-Admin-UI-Request", "X-User-UI-Request", CanvasRequestHeader,
 	}
 	// OpenAI Node SDK 会发送 x-stainless-* 请求头，需在 CORS 中显式放行。
 	openAIProperties := []string{
@@ -78,7 +80,9 @@ func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 				c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 				c.Writer.Header().Add("Vary", "Origin")
 			}
-			if allowCredentials {
+			// The canvas session endpoints are cookie-authenticated: explicitly allowed origins may
+			// send credentials there even when credentials are off for the rest of the API.
+			if allowCredentials || (!allowAll && origin != "" && strings.HasPrefix(c.Request.URL.Path, canvasCredentialPathPrefix)) {
 				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 			c.Writer.Header().Set("Access-Control-Allow-Headers", allowHeadersValue)

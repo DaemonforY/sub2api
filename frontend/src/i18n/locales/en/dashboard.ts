@@ -836,6 +836,16 @@ export default {
       codeSent: 'Verification code sent to your email',
       sendCodeFailed: 'Failed to send verification code'
     },
+    canvasSessions: {
+      title: 'Infinite Canvas sign-ins',
+      description: 'Browsers signed in to HiveGPT Infinite Canvas with this account. Sign out any device you don’t recognise.',
+      empty: 'No canvas is signed in right now.',
+      open: 'Open the canvas',
+      unknownDevice: 'Unknown device',
+      meta: 'IP {ip} · last used {used} · signed in {created}',
+      signOut: 'Sign out',
+      signedOut: 'Device signed out'
+    },
     passkey: {
       title: 'Passkeys',
       description: 'Use Face ID, Touch ID, Windows Hello, or a security key to sign in without a password.',

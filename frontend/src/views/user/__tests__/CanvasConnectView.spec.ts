@@ -6,11 +6,13 @@ const routeState = vi.hoisted(() => ({ query: {} as Record<string, unknown> }))
 const list = vi.hoisted(() => vi.fn())
 const create = vi.hoisted(() => vi.fn())
 const getAvailable = vi.hoisted(() => vi.fn())
+const createCanvasSession = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', () => ({ useRoute: () => routeState }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('@/api/keys', () => ({ keysAPI: { list, create } }))
 vi.mock('@/api/groups', () => ({ getAvailable }))
+vi.mock('@/api/canvasSessions', () => ({ createCanvasSession }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ cachedPublicSettings: { site_name: 'HiveGPT' }, siteName: 'HiveGPT', showError: vi.fn() }) }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { balance: 12 } }) }))
 
@@ -36,6 +38,7 @@ describe('CanvasConnectView', () => {
     })
     getAvailable.mockReset().mockResolvedValue([drawGroup, chatGroup])
     create.mockReset()
+    createCanvasSession.mockReset().mockResolvedValue({ id: 1 })
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -65,8 +68,10 @@ describe('CanvasConnectView', () => {
     expect(postMessage).not.toHaveBeenCalled()
 
     await wrapper.get('[data-testid="canvas-connect-authorize"]').trigger('click')
+    await flushPromises()
+    expect(createCanvasSession).toHaveBeenCalledTimes(1)
     expect(postMessage).toHaveBeenCalledWith(
-      { type: 'hivegpt:canvas-key', state: STATE, apiKey: 'sk-draw-0000000022222', keyName: 'draw-key' },
+      { type: 'hivegpt:canvas-key', state: STATE, signedIn: true, apiKey: 'sk-draw-0000000022222', keyName: 'draw-key' },
       'https://canvas.hivegpt.cn',
     )
     expect(wrapper.find('[data-testid="canvas-connect-done"]').exists()).toBe(true)
@@ -81,13 +86,32 @@ describe('CanvasConnectView', () => {
     const wrapper = mount(CanvasConnectView)
     await flushPromises()
     expect(wrapper.find('[data-testid="canvas-connect-create"]').exists()).toBe(true)
-    expect((wrapper.get('[data-testid="canvas-connect-authorize"]').element as HTMLButtonElement).disabled).toBe(true)
+    // Without a key the canvas can still be signed in.
+    expect(wrapper.get('[data-testid="canvas-connect-authorize"]').text()).toBe('canvasConnect.signInOnly')
 
     create.mockResolvedValue({ id: 9 })
     list.mockResolvedValueOnce({ items: [{ id: 9, name: '无限画布', key: 'sk-new-00000000009999', status: 'active', group: drawGroup }] })
     await wrapper.get('[data-testid="canvas-connect-create"] button').trigger('click')
     await flushPromises()
     expect(create).toHaveBeenCalledWith('canvasConnect.keyName', 2)
-    expect((wrapper.get('[data-testid="canvas-connect-authorize"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect(wrapper.get('[data-testid="canvas-connect-authorize"]').text()).toBe('canvasConnect.authorize')
+  })
+
+  it('signs in without a key and does not hand anything over when the session fails', async () => {
+    routeState.query = { state: STATE }
+    const postMessage = stubOpener()
+    list.mockResolvedValue({ items: [] })
+    getAvailable.mockResolvedValue([])
+    const wrapper = mount(CanvasConnectView)
+    await flushPromises()
+
+    createCanvasSession.mockRejectedValueOnce(new Error('boom'))
+    await wrapper.get('[data-testid="canvas-connect-authorize"]').trigger('click')
+    await flushPromises()
+    expect(postMessage).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="canvas-connect-authorize"]').trigger('click')
+    await flushPromises()
+    expect(postMessage).toHaveBeenCalledWith({ type: 'hivegpt:canvas-key', state: STATE, signedIn: true }, 'https://canvas.hivegpt.cn')
   })
 })

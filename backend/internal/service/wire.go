@@ -617,6 +617,11 @@ func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRe
 	return svc
 }
 
+// ProvideCanvasSessionService wires the canvas sign-in sessions.
+func ProvideCanvasSessionService(repo CanvasSessionRepository, users *UserService, subs UserSubscriptionRepository) *CanvasSessionService {
+	return NewCanvasSessionService(repo, users, subs)
+}
+
 // ProvideSiteHostingService wires static-site hosting (SITES_DOMAIN enables it) and starts the hourly
 // subscription / renewal maintenance.
 func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *SiteHostingService {
@@ -1043,6 +1048,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePromptLibrarySyncService,
 	ProvideImageToolsService,
 	ProvideSiteHostingService,
+	ProvideCanvasSessionService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

@@ -80,6 +80,7 @@ type Handlers struct {
 	PromptLibrary    *PromptLibraryHandler
 	ImageTools       *ImageToolsHandler
 	SiteHosting      *SiteHostingHandler
+	CanvasSession    *CanvasSessionHandler
 }
 
 // BuildInfo contains build-time information

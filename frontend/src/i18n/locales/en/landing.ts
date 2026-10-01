@@ -112,9 +112,9 @@ export default {
     },
     // Infinite canvas (cross-site, deployed on a subdomain)
     canvas: {
-      navLabel: 'AI Canvas',
+      navLabel: 'Infinite Canvas',
       card: {
-        title: 'Infinite Canvas · AI Image Studio',
+        title: 'HiveGPT Infinite Canvas · AI creative studio',
         desc: 'Generate, edit and remix images or videos on an infinite canvas with your key from this site, wiring nodes into a full creative workflow.',
         tags: 'Text to Image,Image to Image,Reference Edit,Video,Node Workflow',
         cta: 'Open canvas'
@@ -283,7 +283,7 @@ export default {
         desc: 'One key for top-tier AI: images, video and coding assistants in one place.',
         product: 'Product',
         support: 'Support',
-        canvas: 'AI canvas',
+        canvas: 'Infinite Canvas',
         contests: 'Contests',
         plaza: 'Model plaza',
         batch: 'Batch images',

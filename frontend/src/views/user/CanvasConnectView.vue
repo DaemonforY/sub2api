@@ -77,10 +77,11 @@
 
           <div class="mt-6 flex gap-2">
             <button type="button" class="btn btn-secondary flex-1" @click="cancel">{{ t('common.cancel') }}</button>
-            <button type="button" class="btn btn-primary flex-1" :disabled="!selectedKey" data-testid="canvas-connect-authorize" @click="authorize">
-              {{ t('canvasConnect.authorize') }}
+            <button type="button" class="btn btn-primary flex-1" :disabled="authorizing" data-testid="canvas-connect-authorize" @click="authorize">
+              {{ selectedKey ? t('canvasConnect.authorize') : t('canvasConnect.signInOnly') }}
             </button>
           </div>
+          <p v-if="!selectedKey" class="mt-3 text-xs leading-5 text-gray-500 dark:text-dark-400">{{ t('canvasConnect.signInOnlyHint') }}</p>
           <p class="mt-3 text-center text-[11px] leading-5 text-gray-400">{{ t('canvasConnect.privacy', { canvas: canvasOrigin }) }}</p>
         </template>
       </template>
@@ -93,6 +94,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { keysAPI } from '@/api/keys'
+import { createCanvasSession } from '@/api/canvasSessions'
 import { getAvailable } from '@/api/groups'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -101,10 +103,11 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import type { ApiKey, Group } from '@/types'
 
 /**
- * Popup opened by the canvas (canvas.<domain>) "connect" button. The user picks or creates a key and
- * we hand it to the canvas window with postMessage — targeted at the canvas origin only, echoing the
- * canvas-generated `state` so the canvas can match the answer to its request. Nothing is sent until
- * the user clicks 授权.
+ * Popup opened by the canvas (canvas.<domain>) "登录 / 连接" button. Authorizing signs the canvas in
+ * (the API sets the canvas session cookie on this host) and, when the user picked a key, hands the
+ * key to the canvas window with postMessage — targeted at the canvas origin only, echoing the
+ * canvas-generated `state` so the canvas can match the answer to its request. Nothing happens until
+ * the user clicks 授权; without an image-capable key the canvas is signed in only.
  */
 const CANVAS_CONNECT_MESSAGE_TYPE = 'hivegpt:canvas-key'
 
@@ -124,6 +127,7 @@ const canHandOff = /^[A-Za-z0-9_-]{16,128}$/.test(state) && hasOpener
 
 const loading = ref(true)
 const creating = ref(false)
+const authorizing = ref(false)
 const done = ref(false)
 const showCreate = ref(false)
 const keys = ref<ApiKey[]>([])
@@ -176,10 +180,19 @@ async function createKey() {
   }
 }
 
-function authorize() {
+async function authorize() {
   const key = selectedKey.value
-  if (!key || !canHandOff || !window.opener || window.opener.closed) return
-  window.opener.postMessage({ type: CANVAS_CONNECT_MESSAGE_TYPE, state, apiKey: key.key, keyName: key.name }, canvasOrigin)
+  if (authorizing.value || !canHandOff || !window.opener || window.opener.closed) return
+  authorizing.value = true
+  try {
+    await createCanvasSession()
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+    authorizing.value = false
+    return
+  }
+  const message = key ? { type: CANVAS_CONNECT_MESSAGE_TYPE, state, signedIn: true, apiKey: key.key, keyName: key.name } : { type: CANVAS_CONNECT_MESSAGE_TYPE, state, signedIn: true }
+  window.opener.postMessage(message, canvasOrigin)
   done.value = true
   setTimeout(() => window.close(), 1500)
 }

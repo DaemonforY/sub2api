@@ -4,7 +4,8 @@
  */
 
 /** 无限画布（infinite-canvas）：部署在子域名上的 AI 生图工作台，浏览器直连本网关的 /v1 接口 */
-export const CANVAS_SITE_URL = 'https://canvas.hivegpt.cn/'
+// VITE_CANVAS_SITE_URL overrides it for local development (e.g. http://localhost:3100/).
+export const CANVAS_SITE_URL = (import.meta.env.VITE_CANVAS_SITE_URL as string | undefined) || 'https://canvas.hivegpt.cn/'
 
 // Prompt-library cover hosts that are unreachable from some networks (e.g. mainland China). The
 // canvas relays them at /img-proxy/<host>/<path> (allowlisted in its nginx.conf; keep in sync).
