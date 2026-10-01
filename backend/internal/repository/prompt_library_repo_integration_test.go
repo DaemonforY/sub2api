@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"testing"
 	"time"
@@ -19,7 +20,7 @@ func promptTestItem(id, title, prompt string, scenes []string, quality int) serv
 		AutoFlags: []string{}, Visibility: service.PromptVisibilityPublic, Status: service.PromptStatusActive,
 		QualityScore: quality, DedupeKey: service.PromptDedupeKey(prompt),
 	}
-	item.SyncHash = fmt.Sprintf("%s|%s|%s|%v", id, title, prompt, scenes)
+	item.SyncHash = fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%s|%v", id, title, prompt, scenes))))
 	return item
 }
 
@@ -138,6 +139,25 @@ func TestPromptLibraryRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "电商 B 新", got.Title)
 	require.Equal(t, int64(0), got.FavoriteCount)
+
+	// Translations: shown instead of the English title, searchable, dropped when the source renames it.
+	enTitle := promptTestItem("en", "Cat poster "+suffix, marker+" english prompt", []string{"poster"}, 3)
+	require.NoError(t, repo.UpsertSourceItems(ctx, src, []service.PromptItem{enTitle}))
+	applied, err := repo.ApplyTitleTranslations(ctx, map[string]string{"Cat poster " + suffix: "猫咪海报" + suffix})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), applied)
+	list, _, err = repo.List(ctx, service.PromptListQuery{Keyword: "猫咪海报" + suffix, Page: 1, PageSize: 5, Sort: service.PromptSortLatest})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, "猫咪海报"+suffix, list[0].Title)
+	require.Equal(t, "Cat poster "+suffix, list[0].OriginalTitle)
+	renamed := promptTestItem("en", "Dog poster "+suffix, marker+" english prompt", []string{"poster"}, 3)
+	require.NoError(t, repo.UpsertSourceItems(ctx, src, []service.PromptItem{renamed}))
+	got, err = repo.Get(ctx, list[0].ID)
+	require.NoError(t, err)
+	require.Equal(t, "Dog poster "+suffix, got.Title)
+	require.Empty(t, got.OriginalTitle)
+	require.NoError(t, repo.Delete(ctx, got.ID))
 
 	// Batch edits keep scene order and fall back to {other}.
 	updated, err := repo.Batch(ctx, []int64{byExternal["b"], byExternal["c"]}, service.PromptBatchOp{Action: "add_scenes", Scenes: []string{"poster", "3d"}})

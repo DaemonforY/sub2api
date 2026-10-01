@@ -102,8 +102,23 @@ export default {
       fieldReviewNote: 'Review note (shown to the author when rejected)',
       sourceInfo: 'Source: {source} · original tags: {tags}',
       openSource: 'Open original',
+      originalTitle: 'Original title: {title}',
       curatedHint: 'Saving marks this entry as reviewed; later syncs keep its title, scenes, tags and status.',
       saved: 'Saved'
+    },
+    translation: {
+      title: 'Translate English titles',
+      hint: 'English titles known at release time ship with Chinese translations. Prompts synced later can be translated by any OpenAI-compatible model, e.g. this gateway (base URL http://127.0.0.1:8080/v1 with an admin API key and a cheap model); new titles are translated after every sync.',
+      baseUrl: 'Base URL',
+      model: 'Model',
+      apiKey: 'API key',
+      apiKeyPlaceholder: 'Key for the translation model',
+      apiKeyKeep: 'Configured; leave empty to keep',
+      left: '{n} English titles left',
+      running: 'Translating…',
+      lastRun: 'Last run {time}: {n} translated',
+      run: 'Translate remaining titles',
+      started: 'Translation started; refresh to see progress'
     },
     review: {
       empty: 'Nothing to review',

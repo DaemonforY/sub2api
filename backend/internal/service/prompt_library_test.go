@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -78,7 +79,7 @@ func TestPromptSyncParsesRegistryAndYouMind(t *testing.T) {
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	sync := NewPromptLibrarySyncService(nil, srv.Client())
+	sync := NewPromptLibrarySyncService(nil, srv.Client(), nil)
 	ctx := context.Background()
 
 	items, err := sync.fetchRegistry(ctx, &PromptSource{ID: "demo", URL: srv.URL + "/dist/sources/demo.json"})
@@ -248,4 +249,51 @@ func TestPublicListingIsCachedBriefly(t *testing.T) {
 	now = now.Add(2 * time.Minute)
 	_, _ = svc.ListPublic(ctx, PromptListQuery{Keyword: "海报"})
 	require.Equal(t, 3, repo.lists, "entries expire")
+}
+
+type translateRepo struct {
+	PromptLibraryRepository
+	pending []string
+	applied map[string]string
+}
+
+func (r *translateRepo) UntranslatedTitles(context.Context, int) ([]string, error) { return r.pending, nil }
+func (r *translateRepo) ApplyTitleTranslations(_ context.Context, m map[string]string) (int64, error) {
+	for k, v := range m {
+		r.applied[k] = v
+	}
+	return int64(len(m)), nil
+}
+
+func TestPromptTitleTranslatorUsesTheConfiguredModel(t *testing.T) {
+	var gotAuth, gotModel string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/v1/chat/completions", r.URL.Path)
+		gotAuth = r.Header.Get("Authorization")
+		var body struct {
+			Model string `json:"model"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		gotModel = body.Model
+		content := "```json\n{\"Cat poster\": \"猫咪海报\", \"Retro car\": \"Retro car\", \"Not asked\": \"不该出现\", \"0s – 4s\": \"\"}\n```"
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": content}}}})
+	}))
+	defer srv.Close()
+	repo := &translateRepo{pending: []string{"Cat poster", "Retro car", "0s – 4s"}, applied: map[string]string{}}
+	tr := NewPromptTitleTranslator(repo, nil)
+	n, err := tr.run(context.Background(), promptTranslateSecrets{PromptTranslateConfig: PromptTranslateConfig{BaseURL: srv.URL + "/v1", Model: "gpt-mini"}, apiKey: "k"}, 100)
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.Equal(t, map[string]string{"Cat poster": "猫咪海报"}, repo.applied, "untranslated echoes, empty and unasked titles are dropped")
+	require.Equal(t, "Bearer k", gotAuth)
+	require.Equal(t, "gpt-mini", gotModel)
+}
+
+func TestBundledTitleDictionaryLoads(t *testing.T) {
+	m := BundledPromptTitleTranslations()
+	require.NotNil(t, m)
+	for en, zh := range m {
+		require.NotEmpty(t, en)
+		require.True(t, promptCJK.MatchString(zh), "%q → %q", en, zh)
+	}
 }

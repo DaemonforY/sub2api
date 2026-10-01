@@ -96,7 +96,7 @@
             <div class="relative aspect-[4/3] bg-gray-100 dark:bg-dark-900">
               <img
                 v-if="item.cover_url && !brokenCovers.has(item.id)"
-                :src="item.cover_url"
+                :src="coverSrc(item.cover_url)"
                 alt=""
                 loading="lazy"
                 referrerpolicy="no-referrer"
@@ -115,6 +115,7 @@
             </div>
             <div class="flex flex-1 flex-col gap-2 p-3">
               <button type="button" class="line-clamp-1 text-left font-medium text-gray-900 hover:text-primary-600 dark:text-white" :title="item.title" @click="openEditor(item)">{{ item.title }}</button>
+              <p v-if="item.original_title" class="-mt-1.5 line-clamp-1 text-xs text-gray-400" :title="item.original_title">{{ item.original_title }}</p>
               <p class="line-clamp-2 text-xs leading-5 text-gray-500 dark:text-dark-400" :title="item.prompt">{{ item.prompt }}</p>
               <div class="flex flex-wrap gap-1">
                 <span
@@ -160,6 +161,54 @@
 
       <!-- Sources -->
       <section v-else class="space-y-3">
+        <div class="card space-y-3 p-5" data-testid="prompt-translation">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 class="font-semibold text-gray-900 dark:text-white">{{ t('admin.promptLibrary.translation.title') }}</h3>
+              <p class="mt-1 max-w-3xl text-sm text-gray-500 dark:text-dark-400">{{ t('admin.promptLibrary.translation.hint') }}</p>
+            </div>
+            <div class="text-right text-sm">
+              <div class="text-gray-900 dark:text-white">{{ t('admin.promptLibrary.translation.left', { n: (translation?.untranslated || 0).toLocaleString() }) }}</div>
+              <div v-if="translation?.running" class="text-xs text-primary-600">{{ t('admin.promptLibrary.translation.running') }}</div>
+              <div v-else-if="translation?.last_run_at" class="text-xs text-gray-500">
+                {{ t('admin.promptLibrary.translation.lastRun', { time: formatTime(translation.last_run_at), n: translation.last_translated }) }}
+              </div>
+              <div v-if="translation?.last_error" class="mt-1 max-w-sm truncate text-xs text-red-500" :title="translation.last_error">{{ translation.last_error }}</div>
+            </div>
+          </div>
+          <div class="grid gap-3 md:grid-cols-3">
+            <div>
+              <label class="input-label">{{ t('admin.promptLibrary.translation.baseUrl') }}</label>
+              <input v-model.trim="translationForm.base_url" type="url" class="input" placeholder="http://127.0.0.1:8080/v1" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.promptLibrary.translation.model') }}</label>
+              <input v-model.trim="translationForm.model" type="text" class="input" placeholder="gpt-5.4-mini" />
+            </div>
+            <div>
+              <label class="input-label">{{ t('admin.promptLibrary.translation.apiKey') }}</label>
+              <input
+                v-model.trim="translationForm.api_key"
+                type="password"
+                autocomplete="new-password"
+                class="input"
+                :placeholder="translation?.api_key_configured ? t('admin.promptLibrary.translation.apiKeyKeep') : t('admin.promptLibrary.translation.apiKeyPlaceholder')"
+              />
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-secondary" :disabled="translationSaving" @click="saveTranslation">{{ t('common.save') }}</button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="translation?.running || !translation?.api_key_configured || !translation?.untranslated"
+              @click="runTranslation"
+            >
+              {{ t('admin.promptLibrary.translation.run') }}
+            </button>
+          </div>
+        </div>
+
         <div class="flex items-center justify-between">
           <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('admin.promptLibrary.sources.hint') }}</p>
           <button type="button" class="btn btn-secondary" @click="loadSources">
@@ -207,7 +256,7 @@
       <div class="grid gap-5 md:grid-cols-[220px_minmax(0,1fr)]">
         <div class="space-y-3">
           <div class="aspect-[4/3] overflow-hidden rounded-lg bg-gray-100 dark:bg-dark-900">
-            <img v-if="form.cover_url" :src="form.cover_url" alt="" referrerpolicy="no-referrer" class="h-full w-full object-cover" />
+            <img v-if="form.cover_url" :src="coverSrc(form.cover_url)" alt="" referrerpolicy="no-referrer" class="h-full w-full object-cover" />
           </div>
           <div>
             <label class="input-label">{{ t('admin.promptLibrary.editor.fieldCover') }}</label>
@@ -224,6 +273,7 @@
           <div>
             <label class="input-label">{{ t('admin.promptLibrary.editor.fieldTitle') }}</label>
             <input v-model.trim="form.title" type="text" maxlength="80" class="input" data-testid="prompt-editor-title" />
+            <p v-if="editingItem?.original_title" class="mt-1 text-xs text-gray-500">{{ t('admin.promptLibrary.editor.originalTitle', { title: editingItem.original_title }) }}</p>
           </div>
           <div>
             <label class="input-label">{{ t('admin.promptLibrary.editor.fieldScenes') }}</label>
@@ -418,6 +468,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
 import { adminAPI } from '@/api/admin'
+import { canvasProxiedImageUrl } from '@/constants/crossSites'
 import {
   PROMPT_MODELS,
   PROMPT_SCENES,
@@ -429,7 +480,8 @@ import {
   type PromptItem,
   type PromptLibraryStats,
   type PromptSource,
-  type PromptStatus
+  type PromptStatus,
+  type PromptTranslationStatus
 } from '@/api/admin/promptLibrary'
 
 type Tab = 'items' | 'review' | 'sources'
@@ -582,6 +634,7 @@ function switchTab(next: Tab) {
   tab.value = next
   if (next === 'sources') {
     void loadSources()
+    void loadTranslation()
     return
   }
   reload()
@@ -735,6 +788,51 @@ async function runDelete() {
   }
 }
 
+// ---- covers & translation ----
+function coverSrc(url: string) {
+  return canvasProxiedImageUrl(url)
+}
+
+const translation = ref<PromptTranslationStatus | null>(null)
+const translationForm = reactive({ base_url: '', model: '', api_key: '' })
+const translationSaving = ref(false)
+let translationPoll: ReturnType<typeof setTimeout> | undefined
+
+async function loadTranslation() {
+  try {
+    translation.value = await adminAPI.promptLibrary.translationStatus()
+    if (!translationForm.base_url) translationForm.base_url = translation.value.base_url
+    if (!translationForm.model) translationForm.model = translation.value.model
+  } catch {
+    translation.value = null
+  }
+  clearTimeout(translationPoll)
+  if (tab.value === 'sources' && translation.value?.running) translationPoll = setTimeout(() => void loadTranslation(), 4000)
+}
+
+async function saveTranslation() {
+  translationSaving.value = true
+  try {
+    translation.value = await adminAPI.promptLibrary.saveTranslation({ ...translationForm })
+    translationForm.api_key = ''
+    appStore.showSuccess(t('admin.promptLibrary.editor.saved'))
+  } catch (err) {
+    appStore.showError(errorMessage(err, t('common.error')))
+  } finally {
+    translationSaving.value = false
+  }
+}
+
+async function runTranslation() {
+  try {
+    await adminAPI.promptLibrary.runTranslation()
+    appStore.showSuccess(t('admin.promptLibrary.translation.started'))
+    setTimeout(() => void loadTranslation(), 1500)
+  } catch (err) {
+    appStore.showError(errorMessage(err, t('common.error')))
+  }
+}
+
 // ---- sources ----
 let sourcePoll: ReturnType<typeof setTimeout> | undefined
 function scheduleSourcePoll() {
@@ -768,5 +866,8 @@ onMounted(() => {
   void loadSources()
   void loadTags()
 })
-onBeforeUnmount(() => clearTimeout(sourcePoll))
+onBeforeUnmount(() => {
+  clearTimeout(sourcePoll)
+  clearTimeout(translationPoll)
+})
 </script>

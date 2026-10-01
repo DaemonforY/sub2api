@@ -601,8 +601,8 @@ func ProvidePromptLibraryService(repo PromptLibraryRepository, cfg *config.Confi
 }
 
 // ProvidePromptLibrarySyncService creates and starts the daily community-source sync.
-func ProvidePromptLibrarySyncService(repo PromptLibraryRepository) *PromptLibrarySyncService {
-	svc := NewPromptLibrarySyncService(repo, nil)
+func ProvidePromptLibrarySyncService(repo PromptLibraryRepository, translator *PromptTitleTranslator) *PromptLibrarySyncService {
+	svc := NewPromptLibrarySyncService(repo, nil, translator)
 	svc.Start()
 	return svc
 }
@@ -996,6 +996,7 @@ var ProviderSet = wire.NewSet(
 	ProvideUserAppBlobService,
 	ProvidePromptLibraryService,
 	ProvidePromptLibrarySyncService,
+	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
 	ProvideChannelMonitorService,

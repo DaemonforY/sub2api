@@ -196,6 +196,9 @@ func registerPromptLibraryAdminRoutes(admin *gin.RouterGroup, h *handler.Handler
 		g.GET("/sources", h.Admin.PromptLibrary.Sources)
 		g.PUT("/sources/:id", h.Admin.PromptLibrary.UpdateSource)
 		g.POST("/sources/:id/sync", h.Admin.PromptLibrary.SyncSource)
+		g.GET("/translation", h.Admin.PromptLibrary.TranslationStatus)
+		g.PUT("/translation", h.Admin.PromptLibrary.SaveTranslation)
+		g.POST("/translation/run", h.Admin.PromptLibrary.RunTranslation)
 	}
 }
 

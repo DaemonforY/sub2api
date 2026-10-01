@@ -19,6 +19,8 @@ export interface PromptItem {
   owner_email?: string
   kind: 'image' | 'video'
   title: string
+  /** Source title when a Chinese translation is shown instead. */
+  original_title?: string
   prompt: string
   description: string
   cover_url: string
@@ -158,6 +160,36 @@ export async function syncSource(id: string): Promise<void> {
   await apiClient.post(`/admin/prompt-library/sources/${encodeURIComponent(id)}/sync`)
 }
 
+export interface PromptTranslationStatus {
+  base_url: string
+  model: string
+  api_key_configured: boolean
+  untranslated: number
+  running: boolean
+  last_run_at?: string
+  last_translated: number
+  last_error: string
+}
+
+export interface PromptTranslationInput {
+  base_url: string
+  model: string
+  api_key?: string
+  clear_api_key?: boolean
+}
+
+export async function translationStatus(): Promise<PromptTranslationStatus> {
+  const { data } = await apiClient.get('/admin/prompt-library/translation')
+  return data
+}
+export async function saveTranslation(input: PromptTranslationInput): Promise<PromptTranslationStatus> {
+  const { data } = await apiClient.put('/admin/prompt-library/translation', input)
+  return data
+}
+export async function runTranslation(): Promise<void> {
+  await apiClient.post('/admin/prompt-library/translation/run')
+}
+
 /** Form values for an item (the editor edits a copy). */
 export function toAdminInput(item: PromptItem): PromptAdminInput {
   return {
@@ -187,4 +219,4 @@ export function parseTags(text: string): string[] {
   return out
 }
 
-export default { list, get, create, update, remove, batch, stats, tags, sources, setSourceEnabled, syncSource }
+export default { list, get, create, update, remove, batch, stats, tags, sources, setSourceEnabled, syncSource, translationStatus, saveTranslation, runTranslation }

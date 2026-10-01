@@ -70,15 +70,18 @@ var (
 
 // PromptItem is one library entry.
 type PromptItem struct {
-	ID                 int64      `json:"id"`
-	SourceID           string     `json:"source_id"`
-	SourceName         string     `json:"source_name"`
-	ExternalID         string     `json:"external_id"`
-	OwnerUserID        *int64     `json:"owner_user_id,omitempty"`
-	OwnerEmail         string     `json:"owner_email,omitempty"`
-	Mine               bool       `json:"mine,omitempty"`
-	Kind               string     `json:"kind"`
-	Title              string     `json:"title"`
+	ID          int64  `json:"id"`
+	SourceID    string `json:"source_id"`
+	SourceName  string `json:"source_name"`
+	ExternalID  string `json:"external_id"`
+	OwnerUserID *int64 `json:"owner_user_id,omitempty"`
+	OwnerEmail  string `json:"owner_email,omitempty"`
+	Mine        bool   `json:"mine,omitempty"`
+	Kind        string `json:"kind"`
+	Title       string `json:"title"`
+	// OriginalTitle is the source title when a Chinese translation is shown instead.
+	OriginalTitle      string     `json:"original_title,omitempty"`
+	TitleZh            string     `json:"-"`
 	Prompt             string     `json:"prompt"`
 	Description        string     `json:"description"`
 	CoverURL           string     `json:"cover_url"`
@@ -275,6 +278,10 @@ type PromptLibraryRepository interface {
 	UpsertSourceItems(ctx context.Context, sourceID string, items []PromptItem) error
 	// RefreshDuplicates keeps one visible copy of prompts published by several sources.
 	RefreshDuplicates(ctx context.Context) error
+	// ApplyTitleTranslations fills title_zh for source items whose title matches a key.
+	ApplyTitleTranslations(ctx context.Context, translations map[string]string) (int64, error)
+	UntranslatedTitles(ctx context.Context, limit int) ([]string, error)
+	CountUntranslated(ctx context.Context) (int64, error)
 
 	InsertCover(ctx context.Context, file string, userID, size int64) error
 	CountCoversSince(ctx context.Context, userID int64, since time.Time) (int, error)
@@ -895,7 +902,9 @@ func (s *PromptLibraryService) validateAdminInput(in *PromptAdminInput) error {
 
 func (s *PromptLibraryService) applyAdminInput(item *PromptItem, in PromptAdminInput) {
 	approving := item.Status != PromptStatusActive && in.Status == PromptStatusActive
-	item.Title, item.Prompt, item.Description, item.CoverURL = in.Title, in.Prompt, in.Description, in.CoverURL
+	// The editor shows the displayed (possibly translated) title; what the admin saves is final.
+	item.Title, item.TitleZh, item.OriginalTitle = in.Title, "", ""
+	item.Prompt, item.Description, item.CoverURL = in.Prompt, in.Description, in.CoverURL
 	item.Kind, item.Scenes, item.Tags, item.Model = in.Kind, in.Scenes, in.Tags, in.Model
 	item.NeedsReference, item.Status, item.Featured, item.ReviewNote = in.NeedsReference, in.Status, in.Featured, in.ReviewNote
 	if item.SourceID == PromptSourceUser {

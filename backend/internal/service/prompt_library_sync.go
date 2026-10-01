@@ -43,8 +43,9 @@ var youmindCategoryScenes = map[string]string{
 // PromptLibrarySyncService pulls the community sources into prompt_items: once a day per source,
 // or on demand from the admin page.
 type PromptLibrarySyncService struct {
-	repo   PromptLibraryRepository
-	client *http.Client
+	repo       PromptLibraryRepository
+	client     *http.Client
+	translator *PromptTitleTranslator
 
 	mu      sync.Mutex
 	running map[string]bool
@@ -52,11 +53,21 @@ type PromptLibrarySyncService struct {
 	wg      sync.WaitGroup
 }
 
-func NewPromptLibrarySyncService(repo PromptLibraryRepository, client *http.Client) *PromptLibrarySyncService {
+func NewPromptLibrarySyncService(repo PromptLibraryRepository, client *http.Client, translator *PromptTitleTranslator) *PromptLibrarySyncService {
 	if client == nil {
 		client = &http.Client{Timeout: 3 * time.Minute}
 	}
-	return &PromptLibrarySyncService{repo: repo, client: client, running: map[string]bool{}, stop: make(chan struct{})}
+	return &PromptLibrarySyncService{repo: repo, client: client, translator: translator, running: map[string]bool{}, stop: make(chan struct{})}
+}
+
+// afterSync gives newly synced English titles their Chinese translation.
+func (s *PromptLibrarySyncService) afterSync() {
+	if s.translator == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+	s.translator.AfterSync(ctx)
 }
 
 // Start runs the daily sync loop.
@@ -109,6 +120,7 @@ func (s *PromptLibrarySyncService) syncDue() {
 		}
 		_ = s.SyncNow(context.Background(), src.ID)
 	}
+	s.afterSync()
 }
 
 // IsSyncing reports whether a source is being synced right now.
@@ -156,7 +168,9 @@ func (s *PromptLibrarySyncService) SyncAsync(ctx context.Context, id string) err
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		_ = s.SyncNow(context.Background(), id)
+		if s.SyncNow(context.Background(), id) == nil {
+			s.afterSync()
+		}
 	}()
 	return nil
 }

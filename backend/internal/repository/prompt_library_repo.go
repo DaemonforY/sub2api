@@ -26,7 +26,8 @@ func NewPromptLibraryRepository(db *sql.DB) service.PromptLibraryRepository {
 const promptItemSelect = `
 SELECT i.id, i.source_id,
        CASE i.source_id WHEN 'user' THEN '社区分享' WHEN 'official' THEN 'HiveGPT 精选' ELSE COALESCE(ps.name, i.source_id) END,
-       i.external_id, i.owner_user_id, COALESCE(u.email, ''), i.kind, i.title, i.prompt, i.description, i.cover_url,
+       i.external_id, i.owner_user_id, COALESCE(u.email, ''), i.kind,
+       CASE WHEN i.title_zh <> '' THEN i.title_zh ELSE i.title END, i.title, i.title_zh, i.prompt, i.description, i.cover_url,
        i.reference_image_urls, i.source_tags, i.scenes, i.tags, i.model, i.lang, i.needs_reference, i.auto_flags,
        i.author, i.source_url, i.visibility, i.status, i.review_note, i.curated, i.featured, i.quality_score,
        i.use_count, i.favorite_count, i.dedupe_key, i.published_at, i.created_at, i.updated_at
@@ -46,7 +47,7 @@ func scanPromptItem(row rowScanner) (*service.PromptItem, error) {
 		published sql.NullTime
 	)
 	if err := row.Scan(&item.ID, &item.SourceID, &item.SourceName, &item.ExternalID, &owner, &item.OwnerEmail, &item.Kind, &item.Title,
-		&item.Prompt, &item.Description, &item.CoverURL, &refs, &srcTags, &scenes, &tags, &item.Model, &item.Lang, &item.NeedsReference,
+		&item.OriginalTitle, &item.TitleZh, &item.Prompt, &item.Description, &item.CoverURL, &refs, &srcTags, &scenes, &tags, &item.Model, &item.Lang, &item.NeedsReference,
 		&flags, &item.Author, &item.SourceURL, &item.Visibility, &item.Status, &item.ReviewNote, &item.Curated, &item.Featured,
 		&item.QualityScore, &item.UseCount, &item.FavoriteCount, &item.DedupeKey, &published, &item.CreatedAt, &item.UpdatedAt); err != nil {
 		return nil, err
@@ -58,6 +59,9 @@ func scanPromptItem(row rowScanner) (*service.PromptItem, error) {
 	if published.Valid {
 		t := published.Time
 		item.PublishedAt = &t
+	}
+	if item.OriginalTitle == item.Title {
+		item.OriginalTitle = ""
 	}
 	item.ReferenceImageURLs = decodeStringList(refs)
 	item.SourceTags = decodeStringList(srcTags)
@@ -256,12 +260,13 @@ func (r *promptLibraryRepository) Update(ctx context.Context, item *service.Prom
 	return r.db.QueryRowContext(ctx, `
 UPDATE prompt_items SET kind = $2, title = $3, prompt = $4, description = $5, cover_url = $6, scenes = $7, tags = $8, model = $9,
     lang = $10, needs_reference = $11, auto_flags = $12, visibility = $13, status = $14, review_note = $15, curated = $16,
-    featured = $17, quality_score = $18, dedupe_key = $19, published_at = $20, updated_at = NOW()
+    featured = $17, quality_score = $18, dedupe_key = $19, published_at = $20, title_zh = $21, updated_at = NOW()
 WHERE id = $1
 RETURNING updated_at`,
 		item.ID, item.Kind, item.Title, item.Prompt, item.Description, item.CoverURL, pq.Array(nonNilStrings(item.Scenes)),
 		pq.Array(nonNilStrings(item.Tags)), item.Model, item.Lang, item.NeedsReference, pq.Array(nonNilStrings(item.AutoFlags)),
 		item.Visibility, item.Status, item.ReviewNote, item.Curated, item.Featured, item.QualityScore, item.DedupeKey, item.PublishedAt,
+		item.TitleZh,
 	).Scan(&item.UpdatedAt)
 }
 
@@ -556,6 +561,8 @@ ON CONFLICT (source_id, external_id) DO UPDATE SET
     quality_score = EXCLUDED.quality_score,
     published_at = COALESCE(EXCLUDED.published_at, prompt_items.published_at),
     title = CASE WHEN prompt_items.curated THEN prompt_items.title ELSE EXCLUDED.title END,
+    -- A translation belongs to the title it was made from.
+    title_zh = CASE WHEN prompt_items.curated OR prompt_items.title = EXCLUDED.title THEN prompt_items.title_zh ELSE '' END,
     kind = CASE WHEN prompt_items.curated THEN prompt_items.kind ELSE EXCLUDED.kind END,
     scenes = CASE WHEN prompt_items.curated THEN prompt_items.scenes ELSE EXCLUDED.scenes END,
     model = CASE WHEN prompt_items.curated THEN prompt_items.model ELSE EXCLUDED.model END,
@@ -614,4 +621,52 @@ func (r *promptLibraryRepository) CoverOwnedBy(ctx context.Context, file string,
 	var ok bool
 	err := r.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM prompt_covers WHERE file = $1 AND user_id = $2)`, file, userID).Scan(&ok)
 	return ok, err
+}
+
+func (r *promptLibraryRepository) ApplyTitleTranslations(ctx context.Context, translations map[string]string) (int64, error) {
+	en := make([]string, 0, len(translations))
+	zh := make([]string, 0, len(translations))
+	for k, v := range translations {
+		if k != "" && v != "" {
+			en = append(en, k)
+			zh = append(zh, v)
+		}
+	}
+	if len(en) == 0 {
+		return 0, nil
+	}
+	res, err := r.db.ExecContext(ctx, `
+UPDATE prompt_items p SET title_zh = t.zh, updated_at = NOW()
+FROM unnest($1::text[], $2::text[]) AS t(en, zh)
+WHERE p.title = t.en AND p.title_zh = '' AND p.source_id NOT IN ('user', 'official')`, pq.Array(en), pq.Array(zh))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// promptUntranslated selects listed source items whose title has no Chinese and no translation yet.
+const promptUntranslated = `FROM prompt_items WHERE title_zh = '' AND source_id NOT IN ('user', 'official') AND status = 'active' AND title !~ '[一-鿿]'`
+
+func (r *promptLibraryRepository) UntranslatedTitles(ctx context.Context, limit int) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT DISTINCT title `+promptUntranslated+` ORDER BY title LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var title string
+		if err := rows.Scan(&title); err != nil {
+			return nil, err
+		}
+		out = append(out, title)
+	}
+	return out, rows.Err()
+}
+
+func (r *promptLibraryRepository) CountUntranslated(ctx context.Context) (int64, error) {
+	var n int64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT title) `+promptUntranslated).Scan(&n)
+	return n, err
 }

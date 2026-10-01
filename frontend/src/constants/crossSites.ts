@@ -6,6 +6,22 @@
 /** 无限画布（infinite-canvas）：部署在子域名上的 AI 生图工作台，浏览器直连本网关的 /v1 接口 */
 export const CANVAS_SITE_URL = 'https://canvas.hivegpt.cn/'
 
+// Prompt-library cover hosts that are unreachable from some networks (e.g. mainland China). The
+// canvas relays them at /img-proxy/<host>/<path> (allowlisted in its nginx.conf; keep in sync).
+const CANVAS_PROXIED_IMAGE_HOSTS = new Set(['raw.githubusercontent.com', 'pbs.twimg.com', 'cms-assets.youmind.com', 'cdn.imgedify.com', 'bibigpt-apps.chatvid.ai', 'cdn.jsdelivr.net'])
+
+/** Loads an allowlisted overseas image through the canvas relay; other URLs are returned unchanged. */
+export function canvasProxiedImageUrl(url: string): string {
+  if (!url) return url
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' || parsed.port || !CANVAS_PROXIED_IMAGE_HOSTS.has(parsed.host)) return url
+    return `${CANVAS_SITE_URL.replace(/\/+$/, '')}/img-proxy/${parsed.host}${parsed.pathname}${parsed.search}`
+  } catch {
+    return url
+  }
+}
+
 export interface CanvasUrlOptions {
   /** utm_medium，用于统计入口来源 */
   medium: string

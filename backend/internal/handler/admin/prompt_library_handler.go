@@ -13,12 +13,46 @@ import (
 // PromptLibraryHandler lets admins curate the canvas prompt library: fix scenes and tags, hide or
 // feature items, review prompts users share, and manage the synced sources.
 type PromptLibraryHandler struct {
-	service *service.PromptLibraryService
-	sync    *service.PromptLibrarySyncService
+	service    *service.PromptLibraryService
+	sync       *service.PromptLibrarySyncService
+	translator *service.PromptTitleTranslator
 }
 
-func NewPromptLibraryHandler(svc *service.PromptLibraryService, sync *service.PromptLibrarySyncService) *PromptLibraryHandler {
-	return &PromptLibraryHandler{service: svc, sync: sync}
+func NewPromptLibraryHandler(svc *service.PromptLibraryService, sync *service.PromptLibrarySyncService, translator *service.PromptTitleTranslator) *PromptLibraryHandler {
+	return &PromptLibraryHandler{service: svc, sync: sync, translator: translator}
+}
+
+// TranslationStatus GET /api/v1/admin/prompt-library/translation
+func (h *PromptLibraryHandler) TranslationStatus(c *gin.Context) {
+	status, err := h.translator.Status(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, status)
+}
+
+// SaveTranslation PUT /api/v1/admin/prompt-library/translation
+func (h *PromptLibraryHandler) SaveTranslation(c *gin.Context) {
+	var in service.PromptTranslateConfigInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "请求格式不正确")
+		return
+	}
+	if err := h.translator.SaveConfig(c.Request.Context(), in); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	h.TranslationStatus(c)
+}
+
+// RunTranslation POST /api/v1/admin/prompt-library/translation/run — runs in the background.
+func (h *PromptLibraryHandler) RunTranslation(c *gin.Context) {
+	if err := h.translator.RunAsync(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"started": true})
 }
 
 func optionalBoolQuery(c *gin.Context, name string) *bool {

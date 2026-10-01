@@ -102,8 +102,23 @@ export default {
       fieldReviewNote: '审核备注（不通过时作者能看到）',
       sourceInfo: '来源：{source} · 原始标签：{tags}',
       openSource: '查看原出处',
+      originalTitle: '原标题：{title}',
       curatedHint: '保存后本条会标记为“已人工校对”，之后来源同步不会覆盖标题、场景、标签和状态。',
       saved: '已保存'
+    },
+    translation: {
+      title: '英文标题自动翻译',
+      hint: '已有的英文标题已经随版本内置了中文翻译。之后同步进来的新提示词，可以用一个兼容 OpenAI 接口的模型自动翻译：比如本站网关（接口地址 http://127.0.0.1:8080/v1，填一个管理员自己的 API Key 和便宜的模型），每次同步后会自动翻译新标题。',
+      baseUrl: '接口地址',
+      model: '模型',
+      apiKey: 'API Key',
+      apiKeyPlaceholder: '用于调用翻译模型',
+      apiKeyKeep: '已配置，留空不修改',
+      left: '还有 {n} 个英文标题未翻译',
+      running: '正在翻译…',
+      lastRun: '上次翻译：{time}，翻译了 {n} 个',
+      run: '立即翻译剩余标题',
+      started: '已开始翻译，稍后刷新查看进度'
     },
     review: {
       empty: '没有待审核的分享',
