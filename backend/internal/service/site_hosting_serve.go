@@ -38,9 +38,13 @@ func (s *SiteHostingService) SiteNameFromHost(host string) (name string, ok bool
 	return strings.TrimSuffix(host, "."+domain), true
 }
 
-// KnownSite answers Caddy's on-demand TLS check: issue certificates only for existing sites.
+// KnownSite answers Caddy's on-demand TLS check: issue certificates only for existing sites (and
+// the bare hosting domain, which shows a "no such site" page).
 func (s *SiteHostingService) KnownSite(ctx context.Context, host string) bool {
 	name, ok := s.SiteNameFromHost(host)
+	if ok && name == "" {
+		return true
+	}
 	if !ok || !siteNameRe.MatchString(name) {
 		return false
 	}

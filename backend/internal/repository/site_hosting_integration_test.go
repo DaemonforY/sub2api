@@ -88,6 +88,8 @@ func TestSiteHostingLifecycle(t *testing.T) {
 	require.Contains(t, w.Body.String(), "v5")
 	require.True(t, svc.KnownSite(ctx, free.Name+".s.example.test"))
 	require.False(t, svc.KnownSite(ctx, "nosuch12.s.example.test"))
+	require.True(t, svc.KnownSite(ctx, "s.example.test"), "the bare domain gets a certificate for its status page")
+	require.False(t, svc.KnownSite(ctx, "hivegpt.cn"))
 
 	// Renewal: the paid period ended and the balance (2) cannot cover it → offline until paid.
 	_, err = integrationDB.ExecContext(ctx, `UPDATE sites SET paid_until = NOW() - interval '1 hour' WHERE id = $1`, paid.ID)
