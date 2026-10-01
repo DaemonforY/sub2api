@@ -71,6 +71,7 @@ type Config struct {
 	CORS                    CORSConfig                    `mapstructure:"cors"`
 	RequestLog              RequestLogConfig              `mapstructure:"request_log"`
 	Contest                 ContestConfig                 `mapstructure:"contest"`
+	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
 	Security                SecurityConfig                `mapstructure:"security"`
 	Billing                 BillingConfig                 `mapstructure:"billing"`
 	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
@@ -711,6 +712,15 @@ type CORSConfig struct {
 type ContestConfig struct {
 	// ImageDir stores uploaded entry images; keep it on the persistent data volume.
 	ImageDir string `mapstructure:"image_dir"`
+}
+
+// ImageToolsConfig points at the internal imagetools service (background removal, super-resolution)
+// and prices its runs in balance units. An empty BaseURL disables the tools.
+type ImageToolsConfig struct {
+	BaseURL       string  `mapstructure:"base_url"`
+	PriceRemoveBg float64 `mapstructure:"price_remove_bg"`
+	PriceUpscale  float64 `mapstructure:"price_upscale"`
+	FreeDaily     int     `mapstructure:"free_daily"`
 }
 
 // RequestLogConfig controls the full gateway request log (every /v1-style call,
@@ -2052,6 +2062,10 @@ func setDefaults() {
 
 	// Contests
 	viper.SetDefault("contest.image_dir", "./data/contest-images")
+	viper.SetDefault("image_tools.base_url", "")
+	viper.SetDefault("image_tools.price_remove_bg", 0.02)
+	viper.SetDefault("image_tools.price_upscale", 0.05)
+	viper.SetDefault("image_tools.free_daily", 3)
 
 	// WebAuthn / Passkeys are opt-in because every deployment must explicitly
 	// declare its relying-party domain and trusted browser origins.

@@ -206,6 +206,7 @@ func ProvideHandlers(
 	growthHandler *GrowthHandler,
 	appStateHandler *UserAppStateHandler,
 	promptLibraryHandler *PromptLibraryHandler,
+	imageToolsHandler *ImageToolsHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -236,6 +237,7 @@ func ProvideHandlers(
 		Growth:           growthHandler,
 		AppState:         appStateHandler,
 		PromptLibrary:    promptLibraryHandler,
+		ImageTools:       imageToolsHandler,
 	}
 }
 
@@ -266,6 +268,7 @@ var ProviderSet = wire.NewSet(
 	NewGrowthHandler,
 	NewUserAppStateHandler,
 	NewPromptLibraryHandler,
+	NewImageToolsHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

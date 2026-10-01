@@ -173,7 +173,9 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		// drained balance or a used-up subscription window must not block them.
 		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path) ||
 			isContestKeyEntrySubmission(c.Request.Method, c.Request.URL.Path) || strings.HasPrefix(c.Request.URL.Path, "/api/v1/app-state/") ||
-			strings.HasPrefix(c.Request.URL.Path, "/api/v1/prompt-library/")
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/prompt-library/") ||
+			// Image tools bill the balance themselves after a run succeeds (subscribers get free runs).
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/image-tools/")
 
 		// ── 4. SimpleMode → early return ─────────────────────────────
 

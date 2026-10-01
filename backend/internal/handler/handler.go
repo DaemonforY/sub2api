@@ -76,6 +76,7 @@ type Handlers struct {
 	Growth           *GrowthHandler
 	AppState         *UserAppStateHandler
 	PromptLibrary    *PromptLibraryHandler
+	ImageTools       *ImageToolsHandler
 }
 
 // BuildInfo contains build-time information

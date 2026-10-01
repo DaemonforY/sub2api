@@ -600,6 +600,19 @@ func ProvidePromptLibraryService(repo PromptLibraryRepository, cfg *config.Confi
 	return NewPromptLibraryService(repo, NewPromptCoverStore(filepath.Join(filepath.Dir(filepath.Clean(dir)), "prompt-covers")))
 }
 
+// ProvideImageToolsService wires the canvas image tools (IMAGE_TOOLS_BASE_URL enables them).
+func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRepository, cache *BillingCacheService, cfg *config.Config) *ImageToolsService {
+	c := ImageToolsConfig{PriceRemoveBg: 0.02, PriceUpscale: 0.05, FreeDaily: 3}
+	if cfg != nil {
+		c = ImageToolsConfig{BaseURL: cfg.ImageTools.BaseURL, PriceRemoveBg: cfg.ImageTools.PriceRemoveBg, PriceUpscale: cfg.ImageTools.PriceUpscale, FreeDaily: cfg.ImageTools.FreeDaily}
+	}
+	var balanceCache imageToolBalanceCache
+	if cache != nil {
+		balanceCache = cache
+	}
+	return NewImageToolsService(repo, subs, balanceCache, c)
+}
+
 // ProvidePromptLibrarySyncService creates and starts the daily community-source sync.
 func ProvidePromptLibrarySyncService(repo PromptLibraryRepository, translator *PromptTitleTranslator) *PromptLibrarySyncService {
 	svc := NewPromptLibrarySyncService(repo, nil, translator)
@@ -996,6 +1009,7 @@ var ProviderSet = wire.NewSet(
 	ProvideUserAppBlobService,
 	ProvidePromptLibraryService,
 	ProvidePromptLibrarySyncService,
+	ProvideImageToolsService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

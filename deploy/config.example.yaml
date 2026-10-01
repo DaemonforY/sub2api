@@ -135,6 +135,16 @@ contest:
   # 参赛作品图片存放目录，务必位于持久化数据卷内（Docker 部署即 /app/data）。
   image_dir: "./data/contest-images"
 
+image_tools:
+  # Internal imagetools service (deploy/imagetools): background removal and super-resolution
+  # for the canvas. Empty disables the tools. Prices are in balance units per successful run;
+  # users with an active subscription get free_daily free runs a day.
+  # 画布的抠图 / 超分服务地址（deploy/imagetools），留空即关闭；价格按每次成功处理扣余额，订阅用户每天免费 free_daily 次。
+  base_url: ""
+  price_remove_bg: 0.02
+  price_upscale: 0.05
+  free_daily: 3
+
 # =============================================================================
 # Security Configuration
 # 安全配置
