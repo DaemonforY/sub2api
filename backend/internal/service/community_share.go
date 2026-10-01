@@ -203,7 +203,7 @@ func renderShareMeta(card *ShareCard, mainSite, pageURL string) string {
 		}
 		fmt.Fprintf(&b, "<meta name=\"twitter:card\" content=\"summary_large_image\" />\n<meta name=\"twitter:image\" content=\"%s\" />\n", e(img))
 	} else {
-		b.WriteString("<meta name=\"twitter:card\" content=\"summary\" />\n")
+		fmt.Fprint(&b, "<meta name=\"twitter:card\" content=\"summary\" />\n")
 	}
 	fmt.Fprintf(&b, "<meta name=\"twitter:title\" content=\"%s\" />\n", e(card.Title))
 	return b.String()
