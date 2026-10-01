@@ -258,10 +258,10 @@ func (s *ImageToolsService) process(ctx context.Context, path string, image []by
 	if err != nil {
 		return nil, "", ErrImageToolsFailed
 	}
-	switch {
-	case resp.StatusCode == http.StatusOK:
+	switch resp.StatusCode {
+	case http.StatusOK:
 		return body, resp.Header.Get("Content-Type"), nil
-	case resp.StatusCode == http.StatusUnprocessableEntity:
+	case http.StatusUnprocessableEntity:
 		// The service explains what is wrong with the image (unreadable, already big enough...).
 		var msg struct {
 			Error string `json:"error"`
@@ -269,7 +269,7 @@ func (s *ImageToolsService) process(ctx context.Context, path string, image []by
 		if json.Unmarshal(body, &msg) == nil && msg.Error != "" {
 			return nil, "", infraerrors.BadRequest("IMAGE_TOOLS_BAD_IMAGE", msg.Error+"；本次未扣费")
 		}
-	case resp.StatusCode == http.StatusRequestEntityTooLarge:
+	case http.StatusRequestEntityTooLarge:
 		return nil, "", ErrImageToolsTooLarge
 	}
 	return nil, "", ErrImageToolsFailed
