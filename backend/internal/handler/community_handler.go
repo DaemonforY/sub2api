@@ -184,6 +184,26 @@ func (h *CommunityHandler) Works(c *gin.Context) {
 	response.Success(c, gin.H{"works": works, "next_offset": max(0, q.Offset) + len(works), "has_more": len(works) >= limit})
 }
 
+// PublicWorks GET /api/v1/community/works — the main site's home page wall: recommended or latest
+// public works only (no per-user feeds, no viewer state), at most 24.
+func (h *CommunityHandler) PublicWorks(c *gin.Context) {
+	feed := c.Query("feed")
+	if feed != "latest" {
+		feed = "recommended"
+	}
+	limit := queryInt(c, "limit")
+	if limit <= 0 || limit > 24 {
+		limit = 12
+	}
+	works, err := h.svc.Works(c.Request.Context(), service.WorkQuery{Feed: feed, Tag: c.Query("tag"), Limit: limit})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=60")
+	response.Success(c, gin.H{"works": works})
+}
+
 // Work GET /community/works/:id
 func (h *CommunityHandler) Work(c *gin.Context) {
 	id, ok := pathInt(c, "id")

@@ -136,7 +136,9 @@ export default {
     // Home v2 (inspired by mxai.cn: create-from-the-hero, scenario entry points, showcase wall, onboarding path, FAQ)
     v2: {
       nav: {
-        start: 'Start creating'
+        start: 'Start creating',
+        explore: 'Explore',
+        tools: 'Tools'
       },
       hero: {
         eyebrow: '{site} · AI creation and API in one place',
@@ -193,6 +195,12 @@ export default {
           badge: 'Prizes',
           points: 'Submit AI art to win prizes,Transparent community voting,Ranking frozen at the deadline'
         }
+      },
+      community: {
+        title: 'From the community',
+        subtitle: 'Made with AI on HiveGPT Infinite Canvas. Like one? Remix it in a click.',
+        more: 'Explore more',
+        aiLabel: 'AI-generated'
       },
       showcase: {
         title: 'Featured works',

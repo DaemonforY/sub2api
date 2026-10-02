@@ -130,6 +130,17 @@
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
+          <!-- Explore: the community on the canvas site -->
+          <a
+            :href="canvasLink('nav-explore', '/explore')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            :title="t('home.v2.nav.explore')"
+          >
+            <Icon name="globe" size="sm" />
+            <span class="hidden sm:inline">{{ t('home.v2.nav.explore') }}</span>
+          </a>
           <!-- Contests -->
           <RouterLink
             to="/contests"
@@ -150,6 +161,17 @@
             <Icon name="sparkles" size="sm" />
             <span class="hidden sm:inline">{{ t('home.canvas.navLabel') }}</span>
           </a>
+          <!-- Image tools on the canvas site (wide screens; the canvas link covers phones) -->
+          <a
+            :href="canvasLink('nav-tools', '/tools')"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 md:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            :title="t('home.v2.nav.tools')"
+          >
+            <Icon name="bolt" size="sm" />
+            <span>{{ t('home.v2.nav.tools') }}</span>
+          </a>
           <!-- Learning site link (cross-site) -->
           <a
             :href="learnUrl('nav')"
@@ -167,7 +189,7 @@
             :href="docUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            class="hidden rounded-lg p-2 text-gray-500 sm:inline-block transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
             :title="t('home.viewDocs')"
           >
             <Icon name="book" size="md" />
@@ -263,8 +285,9 @@
             <HomePromptBox :is-authenticated="isAuthenticated" class="mt-8 text-left" />
           </div>
 
-          <!-- Right: Terminal Animation -->
+          <!-- Right: community works (the terminal animation until there are enough) -->
           <div class="hidden flex-1 justify-center lg:flex lg:justify-end">
+            <HomeHeroCollage>
             <div class="terminal-container">
               <div class="terminal-window">
                 <!-- Window header -->
@@ -298,8 +321,11 @@
                 </div>
               </div>
             </div>
+            </HomeHeroCollage>
           </div>
         </div>
+
+        <HomeCommunityWall />
 
         <HomeScenarios :is-authenticated="isAuthenticated" :show-model-plaza="showModelPlazaEntry" />
 
@@ -561,6 +587,8 @@ import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossS
 import HomePromptBox from '@/components/home/HomePromptBox.vue'
 import HomeScenarios from '@/components/home/HomeScenarios.vue'
 import HomeShowcase from '@/components/home/HomeShowcase.vue'
+import HomeCommunityWall from '@/components/home/HomeCommunityWall.vue'
+import HomeHeroCollage from '@/components/home/HomeHeroCollage.vue'
 import HomeSteps from '@/components/home/HomeSteps.vue'
 import HomeSupport from '@/components/home/HomeSupport.vue'
 import HomeFaq from '@/components/home/HomeFaq.vue'
@@ -595,7 +623,7 @@ const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 const learnSiteUrl = 'https://ai-learn.xinduanju.top/'
 const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_medium=${medium}`
 // 互推站点：无限画布（子域名部署的生图工作台），预填本站网关地址
-const canvasLink = (medium: string, path: '/' | '/image' | '/video' = '/') =>
+const canvasLink = (medium: string, path: '/' | `/${string}` = '/') =>
   canvasUrl({ medium, baseUrl: window.location.origin, path })
 const partnerSites = otherPartnerSites()
 const contactInfo = computed(() => String(appStore.cachedPublicSettings?.contact_info || '').trim())

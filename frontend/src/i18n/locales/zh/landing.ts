@@ -136,7 +136,9 @@ export default {
     // 首页 v2（参考 mxai.cn 的首屏即创作、场景入口、案例墙、上手路径、FAQ 结构）
     v2: {
       nav: {
-        start: '开始创作'
+        start: '开始创作',
+        explore: '发现',
+        tools: '工具'
       },
       hero: {
         eyebrow: '{site} · AI 创作与 API 一站式平台',
@@ -193,6 +195,12 @@ export default {
           badge: '有奖',
           points: '投稿 AI 作品赢取奖励,社区投票公开透明,截止时刻冻结排名'
         }
+      },
+      community: {
+        title: '社区作品',
+        subtitle: '大家在 HiveGPT 无限画布上用 AI 创作的作品，喜欢的可以一键做同款',
+        more: '去发现页看更多',
+        aiLabel: 'AI 生成'
       },
       showcase: {
         title: '精选作品',
