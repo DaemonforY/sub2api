@@ -1,8 +1,8 @@
 export default {
   community: {
     title: '画布社区',
-    description: '无限画布社区的作品审核、举报处理、精选和发布限制。',
-    tabs: { pending: '待审核', reported: '被举报', approved: '已公开', hidden: '已隐藏', reports: '举报记录', restricted: '受限作者', settings: '设置' },
+    description: '无限画布社区的作品和评论审核、举报处理、精选和发布限制。',
+    tabs: { pending: '待审核', reported: '被举报', approved: '已公开', hidden: '已隐藏', comments: '评论', reports: '举报记录', restricted: '受限作者', settings: '设置' },
     status: { approved: '已公开', pending: '待审核', rejected: '未通过', hidden: '已隐藏' },
     untitled: '未命名作品',
     featured: '精选',
@@ -22,9 +22,19 @@ export default {
     next: '下一页',
     resolve: '已处理',
     dismiss: '忽略',
-    columns: { time: '时间', work: '作品', reason: '原因', status: '状态', author: '作者', email: '邮箱', works: '作品数', since: '限制时间' },
+    columns: { time: '时间', comment: '评论', work: '作品', reason: '原因', status: '状态', author: '作者', email: '邮箱', works: '作品数', since: '限制时间' },
     reasons: { porn: '色情低俗', violence: '暴力血腥', politics: '违法违规', copyright: '侵犯版权', fraud: '诈骗广告', spam: '垃圾内容', other: '其他' },
     reportStatus: { open: '待处理', resolved: '已处理', dismissed: '已忽略' },
+    commentFilters: { pending: '待审核', reported: '被举报', hidden: '已隐藏', all: '全部' },
+    commentStatus: { approved: '已公开', pending: '待审核', hidden: '已隐藏', deleted: '已删除' },
+    noComments: '这里没有评论',
+    reportedComment: '被举报的评论',
+    commentSettings: {
+      title: '作品评论',
+      enabled: '开启评论',
+      reviewAll: '所有评论都需要人工审核后才公开',
+      hint: '关闭评论后，作品页不再显示评论区，已有评论保留。不开「全部审核」时，只有命中敏感词的评论进入待审核。新账号每天最多 20 条评论，其他账号 200 条，每分钟最多 5 条。'
+    },
     reviewAll: '所有新作品都需要人工审核后才公开',
     cloud: {
       title: '画布云同步空间',

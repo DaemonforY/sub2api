@@ -1,8 +1,8 @@
 export default {
   community: {
     title: 'Canvas community',
-    description: 'Review queue, reports, editor’s picks and publishing restrictions for the Infinite Canvas community.',
-    tabs: { pending: 'Pending', reported: 'Reported', approved: 'Public', hidden: 'Hidden', reports: 'Reports', restricted: 'Restricted', settings: 'Settings' },
+    description: 'Work and comment review, reports, editor’s picks and publishing restrictions for the Infinite Canvas community.',
+    tabs: { pending: 'Pending', reported: 'Reported', approved: 'Public', hidden: 'Hidden', comments: 'Comments', reports: 'Reports', restricted: 'Restricted', settings: 'Settings' },
     status: { approved: 'Public', pending: 'Pending', rejected: 'Rejected', hidden: 'Hidden' },
     untitled: 'Untitled',
     featured: 'Featured',
@@ -22,9 +22,19 @@ export default {
     next: 'Next',
     resolve: 'Resolved',
     dismiss: 'Dismiss',
-    columns: { time: 'Time', work: 'Work', reason: 'Reason', status: 'Status', author: 'Author', email: 'Email', works: 'Works', since: 'Restricted at' },
+    columns: { time: 'Time', comment: 'Comment', work: 'Work', reason: 'Reason', status: 'Status', author: 'Author', email: 'Email', works: 'Works', since: 'Restricted at' },
     reasons: { porn: 'Sexual content', violence: 'Violence', politics: 'Illegal content', copyright: 'Copyright', fraud: 'Scam or ads', spam: 'Spam', other: 'Other' },
     reportStatus: { open: 'Open', resolved: 'Resolved', dismissed: 'Dismissed' },
+    commentFilters: { pending: 'Pending', reported: 'Reported', hidden: 'Hidden', all: 'All' },
+    commentStatus: { approved: 'Public', pending: 'Pending', hidden: 'Hidden', deleted: 'Deleted' },
+    noComments: 'No comments here',
+    reportedComment: 'Reported comment',
+    commentSettings: {
+      title: 'Comments on works',
+      enabled: 'Turn on comments',
+      reviewAll: 'Every comment needs manual approval before it shows',
+      hint: 'Turning comments off hides the comment section on work pages; existing comments are kept. Without full review, only comments with flagged words wait for review. New accounts may post 20 comments a day, others 200, and at most 5 a minute.'
+    },
     reviewAll: 'Every new work needs manual approval before it goes public',
     cloud: {
       title: 'Canvas cloud sync space',

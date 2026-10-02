@@ -13,6 +13,18 @@
           {{ t('admin.community.reviewAll') }}
         </label>
         <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.reviewAllHint') }}</p>
+        <div class="space-y-2 border-t border-gray-100 pt-3 dark:border-dark-700">
+          <div class="text-sm font-medium">{{ t('admin.community.commentSettings.title') }}</div>
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="settings.comments_enabled" type="checkbox" class="h-4 w-4" data-testid="comments-enabled" />
+            {{ t('admin.community.commentSettings.enabled') }}
+          </label>
+          <label class="flex items-center gap-2 text-sm">
+            <input v-model="settings.comments_review_all" type="checkbox" class="h-4 w-4" :disabled="!settings.comments_enabled" data-testid="comments-review-all" />
+            {{ t('admin.community.commentSettings.reviewAll') }}
+          </label>
+          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.commentSettings.hint') }}</p>
+        </div>
         <div class="border-t border-gray-100 pt-3 dark:border-dark-700">
           <div class="text-sm font-medium">{{ t('admin.community.cloud.title') }}</div>
           <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.cloud.hint') }}</p>
@@ -59,6 +71,56 @@
         <p v-if="!restrictedList.length" class="p-6 text-center text-sm text-gray-500">{{ t('admin.community.noRestricted') }}</p>
       </div>
 
+      <div v-else-if="tab === 'comments'" class="space-y-3" data-testid="community-comments">
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="f in commentFilters"
+            :key="f"
+            :class="['btn btn-sm', commentFilter === f ? 'btn-primary' : 'btn-secondary']"
+            @click="switchCommentFilter(f)"
+          >
+            {{ t(`admin.community.commentFilters.${f || 'all'}`) }}
+          </button>
+        </div>
+        <div class="card overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-xs text-gray-500 dark:text-dark-400">
+              <tr>
+                <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.time') }}</th>
+                <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.author') }}</th>
+                <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.comment') }}</th>
+                <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.work') }}</th>
+                <th class="px-4 py-2 font-medium">{{ t('admin.community.columns.status') }}</th>
+                <th class="px-4 py-2" />
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+              <tr v-for="c in commentList" :key="c.id" data-testid="community-comment">
+                <td class="whitespace-nowrap px-4 py-2 text-gray-500">{{ formatDateTime(c.created_at) }}</td>
+                <td class="whitespace-nowrap px-4 py-2">{{ c.author?.display_name || c.author?.handle }}<span class="ml-1 text-xs text-gray-500">@{{ c.author?.handle }}</span></td>
+                <td class="max-w-md px-4 py-2">
+                  <span class="whitespace-pre-wrap break-words">{{ c.body }}</span>
+                  <span v-if="c.review_flags?.length" class="block text-xs text-amber-700 dark:text-amber-300">{{ t('admin.community.flags') }}：{{ c.review_flags.join('、') }}</span>
+                  <span v-if="c.report_count" class="block text-xs text-red-600">{{ t('admin.community.reports', { count: c.report_count }) }}</span>
+                </td>
+                <td class="px-4 py-2"><a :href="workUrl(c.work_id) + '#comments'" target="_blank" rel="noopener" class="text-primary-600 hover:underline">#{{ c.work_id }} {{ c.work_title }}</a></td>
+                <td class="whitespace-nowrap px-4 py-2"><span :class="['badge', commentBadge(c.status)]">{{ t(`admin.community.commentStatus.${c.status}`) }}</span></td>
+                <td class="space-x-1 whitespace-nowrap px-4 py-2 text-right">
+                  <button v-if="c.status === 'pending' || c.status === 'hidden'" class="btn btn-primary btn-sm" :disabled="busy" @click="actComment(c, 'approve')">{{ t('admin.community.actions.approve') }}</button>
+                  <button v-if="c.status === 'pending' || c.status === 'approved'" class="btn btn-secondary btn-sm" :disabled="busy" @click="actComment(c, 'hide')">{{ t('admin.community.actions.hide') }}</button>
+                  <button class="btn btn-danger btn-sm" :disabled="busy" @click="banUser(c.owner_id, c.author?.handle || '')">{{ t('admin.community.actions.ban') }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="!commentList.length" class="p-6 text-center text-sm text-gray-500">{{ t('admin.community.noComments') }}</p>
+        </div>
+        <div v-if="commentList.length >= 50 || page > 1" class="flex justify-center gap-2">
+          <button class="btn btn-secondary btn-sm" :disabled="page <= 1" @click="go(page - 1)">{{ t('admin.community.prev') }}</button>
+          <button class="btn btn-secondary btn-sm" :disabled="commentList.length < 50" @click="go(page + 1)">{{ t('admin.community.next') }}</button>
+        </div>
+      </div>
+
       <div v-else-if="tab === 'reports'" class="card overflow-x-auto" data-testid="community-reports">
         <table class="min-w-full text-sm">
           <thead class="text-left text-xs text-gray-500 dark:text-dark-400">
@@ -73,7 +135,13 @@
           <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
             <tr v-for="r in reportList" :key="r.id">
               <td class="px-4 py-2 text-gray-500">{{ formatDateTime(r.created_at) }}</td>
-              <td class="px-4 py-2"><a :href="workUrl(r.work_id)" target="_blank" rel="noopener" class="text-primary-600 hover:underline">#{{ r.work_id }} {{ r.work_title }}</a></td>
+              <td class="px-4 py-2">
+                <a :href="workUrl(r.work_id) + (r.comment_id ? '#comments' : '')" target="_blank" rel="noopener" class="text-primary-600 hover:underline">#{{ r.work_id }} {{ r.work_title }}</a>
+                <span v-if="r.comment_id" class="mt-0.5 block max-w-md text-xs text-gray-600 dark:text-dark-300" data-testid="report-comment">
+                  {{ t('admin.community.reportedComment') }}：{{ r.comment_body }}
+                  <span v-if="r.comment_status && r.comment_status !== 'approved'" class="text-gray-400">（{{ t(`admin.community.commentStatus.${r.comment_status}`) }}）</span>
+                </span>
+              </td>
               <td class="px-4 py-2">{{ t(`admin.community.reasons.${r.reason}`) }}<span v-if="r.detail" class="block text-xs text-gray-500">{{ r.detail }}</span></td>
               <td class="px-4 py-2">{{ t(`admin.community.reportStatus.${r.status}`) }}</td>
               <td class="space-x-1 whitespace-nowrap px-4 py-2 text-right">
@@ -141,14 +209,16 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { adminAPI } from '@/api/admin'
-import type { AdminCommunityWork, AdminWorkReport, CommunitySettings, CommunityWorkStatus, ModerateAction, RestrictedAuthor } from '@/api/admin/community'
+import type { AdminComment, AdminCommentStatus, AdminCommunityWork, AdminWorkReport, CommunitySettings, CommunityWorkStatus, ModerateAction, RestrictedAuthor } from '@/api/admin/community'
 import { CANVAS_SITE_URL } from '@/constants/crossSites'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatDateTime } from '@/utils/format'
 
-type Tab = 'pending' | 'reported' | 'approved' | 'hidden' | 'reports' | 'restricted' | 'settings'
-const tabs: Tab[] = ['pending', 'reported', 'approved', 'hidden', 'reports', 'restricted', 'settings']
+type Tab = 'pending' | 'reported' | 'approved' | 'hidden' | 'comments' | 'reports' | 'restricted' | 'settings'
+const tabs: Tab[] = ['pending', 'reported', 'approved', 'hidden', 'comments', 'reports', 'restricted', 'settings']
+const commentFilters = ['pending', 'reported', 'hidden', ''] as const
+type CommentFilter = (typeof commentFilters)[number]
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -158,7 +228,9 @@ const busy = ref(false)
 const workList = ref<AdminCommunityWork[]>([])
 const reportList = ref<AdminWorkReport[]>([])
 const restrictedList = ref<RestrictedAuthor[]>([])
-const settings = ref<CommunitySettings>({ review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
+const commentList = ref<AdminComment[]>([])
+const commentFilter = ref<CommentFilter>('pending')
+const settings = ref<CommunitySettings>({ review_all: false, comments_enabled: true, comments_review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
 const reasonFor = ref<{ work: AdminCommunityWork; action: 'reject' | 'hide' } | null>(null)
 const reason = ref('')
 
@@ -169,6 +241,10 @@ function statusBadge(status: CommunityWorkStatus) {
   return { approved: 'badge-success', pending: 'badge-warning', rejected: 'badge-danger', hidden: 'badge-gray' }[status]
 }
 
+function commentBadge(status: AdminCommentStatus) {
+  return { approved: 'badge-success', pending: 'badge-warning', hidden: 'badge-gray', deleted: 'badge-gray' }[status]
+}
+
 function showError(error: unknown) {
   appStore.showError(extractApiErrorMessage(error, t('common.error')))
 }
@@ -176,6 +252,7 @@ function showError(error: unknown) {
 async function load() {
   try {
     if (tab.value === 'settings') settings.value = await adminAPI.community.getSettings()
+    else if (tab.value === 'comments') commentList.value = await adminAPI.community.comments(commentFilter.value, page.value)
     else if (tab.value === 'reports') reportList.value = await adminAPI.community.reports('', page.value)
     else if (tab.value === 'restricted') restrictedList.value = await adminAPI.community.restricted()
     else workList.value = await adminAPI.community.works(tab.value, page.value)
@@ -188,6 +265,25 @@ function switchTab(next: Tab) {
   tab.value = next
   page.value = 1
   void load()
+}
+
+function switchCommentFilter(next: CommentFilter) {
+  commentFilter.value = next
+  page.value = 1
+  void load()
+}
+
+async function actComment(comment: AdminComment, action: 'approve' | 'hide') {
+  busy.value = true
+  try {
+    await adminAPI.community.moderateComment(comment.id, action)
+    appStore.showSuccess(t('admin.community.done'))
+    await load()
+  } catch (error) {
+    showError(error)
+  } finally {
+    busy.value = false
+  }
 }
 
 function go(next: number) {
@@ -220,11 +316,15 @@ async function confirmReason() {
   await act(work, action, reason.value)
 }
 
-async function banAuthor(work: AdminCommunityWork) {
-  if (!window.confirm(t('admin.community.banConfirm', { handle: work.author.handle }))) return
+function banAuthor(work: AdminCommunityWork) {
+  return banUser(work.owner_id, work.author.handle)
+}
+
+async function banUser(userId: number, handle: string) {
+  if (!window.confirm(t('admin.community.banConfirm', { handle }))) return
   busy.value = true
   try {
-    await adminAPI.community.ban(work.owner_id, true)
+    await adminAPI.community.ban(userId, true)
     appStore.showSuccess(t('admin.community.banned'))
   } catch (error) {
     showError(error)

@@ -130,9 +130,12 @@ type Work struct {
 	Media         []WorkMedia   `json:"media,omitempty"`
 	Contests      []WorkContest `json:"contests,omitempty"` // work page only
 	Kind          string        `json:"kind"`               // image | site
-	Site          *WorkSite     `json:"site,omitempty"`
-	CreatedAt     time.Time     `json:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at"`
+	// CommentCount: approved comments and replies; the author may close comments.
+	CommentCount   int       `json:"comment_count"`
+	CommentsClosed bool      `json:"comments_closed"`
+	Site           *WorkSite `json:"site,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }
 
 // WorkQuery selects works for a feed, a profile, a collection, favorites or the admin queue.
@@ -220,6 +223,17 @@ type CommunityRepository interface {
 	CountCollections(ctx context.Context, userID int64) (int, error)
 	SetCollectionItem(ctx context.Context, collectionID, workID int64, on bool) error
 	WorkCollections(ctx context.Context, workID, ownerID int64) ([]int64, error)
+	// Comments (viewerID also sees their own pending ones).
+	ListComments(ctx context.Context, workID, viewerID int64, limit, offset int) ([]WorkComment, error)
+	FirstReplies(ctx context.Context, parentIDs []int64, viewerID int64, n int) (map[int64][]WorkComment, error)
+	ListReplies(ctx context.Context, parentID, viewerID int64, limit, offset int) ([]WorkComment, error)
+	GetComment(ctx context.Context, id int64) (*WorkComment, error)
+	CreateComment(ctx context.Context, c *WorkComment) error
+	// SetCommentStatus also recounts the work's comments and the parent's replies.
+	SetCommentStatus(ctx context.Context, id int64, status string) error
+	CountComments(ctx context.Context, userID int64, since time.Time) (int, error)
+	HasRecentComment(ctx context.Context, userID, workID int64, body string, since time.Time) (bool, error)
+	AdminListComments(ctx context.Context, status string, limit, offset int) ([]WorkComment, error)
 	// Creator stats (days are China Standard Time dates, inclusive).
 	CreatorSeries(ctx context.Context, userID int64, from, to time.Time) ([]CreatorDay, error)
 	CreatorTotals(ctx context.Context, userID int64) (CreatorTotals, error)
@@ -728,6 +742,8 @@ type UpdateWorkInput struct {
 	ShowPrompt  bool
 	Tags        []string
 	Visibility  string
+	// CommentsClosed, when set, opens or closes the work's comments.
+	CommentsClosed *bool
 }
 
 func (s *CommunityService) owned(ctx context.Context, userID, workID int64) (*Work, error) {
@@ -748,6 +764,9 @@ func (s *CommunityService) UpdateWork(ctx context.Context, userID, workID int64,
 	}
 	w.Title, w.Description, w.ShowPrompt = cleanText(in.Title, 80), cleanText(in.Description, 1000), in.ShowPrompt
 	w.Tags, w.Visibility = normalizeTags(in.Tags), normalizeVisibility(in.Visibility)
+	if in.CommentsClosed != nil {
+		w.CommentsClosed = *in.CommentsClosed
+	}
 	if flags := communityTextFlags(w.Title, w.Description, strings.Join(w.Tags, " ")); len(flags) > 0 && w.Status == WorkStatusApproved {
 		w.Status, w.ReviewFlags, w.ReviewReason = WorkStatusPending, flags, "修改后的内容命中敏感词，人工审核后公开"
 	}

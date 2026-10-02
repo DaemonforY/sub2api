@@ -314,13 +314,15 @@ func (h *CommunityHandler) UpdateWork(c *gin.Context) {
 		Description string   `json:"description"`
 		ShowPrompt  bool     `json:"show_prompt"`
 		Tags        []string `json:"tags"`
-		Visibility  string   `json:"visibility"`
+		// Omitted: unchanged.
+		CommentsClosed *bool  `json:"comments_closed"`
+		Visibility     string `json:"visibility"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
 		response.ErrorFrom(c, errCommunityBadRequest)
 		return
 	}
-	w, err := h.svc.UpdateWork(c.Request.Context(), uid, id, service.UpdateWorkInput{Title: in.Title, Description: in.Description, ShowPrompt: in.ShowPrompt, Tags: in.Tags, Visibility: in.Visibility})
+	w, err := h.svc.UpdateWork(c.Request.Context(), uid, id, service.UpdateWorkInput{Title: in.Title, Description: in.Description, ShowPrompt: in.ShowPrompt, Tags: in.Tags, Visibility: in.Visibility, CommentsClosed: in.CommentsClosed})
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -404,6 +406,99 @@ func (h *CommunityHandler) Report(c *gin.Context) {
 		return
 	}
 	if err := h.svc.Report(c.Request.Context(), viewerID(c), id, in.Reason, in.Detail, c.ClientIP()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"ok": true})
+}
+
+// Comments GET /canvas/community/works/:id/comments?offset= — top-level comments with their first replies.
+func (h *CommunityHandler) Comments(c *gin.Context) {
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	page, err := h.svc.Comments(c.Request.Context(), id, viewerID(c), queryInt(c, "offset"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, page)
+}
+
+// CommentReplies GET /canvas/community/comments/:id/replies?offset=
+func (h *CommunityHandler) CommentReplies(c *gin.Context) {
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	offset := queryInt(c, "offset")
+	list, more, err := h.svc.CommentReplies(c.Request.Context(), id, viewerID(c), offset)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"replies": list, "next_offset": max(0, offset) + len(list), "has_more": more})
+}
+
+// AddComment POST /canvas/community/works/:id/comments {body, reply_to}
+func (h *CommunityHandler) AddComment(c *gin.Context) {
+	uid, ok := mustViewer(c)
+	if !ok {
+		return
+	}
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	var in struct {
+		Body    string `json:"body"`
+		ReplyTo int64  `json:"reply_to"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrCommunityCommentEmpty)
+		return
+	}
+	comment, err := h.svc.AddComment(c.Request.Context(), uid, id, service.CommentInput{Body: in.Body, ReplyTo: in.ReplyTo}, c.ClientIP())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, comment)
+}
+
+// DeleteComment DELETE /canvas/community/comments/:id — the commenter's or the work author's.
+func (h *CommunityHandler) DeleteComment(c *gin.Context) {
+	uid, ok := mustViewer(c)
+	if !ok {
+		return
+	}
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	if err := h.svc.DeleteComment(c.Request.Context(), uid, id); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"ok": true})
+}
+
+// ReportComment POST /canvas/community/comments/:id/report {reason, detail}
+func (h *CommunityHandler) ReportComment(c *gin.Context) {
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	var in struct {
+		Reason string `json:"reason"`
+		Detail string `json:"detail"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrCommunityReportInvalid)
+		return
+	}
+	if err := h.svc.ReportComment(c.Request.Context(), viewerID(c), id, in.Reason, in.Detail, c.ClientIP()); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

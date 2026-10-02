@@ -39,15 +39,19 @@ type CommunityNotification struct {
 }
 
 type WorkReport struct {
-	ID         int64     `json:"id"`
-	WorkID     int64     `json:"work_id"`
-	WorkTitle  string    `json:"work_title"`
-	ReporterID int64     `json:"-"`
-	Reason     string    `json:"reason"`
-	Detail     string    `json:"detail"`
-	IP         string    `json:"-"`
-	Status     string    `json:"status"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID        int64  `json:"id"`
+	WorkID    int64  `json:"work_id"`
+	WorkTitle string `json:"work_title"`
+	// CommentID is set when the report is about a comment of the work.
+	CommentID     int64     `json:"comment_id,omitempty"`
+	CommentBody   string    `json:"comment_body,omitempty"`
+	CommentStatus string    `json:"comment_status,omitempty"`
+	ReporterID    int64     `json:"-"`
+	Reason        string    `json:"reason"`
+	Detail        string    `json:"detail"`
+	IP            string    `json:"-"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 var WorkReportReasons = map[string]bool{"porn": true, "violence": true, "politics": true, "copyright": true, "fraud": true, "spam": true, "other": true}
@@ -438,18 +442,19 @@ func (s *CommunityService) AdminSetReport(ctx context.Context, id int64, status 
 	return s.repo.SetWorkReportStatus(ctx, id, status)
 }
 
-// CommunityAdminSettings: review every new work by hand; the canvas cloud sync quotas (MB).
+// CommunityAdminSettings: review every new work by hand; comments; the canvas cloud sync quotas (MB).
 type CommunityAdminSettings struct {
 	ReviewAll bool `json:"review_all"`
+	CommentSettings
 	CanvasCloudQuotaSettings
 }
 
 func (s *CommunityService) AdminSettings(ctx context.Context) CommunityAdminSettings {
-	return CommunityAdminSettings{ReviewAll: s.reviewAll(ctx), CanvasCloudQuotaSettings: readCanvasCloudQuotas(ctx, s.settings)}
+	return CommunityAdminSettings{ReviewAll: s.reviewAll(ctx), CommentSettings: s.commentSettings(ctx), CanvasCloudQuotaSettings: readCanvasCloudQuotas(ctx, s.settings)}
 }
 
-// AdminSaveSettings saves review_all and, when given, the cloud quotas.
-func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool, quotas *CanvasCloudQuotaSettings) error {
+// AdminSaveSettings saves review_all and, when given, the comment switches and the cloud quotas.
+func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool, comments *CommentSettings, quotas *CanvasCloudQuotaSettings) error {
 	if s.settings == nil {
 		return nil
 	}
@@ -458,9 +463,10 @@ func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool
 			return err
 		}
 	}
-	v := "false"
-	if reviewAll {
-		v = "true"
+	values := map[string]string{settingCommunityReviewAll: boolSetting(reviewAll)}
+	if comments != nil {
+		values[settingCommunityCommentsEnabled] = boolSetting(comments.CommentsEnabled)
+		values[settingCommunityCommentsReviewAll] = boolSetting(comments.CommentsReviewAll)
 	}
-	return s.settings.SetMultiple(ctx, map[string]string{settingCommunityReviewAll: v})
+	return s.settings.SetMultiple(ctx, values)
 }

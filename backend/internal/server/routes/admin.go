@@ -200,7 +200,7 @@ func registerSiteHostingAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 	}
 }
 
-// registerCommunityAdminRoutes 无限画布社区：作品审核队列、举报、精选、限制发布、审核设置。
+// registerCommunityAdminRoutes 无限画布社区：作品审核队列、评论审核、举报、精选、限制发布、审核设置。
 func registerCommunityAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	if h.Admin.Community == nil {
 		return
@@ -213,6 +213,8 @@ func registerCommunityAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/restricted", h.Admin.Community.Restricted)
 		g.GET("/reports", h.Admin.Community.Reports)
 		g.PUT("/reports/:id", h.Admin.Community.SetReport)
+		g.GET("/comments", h.Admin.Community.Comments)
+		g.POST("/comments/:id/moderate", h.Admin.Community.ModerateComment)
 		g.GET("/settings", h.Admin.Community.Settings)
 		g.PUT("/settings", h.Admin.Community.SaveSettings)
 	}

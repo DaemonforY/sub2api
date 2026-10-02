@@ -135,7 +135,8 @@ SELECT w.id, w.user_id, COALESCE(p.handle, ''), COALESCE(p.display_name, ''), CO
        w.review_reason, w.review_flags, w.featured_at IS NOT NULL, COALESCE(m.file, ''), COALESCE(m.thumb_file, ''),
        w.cover_width, w.cover_height, (SELECT COUNT(*) FROM work_media x WHERE x.work_id = w.id),
        w.like_count, w.favorite_count, w.remix_count, w.view_count, w.report_count, w.created_at, w.updated_at,
-       w.kind, w.site_id, COALESCE(st.name, ''), COALESCE(st.title, ''), COALESCE(st.status, '')
+       w.kind, w.site_id, COALESCE(st.name, ''), COALESCE(st.title, ''), COALESCE(st.status, ''),
+       w.comment_count, w.comments_closed
 FROM works w
 LEFT JOIN user_profiles p ON p.user_id = w.user_id
 LEFT JOIN work_media m ON m.work_id = w.id AND m.position = 0
@@ -153,7 +154,7 @@ func scanWork(row rowScanner) (*service.Work, error) {
 		&w.ReviewReason, pq.Array(&w.ReviewFlags), &w.Featured, &w.CoverFile, &w.CoverThumb,
 		&w.CoverWidth, &w.CoverHeight, &w.ImageCount,
 		&w.LikeCount, &w.FavoriteCount, &w.RemixCount, &w.ViewCount, &w.ReportCount, &w.CreatedAt, &w.UpdatedAt,
-		&w.Kind, &siteID, &siteName, &siteTitle, &siteStatus); err != nil {
+		&w.Kind, &siteID, &siteName, &siteTitle, &siteStatus, &w.CommentCount, &w.CommentsClosed); err != nil {
 		return nil, err
 	}
 	if w.Kind == service.WorkKindSite {
@@ -227,8 +228,8 @@ SELECT position, file, thumb_file, mime_type, width, height, size_bytes FROM wor
 func (r *communityRepository) UpdateWork(ctx context.Context, w *service.Work) error {
 	_, err := r.db.ExecContext(ctx, `
 UPDATE works SET title = $2, description = $3, show_prompt = $4, tags = $5, visibility = $6, status = $7,
-       review_reason = $8, review_flags = $9, updated_at = NOW()
-WHERE id = $1`, w.ID, w.Title, w.Description, w.ShowPrompt, pq.Array(w.Tags), w.Visibility, w.Status, w.ReviewReason, pq.Array(w.ReviewFlags))
+       review_reason = $8, review_flags = $9, comments_closed = $10, updated_at = NOW()
+WHERE id = $1`, w.ID, w.Title, w.Description, w.ShowPrompt, pq.Array(w.Tags), w.Visibility, w.Status, w.ReviewReason, pq.Array(w.ReviewFlags), w.CommentsClosed)
 	return err
 }
 
@@ -744,11 +745,17 @@ func (r *communityRepository) CreateWorkReport(ctx context.Context, rep *service
 	}
 	defer func() { _ = tx.Rollback() }()
 	if err := tx.QueryRowContext(ctx, `
-INSERT INTO work_reports (work_id, reporter_id, reason, detail, ip) VALUES ($1, NULLIF($2, 0), $3, $4, $5) RETURNING id, created_at`,
-		rep.WorkID, rep.ReporterID, rep.Reason, rep.Detail, rep.IP).Scan(&rep.ID, &rep.CreatedAt); err != nil {
+INSERT INTO work_reports (work_id, comment_id, reporter_id, reason, detail, ip) VALUES ($1, NULLIF($2, 0), NULLIF($3, 0), $4, $5, $6) RETURNING id, created_at`,
+		rep.WorkID, rep.CommentID, rep.ReporterID, rep.Reason, rep.Detail, rep.IP).Scan(&rep.ID, &rep.CreatedAt); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE works SET report_count = report_count + 1 WHERE id = $1`, rep.WorkID); err != nil {
+	// A comment's report counts against the comment, not its work.
+	counter := `UPDATE works SET report_count = report_count + 1 WHERE id = $1`
+	target := rep.WorkID
+	if rep.CommentID != 0 {
+		counter, target = `UPDATE work_comments SET report_count = report_count + 1 WHERE id = $1`, rep.CommentID
+	}
+	if _, err := tx.ExecContext(ctx, counter, target); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -762,8 +769,9 @@ func (r *communityRepository) CountWorkReportsSince(ctx context.Context, ip stri
 
 func (r *communityRepository) ListWorkReports(ctx context.Context, status string, limit, offset int) ([]service.WorkReport, error) {
 	rows, err := r.db.QueryContext(ctx, `
-SELECT rp.id, rp.work_id, COALESCE(w.title, ''), rp.reason, rp.detail, rp.status, rp.created_at
-FROM work_reports rp LEFT JOIN works w ON w.id = rp.work_id
+SELECT rp.id, rp.work_id, COALESCE(w.title, ''), COALESCE(rp.comment_id, 0), COALESCE(wc.body, ''), COALESCE(wc.status, ''),
+       rp.reason, rp.detail, rp.status, rp.created_at
+FROM work_reports rp LEFT JOIN works w ON w.id = rp.work_id LEFT JOIN work_comments wc ON wc.id = rp.comment_id
 WHERE ($1 = '' OR rp.status = $1) ORDER BY rp.created_at DESC LIMIT $2 OFFSET $3`, status, limit, offset)
 	if err != nil {
 		return nil, err
@@ -772,7 +780,7 @@ WHERE ($1 = '' OR rp.status = $1) ORDER BY rp.created_at DESC LIMIT $2 OFFSET $3
 	var out []service.WorkReport
 	for rows.Next() {
 		var rp service.WorkReport
-		if err := rows.Scan(&rp.ID, &rp.WorkID, &rp.WorkTitle, &rp.Reason, &rp.Detail, &rp.Status, &rp.CreatedAt); err != nil {
+		if err := rows.Scan(&rp.ID, &rp.WorkID, &rp.WorkTitle, &rp.CommentID, &rp.CommentBody, &rp.CommentStatus, &rp.Reason, &rp.Detail, &rp.Status, &rp.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, rp)

@@ -3,20 +3,22 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import CommunityView from '../CommunityView.vue'
 
-const { works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings, showSuccess, showError } = vi.hoisted(() => ({
+const { works, moderate, ban, restricted, reports, setReport, comments, moderateComment, getSettings, saveSettings, showSuccess, showError } = vi.hoisted(() => ({
   works: vi.fn(),
   moderate: vi.fn(),
   ban: vi.fn(),
   restricted: vi.fn(),
   reports: vi.fn(),
   setReport: vi.fn(),
+  comments: vi.fn(),
+  moderateComment: vi.fn(),
   getSettings: vi.fn(),
   saveSettings: vi.fn(),
   showSuccess: vi.fn(),
   showError: vi.fn()
 }))
 
-vi.mock('@/api/admin', () => ({ adminAPI: { community: { works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings } } }))
+vi.mock('@/api/admin', () => ({ adminAPI: { community: { works, moderate, ban, restricted, reports, setReport, comments, moderateComment, getSettings, saveSettings } } }))
 vi.mock('@/stores', () => ({ useAppStore: () => ({ showSuccess, showError }) }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))
 
@@ -30,7 +32,7 @@ const pendingWork = {
 
 describe('admin CommunityView', () => {
   beforeEach(() => {
-    for (const fn of [works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings]) fn.mockReset()
+    for (const fn of [works, moderate, ban, restricted, reports, setReport, comments, moderateComment, getSettings, saveSettings]) fn.mockReset()
     moderate.mockResolvedValue(undefined)
   })
 
@@ -87,5 +89,36 @@ describe('admin CommunityView', () => {
     expect(ban).toHaveBeenCalledWith(3, false)
     expect(wrapper.find('[data-testid="community-restricted-row"]').exists()).toBe(false)
     expect(showSuccess).toHaveBeenCalled()
+  })
+
+  it('moderates comments and saves the comment switches', async () => {
+    works.mockResolvedValue([])
+    comments.mockResolvedValue([
+      { id: 31, work_id: 7, work_title: '海报', owner_id: 4, author: { handle: 'bee', display_name: 'Bee', avatar_url: '' }, body: '加我领资料', status: 'approved', report_count: 2, created_at: '2026-10-02T00:00:00Z' }
+    ])
+    moderateComment.mockResolvedValue(undefined)
+    const wrapper = mount(CommunityView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'admin.community.tabs.comments')!.trigger('click')
+    await flushPromises()
+    expect(comments).toHaveBeenCalledWith('pending', 1)
+    await wrapper.findAll('button').find((b) => b.text() === 'admin.community.commentFilters.reported')!.trigger('click')
+    await flushPromises()
+    expect(comments).toHaveBeenLastCalledWith('reported', 1)
+    const row = wrapper.get('[data-testid="community-comment"]')
+    expect(row.text()).toContain('加我领资料')
+    expect(row.findAll('button').map((b) => b.text())).not.toContain('admin.community.actions.approve')
+    await row.findAll('button').find((b) => b.text() === 'admin.community.actions.hide')!.trigger('click')
+    await flushPromises()
+    expect(moderateComment).toHaveBeenCalledWith(31, 'hide')
+
+    getSettings.mockResolvedValue({ review_all: false, comments_enabled: true, comments_review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
+    saveSettings.mockImplementation(async (v) => v)
+    await wrapper.findAll('button').find((b) => b.text() === 'admin.community.tabs.settings')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="comments-review-all"]').setValue(true)
+    await wrapper.get('[data-testid="community-settings"]').findAll('button').find((b) => b.text() === 'common.save')!.trigger('click')
+    await flushPromises()
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ comments_enabled: true, comments_review_all: true }))
   })
 })

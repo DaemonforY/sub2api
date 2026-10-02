@@ -29,6 +29,10 @@ export interface AdminWorkReport {
   id: number
   work_id: number
   work_title: string
+  /** Set when the report is about a comment of the work. */
+  comment_id?: number
+  comment_body?: string
+  comment_status?: AdminCommentStatus
   reason: string
   detail: string
   status: 'open' | 'resolved' | 'dismissed'
@@ -42,6 +46,22 @@ export interface RestrictedAuthor {
   display_name: string
   works_count: number
   updated_at: string
+}
+
+export type AdminCommentStatus = 'approved' | 'pending' | 'hidden' | 'deleted'
+
+export interface AdminComment {
+  id: number
+  work_id: number
+  work_title: string
+  owner_id: number
+  parent_id?: number
+  author?: { handle: string; display_name: string; avatar_url: string }
+  body: string
+  status: AdminCommentStatus
+  review_flags?: string[]
+  report_count?: number
+  created_at: string
 }
 
 export type ModerateAction = 'approve' | 'reject' | 'hide' | 'feature' | 'unfeature'
@@ -67,9 +87,22 @@ export async function reports(status: string, page = 1): Promise<AdminWorkReport
 export async function setReport(id: number, status: AdminWorkReport['status']): Promise<void> {
   await apiClient.put(`/admin/community/reports/${id}`, { status })
 }
-/** review_all: hand-review every new work; cloud quotas: canvas cloud sync space per user (MB). */
+/** pending | reported | hidden | '' (all) */
+export async function comments(status: string, page = 1): Promise<AdminComment[]> {
+  const { data } = await apiClient.get('/admin/community/comments', { params: { status: status || undefined, page } })
+  return data
+}
+export async function moderateComment(id: number, action: 'approve' | 'hide'): Promise<void> {
+  await apiClient.post(`/admin/community/comments/${id}/moderate`, { action })
+}
+/**
+ * review_all: hand-review every new work; comments_enabled / comments_review_all: comments on works;
+ * cloud quotas: canvas cloud sync space per user (MB).
+ */
 export interface CommunitySettings {
   review_all: boolean
+  comments_enabled: boolean
+  comments_review_all: boolean
   cloud_quota_mb: number
   cloud_subscriber_quota_mb: number
 }
@@ -82,4 +115,4 @@ export async function saveSettings(settings: CommunitySettings): Promise<Communi
   return data
 }
 
-export default { works, moderate, ban, restricted, reports, setReport, getSettings, saveSettings }
+export default { works, moderate, ban, restricted, reports, setReport, comments, moderateComment, getSettings, saveSettings }

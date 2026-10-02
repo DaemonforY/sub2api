@@ -612,3 +612,171 @@ func TestCommunityRecommendations(t *testing.T) {
 		require.NotContains(t, ids, id, "the author's own works are listed separately")
 	}
 }
+
+func TestCommunityComments(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	short := suffix[len(suffix)-7:]
+	users := make([]*service.User, 3)
+	for i := range users {
+		users[i] = mustCreateUser(t, integrationEntClient, &service.User{Email: fmt.Sprintf("cm%d-%s@test.local", i, suffix)})
+	}
+	author, bob, cara := users[0], users[1], users[2]
+	_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - INTERVAL '3 days' WHERE id = ANY($1)`, pq.Array([]int64{author.ID, bob.ID, cara.ID}))
+	require.NoError(t, err)
+	settings := NewSettingRepository(integrationEntClient)
+	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), settings)
+	t.Cleanup(func() {
+		_ = svc.AdminSaveSettings(ctx, false, &service.CommentSettings{CommentsEnabled: true}, nil)
+	})
+	_, err = svc.SaveProfile(ctx, author.ID, service.ProfileInput{Handle: "cm0" + short})
+	require.NoError(t, err)
+	work, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 32, 32, color.White)}, Title: "作品", Visibility: "public"})
+	require.NoError(t, err)
+
+	// A profile is needed to comment.
+	_, err = svc.AddComment(ctx, bob.ID, work.ID, service.CommentInput{Body: "好看"}, "10.0.0.1")
+	require.ErrorIs(t, err, service.ErrCommunityProfileRequired)
+	for i, u := range users[1:] {
+		i++
+		_, err := svc.SaveProfile(ctx, u.ID, service.ProfileInput{Handle: fmt.Sprintf("cm%d%s", i, short)})
+		require.NoError(t, err)
+	}
+	add := func(u *service.User, body string, replyTo int64) (*service.WorkComment, error) {
+		return svc.AddComment(ctx, u.ID, work.ID, service.CommentInput{Body: body, ReplyTo: replyTo}, "10.0.0.1")
+	}
+	_, err = add(bob, "   ", 0)
+	require.ErrorIs(t, err, service.ErrCommunityCommentEmpty)
+	_, err = add(bob, strings.Repeat("长", 501), 0)
+	require.ErrorIs(t, err, service.ErrCommunityCommentEmpty)
+
+	top, err := add(bob, "好看", 0)
+	require.NoError(t, err)
+	require.Equal(t, service.CommentStatusApproved, top.Status)
+	require.True(t, top.IsMine)
+	require.True(t, top.CanDelete)
+	_, err = add(bob, "好看", 0)
+	require.ErrorIs(t, err, service.ErrCommunityCommentDuplicate)
+	reply, err := add(cara, "同感", top.ID)
+	require.NoError(t, err)
+	require.Equal(t, top.ID, reply.ParentID)
+	answer, err := add(bob, "谢谢", reply.ID)
+	require.NoError(t, err)
+	require.Equal(t, top.ID, answer.ParentID, "replies stay one level deep")
+
+	page, err := svc.Comments(ctx, work.ID, 0, 0)
+	require.NoError(t, err)
+	require.True(t, page.Enabled)
+	require.Equal(t, 3, page.Total)
+	require.Len(t, page.Comments, 1)
+	require.Equal(t, 2, page.Comments[0].ReplyCount)
+	require.Len(t, page.Comments[0].Replies, 2)
+	require.Nil(t, page.Comments[0].Replies[0].ReplyTo, "a direct reply needs no 回复 @")
+	require.NotNil(t, page.Comments[0].Replies[1].ReplyTo)
+	require.Equal(t, fmt.Sprintf("cm2%s", short), page.Comments[0].Replies[1].ReplyTo.Handle)
+	require.False(t, page.Comments[0].CanDelete, "visitors cannot delete")
+
+	// Notifications: the author for each comment, the answered commenter for replies.
+	kinds := func(u *service.User) []string {
+		list, err := svc.Notifications(ctx, u.ID)
+		require.NoError(t, err)
+		var out []string
+		for _, n := range list {
+			if n.WorkID == work.ID {
+				out = append(out, n.Kind)
+			}
+		}
+		return out
+	}
+	require.ElementsMatch(t, []string{"comment", "comment"}, kinds(author), "bob's two comments collapse while unread")
+	require.ElementsMatch(t, []string{"reply"}, kinds(bob))
+	require.ElementsMatch(t, []string{"reply"}, kinds(cara))
+
+	// Flagged words wait for review: only the commenter sees it.
+	flagged, err := add(cara, "nsfw 版本有吗", 0)
+	require.NoError(t, err)
+	require.Equal(t, service.CommentStatusPending, flagged.Status)
+	page, err = svc.Comments(ctx, work.ID, 0, 0)
+	require.NoError(t, err)
+	require.Len(t, page.Comments, 1)
+	require.Equal(t, 3, page.Total)
+	page, err = svc.Comments(ctx, work.ID, cara.ID, 0)
+	require.NoError(t, err)
+	require.Len(t, page.Comments, 2)
+	require.Equal(t, service.CommentStatusPending, page.Comments[0].Status)
+
+	// Deleting: others cannot; the work's author can. A removed comment with replies stays as a placeholder.
+	require.ErrorIs(t, svc.DeleteComment(ctx, cara.ID, answer.ID), service.ErrCommunityCommentNotAllowed)
+	require.NoError(t, svc.DeleteComment(ctx, author.ID, top.ID))
+	page, err = svc.Comments(ctx, work.ID, 0, 0)
+	require.NoError(t, err)
+	require.Len(t, page.Comments, 1)
+	require.Equal(t, service.CommentStatusRemoved, page.Comments[0].Status)
+	require.Empty(t, page.Comments[0].Body)
+	require.Nil(t, page.Comments[0].Author)
+	require.Len(t, page.Comments[0].Replies, 2)
+	require.Equal(t, 2, page.Total)
+	_, err = add(cara, "还在吗", top.ID)
+	require.ErrorIs(t, err, service.ErrCommunityCommentNotFound, "no replies to a removed comment")
+	require.NoError(t, svc.DeleteComment(ctx, bob.ID, answer.ID))
+	replies, more, err := svc.CommentReplies(ctx, top.ID, 0, 0)
+	require.NoError(t, err)
+	require.False(t, more)
+	require.Equal(t, []int64{reply.ID}, []int64{replies[0].ID})
+
+	// Reports reach the admin queue with the comment.
+	require.NoError(t, svc.ReportComment(ctx, author.ID, reply.ID, "spam", "", "10.0.0.9"))
+	reported, err := svc.AdminComments(ctx, "reported", 1)
+	require.NoError(t, err)
+	require.Contains(t, commentIDs(reported), reply.ID)
+	reports, err := svc.AdminReports(ctx, "open", 1)
+	require.NoError(t, err)
+	var found bool
+	for _, rp := range reports {
+		if rp.CommentID == reply.ID {
+			found = rp.CommentBody == "同感" && rp.WorkID == work.ID
+		}
+	}
+	require.True(t, found)
+
+	// Moderation: approving the flagged comment publishes it; hiding tells the commenter.
+	pending, err := svc.AdminComments(ctx, "pending", 1)
+	require.NoError(t, err)
+	require.Contains(t, commentIDs(pending), flagged.ID)
+	require.NoError(t, svc.AdminModerateComment(ctx, flagged.ID, "approve"))
+	require.NoError(t, svc.AdminModerateComment(ctx, reply.ID, "hide"))
+	require.Contains(t, kinds(cara), "comment_hidden")
+	page, err = svc.Comments(ctx, work.ID, 0, 0)
+	require.NoError(t, err)
+	require.Equal(t, []int64{flagged.ID}, commentIDs(page.Comments), "the placeholder goes once no replies remain")
+	require.Equal(t, 1, page.Total)
+
+	// The author closes comments; the admin can review all or turn comments off.
+	closed := true
+	_, err = svc.UpdateWork(ctx, author.ID, work.ID, service.UpdateWorkInput{Title: "作品", Visibility: "public", CommentsClosed: &closed})
+	require.NoError(t, err)
+	_, err = add(bob, "关了吗", 0)
+	require.ErrorIs(t, err, service.ErrCommunityCommentsClosed)
+	closed = false
+	_, err = svc.UpdateWork(ctx, author.ID, work.ID, service.UpdateWorkInput{Title: "作品", Visibility: "public", CommentsClosed: &closed})
+	require.NoError(t, err)
+	require.NoError(t, svc.AdminSaveSettings(ctx, false, &service.CommentSettings{CommentsEnabled: true, CommentsReviewAll: true}, nil))
+	held, err := add(bob, "先审后发", 0)
+	require.NoError(t, err)
+	require.Equal(t, service.CommentStatusPending, held.Status)
+	require.NoError(t, svc.AdminSaveSettings(ctx, false, &service.CommentSettings{CommentsEnabled: false}, nil))
+	_, err = add(bob, "关闭后", 0)
+	require.ErrorIs(t, err, service.ErrCommunityCommentsOff)
+	page, err = svc.Comments(ctx, work.ID, 0, 0)
+	require.NoError(t, err)
+	require.False(t, page.Enabled)
+	require.Empty(t, page.Comments)
+}
+
+func commentIDs(list []service.WorkComment) []int64 {
+	out := make([]int64, 0, len(list))
+	for _, c := range list {
+		out = append(out, c.ID)
+	}
+	return out
+}
