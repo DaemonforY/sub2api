@@ -520,3 +520,95 @@ func TestCommunitySiteWorks(t *testing.T) {
 		}
 	}
 }
+
+func TestCommunityRecommendations(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	short := suffix[len(suffix)-7:]
+	tag, liked := "rk"+short, "lk"+short // tags only this test uses keep the shared database's works out
+	users := make([]*service.User, 3)
+	for i := range users {
+		users[i] = mustCreateUser(t, integrationEntClient, &service.User{Email: fmt.Sprintf("rk%d-%s@test.local", i, suffix)})
+	}
+	prolific, other, viewer := users[0], users[1], users[2]
+	_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - INTERVAL '3 days' WHERE id = ANY($1)`, pq.Array([]int64{prolific.ID, other.ID, viewer.ID}))
+	require.NoError(t, err)
+	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), nil)
+	for i, u := range users {
+		_, err := svc.SaveProfile(ctx, u.ID, service.ProfileInput{Handle: fmt.Sprintf("rk%d%s", i, short)})
+		require.NoError(t, err)
+	}
+	publish := func(u *service.User, likes int, model string, tags ...string) int64 {
+		w, err := svc.Publish(ctx, u.ID, service.PublishInput{Images: [][]byte{testPNG(t, 32, 32, color.White)}, Title: "作品", Model: model, Tags: tags, Visibility: "public"})
+		require.NoError(t, err)
+		_, err = integrationDB.ExecContext(ctx, `UPDATE works SET like_count = $2, created_at = NOW() - INTERVAL '2 hours' WHERE id = $1`, w.ID, likes)
+		require.NoError(t, err)
+		return w.ID
+	}
+	a1 := publish(prolific, 10, "m1", tag)
+	a2 := publish(prolific, 10, "m1", tag)
+	a3 := publish(prolific, 10, "m1", tag, liked)
+	b1 := publish(other, 7, "m2", tag)
+	feed := func(viewerID int64) []int64 {
+		works, err := svc.Works(ctx, service.WorkQuery{Feed: "recommended", Tag: tag, ViewerID: viewerID})
+		require.NoError(t, err)
+		return workIDs(works)
+	}
+
+	// Equal works by one author: each next one counts 0.6×, so the other author's lesser work comes second.
+	require.Equal(t, []int64{a3, b1, a2, a1}, feed(0))
+
+	// Followed authors rank higher for the follower only.
+	_, err = svc.SetFollow(ctx, viewer.ID, fmt.Sprintf("rk1%s", short), true)
+	require.NoError(t, err)
+	require.Equal(t, b1, feed(viewer.ID)[0])
+	require.Equal(t, a3, feed(0)[0])
+	_, err = svc.SetFollow(ctx, viewer.ID, fmt.Sprintf("rk1%s", short), false)
+	require.NoError(t, err)
+
+	// Tags of works the viewer liked rank higher (a2 is liked outside this feed's tag, carrying "liked").
+	elsewhere := publish(other, 0, "", liked)
+	_, err = svc.SetLike(ctx, viewer.ID, elsewhere, true)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx, `UPDATE works SET like_count = 9 WHERE id = $1`, a3)
+	require.NoError(t, err)
+	require.Equal(t, a2, feed(0)[0], "without taste the 10-like work leads")
+	require.Equal(t, a3, feed(viewer.ID)[0], "the liked tag lifts the 9-like work")
+
+	// Already liked works rank lower for the viewer (liking a2 makes it 11 likes).
+	_, err = svc.SetLike(ctx, viewer.ID, a2, true)
+	require.NoError(t, err)
+	_, err = svc.SetLike(ctx, viewer.ID, elsewhere, false)
+	require.NoError(t, err)
+	require.Equal(t, a2, feed(0)[0])
+	require.Equal(t, a1, feed(viewer.ID)[0])
+
+	// A pinned feed time leaves out works published since, so later pages do not shift.
+	pinned := time.Now().Add(-time.Minute)
+	fresh := publish(other, 50, "", tag)
+	_, err = integrationDB.ExecContext(ctx, `UPDATE works SET created_at = NOW() WHERE id = $1`, fresh)
+	require.NoError(t, err)
+	for _, name := range []string{"recommended", "latest"} {
+		works, err := svc.Works(ctx, service.WorkQuery{Feed: name, Tag: tag, At: pinned})
+		require.NoError(t, err)
+		require.NotContains(t, workIDs(works), fresh, name)
+		works, err = svc.Works(ctx, service.WorkQuery{Feed: name, Tag: tag})
+		require.NoError(t, err)
+		require.Contains(t, workIDs(works), fresh, name)
+	}
+	require.WithinDuration(t, time.Now(), service.FeedSnapshot(time.Now().Add(-7*time.Hour).Unix(), time.Now()), 2*time.Second, "stale feed times fall back to now")
+	require.WithinDuration(t, pinned, service.FeedSnapshot(pinned.Unix(), time.Now()), time.Second)
+
+	// Related: other authors only; shared tags first, then the same model.
+	base := publish(prolific, 0, "m9", tag, liked)
+	twoTags := publish(other, 0, "", tag, liked)
+	sameModel := publish(other, 0, "m9", tag)
+	related, err := svc.RelatedWorks(ctx, base, viewer.ID, 24)
+	require.NoError(t, err)
+	ids := workIDs(related)
+	require.GreaterOrEqual(t, len(ids), 3)
+	require.Equal(t, []int64{twoTags, sameModel}, ids[:2])
+	for _, id := range []int64{base, a1, a2, a3} {
+		require.NotContains(t, ids, id, "the author's own works are listed separately")
+	}
+}

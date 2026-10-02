@@ -72,6 +72,7 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 	{
 		public.GET("/works", cm.Works)
 		public.GET("/works/:id", cm.Work)
+		public.GET("/works/:id/related", cm.RelatedWorks)
 		public.POST("/works/:id/remix", cm.Remix)
 		public.POST("/works/:id/report", cm.Report)
 		public.GET("/users/:handle", cm.Profile)

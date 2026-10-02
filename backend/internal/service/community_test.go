@@ -11,6 +11,7 @@ import (
 	"image/png"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -119,4 +120,14 @@ func TestTrustedShareURL(t *testing.T) {
 	require.Empty(t, TrustedShareURL("https://evil.example/w/1", allowed))
 	require.Empty(t, TrustedShareURL("http://canvas.hivegpt.cn/w/1", allowed))
 	require.Empty(t, TrustedShareURL("javascript:alert(1)", allowed))
+}
+
+func TestFeedSnapshot(t *testing.T) {
+	now := time.Date(2026, 10, 2, 12, 0, 0, 500_000_000, time.UTC)
+	require.Equal(t, now, FeedSnapshot(0, now))
+	require.Equal(t, now, FeedSnapshot(now.Add(time.Hour).Unix(), now), "future times fall back to now")
+	require.Equal(t, now, FeedSnapshot(now.Add(-7*time.Hour).Unix(), now), "stale times fall back to now")
+	require.True(t, now.Add(-time.Hour).Truncate(time.Second).Equal(FeedSnapshot(now.Add(-time.Hour).Unix(), now)))
+	require.Equal(t, now.Unix()+1, FeedSnapshotUnix(now), "rounded up so the page's works stay in")
+	require.Equal(t, now.Truncate(time.Second).Unix(), FeedSnapshotUnix(now.Truncate(time.Second)))
 }

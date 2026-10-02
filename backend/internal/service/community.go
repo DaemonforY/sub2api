@@ -148,9 +148,36 @@ type WorkQuery struct {
 	// Admin filter: pending | reported | approved | hidden | rejected | "" (all)
 	Status string
 	// Kind: image | site | "" (all)
-	Kind   string
+	Kind string
+	// At pins the recommended / latest feeds to one moment while paging: works published later are
+	// left out and scores age from it, so later pages neither repeat nor skip works.
+	At     time.Time
 	Limit  int
 	Offset int
+}
+
+// feedSnapshotMaxAge bounds how old a client-sent feed time may be.
+const feedSnapshotMaxAge = 6 * time.Hour
+
+// FeedSnapshot is the feed time for a page: the client's (unix seconds) when recent, else now.
+func FeedSnapshot(unix int64, now time.Time) time.Time {
+	if unix <= 0 {
+		return now
+	}
+	return clampFeedTime(time.Unix(unix, 0), now)
+}
+
+// FeedSnapshotUnix is the "at" a client sends back for later pages: at rounded up to the second,
+// so works published in its last fraction of a second stay in.
+func FeedSnapshotUnix(at time.Time) int64 {
+	return at.Add(time.Second - time.Nanosecond).Unix()
+}
+
+func clampFeedTime(at, now time.Time) time.Time {
+	if at.IsZero() || at.After(now) || now.Sub(at) > feedSnapshotMaxAge {
+		return now
+	}
+	return at
 }
 
 type CommunityRepository interface {
@@ -168,6 +195,8 @@ type CommunityRepository interface {
 	UpdateWork(ctx context.Context, w *Work) error
 	DeleteWork(ctx context.Context, id int64) error
 	ListWorks(ctx context.Context, q WorkQuery) ([]Work, error)
+	// RelatedWorks lists other authors' public works like w (shared tags, same model / kind), popular first.
+	RelatedWorks(ctx context.Context, w *Work, limit int) ([]Work, error)
 	CountWorks(ctx context.Context, userID int64, since time.Time) (int, error)
 	SetWorkStatus(ctx context.Context, id int64, status, reason string) error
 	SetWorkFeatured(ctx context.Context, id int64, featured bool) error
@@ -657,6 +686,7 @@ func (s *CommunityService) Works(ctx context.Context, q WorkQuery) ([]Work, erro
 		q.IncludeAll = c.UserID == q.ViewerID
 	}
 	q.Tag = cleanText(q.Tag, 12)
+	q.At = clampFeedTime(q.At, time.Now())
 	works, err := s.repo.ListWorks(ctx, q)
 	if err != nil {
 		return nil, err
@@ -665,6 +695,29 @@ func (s *CommunityService) Works(ctx context.Context, q WorkQuery) ([]Work, erro
 		works = []Work{}
 	}
 	s.decorateWorks(ctx, works, q.ViewerID)
+	return works, nil
+}
+
+// RelatedWorks lists works like the given one for its work page ("相似作品").
+func (s *CommunityService) RelatedWorks(ctx context.Context, id, viewerID int64, limit int) ([]Work, error) {
+	w, err := s.repo.GetWork(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if w == nil || !visibleTo(w, viewerID) {
+		return nil, ErrCommunityWorkNotFound
+	}
+	if limit <= 0 || limit > 24 {
+		limit = 12
+	}
+	works, err := s.repo.RelatedWorks(ctx, w, limit)
+	if err != nil {
+		return nil, err
+	}
+	if works == nil {
+		works = []Work{}
+	}
+	s.decorateWorks(ctx, works, viewerID)
 	return works, nil
 }
 

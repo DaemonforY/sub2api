@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -160,7 +161,10 @@ func (h *CommunityHandler) Profile(c *gin.Context) {
 
 // Works GET /community/works?feed=recommended|latest|following|favorites&tag=&user=<handle>&collection=<id>&offset=&limit=
 func (h *CommunityHandler) Works(c *gin.Context) {
+	at, _ := strconv.ParseInt(c.Query("at"), 10, 64)
 	q := service.WorkQuery{Feed: c.Query("feed"), ViewerID: viewerID(c), Tag: c.Query("tag"), Kind: c.Query("kind"), Offset: queryInt(c, "offset"), Limit: queryInt(c, "limit")}
+	// Later pages send back the first page's "at" so the order holds while scrolling.
+	q.At = service.FeedSnapshot(at, time.Now())
 	if handle := c.Query("user"); handle != "" {
 		p, err := h.svc.Profile(c.Request.Context(), handle, q.ViewerID)
 		if err != nil {
@@ -181,7 +185,7 @@ func (h *CommunityHandler) Works(c *gin.Context) {
 	if limit <= 0 || limit > 60 {
 		limit = 24
 	}
-	response.Success(c, gin.H{"works": works, "next_offset": max(0, q.Offset) + len(works), "has_more": len(works) >= limit})
+	response.Success(c, gin.H{"works": works, "next_offset": max(0, q.Offset) + len(works), "has_more": len(works) >= limit, "at": service.FeedSnapshotUnix(q.At)})
 }
 
 // PublicWorks GET /api/v1/community/works — the main site's home page wall: recommended or latest
@@ -216,6 +220,20 @@ func (h *CommunityHandler) Work(c *gin.Context) {
 		return
 	}
 	response.Success(c, w)
+}
+
+// RelatedWorks GET /canvas/community/works/:id/related — works like this one by other authors.
+func (h *CommunityHandler) RelatedWorks(c *gin.Context) {
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	works, err := h.svc.RelatedWorks(c.Request.Context(), id, viewerID(c), queryInt(c, "limit"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"works": works})
 }
 
 func splitTags(raw string) []string {

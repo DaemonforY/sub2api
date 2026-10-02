@@ -261,26 +261,80 @@ func workSiteID(w *service.Work) any {
 	return nil
 }
 
+// workEngagement is a work's raw popularity: likes, favorites and remixes, a little for views
+// (logarithmic, as views are not deduplicated) and an editor's pick.
+const workEngagement = `(w.like_count + 2 * w.favorite_count + 3 * w.remix_count + 0.5 * LN(1 + w.view_count) + CASE WHEN w.featured_at IS NOT NULL THEN 20 ELSE 0 END + 1)`
+
+// recommendedRanking scores the public works matching filters as of at (a placeholder):
+// popularity decays with age (gravity 1.2, offset 6 hours, so a few likes keep a work up for a day
+// or two while the community is small); for a signed-in viewer, followed authors and the tags of
+// works they liked or favorited in the last 90 days rank higher, while their own and already liked
+// works rank lower. Each further work by the same author counts 0.6× the previous, so one prolific
+// author does not fill a page. Returns (id, score) rows.
+func recommendedRanking(filters []string, at, viewer string) string {
+	personal, taste := "1", ""
+	if viewer != "" {
+		taste = `WITH taste AS (
+    SELECT tag FROM (
+        SELECT UNNEST(x.tags) AS tag FROM work_likes l JOIN works x ON x.id = l.work_id
+        WHERE l.user_id = ` + viewer + ` AND l.created_at > ` + at + ` - INTERVAL '90 days'
+        UNION ALL
+        SELECT UNNEST(x.tags) FROM work_favorites f JOIN works x ON x.id = f.work_id
+        WHERE f.user_id = ` + viewer + ` AND f.created_at > ` + at + ` - INTERVAL '90 days'
+    ) t GROUP BY tag ORDER BY COUNT(*) DESC, tag LIMIT 8
+) `
+		personal = `CASE WHEN EXISTS (SELECT 1 FROM follows fo WHERE fo.follower_id = ` + viewer + ` AND fo.followee_id = w.user_id) THEN 1.5 ELSE 1 END
+        * (1 + 0.25 * LEAST((SELECT COUNT(*) FROM taste WHERE taste.tag = ANY(w.tags)), 2))
+        * CASE WHEN w.user_id = ` + viewer + ` THEN 0.5 ELSE 1 END
+        * CASE WHEN EXISTS (SELECT 1 FROM work_likes lk WHERE lk.work_id = w.id AND lk.user_id = ` + viewer + `) THEN 0.7 ELSE 1 END`
+	}
+	where := append([]string{publicWork, "w.created_at <= " + at}, filters...)
+	return taste + `SELECT id, score * POWER(0.6, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY score DESC, id DESC) - 1) AS score FROM (
+    SELECT w.id, w.user_id, ` + workEngagement + `
+        / POWER(GREATEST(EXTRACT(EPOCH FROM (` + at + ` - w.created_at)) / 3600, 0) + 6, 1.2)
+        * ` + personal + ` AS score
+    FROM works w
+    LEFT JOIN user_profiles p ON p.user_id = w.user_id
+    LEFT JOIN sites st ON st.id = w.site_id
+    WHERE ` + strings.Join(where, " AND ") + `
+) base`
+}
+
 func (r *communityRepository) ListWorks(ctx context.Context, q service.WorkQuery) ([]service.Work, error) {
 	var (
-		join  string
-		where []string
-		args  []any
-		order = "w.created_at DESC, w.id DESC"
+		join    string
+		where   []string
+		filters []string
+		args    []any
+		order   = "w.created_at DESC, w.id DESC"
 	)
 	arg := func(v any) string {
 		args = append(args, v)
 		return fmt.Sprintf("$%d", len(args))
 	}
+	if q.Tag != "" {
+		filters = append(filters, arg(q.Tag)+" = ANY(w.tags)")
+	}
+	if q.Kind != "" {
+		filters = append(filters, "w.kind = "+arg(q.Kind))
+	}
+	at := func() string {
+		if q.At.IsZero() {
+			return "NOW()"
+		}
+		return arg(q.At) + "::timestamptz"
+	}
 	visible := publicWork
 	switch q.Feed {
 	case "recommended":
-		where = append(where, publicWork)
-		// Likes, favorites and remixes (and an editor's pick) count; age decays the score.
-		order = `(w.like_count + 2 * w.favorite_count + 3 * w.remix_count + CASE WHEN w.featured_at IS NOT NULL THEN 20 ELSE 0 END + 1)
-                 / POWER(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 3600 + 2, 1.5) DESC, w.id DESC`
+		viewer := ""
+		if q.ViewerID > 0 {
+			viewer = arg(q.ViewerID)
+		}
+		join = " JOIN (" + recommendedRanking(filters, at(), viewer) + ") rk ON rk.id = w.id"
+		order = "rk.score DESC, w.id DESC"
 	case "latest":
-		where = append(where, publicWork)
+		where = append(where, publicWork, "w.created_at <= "+at())
 	case "following":
 		where = append(where, publicWork, "w.user_id IN (SELECT followee_id FROM follows WHERE follower_id = "+arg(q.ViewerID)+")")
 	case "user":
@@ -309,17 +363,19 @@ func (r *communityRepository) ListWorks(ctx context.Context, q service.WorkQuery
 	default:
 		return nil, fmt.Errorf("unknown feed %q", q.Feed)
 	}
-	if q.Tag != "" {
-		where = append(where, arg(q.Tag)+" = ANY(w.tags)")
-	}
-	if q.Kind != "" {
-		where = append(where, "w.kind = "+arg(q.Kind))
+	if q.Feed != "recommended" {
+		// The ranking already applied them.
+		where = append(where, filters...)
 	}
 	query := workSelect + join
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}
 	query += " ORDER BY " + order + " LIMIT " + arg(q.Limit) + " OFFSET " + arg(q.Offset)
+	return r.queryWorks(ctx, query, args...)
+}
+
+func (r *communityRepository) queryWorks(ctx context.Context, query string, args ...any) ([]service.Work, error) {
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -334,6 +390,22 @@ func (r *communityRepository) ListWorks(ctx context.Context, q service.WorkQuery
 		out = append(out, *w)
 	}
 	return out, rows.Err()
+}
+
+// RelatedWorks: other authors' public works, most alike first — shared tags (3 each), same model
+// (1) and, for web pages, same kind (2) — then popular and recent; works sharing nothing fill the rest.
+func (r *communityRepository) RelatedWorks(ctx context.Context, w *service.Work, limit int) ([]service.Work, error) {
+	tags := w.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	return r.queryWorks(ctx, workSelect+`
+WHERE `+publicWork+` AND w.id <> $1 AND w.user_id <> $2
+ORDER BY 3 * CARDINALITY(ARRAY(SELECT UNNEST(w.tags) INTERSECT SELECT UNNEST($3::text[])))
+         + CASE WHEN $4 <> '' AND w.model = $4 THEN 1 ELSE 0 END
+         + CASE WHEN $5 = 'site' AND w.kind = 'site' THEN 2 ELSE 0 END DESC,
+         `+workEngagement+` / POWER(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 86400 + 7, 0.3) DESC, w.id DESC
+LIMIT $6`, w.ID, w.UserID, pq.Array(tags), w.Model, w.Kind, limit)
 }
 
 func (r *communityRepository) CountWorks(ctx context.Context, userID int64, since time.Time) (int, error) {
