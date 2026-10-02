@@ -2092,6 +2092,7 @@ func setDefaults() {
 	viper.SetDefault("sites.domain", "")
 	viper.SetDefault("sites.dir", "./data/sites")
 	viper.SetDefault("community.dir", "./data/community")
+	viper.SetDefault("canvas_cloud.dir", "./data/canvas-cloud")
 	viper.SetDefault("sites.main_site_url", "https://hivegpt.cn")
 
 	// WebAuthn / Passkeys are opt-in because every deployment must explicitly
