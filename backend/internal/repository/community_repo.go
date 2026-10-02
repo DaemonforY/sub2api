@@ -134,20 +134,34 @@ SELECT w.id, w.user_id, COALESCE(p.handle, ''), COALESCE(p.display_name, ''), CO
        w.title, w.description, w.prompt, w.show_prompt, w.model, w.params, w.source, w.tags, w.visibility, w.status,
        w.review_reason, w.review_flags, w.featured_at IS NOT NULL, COALESCE(m.file, ''), COALESCE(m.thumb_file, ''),
        w.cover_width, w.cover_height, (SELECT COUNT(*) FROM work_media x WHERE x.work_id = w.id),
-       w.like_count, w.favorite_count, w.remix_count, w.view_count, w.report_count, w.created_at, w.updated_at
+       w.like_count, w.favorite_count, w.remix_count, w.view_count, w.report_count, w.created_at, w.updated_at,
+       w.kind, w.site_id, COALESCE(st.name, ''), COALESCE(st.title, ''), COALESCE(st.status, '')
 FROM works w
 LEFT JOIN user_profiles p ON p.user_id = w.user_id
-LEFT JOIN work_media m ON m.work_id = w.id AND m.position = 0`
+LEFT JOIN work_media m ON m.work_id = w.id AND m.position = 0
+LEFT JOIN sites st ON st.id = w.site_id`
 
 func scanWork(row rowScanner) (*service.Work, error) {
 	var w service.Work
 	var params []byte
+	var (
+		siteID                          sql.NullInt64
+		siteName, siteTitle, siteStatus string
+	)
 	if err := row.Scan(&w.ID, &w.UserID, &w.Author.Handle, &w.Author.DisplayName, &w.Author.AvatarURL,
 		&w.Title, &w.Description, &w.Prompt, &w.ShowPrompt, &w.Model, &params, &w.Source, pq.Array(&w.Tags), &w.Visibility, &w.Status,
 		&w.ReviewReason, pq.Array(&w.ReviewFlags), &w.Featured, &w.CoverFile, &w.CoverThumb,
 		&w.CoverWidth, &w.CoverHeight, &w.ImageCount,
-		&w.LikeCount, &w.FavoriteCount, &w.RemixCount, &w.ViewCount, &w.ReportCount, &w.CreatedAt, &w.UpdatedAt); err != nil {
+		&w.LikeCount, &w.FavoriteCount, &w.RemixCount, &w.ViewCount, &w.ReportCount, &w.CreatedAt, &w.UpdatedAt,
+		&w.Kind, &siteID, &siteName, &siteTitle, &siteStatus); err != nil {
 		return nil, err
+	}
+	if w.Kind == service.WorkKindSite {
+		// A site work whose site was deleted keeps kind = site with no site (never live).
+		w.Site = &service.WorkSite{Name: siteName, Title: siteTitle, Status: siteStatus}
+		if siteID.Valid {
+			w.Site.ID = siteID.Int64
+		}
 	}
 	w.Author.UserID = w.UserID
 	w.Params = json.RawMessage(params)
@@ -166,10 +180,14 @@ func (r *communityRepository) CreateWork(ctx context.Context, w *service.Work, m
 	}
 	if err := tx.QueryRowContext(ctx, `
 INSERT INTO works (user_id, title, description, prompt, show_prompt, model, params, source, tags, visibility, status,
-                   review_reason, review_flags, cover_width, cover_height)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id, created_at, updated_at`,
+                   review_reason, review_flags, cover_width, cover_height, kind, site_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id, created_at, updated_at`,
 		w.UserID, w.Title, w.Description, w.Prompt, w.ShowPrompt, w.Model, params, w.Source, pq.Array(w.Tags), w.Visibility, w.Status,
-		w.ReviewReason, pq.Array(w.ReviewFlags), w.CoverWidth, w.CoverHeight).Scan(&w.ID, &w.CreatedAt, &w.UpdatedAt); err != nil {
+		w.ReviewReason, pq.Array(w.ReviewFlags), w.CoverWidth, w.CoverHeight, w.Kind, workSiteID(w)).Scan(&w.ID, &w.CreatedAt, &w.UpdatedAt); err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" && pqErr.Constraint == "uq_works_site" {
+			return service.ErrCommunitySiteAlreadyPublished
+		}
 		return err
 	}
 	for _, m := range media {
@@ -231,7 +249,17 @@ WHERE id IN (SELECT collection_id FROM collection_items WHERE work_id = $1)`, id
 	return tx.Commit()
 }
 
-const publicWork = `w.visibility = 'public' AND w.status = 'approved' AND COALESCE(p.status, 'active') = 'active'`
+// liveSite: a site work shows only while its site is up.
+const liveSite = `(w.kind <> 'site' OR st.status = 'active')`
+
+const publicWork = `w.visibility = 'public' AND w.status = 'approved' AND COALESCE(p.status, 'active') = 'active' AND ` + liveSite
+
+func workSiteID(w *service.Work) any {
+	if w.Site != nil && w.Site.ID > 0 {
+		return w.Site.ID
+	}
+	return nil
+}
 
 func (r *communityRepository) ListWorks(ctx context.Context, q service.WorkQuery) ([]service.Work, error) {
 	var (
@@ -267,7 +295,7 @@ func (r *communityRepository) ListWorks(ctx context.Context, q service.WorkQuery
 	case "collection":
 		join = " JOIN collection_items ci ON ci.work_id = w.id AND ci.collection_id = " + arg(q.CollectionID)
 		if !q.IncludeAll {
-			where = append(where, `w.visibility <> 'private' AND w.status = 'approved' AND COALESCE(p.status, 'active') = 'active'`)
+			where = append(where, `w.visibility <> 'private' AND w.status = 'approved' AND COALESCE(p.status, 'active') = 'active' AND `+liveSite)
 		}
 		order = "ci.position, ci.added_at DESC"
 	case "admin":
@@ -283,6 +311,9 @@ func (r *communityRepository) ListWorks(ctx context.Context, q service.WorkQuery
 	}
 	if q.Tag != "" {
 		where = append(where, arg(q.Tag)+" = ANY(w.tags)")
+	}
+	if q.Kind != "" {
+		where = append(where, "w.kind = "+arg(q.Kind))
 	}
 	query := workSelect + join
 	if len(where) > 0 {
@@ -811,4 +842,21 @@ func (r *communityRepository) CreatorTrackedSince(ctx context.Context) (string, 
 	var day sql.NullString
 	err := r.db.QueryRowContext(ctx, `SELECT to_char(MIN(day), 'YYYY-MM-DD') FROM work_daily_stats`).Scan(&day)
 	return day.String, err
+}
+
+func (r *communityRepository) SiteWorkIDs(ctx context.Context, userID int64) (map[int64]int64, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT site_id, id FROM works WHERE user_id = $1 AND site_id IS NOT NULL`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[int64]int64{}
+	for rows.Next() {
+		var siteID, workID int64
+		if err := rows.Scan(&siteID, &workID); err != nil {
+			return nil, err
+		}
+		out[siteID] = workID
+	}
+	return out, rows.Err()
 }

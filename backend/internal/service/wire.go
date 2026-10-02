@@ -636,7 +636,7 @@ func ProvideCanvasSessionService(repo CanvasSessionRepository, users *UserServic
 }
 
 // ProvideCommunityService wires the canvas community; images live under community.dir.
-func ProvideCommunityService(repo CommunityRepository, settings SettingRepository, cfg *config.Config, contests *ContestService) *CommunityService {
+func ProvideCommunityService(repo CommunityRepository, settings SettingRepository, cfg *config.Config, contests *ContestService, sites SiteHostingRepository) *CommunityService {
 	dir := "./data/community"
 	if cfg != nil && cfg.Community.Dir != "" {
 		dir = cfg.Community.Dir
@@ -647,6 +647,11 @@ func ProvideCommunityService(repo CommunityRepository, settings SettingRepositor
 	}
 	svc := NewCommunityService(repo, NewCommunityMediaStore(dir), store)
 	svc.SetContests(contests)
+	domain := ""
+	if cfg != nil {
+		domain = cfg.Sites.Domain
+	}
+	svc.SetSites(sites, domain)
 	return svc
 }
 
@@ -671,6 +676,7 @@ func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscription
 	svc := NewSiteHostingService(repo, subs, balanceCache, store, DefaultSiteHostingConfig(domain), dir, mainSite)
 	if cfg != nil {
 		svc.WithSecret(cfg.JWT.Secret)
+		svc.WithFrameAncestors(cfg.CORS.AllowedOrigins)
 	}
 	if svc.Domain() != "" {
 		svc.Start()

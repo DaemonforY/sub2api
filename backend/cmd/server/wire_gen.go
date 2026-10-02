@@ -303,7 +303,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	siteHostingService := service.ProvideSiteHostingService(siteHostingRepository, userSubscriptionRepository, billingCacheService, settingRepository, configConfig)
 	siteHostingHandler := admin.NewSiteHostingHandler(siteHostingService)
 	communityRepository := repository.NewCommunityRepository(db)
-	communityService := service.ProvideCommunityService(communityRepository, settingRepository, configConfig, contestService)
+	communityService := service.ProvideCommunityService(communityRepository, settingRepository, configConfig, contestService, siteHostingRepository)
 	communityHandler := admin.NewCommunityHandler(communityService)
 	upstreamBillingProbeService := service.ProvideUpstreamBillingProbeService(accountRepository, accountTestService, settingService, leaderLockCache, db)
 	ollamaCloudUsageService := service.ProvideOllamaCloudUsageService(accountRepository, httpUpstream, settingService, secretEncryptor, configConfig, leaderLockCache, db)

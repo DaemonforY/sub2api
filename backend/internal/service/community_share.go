@@ -80,7 +80,7 @@ func (s *CommunityService) shareCard(ctx context.Context, path string) (*ShareCa
 			return nil, nil
 		}
 		w, err := s.repo.GetWork(ctx, id)
-		if err != nil || w == nil || w.Status != WorkStatusApproved || w.Visibility == WorkVisibilityPrivate {
+		if err != nil || w == nil || w.Status != WorkStatusApproved || w.Visibility == WorkVisibilityPrivate || (w.Kind == WorkKindSite && !w.Site.Live()) {
 			return nil, err
 		}
 		if p, err := s.repo.GetProfileByUser(ctx, w.UserID); err != nil || p == nil || p.Status != ProfileStatusActive {
@@ -93,6 +93,9 @@ func (s *CommunityService) shareCard(ctx context.Context, path string) (*ShareCa
 		title := w.Title
 		if title == "" {
 			title = "AI 作品"
+			if w.Kind == WorkKindSite {
+				title = "AI 网页"
+			}
 		}
 		desc := w.Description
 		if desc == "" && w.ShowPrompt {

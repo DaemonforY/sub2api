@@ -212,10 +212,12 @@ type SiteHostingService struct {
 	defaults    SiteHostingConfig
 	dir         string
 	mainSiteURL string
-	secret      []byte
-	httpClient  *http.Client
-	stats       *siteStatsCollector
-	now         func() time.Time
+	// frameAncestors may embed sites besides the site itself (the canvas previews web-page works).
+	frameAncestors string
+	secret         []byte
+	httpClient     *http.Client
+	stats          *siteStatsCollector
+	now            func() time.Time
 
 	mu          sync.Mutex
 	cfg         *SiteHostingConfig

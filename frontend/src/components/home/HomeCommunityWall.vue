@@ -32,6 +32,7 @@
           class="h-auto w-full object-cover transition duration-500 group-hover:scale-105"
         />
         <span class="absolute left-3 top-3 rounded bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white">{{ t('home.v2.community.aiLabel') }}</span>
+        <span v-if="w.kind === 'site'" class="absolute right-3 top-3 rounded bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white" data-testid="home-work-site">{{ t('home.v2.community.siteLabel') }}</span>
         <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-3 pt-10 text-white">
           <div v-if="w.title" class="truncate text-sm font-semibold">{{ w.title }}</div>
           <div class="mt-0.5 flex items-center justify-between gap-2 text-xs text-white/80">

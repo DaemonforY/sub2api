@@ -200,6 +200,7 @@ export default {
         title: 'From the community',
         subtitle: 'Made with AI on HiveGPT Infinite Canvas. Like one? Remix it in a click.',
         more: 'Explore more',
+        siteLabel: 'Web page',
         aiLabel: 'AI-generated'
       },
       showcase: {

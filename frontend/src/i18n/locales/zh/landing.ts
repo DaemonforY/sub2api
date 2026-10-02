@@ -200,6 +200,7 @@ export default {
         title: '社区作品',
         subtitle: '大家在 HiveGPT 无限画布上用 AI 创作的作品，喜欢的可以一键做同款',
         more: '去发现页看更多',
+        siteLabel: '网页',
         aiLabel: 'AI 生成'
       },
       showcase: {

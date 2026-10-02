@@ -129,6 +129,8 @@ type Work struct {
 	IsMine        bool          `json:"is_mine"`
 	Media         []WorkMedia   `json:"media,omitempty"`
 	Contests      []WorkContest `json:"contests,omitempty"` // work page only
+	Kind          string        `json:"kind"`               // image | site
+	Site          *WorkSite     `json:"site,omitempty"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
 }
@@ -145,6 +147,8 @@ type WorkQuery struct {
 	IncludeAll bool
 	// Admin filter: pending | reported | approved | hidden | rejected | "" (all)
 	Status string
+	// Kind: image | site | "" (all)
+	Kind   string
 	Limit  int
 	Offset int
 }
@@ -192,6 +196,8 @@ type CommunityRepository interface {
 	CreatorTotals(ctx context.Context, userID int64) (CreatorTotals, error)
 	CreatorTopWorks(ctx context.Context, userID int64, since time.Time, limit int) ([]CreatorWork, error)
 	CreatorTrackedSince(ctx context.Context) (string, error)
+	// SiteWorkIDs maps the user's site ids to the works presenting them.
+	SiteWorkIDs(ctx context.Context, userID int64) (map[int64]int64, error)
 	// WorkContests lists the live contest entries made from a work (pending ones too when includePending).
 	WorkContests(ctx context.Context, workID int64, includePending bool) ([]WorkContest, error)
 
@@ -213,6 +219,8 @@ type CommunityService struct {
 	now        func() time.Time
 	shareCache shareMetaCache
 	contests   *ContestService
+	sites      communitySiteReader
+	siteDomain string
 }
 
 func NewCommunityService(repo CommunityRepository, media *CommunityMediaStore, settings imageToolSettings) *CommunityService {
@@ -399,6 +407,8 @@ type PublishInput struct {
 	Visibility   string
 	CollectionID int64
 	RemixOf      int64
+	// SiteID makes a web-page work presenting one of the author's live sites (Images are its screenshots).
+	SiteID int64
 }
 
 func normalizeVisibility(v string) string {
@@ -412,7 +422,7 @@ func normalizeVisibility(v string) string {
 
 func normalizeSource(v string) string {
 	switch v {
-	case "image_workbench", "tools", "contest", "canvas":
+	case "image_workbench", "tools", "contest", "canvas", "site":
 		return v
 	default:
 		return "canvas"
@@ -472,6 +482,12 @@ func (s *CommunityService) Publish(ctx context.Context, userID int64, in Publish
 	if len(in.Images) == 0 || len(in.Images) > communityMaxImagesPerWork {
 		return nil, ErrCommunityNoImages
 	}
+	var site *WorkSite
+	if in.SiteID > 0 {
+		if site, err = s.workSiteFor(ctx, userID, in.SiteID); err != nil {
+			return nil, err
+		}
+	}
 	total, err := s.repo.CountWorks(ctx, userID, time.Time{})
 	if err != nil {
 		return nil, err
@@ -503,6 +519,10 @@ func (s *CommunityService) Publish(ctx context.Context, userID int64, in Publish
 		Tags:        normalizeTags(in.Tags),
 		Visibility:  normalizeVisibility(in.Visibility),
 		Status:      WorkStatusApproved,
+		Kind:        WorkKindImage,
+	}
+	if site != nil {
+		w.Kind, w.Site = WorkKindSite, site
 	}
 	if flags := communityTextFlags(w.Title, w.Description, w.Prompt, strings.Join(w.Tags, " ")); len(flags) > 0 {
 		w.Status, w.ReviewFlags, w.ReviewReason = WorkStatusPending, flags, "内容命中敏感词，人工审核后公开"
@@ -549,13 +569,14 @@ func visibleTo(w *Work, viewerID int64) bool {
 	if w.UserID == viewerID && viewerID != 0 {
 		return true
 	}
-	return w.Status == WorkStatusApproved && w.Visibility != WorkVisibilityPrivate
+	return w.Status == WorkStatusApproved && w.Visibility != WorkVisibilityPrivate && (w.Kind != WorkKindSite || w.Site.Live())
 }
 
 func (s *CommunityService) decorateWorks(ctx context.Context, works []Work, viewerID int64) {
 	for i := range works {
 		w := &works[i]
 		w.CoverURL, w.CoverThumbURL = CommunityMediaURL(w.CoverFile), CommunityMediaURL(w.CoverThumb)
+		s.decorateSite(w, viewerID)
 		if w.Author.AvatarURL != "" && !strings.HasPrefix(w.Author.AvatarURL, "https://") && !strings.HasPrefix(w.Author.AvatarURL, CommunityMediaPublicPrefix) {
 			w.Author.AvatarURL = CommunityMediaURL(w.Author.AvatarURL)
 		}
@@ -615,6 +636,9 @@ func (s *CommunityService) Works(ctx context.Context, q WorkQuery) ([]Work, erro
 	case "latest", "recommended", "following", "user", "favorites", "collection":
 	default:
 		q.Feed = "recommended"
+	}
+	if q.Kind != WorkKindImage && q.Kind != WorkKindSite {
+		q.Kind = ""
 	}
 	if (q.Feed == "following" || q.Feed == "favorites") && q.ViewerID == 0 {
 		return []Work{}, nil

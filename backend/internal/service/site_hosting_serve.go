@@ -84,19 +84,38 @@ func (s *SiteHostingService) forget(name string) {
 	s.mu.Unlock()
 }
 
-func setSiteSecurityHeaders(h http.Header) {
+// WithFrameAncestors lets these origins embed sites (the canvas' web-page work previews); only
+// plain https origins are taken.
+func (s *SiteHostingService) WithFrameAncestors(origins []string) *SiteHostingService {
+	var kept []string
+	for _, origin := range origins {
+		origin = strings.TrimRight(strings.TrimSpace(origin), "/")
+		if u, err := url.Parse(origin); err == nil && u.Scheme == "https" && u.Host != "" && u.Path == "" && u.RawQuery == "" && !strings.ContainsAny(origin, " ;,'*") {
+			kept = append(kept, origin)
+		}
+	}
+	s.frameAncestors = strings.Join(kept, " ")
+	return s
+}
+
+func (s *SiteHostingService) setSiteSecurityHeaders(h http.Header) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	// Pages may load scripts and styles from anywhere, but forms only post back to the page's
-	// own site and pages cannot be framed by other sites (lowers their value for phishing).
-	h.Set("Content-Security-Policy", "form-action 'self'; frame-ancestors 'self'; base-uri 'self'")
+	// own site and pages cannot be framed by other sites (lowers their value for phishing) —
+	// except the canvas, which previews web-page works.
+	ancestors := "'self'"
+	if s.frameAncestors != "" {
+		ancestors += " " + s.frameAncestors
+	}
+	h.Set("Content-Security-Policy", "form-action 'self'; frame-ancestors "+ancestors+"; base-uri 'self'")
 	h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
 	h.Set("Cross-Origin-Opener-Policy", "same-origin")
 }
 
 // ServeSite answers a request for a hosted site (name "" = the bare hosting domain).
 func (s *SiteHostingService) ServeSite(w http.ResponseWriter, r *http.Request, name, clientIP string) {
-	setSiteSecurityHeaders(w.Header())
+	s.setSiteSecurityHeaders(w.Header())
 	unlock := r.URL.Path == siteUnlockPath
 	if r.Method != http.MethodGet && r.Method != http.MethodHead && (!unlock || r.Method != http.MethodPost) {
 		w.Header().Set("Allow", "GET, HEAD")

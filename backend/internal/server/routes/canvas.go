@@ -88,6 +88,7 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 		mine.GET("/me", cm.Me)
 		mine.PUT("/me/profile", cm.SaveProfile)
 		mine.GET("/me/stats", cm.CreatorStats)
+		mine.GET("/me/sites", cm.MySites)
 		mine.POST("/works", cm.Publish)
 		mine.PUT("/works/:id", cm.UpdateWork)
 		mine.DELETE("/works/:id", cm.DeleteWork)

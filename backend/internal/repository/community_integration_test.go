@@ -432,3 +432,91 @@ func TestCommunityCreatorStats(t *testing.T) {
 	require.Len(t, stats.Series, 30)
 	require.Equal(t, 2, stats.Period.Likes, "the 10-day-old like is inside 30 days")
 }
+
+func TestCommunitySiteWorks(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	short := suffix[len(suffix)-7:]
+	author := mustCreateUser(t, integrationEntClient, &service.User{Email: "sw-" + suffix + "@test.local"})
+	other := mustCreateUser(t, integrationEntClient, &service.User{Email: "sw2-" + suffix + "@test.local"})
+	_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - INTERVAL '3 days' WHERE id = ANY($1)`, pq.Array([]int64{author.ID, other.ID}))
+	require.NoError(t, err)
+	newSite := func(userID int64, name, status string, version int) int64 {
+		var id int64
+		require.NoError(t, integrationDB.QueryRowContext(ctx, `INSERT INTO sites (user_id, name, title, status, version) VALUES ($1, $2, $3, $4, $5) RETURNING id`, userID, name, "站点 "+name, status, version).Scan(&id))
+		return id
+	}
+	live := newSite(author.ID, "live"+short, "active", 1)
+	pending := newSite(author.ID, "pend"+short, "pending", 0)
+	locked := newSite(author.ID, "lock"+short, "active", 1)
+	_, err = integrationDB.ExecContext(ctx, `UPDATE sites SET password_hash = 'x' WHERE id = $1`, locked)
+	require.NoError(t, err)
+	theirs := newSite(other.ID, "them"+short, "active", 1)
+
+	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), nil)
+	svc.SetSites(NewSiteHostingRepository(integrationDB), "s.example.test")
+	_, err = svc.SaveProfile(ctx, author.ID, service.ProfileInput{Handle: "sw" + short})
+	require.NoError(t, err)
+	publish := func(siteID int64) (*service.Work, error) {
+		return svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 64, 40, color.White)}, Title: "落地页", Visibility: "public", Source: "site", SiteID: siteID})
+	}
+	_, err = publish(theirs)
+	require.ErrorIs(t, err, service.ErrCommunitySiteNotFound)
+	_, err = publish(pending)
+	require.ErrorIs(t, err, service.ErrCommunitySiteNotLive)
+	_, err = publish(locked)
+	require.ErrorIs(t, err, service.ErrCommunitySitePassword)
+
+	work, err := publish(live)
+	require.NoError(t, err)
+	require.Equal(t, service.WorkKindSite, work.Kind)
+	_, err = publish(live)
+	require.ErrorIs(t, err, service.ErrCommunitySiteAlreadyPublished)
+	image, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 30, 30, color.Black)}, Title: "图片", Visibility: "public"})
+	require.NoError(t, err)
+
+	shown, err := svc.Work(ctx, work.ID, other.ID)
+	require.NoError(t, err)
+	require.Equal(t, "https://live"+short+".s.example.test", shown.Site.URL)
+	require.Equal(t, "站点 live"+short, shown.Site.Title)
+
+	ids := func(kind string) []int64 {
+		works, err := svc.Works(ctx, service.WorkQuery{Feed: "user", UserID: author.ID, ViewerID: other.ID, Kind: kind})
+		require.NoError(t, err)
+		return workIDs(works)
+	}
+	require.Equal(t, []int64{work.ID}, ids("site"))
+	require.Equal(t, []int64{image.ID}, ids("image"))
+	require.ElementsMatch(t, []int64{work.ID, image.ID}, ids(""))
+
+	// The site goes offline: the work disappears for others, the author still sees it.
+	_, err = integrationDB.ExecContext(ctx, `UPDATE sites SET status = 'disabled' WHERE id = $1`, live)
+	require.NoError(t, err)
+	require.Empty(t, ids("site"))
+	_, err = svc.Work(ctx, work.ID, other.ID)
+	require.ErrorIs(t, err, service.ErrCommunityWorkNotFound)
+	mine, err := svc.Work(ctx, work.ID, author.ID)
+	require.NoError(t, err)
+	require.NotEmpty(t, mine.Site.URL, "the author keeps the link")
+	out, err := svc.ShareMetaHTML(ctx, fmt.Sprintf("/w/%d", work.ID), "https://hivegpt.example.test", "")
+	require.NoError(t, err)
+	require.Empty(t, out, "no share card for an offline site")
+
+	sites, err := svc.MySites(ctx, author.ID)
+	require.NoError(t, err)
+	reasons := map[int64]string{}
+	for _, s := range sites {
+		reasons[s.ID] = s.Reason
+	}
+	require.Equal(t, map[int64]string{live: "not_live", pending: "not_live", locked: "password"}, reasons)
+	_, err = integrationDB.ExecContext(ctx, `UPDATE sites SET status = 'active' WHERE id = $1`, live)
+	require.NoError(t, err)
+	sites, err = svc.MySites(ctx, author.ID)
+	require.NoError(t, err)
+	for _, s := range sites {
+		if s.ID == live {
+			require.Equal(t, "published", s.Reason)
+			require.Equal(t, work.ID, s.WorkID)
+		}
+	}
+}

@@ -160,7 +160,7 @@ func (h *CommunityHandler) Profile(c *gin.Context) {
 
 // Works GET /community/works?feed=recommended|latest|following|favorites&tag=&user=<handle>&collection=<id>&offset=&limit=
 func (h *CommunityHandler) Works(c *gin.Context) {
-	q := service.WorkQuery{Feed: c.Query("feed"), ViewerID: viewerID(c), Tag: c.Query("tag"), Offset: queryInt(c, "offset"), Limit: queryInt(c, "limit")}
+	q := service.WorkQuery{Feed: c.Query("feed"), ViewerID: viewerID(c), Tag: c.Query("tag"), Kind: c.Query("kind"), Offset: queryInt(c, "offset"), Limit: queryInt(c, "limit")}
 	if handle := c.Query("user"); handle != "" {
 		p, err := h.svc.Profile(c.Request.Context(), handle, q.ViewerID)
 		if err != nil {
@@ -195,7 +195,7 @@ func (h *CommunityHandler) PublicWorks(c *gin.Context) {
 	if limit <= 0 || limit > 24 {
 		limit = 12
 	}
-	works, err := h.svc.Works(c.Request.Context(), service.WorkQuery{Feed: feed, Tag: c.Query("tag"), Limit: limit})
+	works, err := h.svc.Works(c.Request.Context(), service.WorkQuery{Feed: feed, Tag: c.Query("tag"), Kind: c.Query("kind"), Limit: limit})
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -259,6 +259,7 @@ func (h *CommunityHandler) Publish(c *gin.Context) {
 	}
 	in.CollectionID, _ = strconv.ParseInt(c.PostForm("collection_id"), 10, 64)
 	in.RemixOf, _ = strconv.ParseInt(c.PostForm("remix_of"), 10, 64)
+	in.SiteID, _ = strconv.ParseInt(c.PostForm("site_id"), 10, 64)
 	files := form.File["images"]
 	if len(files) == 0 || len(files) > 9 {
 		response.ErrorFrom(c, service.ErrCommunityNoImages)
@@ -658,4 +659,18 @@ func (h *CommunityHandler) CreatorStats(c *gin.Context) {
 		return
 	}
 	response.Success(c, stats)
+}
+
+// MySites GET /api/v1/canvas/community/me/sites — the signed-in user's sites for "publish a web page".
+func (h *CommunityHandler) MySites(c *gin.Context) {
+	uid, ok := mustViewer(c)
+	if !ok {
+		return
+	}
+	sites, err := h.svc.MySites(c.Request.Context(), uid)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"sites": sites})
 }

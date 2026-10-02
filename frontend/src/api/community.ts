@@ -23,6 +23,8 @@ export interface CommunityWork {
   like_count: number
   remix_count: number
   description?: string
+  /** site: a web page made on the canvas (the cover is a screenshot). */
+  kind?: 'image' | 'site'
   visibility?: 'public' | 'unlisted' | 'private'
   status?: 'approved' | 'pending' | 'rejected' | 'hidden'
 }

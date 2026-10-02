@@ -338,3 +338,15 @@ func TestValidateSiteName(t *testing.T) {
 	}
 	require.Equal(t, "my-page", normalizeSiteName("  My-Page "))
 }
+
+func TestSiteFrameAncestors(t *testing.T) {
+	svc := &SiteHostingService{}
+	h := http.Header{}
+	svc.setSiteSecurityHeaders(h)
+	require.Contains(t, h.Get("Content-Security-Policy"), "frame-ancestors 'self';")
+
+	svc.WithFrameAncestors([]string{"https://canvas.example.com/", " https://b.example.com ", "http://insecure.example.com", "*", "https://x.example.com/path", "https://a.example.com; script-src *"})
+	h = http.Header{}
+	svc.setSiteSecurityHeaders(h)
+	require.Contains(t, h.Get("Content-Security-Policy"), "frame-ancestors 'self' https://canvas.example.com https://b.example.com;")
+}
