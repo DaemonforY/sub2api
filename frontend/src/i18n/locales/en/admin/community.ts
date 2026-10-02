@@ -11,9 +11,9 @@ export default {
     flags: 'Flagged',
     actions: { approve: 'Approve', reject: 'Reject', hide: 'Hide', feature: 'Feature', unfeature: 'Unfeature', ban: 'Restrict author', unban: 'Lift restriction' },
     reasonPlaceholder: 'Reason (sent to the author), e.g. copyright',
-    banConfirm: 'Restrict @{handle} from publishing? Their page and works are hidden from others; lift it under Restricted.',
+    banConfirm: 'Restrict {\'@\'}{handle} from publishing? Their page and works are hidden from others; lift it under Restricted.',
     banned: 'Author restricted',
-    unrestricted: 'Lifted the restriction on @{handle}',
+    unrestricted: 'Lifted the restriction on {\'@\'}{handle}',
     noRestricted: 'No restricted authors',
     done: 'Done',
     empty: 'Nothing here',
@@ -26,6 +26,12 @@ export default {
     reasons: { porn: 'Sexual content', violence: 'Violence', politics: 'Illegal content', copyright: 'Copyright', fraud: 'Scam or ads', spam: 'Spam', other: 'Other' },
     reportStatus: { open: 'Open', resolved: 'Resolved', dismissed: 'Dismissed' },
     reviewAll: 'Every new work needs manual approval before it goes public',
+    cloud: {
+      title: 'Canvas cloud sync space',
+      hint: 'Signed-in canvas users can sync canvases, assets and workbench records to their account; uploads stop when the space is full. Lowering it does not delete files.',
+      free: 'Everyone (MB)',
+      subscriber: 'Subscribers (MB)'
+    },
     reviewAllHint: 'When off, only works with flagged words wait for review; anything can be reported.'
   }
 }

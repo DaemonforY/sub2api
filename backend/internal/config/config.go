@@ -74,6 +74,7 @@ type Config struct {
 	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
 	Sites                   SitesConfig                   `mapstructure:"sites"`
 	Community               CommunityConfig               `mapstructure:"community"`
+	CanvasCloud             CanvasCloudConfig             `mapstructure:"canvas_cloud"`
 	Security                SecurityConfig                `mapstructure:"security"`
 	Billing                 BillingConfig                 `mapstructure:"billing"`
 	Turnstile               TurnstileConfig               `mapstructure:"turnstile"`
@@ -727,6 +728,11 @@ type ImageToolsConfig struct {
 
 // CommunityConfig: the canvas community stores work images under Dir.
 type CommunityConfig struct {
+	Dir string `mapstructure:"dir"`
+}
+
+// CanvasCloudConfig is where the canvas cloud sync keeps users' files (default ./data/canvas-cloud).
+type CanvasCloudConfig struct {
 	Dir string `mapstructure:"dir"`
 }
 

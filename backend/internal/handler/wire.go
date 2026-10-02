@@ -215,6 +215,7 @@ func ProvideHandlers(
 	imageToolsHandler *ImageToolsHandler,
 	siteHostingHandler *SiteHostingHandler,
 	canvasSessionHandler *CanvasSessionHandler,
+	canvasCloudHandler *CanvasCloudHandler,
 	communityHandler *CommunityHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
@@ -249,6 +250,7 @@ func ProvideHandlers(
 		ImageTools:       imageToolsHandler,
 		SiteHosting:      siteHostingHandler,
 		CanvasSession:    canvasSessionHandler,
+		CanvasCloud:      canvasCloudHandler,
 		Community:        communityHandler,
 	}
 }
@@ -283,6 +285,7 @@ var ProviderSet = wire.NewSet(
 	NewImageToolsHandler,
 	NewSiteHostingHandler,
 	NewCanvasSessionHandler,
+	NewCanvasCloudHandler,
 	NewCommunityHandler,
 
 	// Admin handlers

@@ -67,12 +67,18 @@ export async function reports(status: string, page = 1): Promise<AdminWorkReport
 export async function setReport(id: number, status: AdminWorkReport['status']): Promise<void> {
   await apiClient.put(`/admin/community/reports/${id}`, { status })
 }
-export async function getSettings(): Promise<{ review_all: boolean }> {
+/** review_all: hand-review every new work; cloud quotas: canvas cloud sync space per user (MB). */
+export interface CommunitySettings {
+  review_all: boolean
+  cloud_quota_mb: number
+  cloud_subscriber_quota_mb: number
+}
+export async function getSettings(): Promise<CommunitySettings> {
   const { data } = await apiClient.get('/admin/community/settings')
   return data
 }
-export async function saveSettings(reviewAll: boolean): Promise<{ review_all: boolean }> {
-  const { data } = await apiClient.put('/admin/community/settings', { review_all: reviewAll })
+export async function saveSettings(settings: CommunitySettings): Promise<CommunitySettings> {
+  const { data } = await apiClient.put('/admin/community/settings', settings)
   return data
 }
 

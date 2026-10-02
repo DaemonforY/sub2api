@@ -46,6 +46,21 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 		signedIn.GET("/me", h.CanvasSession.Me)
 	}
 
+	// Cloud sync of canvas projects, assets and workbench records (per-user files, quota).
+	if h.CanvasCloud != nil {
+		cloud := canvas.Group("/cloud")
+		cloud.Use(middleware.CanvasSessionAuth(sessions))
+		cloud.Use(middleware.BackendModeUserGuard(settingService))
+		// No panel rate limit: one sync moves hundreds of files; the quota bounds what a user can store.
+		{
+			cloud.GET("/usage", h.CanvasCloud.Usage)
+			cloud.GET("/files", h.CanvasCloud.List)
+			cloud.GET("/files/*path", h.CanvasCloud.Get)
+			cloud.PUT("/files/*path", h.CanvasCloud.Put)
+			cloud.DELETE("/files/*path", h.CanvasCloud.Delete)
+		}
+	}
+
 	if h.Community == nil {
 		return
 	}

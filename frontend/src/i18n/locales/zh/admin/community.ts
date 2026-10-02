@@ -11,9 +11,9 @@ export default {
     flags: '命中',
     actions: { approve: '通过', reject: '不通过', hide: '隐藏', feature: '设为精选', unfeature: '取消精选', ban: '限制作者发布', unban: '解除限制' },
     reasonPlaceholder: '原因（会通知作者），例如：涉嫌侵权',
-    banConfirm: '限制 @{handle} 发布作品？对方的主页和作品会对其他人隐藏，之后可以在「受限作者」里解除。',
+    banConfirm: '限制 {\'@\'}{handle} 发布作品？对方的主页和作品会对其他人隐藏，之后可以在「受限作者」里解除。',
     banned: '已限制该作者发布',
-    unrestricted: '已解除 @{handle} 的发布限制',
+    unrestricted: '已解除 {\'@\'}{handle} 的发布限制',
     noRestricted: '没有受限的作者',
     done: '已处理',
     empty: '这里没有作品',
@@ -26,6 +26,12 @@ export default {
     reasons: { porn: '色情低俗', violence: '暴力血腥', politics: '违法违规', copyright: '侵犯版权', fraud: '诈骗广告', spam: '垃圾内容', other: '其他' },
     reportStatus: { open: '待处理', resolved: '已处理', dismissed: '已忽略' },
     reviewAll: '所有新作品都需要人工审核后才公开',
+    cloud: {
+      title: '画布云同步空间',
+      hint: '登录画布的用户可以把画布、资产和工作台记录同步到账号；超出空间后无法再上传。改小不会删除已有文件。',
+      free: '普通用户（MB）',
+      subscriber: '订阅用户（MB）'
+    },
     reviewAllHint: '关闭时只有命中敏感词的作品进入待审核，其余直接公开；任何作品都可以被举报。'
   }
 }

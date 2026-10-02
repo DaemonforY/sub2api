@@ -9,10 +9,24 @@
 
       <div v-if="tab === 'settings'" class="card space-y-3 p-5" data-testid="community-settings">
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="reviewAll" type="checkbox" class="h-4 w-4" />
+          <input v-model="settings.review_all" type="checkbox" class="h-4 w-4" />
           {{ t('admin.community.reviewAll') }}
         </label>
         <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.reviewAllHint') }}</p>
+        <div class="border-t border-gray-100 pt-3 dark:border-dark-700">
+          <div class="text-sm font-medium">{{ t('admin.community.cloud.title') }}</div>
+          <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.cloud.hint') }}</p>
+          <div class="mt-2 grid max-w-md grid-cols-2 gap-3">
+            <label class="text-xs text-gray-600 dark:text-dark-300">
+              {{ t('admin.community.cloud.free') }}
+              <input v-model.number="settings.cloud_quota_mb" type="number" min="0" class="input mt-1" data-testid="cloud-quota" />
+            </label>
+            <label class="text-xs text-gray-600 dark:text-dark-300">
+              {{ t('admin.community.cloud.subscriber') }}
+              <input v-model.number="settings.cloud_subscriber_quota_mb" type="number" min="0" class="input mt-1" data-testid="cloud-subscriber-quota" />
+            </label>
+          </div>
+        </div>
         <button class="btn btn-primary btn-sm" :disabled="busy" @click="saveSettings">{{ t('common.save') }}</button>
       </div>
 
@@ -127,7 +141,7 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { adminAPI } from '@/api/admin'
-import type { AdminCommunityWork, AdminWorkReport, CommunityWorkStatus, ModerateAction, RestrictedAuthor } from '@/api/admin/community'
+import type { AdminCommunityWork, AdminWorkReport, CommunitySettings, CommunityWorkStatus, ModerateAction, RestrictedAuthor } from '@/api/admin/community'
 import { CANVAS_SITE_URL } from '@/constants/crossSites'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -144,7 +158,7 @@ const busy = ref(false)
 const workList = ref<AdminCommunityWork[]>([])
 const reportList = ref<AdminWorkReport[]>([])
 const restrictedList = ref<RestrictedAuthor[]>([])
-const reviewAll = ref(false)
+const settings = ref<CommunitySettings>({ review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
 const reasonFor = ref<{ work: AdminCommunityWork; action: 'reject' | 'hide' } | null>(null)
 const reason = ref('')
 
@@ -161,7 +175,7 @@ function showError(error: unknown) {
 
 async function load() {
   try {
-    if (tab.value === 'settings') reviewAll.value = (await adminAPI.community.getSettings()).review_all
+    if (tab.value === 'settings') settings.value = await adminAPI.community.getSettings()
     else if (tab.value === 'reports') reportList.value = await adminAPI.community.reports('', page.value)
     else if (tab.value === 'restricted') restrictedList.value = await adminAPI.community.restricted()
     else workList.value = await adminAPI.community.works(tab.value, page.value)
@@ -244,7 +258,7 @@ async function setReport(id: number, status: AdminWorkReport['status']) {
 async function saveSettings() {
   busy.value = true
   try {
-    reviewAll.value = (await adminAPI.community.saveSettings(reviewAll.value)).review_all
+    settings.value = await adminAPI.community.saveSettings(settings.value)
     appStore.showSuccess(t('admin.community.done'))
   } catch (error) {
     showError(error)

@@ -113,20 +113,26 @@ func (h *CommunityHandler) SetReport(c *gin.Context) {
 	response.Success(c, gin.H{"ok": true})
 }
 
-// Settings GET|PUT /api/v1/admin/community/settings {review_all}
+// Settings GET|PUT /api/v1/admin/community/settings {review_all, cloud_quota_mb, cloud_subscriber_quota_mb}
 func (h *CommunityHandler) Settings(c *gin.Context) {
 	response.Success(c, h.svc.AdminSettings(c.Request.Context()))
 }
 
 func (h *CommunityHandler) SaveSettings(c *gin.Context) {
 	var in struct {
-		ReviewAll bool `json:"review_all"`
+		ReviewAll         bool   `json:"review_all"`
+		QuotaMB           *int64 `json:"cloud_quota_mb"`
+		SubscriberQuotaMB *int64 `json:"cloud_subscriber_quota_mb"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
 		response.BadRequest(c, "参数格式不正确")
 		return
 	}
-	if err := h.svc.AdminSaveSettings(c.Request.Context(), in.ReviewAll); err != nil {
+	var quotas *service.CanvasCloudQuotaSettings
+	if in.QuotaMB != nil && in.SubscriberQuotaMB != nil {
+		quotas = &service.CanvasCloudQuotaSettings{QuotaMB: *in.QuotaMB, SubscriberQuotaMB: *in.SubscriberQuotaMB}
+	}
+	if err := h.svc.AdminSaveSettings(c.Request.Context(), in.ReviewAll, quotas); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

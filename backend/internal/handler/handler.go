@@ -82,6 +82,7 @@ type Handlers struct {
 	ImageTools       *ImageToolsHandler
 	SiteHosting      *SiteHostingHandler
 	CanvasSession    *CanvasSessionHandler
+	CanvasCloud      *CanvasCloudHandler
 	Community        *CommunityHandler
 }
 

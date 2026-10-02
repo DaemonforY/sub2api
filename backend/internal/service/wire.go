@@ -617,6 +617,19 @@ func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRe
 	return svc
 }
 
+// ProvideCanvasCloudService wires the canvas cloud sync; files live under canvas_cloud.dir.
+func ProvideCanvasCloudService(repo CanvasCloudRepository, settings SettingRepository, subs UserSubscriptionRepository, cfg *config.Config) *CanvasCloudService {
+	dir := "./data/canvas-cloud"
+	if cfg != nil && cfg.CanvasCloud.Dir != "" {
+		dir = cfg.CanvasCloud.Dir
+	}
+	var store imageToolSettings
+	if settings != nil {
+		store = settings
+	}
+	return NewCanvasCloudService(repo, dir, store, subs)
+}
+
 // ProvideCanvasSessionService wires the canvas sign-in sessions.
 func ProvideCanvasSessionService(repo CanvasSessionRepository, users *UserService, subs UserSubscriptionRepository) *CanvasSessionService {
 	return NewCanvasSessionService(repo, users, subs)
@@ -1064,6 +1077,7 @@ var ProviderSet = wire.NewSet(
 	ProvideImageToolsService,
 	ProvideSiteHostingService,
 	ProvideCanvasSessionService,
+	ProvideCanvasCloudService,
 	ProvideCommunityService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,

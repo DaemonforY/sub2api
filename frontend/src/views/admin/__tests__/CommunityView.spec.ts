@@ -61,14 +61,15 @@ describe('admin CommunityView', () => {
     await flushPromises()
     expect(moderate).toHaveBeenCalledWith(7, 'approve', '')
 
-    getSettings.mockResolvedValue({ review_all: false })
-    saveSettings.mockResolvedValue({ review_all: true })
+    getSettings.mockResolvedValue({ review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
+    saveSettings.mockResolvedValue({ review_all: true, cloud_quota_mb: 500, cloud_subscriber_quota_mb: 2048 })
     await wrapper.findAll('button').find((b) => b.text() === 'admin.community.tabs.settings')!.trigger('click')
     await flushPromises()
     await wrapper.get('[data-testid="community-settings"] input').setValue(true)
+    await wrapper.get('[data-testid="cloud-quota"]').setValue(500)
     await wrapper.get('[data-testid="community-settings"] button').trigger('click')
     await flushPromises()
-    expect(saveSettings).toHaveBeenCalledWith(true)
+    expect(saveSettings).toHaveBeenCalledWith({ review_all: true, cloud_quota_mb: 500, cloud_subscriber_quota_mb: 2048 })
   })
 
   it('lists restricted authors and lifts a restriction', async () => {

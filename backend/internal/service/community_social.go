@@ -438,14 +438,25 @@ func (s *CommunityService) AdminSetReport(ctx context.Context, id int64, status 
 	return s.repo.SetWorkReportStatus(ctx, id, status)
 }
 
-// Settings: review every new work by hand.
-func (s *CommunityService) AdminSettings(ctx context.Context) map[string]bool {
-	return map[string]bool{"review_all": s.reviewAll(ctx)}
+// CommunityAdminSettings: review every new work by hand; the canvas cloud sync quotas (MB).
+type CommunityAdminSettings struct {
+	ReviewAll bool `json:"review_all"`
+	CanvasCloudQuotaSettings
 }
 
-func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool) error {
+func (s *CommunityService) AdminSettings(ctx context.Context) CommunityAdminSettings {
+	return CommunityAdminSettings{ReviewAll: s.reviewAll(ctx), CanvasCloudQuotaSettings: readCanvasCloudQuotas(ctx, s.settings)}
+}
+
+// AdminSaveSettings saves review_all and, when given, the cloud quotas.
+func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool, quotas *CanvasCloudQuotaSettings) error {
 	if s.settings == nil {
 		return nil
+	}
+	if quotas != nil {
+		if err := saveCanvasCloudQuotas(ctx, s.settings, *quotas); err != nil {
+			return err
+		}
 	}
 	v := "false"
 	if reviewAll {
