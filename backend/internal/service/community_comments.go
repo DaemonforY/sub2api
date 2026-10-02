@@ -170,6 +170,9 @@ func (s *CommunityService) Comments(ctx context.Context, workID, viewerID int64,
 			list[i].Replies = replies[list[i].ID]
 		}
 	}
+	if list == nil {
+		list = []WorkComment{}
+	}
 	s.decorateComments(list, viewerID, w.UserID)
 	page.Comments, page.NextOffset = list, offset+len(list)
 	return page, nil

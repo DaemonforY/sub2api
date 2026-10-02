@@ -634,6 +634,10 @@ func TestCommunityComments(t *testing.T) {
 	work, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 32, 32, color.White)}, Title: "作品", Visibility: "public"})
 	require.NoError(t, err)
 
+	empty, err := svc.Comments(ctx, work.ID, 0, 0)
+	require.NoError(t, err)
+	require.NotNil(t, empty.Comments, "an empty page is [] in JSON, not null")
+
 	// A profile is needed to comment.
 	_, err = svc.AddComment(ctx, bob.ID, work.ID, service.CommentInput{Body: "好看"}, "10.0.0.1")
 	require.ErrorIs(t, err, service.ErrCommunityProfileRequired)
