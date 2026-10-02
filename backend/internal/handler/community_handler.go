@@ -645,3 +645,17 @@ func (h *CommunityHandler) MyWorksForSite(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"works": works})
 }
+
+// CreatorStats GET /api/v1/canvas/community/me/stats?days=7|30|90 — the signed-in author's numbers.
+func (h *CommunityHandler) CreatorStats(c *gin.Context) {
+	uid, ok := mustViewer(c)
+	if !ok {
+		return
+	}
+	stats, err := h.svc.CreatorStats(c.Request.Context(), uid, queryInt(c, "days"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, stats)
+}

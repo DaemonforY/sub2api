@@ -187,6 +187,11 @@ type CommunityRepository interface {
 	CountCollections(ctx context.Context, userID int64) (int, error)
 	SetCollectionItem(ctx context.Context, collectionID, workID int64, on bool) error
 	WorkCollections(ctx context.Context, workID, ownerID int64) ([]int64, error)
+	// Creator stats (days are China Standard Time dates, inclusive).
+	CreatorSeries(ctx context.Context, userID int64, from, to time.Time) ([]CreatorDay, error)
+	CreatorTotals(ctx context.Context, userID int64) (CreatorTotals, error)
+	CreatorTopWorks(ctx context.Context, userID int64, since time.Time, limit int) ([]CreatorWork, error)
+	CreatorTrackedSince(ctx context.Context) (string, error)
 	// WorkContests lists the live contest entries made from a work (pending ones too when includePending).
 	WorkContests(ctx context.Context, workID int64, includePending bool) ([]WorkContest, error)
 

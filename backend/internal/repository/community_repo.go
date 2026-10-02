@@ -321,13 +321,22 @@ func (r *communityRepository) SetWorkFeatured(ctx context.Context, id int64, fea
 	return err
 }
 
+// creatorDay is today's date in China Standard Time (the creator stats' day).
+const creatorDay = `(NOW() AT TIME ZONE 'Asia/Shanghai')::date`
+
 func (r *communityRepository) AddWorkView(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE works SET view_count = view_count + 1 WHERE id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `
+WITH w AS (UPDATE works SET view_count = view_count + 1 WHERE id = $1 RETURNING id)
+INSERT INTO work_daily_stats (work_id, day, views) SELECT id, `+creatorDay+`, 1 FROM w
+ON CONFLICT (work_id, day) DO UPDATE SET views = work_daily_stats.views + 1`, id)
 	return err
 }
 
 func (r *communityRepository) AddWorkRemix(ctx context.Context, id int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE works SET remix_count = remix_count + 1 WHERE id = $1`, id)
+	_, err := r.db.ExecContext(ctx, `
+WITH w AS (UPDATE works SET remix_count = remix_count + 1 WHERE id = $1 RETURNING id)
+INSERT INTO work_daily_stats (work_id, day, remixes) SELECT id, `+creatorDay+`, 1 FROM w
+ON CONFLICT (work_id, day) DO UPDATE SET remixes = work_daily_stats.remixes + 1`, id)
 	return err
 }
 
@@ -700,4 +709,106 @@ ORDER BY e.created_at DESC`, workID, includePending)
 		out = append(out, wc)
 	}
 	return out, rows.Err()
+}
+
+// Creator stats ----------------------------------------------------------------------------------
+
+// CreatorSeries: one row per day from..to (inclusive). Likes and favorites by the author themself
+// do not count.
+func (r *communityRepository) CreatorSeries(ctx context.Context, userID int64, from, to time.Time) ([]service.CreatorDay, error) {
+	fromDay, toDay := from.Format(time.DateOnly), to.Format(time.DateOnly)
+	rows, err := r.db.QueryContext(ctx, `
+WITH days AS (SELECT generate_series($2::date, $3::date, INTERVAL '1 day')::date AS day),
+mine AS (SELECT id FROM works WHERE user_id = $1),
+v AS (SELECT s.day, SUM(s.views) AS views, SUM(s.remixes) AS remixes
+      FROM work_daily_stats s JOIN mine ON mine.id = s.work_id
+      WHERE s.day BETWEEN $2::date AND $3::date GROUP BY s.day),
+l AS (SELECT (x.created_at AT TIME ZONE 'Asia/Shanghai')::date AS day, COUNT(*) AS n
+      FROM work_likes x JOIN mine ON mine.id = x.work_id
+      WHERE x.user_id <> $1 AND x.created_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai') GROUP BY 1),
+f AS (SELECT (x.created_at AT TIME ZONE 'Asia/Shanghai')::date AS day, COUNT(*) AS n
+      FROM work_favorites x JOIN mine ON mine.id = x.work_id
+      WHERE x.user_id <> $1 AND x.created_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai') GROUP BY 1),
+fo AS (SELECT (created_at AT TIME ZONE 'Asia/Shanghai')::date AS day, COUNT(*) AS n
+       FROM follows WHERE followee_id = $1 AND created_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai') GROUP BY 1)
+SELECT to_char(d.day, 'YYYY-MM-DD'), COALESCE(v.views, 0), COALESCE(l.n, 0), COALESCE(f.n, 0), COALESCE(v.remixes, 0), COALESCE(fo.n, 0)
+FROM days d
+LEFT JOIN v ON v.day = d.day LEFT JOIN l ON l.day = d.day LEFT JOIN f ON f.day = d.day LEFT JOIN fo ON fo.day = d.day
+ORDER BY d.day`, userID, fromDay, toDay)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.CreatorDay{}
+	for rows.Next() {
+		var d service.CreatorDay
+		if err := rows.Scan(&d.Day, &d.Views, &d.Likes, &d.Favorites, &d.Remixes, &d.Followers); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+func (r *communityRepository) CreatorTotals(ctx context.Context, userID int64) (service.CreatorTotals, error) {
+	var t service.CreatorTotals
+	err := r.db.QueryRowContext(ctx, `
+SELECT COUNT(*), COUNT(*) FILTER (WHERE visibility = 'public' AND status = 'approved'),
+       COALESCE(SUM(view_count), 0), COALESCE(SUM(like_count), 0), COALESCE(SUM(favorite_count), 0), COALESCE(SUM(remix_count), 0),
+       (SELECT COUNT(*) FROM follows WHERE followee_id = $1)
+FROM works WHERE user_id = $1`, userID).Scan(&t.Works, &t.PublicWorks, &t.Views, &t.Likes, &t.Favorites, &t.Remixes, &t.Followers)
+	return t, err
+}
+
+// CreatorTopWorks: the user's works ranked by interactions (remixes, favorites and likes weigh more
+// than views), with their numbers since `since` (a CST date).
+func (r *communityRepository) CreatorTopWorks(ctx context.Context, userID int64, since time.Time, limit int) ([]service.CreatorWork, error) {
+	sinceDay := since.Format(time.DateOnly)
+	rows, err := r.db.QueryContext(ctx, `
+SELECT w.id,
+       COALESCE((SELECT SUM(views) FROM work_daily_stats s WHERE s.work_id = w.id AND s.day >= $2::date), 0),
+       (SELECT COUNT(*) FROM work_likes x WHERE x.work_id = w.id AND x.user_id <> $1 AND x.created_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai')),
+       (SELECT COUNT(*) FROM work_favorites x WHERE x.work_id = w.id AND x.user_id <> $1 AND x.created_at >= ($2::date::timestamp AT TIME ZONE 'Asia/Shanghai')),
+       COALESCE((SELECT SUM(remixes) FROM work_daily_stats s WHERE s.work_id = w.id AND s.day >= $2::date), 0)
+FROM works w WHERE w.user_id = $1
+ORDER BY (w.remix_count * 5 + w.favorite_count * 3 + w.like_count * 2 + w.view_count) DESC, w.id DESC
+LIMIT $3`, userID, sinceDay, limit)
+	if err != nil {
+		return nil, err
+	}
+	type row struct {
+		id                       int64
+		views, likes, favs, remx int
+	}
+	var picked []row
+	for rows.Next() {
+		var x row
+		if err := rows.Scan(&x.id, &x.views, &x.likes, &x.favs, &x.remx); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		picked = append(picked, x)
+	}
+	_ = rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]service.CreatorWork, 0, len(picked))
+	for _, x := range picked {
+		w, err := r.GetWork(ctx, x.id)
+		if err != nil {
+			return nil, err
+		}
+		if w == nil {
+			continue
+		}
+		out = append(out, service.CreatorWork{Work: *w, PeriodViews: x.views, PeriodLikes: x.likes, PeriodFavorites: x.favs, PeriodRemixes: x.remx})
+	}
+	return out, nil
+}
+
+func (r *communityRepository) CreatorTrackedSince(ctx context.Context) (string, error) {
+	var day sql.NullString
+	err := r.db.QueryRowContext(ctx, `SELECT to_char(MIN(day), 'YYYY-MM-DD') FROM work_daily_stats`).Scan(&day)
+	return day.String, err
 }

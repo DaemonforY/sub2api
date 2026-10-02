@@ -366,3 +366,69 @@ func TestCommunityWorkContestEntries(t *testing.T) {
 	_, err = svc.EnterContest(ctx, author.ID, service.WorkContestInput{ContestID: contest.ID, WorkID: work.ID, Title: "新标题"})
 	require.NoError(t, err)
 }
+
+func TestCommunityCreatorStats(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	short := suffix[len(suffix)-7:]
+	author := mustCreateUser(t, integrationEntClient, &service.User{Email: "cs-" + suffix + "@test.local", Username: "cs" + short})
+	fan := mustCreateUser(t, integrationEntClient, &service.User{Email: "cf-" + suffix + "@test.local", Username: "cf" + short})
+	_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - INTERVAL '3 days' WHERE id = ANY($1)`, pq.Array([]int64{author.ID, fan.ID}))
+	require.NoError(t, err)
+	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), nil)
+	_, err = svc.SaveProfile(ctx, author.ID, service.ProfileInput{Handle: "cs" + short})
+	require.NoError(t, err)
+	_, err = svc.SaveProfile(ctx, fan.ID, service.ProfileInput{Handle: "cf" + short})
+	require.NoError(t, err)
+	hit, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 40, 40, color.White)}, Title: "爆款", Visibility: "public"})
+	require.NoError(t, err)
+	quiet, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 40, 40, color.Black)}, Title: "冷门", Visibility: "public"})
+	require.NoError(t, err)
+
+	// Today: 3 views and a remix by the fan, a like and a favorite, a follow; the author's own like doesn't count.
+	for range 3 {
+		_, err = svc.Work(ctx, hit.ID, fan.ID)
+		require.NoError(t, err)
+	}
+	_, err = svc.Work(ctx, hit.ID, author.ID) // own views are not counted
+	require.NoError(t, err)
+	require.NoError(t, svc.Remix(ctx, fan.ID, hit.ID))
+	_, err = svc.SetLike(ctx, fan.ID, hit.ID, true)
+	require.NoError(t, err)
+	_, err = svc.SetLike(ctx, author.ID, quiet.ID, true)
+	require.NoError(t, err)
+	_, err = svc.SetFavorite(ctx, fan.ID, hit.ID, true)
+	require.NoError(t, err)
+	_, err = svc.SetFollow(ctx, fan.ID, "cs"+short, true)
+	require.NoError(t, err)
+	// A like from 10 days ago lands in the previous 7-day period.
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO work_likes (work_id, user_id, created_at) VALUES ($1, $2, NOW() - INTERVAL '10 days')`, quiet.ID, fan.ID)
+	require.NoError(t, err)
+
+	stats, err := svc.CreatorStats(ctx, author.ID, 7)
+	require.NoError(t, err)
+	require.Equal(t, 7, stats.Days)
+	require.Len(t, stats.Series, 7)
+	today := stats.Series[6]
+	require.Equal(t, time.Now().In(service.CreatorStatsLocation).Format(time.DateOnly), today.Day)
+	require.Equal(t, service.CreatorCounts{Views: 3, Likes: 1, Favorites: 1, Remixes: 1, Followers: 1}, today.CreatorCounts)
+	require.Equal(t, today.CreatorCounts, stats.Period)
+	require.Equal(t, service.CreatorCounts{Likes: 1}, stats.Previous)
+	require.Equal(t, 2, stats.Totals.Works)
+	require.Equal(t, 2, stats.Totals.PublicWorks)
+	require.Equal(t, 3, stats.Totals.Views)
+	require.Equal(t, 1, stats.Totals.Followers)
+	require.NotEmpty(t, stats.TrackedSince)
+	require.Len(t, stats.TopWorks, 2)
+	require.Equal(t, hit.ID, stats.TopWorks[0].Work.ID, "the work with remixes and favorites ranks first")
+	require.Equal(t, 3, stats.TopWorks[0].PeriodViews)
+	require.Equal(t, 1, stats.TopWorks[0].PeriodRemixes)
+	require.NotEmpty(t, stats.TopWorks[0].Work.CoverThumbURL)
+
+	// An unknown range falls back to 30 days.
+	stats, err = svc.CreatorStats(ctx, author.ID, 12)
+	require.NoError(t, err)
+	require.Equal(t, 30, stats.Days)
+	require.Len(t, stats.Series, 30)
+	require.Equal(t, 2, stats.Period.Likes, "the 10-day-old like is inside 30 days")
+}
