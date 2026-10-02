@@ -62,6 +62,7 @@ var (
 	ErrContestNotEditable    = infraerrors.Conflict("CONTEST_NOT_EDITABLE", "settled or cancelled contests cannot be edited")
 	ErrContestNotDeletable   = infraerrors.Conflict("CONTEST_NOT_DELETABLE", "only draft or cancelled contests can be deleted")
 	ErrContestNotSubmitting  = infraerrors.Forbidden("CONTEST_NOT_ACCEPTING_ENTRIES", "活动现在不在投稿时间内，请在活动页查看投稿开始和截止时间")
+	ErrContestWorkEntered    = infraerrors.Conflict("CONTEST_WORK_ENTERED", "这个作品已经投过这个活动了（This work is already entered）")
 	ErrContestEntryLimit     = infraerrors.Conflict("CONTEST_ENTRY_LIMIT", "你在这个活动的投稿数已达上限；如需更换作品，可以先在活动页撤回旧作品再投")
 	ErrContestNotVoting      = infraerrors.Forbidden("CONTEST_NOT_VOTING", "活动现在不在投票时间内，请在活动页查看投票时间")
 	ErrContestVoteLimit      = infraerrors.Conflict("CONTEST_VOTE_LIMIT", "你的票已经投完了；可以先撤回一票，再投给其他作品")
@@ -131,6 +132,7 @@ type ContestEntry struct {
 	VoteCount   int       `json:"vote_count"`
 	FinalRank   *int      `json:"final_rank,omitempty"`
 	FinalVotes  *int      `json:"final_votes,omitempty"`
+	WorkID      *int64    `json:"work_id,omitempty"` // the canvas community work it was made from
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 

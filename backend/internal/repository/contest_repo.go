@@ -169,7 +169,7 @@ func (r *contestRepository) ListContestIDsDueForSettlement(ctx context.Context, 
 // ---------------------------------------------------------------------------
 
 const contestEntrySelect = `SELECT e.id, e.contest_id, e.user_id, e.title, e.description, e.prompt, e.image_file,
-e.status, e.review_note, e.vote_count, e.final_rank, e.final_votes, e.created_at, e.updated_at,
+e.status, e.review_note, e.vote_count, e.final_rank, e.final_votes, e.work_id, e.created_at, e.updated_at,
 COALESCE(u.username, ''), COALESCE(u.email, '')
 FROM contest_entries e LEFT JOIN users u ON u.id = e.user_id`
 
@@ -177,10 +177,11 @@ func scanContestEntry(scan func(dest ...any) error) (*service.ContestEntry, erro
 	var (
 		e                    service.ContestEntry
 		finalRank, finalVote sql.NullInt64
+		workID               sql.NullInt64
 		username, email      string
 	)
 	if err := scan(&e.ID, &e.ContestID, &e.UserID, &e.Title, &e.Description, &e.Prompt, &e.ImageFile,
-		&e.Status, &e.ReviewNote, &e.VoteCount, &finalRank, &finalVote, &e.CreatedAt, &e.UpdatedAt,
+		&e.Status, &e.ReviewNote, &e.VoteCount, &finalRank, &finalVote, &workID, &e.CreatedAt, &e.UpdatedAt,
 		&username, &email); err != nil {
 		return nil, err
 	}
@@ -192,17 +193,25 @@ func scanContestEntry(scan func(dest ...any) error) (*service.ContestEntry, erro
 		v := int(finalVote.Int64)
 		e.FinalVotes = &v
 	}
+	if workID.Valid {
+		e.WorkID = &workID.Int64
+	}
 	e.AuthorName = service.ContestAuthorName(username, email)
 	e.UserEmail = email
 	return &e, nil
 }
 
 func (r *contestRepository) CreateEntry(ctx context.Context, e *service.ContestEntry) error {
-	return r.db.QueryRowContext(ctx, `
-INSERT INTO contest_entries (contest_id, user_id, title, description, prompt, image_file, status)
-VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, created_at, updated_at`,
-		e.ContestID, e.UserID, e.Title, e.Description, e.Prompt, e.ImageFile, e.Status,
+	err := r.db.QueryRowContext(ctx, `
+INSERT INTO contest_entries (contest_id, user_id, title, description, prompt, image_file, status, work_id)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, created_at, updated_at`,
+		e.ContestID, e.UserID, e.Title, e.Description, e.Prompt, e.ImageFile, e.Status, e.WorkID,
 	).Scan(&e.ID, &e.CreatedAt, &e.UpdatedAt)
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) && pqErr.Code == "23505" && pqErr.Constraint == "uq_contest_entries_contest_work" {
+		return service.ErrContestWorkEntered
+	}
+	return err
 }
 
 func (r *contestRepository) CountActiveUserEntries(ctx context.Context, contestID, userID int64) (int, error) {

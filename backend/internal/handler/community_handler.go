@@ -571,3 +571,77 @@ func (h *CommunityHandler) ReadNotifications(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"ok": true})
 }
+
+type contestEntryRequest struct {
+	ContestID   int64  `json:"contest_id"`
+	WorkID      int64  `json:"work_id"`
+	ImageIndex  int    `json:"image_index"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+func (h *CommunityHandler) enterContest(c *gin.Context, in contestEntryRequest) {
+	uid, ok := mustViewer(c)
+	if !ok {
+		return
+	}
+	if in.ContestID <= 0 || in.WorkID <= 0 {
+		response.ErrorFrom(c, errCommunityBadRequest)
+		return
+	}
+	entry, err := h.svc.EnterContest(c.Request.Context(), uid, service.WorkContestInput{
+		ContestID: in.ContestID, WorkID: in.WorkID, ImageIndex: in.ImageIndex, Title: in.Title, Description: in.Description,
+	})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, entry)
+}
+
+// EnterContest POST /api/v1/canvas/community/works/:id/contest-entries — the canvas enters the
+// signed-in user's work in a contest (body: contest_id, image_index, title, description).
+func (h *CommunityHandler) EnterContest(c *gin.Context) {
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	var in contestEntryRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, errCommunityBadRequest)
+		return
+	}
+	in.WorkID = id
+	h.enterContest(c, in)
+}
+
+// EnterContestFromSite POST /api/v1/contests/:id/work-entries — the main site's contest page enters
+// one of the logged-in user's canvas works (body: work_id, image_index, title, description).
+func (h *CommunityHandler) EnterContestFromSite(c *gin.Context) {
+	id, ok := pathInt(c, "id")
+	if !ok {
+		return
+	}
+	var in contestEntryRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, errCommunityBadRequest)
+		return
+	}
+	in.ContestID = id
+	h.enterContest(c, in)
+}
+
+// MyWorksForSite GET /api/v1/user/community/works — the logged-in user's own works (all states),
+// for the main site's "enter a canvas work" picker.
+func (h *CommunityHandler) MyWorksForSite(c *gin.Context) {
+	uid, ok := mustViewer(c)
+	if !ok {
+		return
+	}
+	works, err := h.svc.Works(c.Request.Context(), service.WorkQuery{Feed: "user", UserID: uid, ViewerID: uid, Offset: queryInt(c, "offset"), Limit: 60})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"works": works})
+}

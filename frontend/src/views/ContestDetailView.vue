@@ -85,6 +85,14 @@
                     <div class="min-w-0">
                       <h3 class="truncate text-sm font-semibold text-gray-900 dark:text-white" :title="e.title">{{ e.title }}</h3>
                       <p class="truncate text-xs text-gray-500 dark:text-dark-400">{{ t('contests.entries.by', { name: e.author_name }) }}</p>
+                      <a
+                        v-if="e.work_id"
+                        :href="canvasUrl({ medium: 'contest-entry', path: `/w/${e.work_id}` })"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-xs text-primary-600 hover:underline dark:text-primary-400"
+                        data-testid="contest-entry-work"
+                      >{{ t('contests.entries.viewWork') }} ↗</a>
                     </div>
                     <span v-if="e.is_mine" class="flex-shrink-0 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
                       {{ t('contests.entries.mine') }}
@@ -232,7 +240,46 @@
     <!-- Submit dialog -->
     <BaseDialog :show="submitOpen" :title="t('contests.submit.title')" width="normal" @close="submitOpen = false">
       <form class="space-y-4" @submit.prevent="submitEntry">
-        <div>
+        <div class="inline-flex rounded-lg bg-gray-100 p-1 text-sm dark:bg-dark-900" role="tablist">
+          <button
+            v-for="s in (['upload', 'work'] as const)"
+            :key="s"
+            type="button"
+            role="tab"
+            :aria-selected="source === s"
+            :class="['rounded-md px-3 py-1 transition', source === s ? 'bg-white font-medium text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-dark-200']"
+            :data-testid="`contest-source-${s}`"
+            @click="s === 'work' ? useWorks() : (source = 'upload')"
+          >
+            {{ t(s === 'work' ? 'contests.submit.fromWork' : 'contests.submit.fromUpload') }}
+          </button>
+        </div>
+        <div v-if="source === 'work'" data-testid="contest-work-picker">
+          <label class="input-label">{{ t('contests.submit.pickWork') }}</label>
+          <div v-if="myWorks === null" class="py-8 text-center text-sm text-gray-500">{{ t('common.loading') }}</div>
+          <div v-else-if="!myWorks.length" class="rounded-xl border border-dashed border-gray-300 py-8 text-center text-sm text-gray-500 dark:border-dark-600">
+            <p>{{ worksError || t('contests.submit.noWorks') }}</p>
+            <a :href="canvasUrl({ medium: 'contest-submit', path: '/image' })" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-primary-600 hover:underline dark:text-primary-400">{{ t('contests.submit.goCreate') }} ↗</a>
+          </div>
+          <div v-else class="grid max-h-72 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
+            <button
+              v-for="w in myWorks"
+              :key="w.id"
+              type="button"
+              :disabled="!!contestBlockReason(w)"
+              :title="contestBlockReason(w) ? t(`contests.submit.blocked.${contestBlockReason(w)}`) : w.title"
+              :class="['relative aspect-square overflow-hidden rounded-lg border-2 bg-gray-100 transition dark:bg-dark-900', pickedWork?.id === w.id ? 'border-primary-500 ring-2 ring-primary-500/30' : 'border-transparent hover:border-gray-300 dark:hover:border-dark-500', contestBlockReason(w) ? 'cursor-not-allowed opacity-40' : '']"
+              data-testid="contest-work-option"
+              @click="pickWork(w)"
+            >
+              <img :src="w.cover_thumb_url" :alt="w.title" loading="lazy" class="h-full w-full object-cover" />
+              <span v-if="contestBlockReason(w)" class="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[10px] text-white">{{ t(`contests.submit.blocked.${contestBlockReason(w)}`) }}</span>
+              <span v-else-if="w.image_count > 1" class="absolute right-1 top-1 rounded bg-black/55 px-1 text-[10px] text-white">{{ w.image_count }}</span>
+            </button>
+          </div>
+          <p class="mt-1 text-xs text-gray-500">{{ t('contests.submit.workHint') }}</p>
+        </div>
+        <div v-else>
           <label class="input-label">{{ t('contests.submit.image') }}</label>
           <label
             class="flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-primary-400 dark:border-dark-600 dark:bg-dark-900"
@@ -252,10 +299,11 @@
           <label class="input-label">{{ t('contests.submit.description') }}</label>
           <textarea v-model="form.description" rows="3" maxlength="2000" class="input" :placeholder="t('contests.submit.descriptionPlaceholder')"></textarea>
         </div>
-        <div>
+        <div v-if="source === 'upload'">
           <label class="input-label">{{ t('contests.submit.prompt') }}</label>
           <textarea v-model="form.prompt" rows="3" maxlength="4000" class="input font-mono text-xs" :placeholder="t('contests.submit.promptPlaceholder')"></textarea>
         </div>
+        <p v-else class="text-xs text-gray-500">{{ t('contests.submit.workPromptHint') }}</p>
         <p v-if="formError" class="text-sm text-red-500">{{ formError }}</p>
       </form>
       <template #footer>
@@ -307,6 +355,8 @@ import {
   type ContestLeaderboardRow,
   type ContestViewer
 } from '@/api/contests'
+import { contestBlockReason, myWorks as fetchMyWorks, type CommunityWork } from '@/api/community'
+import { canvasUrl } from '@/constants/crossSites'
 import {
   contestCountdown,
   formatDateTime,
@@ -446,6 +496,31 @@ function openSubmit() {
   submitOpen.value = true
 }
 
+// Entering a canvas community work instead of uploading a file.
+const source = ref<'upload' | 'work'>('upload')
+const myWorks = ref<CommunityWork[] | null>(null)
+const worksError = ref('')
+const pickedWork = ref<CommunityWork | null>(null)
+
+async function useWorks() {
+  source.value = 'work'
+  formError.value = ''
+  if (myWorks.value !== null) return
+  try {
+    myWorks.value = await fetchMyWorks()
+  } catch (err: any) {
+    worksError.value = err?.message || t('common.error')
+    myWorks.value = []
+  }
+}
+
+function pickWork(w: CommunityWork) {
+  if (contestBlockReason(w)) return
+  pickedWork.value = w
+  form.title = (w.title || form.title).slice(0, 120)
+  form.description = w.description || ''
+}
+
 function onFileChange(ev: Event) {
   const f = (ev.target as HTMLInputElement).files?.[0] || null
   formError.value = ''
@@ -460,7 +535,12 @@ function onFileChange(ev: Event) {
 
 async function submitEntry() {
   formError.value = ''
-  if (!file.value) {
+  if (source.value === 'work') {
+    if (!pickedWork.value) {
+      formError.value = t('contests.submit.workRequired')
+      return
+    }
+  } else if (!file.value) {
     formError.value = t('contests.submit.imageRequired')
     return
   }
@@ -470,10 +550,14 @@ async function submitEntry() {
   }
   submitting.value = true
   try {
-    const entry = await contestsAPI.submitEntry(contestId.value, { ...form, image: file.value })
+    const entry =
+      source.value === 'work' && pickedWork.value
+        ? await contestsAPI.submitWorkEntry(contestId.value, { work_id: pickedWork.value.id, title: form.title, description: form.description })
+        : await contestsAPI.submitEntry(contestId.value, { ...form, image: file.value! })
     appStore.showSuccess(entry.status === 'pending' ? t('contests.submit.pendingReview') : t('contests.submit.success'))
     submitOpen.value = false
     Object.assign(form, { title: '', description: '', prompt: '' })
+    pickedWork.value = null
     onFileChange({ target: { files: [] } } as unknown as Event)
     await refreshAll()
   } catch (err: any) {

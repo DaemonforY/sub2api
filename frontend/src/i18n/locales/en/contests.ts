@@ -45,6 +45,7 @@ export default {
     },
     rules: 'Rules',
     entries: {
+      viewWork: 'View on the canvas',
       title: 'Entries',
       sortVotes: 'Most votes',
       sortNew: 'Newest',
@@ -75,6 +76,15 @@ export default {
       myEntries: 'My entries'
     },
     submit: {
+      fromUpload: 'Upload an image',
+      fromWork: 'Pick a canvas work',
+      pickWork: 'Pick a work you published on HiveGPT Infinite Canvas',
+      noWorks: 'You haven’t published any canvas works yet',
+      goCreate: 'Create on the canvas',
+      workHint: 'The entry uses the work’s cover. For another image of a multi-image work, use “Enter a contest” on the work’s canvas page.',
+      workPromptHint: 'The prompt follows the work: it shows only if the work shares its prompt.',
+      workRequired: 'Pick a work',
+      blocked: { private: 'Private', review: 'In review' },
       button: 'Submit entry',
       title: 'Submit your entry',
       image: 'Image',

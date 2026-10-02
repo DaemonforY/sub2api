@@ -672,3 +672,32 @@ func (r *communityRepository) SetWorkReportStatus(ctx context.Context, id int64,
 	_, err := r.db.ExecContext(ctx, `UPDATE work_reports SET status = $2 WHERE id = $1`, id, status)
 	return err
 }
+
+func (r *communityRepository) WorkContests(ctx context.Context, workID int64, includePending bool) ([]service.WorkContest, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT c.id, c.title, e.id, e.status, e.final_rank
+FROM contest_entries e JOIN contests c ON c.id = e.contest_id
+WHERE e.work_id = $1 AND c.status IN ('published', 'settled')
+  AND (e.status = 'approved' OR ($2 AND e.status = 'pending'))
+ORDER BY e.created_at DESC`, workID, includePending)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.WorkContest{}
+	for rows.Next() {
+		var (
+			wc   service.WorkContest
+			rank sql.NullInt64
+		)
+		if err := rows.Scan(&wc.ContestID, &wc.Title, &wc.EntryID, &wc.Status, &rank); err != nil {
+			return nil, err
+		}
+		if rank.Valid {
+			v := int(rank.Int64)
+			wc.FinalRank = &v
+		}
+		out = append(out, wc)
+	}
+	return out, rows.Err()
+}

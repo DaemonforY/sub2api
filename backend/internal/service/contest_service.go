@@ -544,6 +544,8 @@ type ContestEntryInput struct {
 	Description string
 	Prompt      string
 	Image       []byte
+	// WorkID links the entry to the canvas community work it was made from (one live entry per work).
+	WorkID *int64
 }
 
 // SubmitEntry stores the image and creates an entry for the user.
@@ -579,7 +581,7 @@ func (s *ContestService) SubmitEntry(ctx context.Context, contestID, userID int6
 	if c.RequireReview {
 		status = ContestEntryPending
 	}
-	e := &ContestEntry{ContestID: contestID, UserID: userID, Title: title, Description: desc, Prompt: prompt, ImageFile: name, Status: status}
+	e := &ContestEntry{ContestID: contestID, UserID: userID, Title: title, Description: desc, Prompt: prompt, ImageFile: name, Status: status, WorkID: in.WorkID}
 	if err := s.repo.CreateEntry(ctx, e); err != nil {
 		s.images.Remove(name)
 		return nil, err

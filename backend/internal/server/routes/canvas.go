@@ -80,6 +80,7 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 		mine.PUT("/works/:id/favorite", cm.Favorite)
 		mine.DELETE("/works/:id/favorite", cm.Favorite)
 		mine.GET("/works/:id/collections", cm.WorkCollections)
+		mine.POST("/works/:id/contest-entries", cm.EnterContest)
 		mine.PUT("/users/:handle/follow", cm.Follow)
 		mine.DELETE("/users/:handle/follow", cm.Follow)
 		mine.POST("/collections", cm.CreateCollection)
@@ -89,5 +90,15 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 		mine.DELETE("/collections/:id/works/:work_id", cm.CollectionItem)
 		mine.GET("/notifications", cm.Notifications)
 		mine.POST("/notifications/read", cm.ReadNotifications)
+	}
+
+	// The main site's contest page: enter one of your canvas works (panel JWT).
+	site := v1.Group("")
+	site.Use(gin.HandlerFunc(jwtAuth))
+	site.Use(middleware.BackendModeUserGuard(settingService))
+	site.Use(panelRateLimiter.Global())
+	{
+		site.GET("/user/community/works", cm.MyWorksForSite)
+		site.POST("/contests/:id/work-entries", cm.EnterContestFromSite)
 	}
 }

@@ -69,6 +69,8 @@ export interface ContestEntry {
   user_email?: string
   voted_by_me: boolean
   is_mine: boolean
+  /** The canvas community work the entry was made from. */
+  work_id?: number
   created_at: string
 }
 
@@ -153,6 +155,12 @@ export async function submitEntry(
   return data
 }
 
+/** Enters one of the user's canvas works (its cover image); title / description default to the work's. */
+export async function submitWorkEntry(id: number, input: { work_id: number; title?: string; description?: string }): Promise<ContestEntry> {
+  const { data } = await apiClient.post(`/contests/${id}/work-entries`, input)
+  return data
+}
+
 export async function withdrawEntry(id: number, entryId: number): Promise<void> {
   await apiClient.delete(`/contests/${id}/entries/${entryId}`)
 }
@@ -165,5 +173,5 @@ export async function unvote(id: number, entryId: number): Promise<void> {
   await apiClient.delete(`/contests/${id}/entries/${entryId}/vote`)
 }
 
-export const contestsAPI = { list, get, listEntries, leaderboard, submitEntry, withdrawEntry, vote, unvote }
+export const contestsAPI = { list, get, listEntries, leaderboard, submitEntry, submitWorkEntry, withdrawEntry, vote, unvote }
 export default contestsAPI

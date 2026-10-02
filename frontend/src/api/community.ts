@@ -22,6 +22,9 @@ export interface CommunityWork {
   image_count: number
   like_count: number
   remix_count: number
+  description?: string
+  visibility?: 'public' | 'unlisted' | 'private'
+  status?: 'approved' | 'pending' | 'rejected' | 'hidden'
 }
 
 let recommended: Promise<CommunityWork[]> | null = null
@@ -40,4 +43,17 @@ export function recommendedWorks(): Promise<CommunityWork[]> {
 
 export function authorName(author: CommunityAuthor): string {
   return author.display_name || `@${author.handle}`
+}
+
+/** The logged-in user's own works in every state (the contest page's "enter a canvas work" picker). */
+export async function myWorks(): Promise<CommunityWork[]> {
+  const { data } = await apiClient.get<{ works: CommunityWork[] }>('/user/community/works')
+  return data.works || []
+}
+
+/** Why a work cannot be entered in a contest ('' when it can). */
+export function contestBlockReason(w: CommunityWork): '' | 'private' | 'review' {
+  if (w.visibility === 'private') return 'private'
+  if (w.status && w.status !== 'approved') return 'review'
+  return ''
 }

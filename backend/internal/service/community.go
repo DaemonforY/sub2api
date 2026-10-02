@@ -123,13 +123,14 @@ type Work struct {
 	ViewCount     int             `json:"view_count"`
 	ReportCount   int             `json:"report_count,omitempty"`
 	// OwnerID is shown to admins only (to restrict the author).
-	OwnerID       int64       `json:"owner_id,omitempty"`
-	LikedByMe     bool        `json:"liked_by_me"`
-	FavoritedByMe bool        `json:"favorited_by_me"`
-	IsMine        bool        `json:"is_mine"`
-	Media         []WorkMedia `json:"media,omitempty"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
+	OwnerID       int64         `json:"owner_id,omitempty"`
+	LikedByMe     bool          `json:"liked_by_me"`
+	FavoritedByMe bool          `json:"favorited_by_me"`
+	IsMine        bool          `json:"is_mine"`
+	Media         []WorkMedia   `json:"media,omitempty"`
+	Contests      []WorkContest `json:"contests,omitempty"` // work page only
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 // WorkQuery selects works for a feed, a profile, a collection, favorites or the admin queue.
@@ -186,6 +187,8 @@ type CommunityRepository interface {
 	CountCollections(ctx context.Context, userID int64) (int, error)
 	SetCollectionItem(ctx context.Context, collectionID, workID int64, on bool) error
 	WorkCollections(ctx context.Context, workID, ownerID int64) ([]int64, error)
+	// WorkContests lists the live contest entries made from a work (pending ones too when includePending).
+	WorkContests(ctx context.Context, workID int64, includePending bool) ([]WorkContest, error)
 
 	AddNotification(ctx context.Context, n *CommunityNotification) error
 	ListNotifications(ctx context.Context, userID int64, limit int) ([]CommunityNotification, error)
@@ -204,6 +207,7 @@ type CommunityService struct {
 	settings   imageToolSettings
 	now        func() time.Time
 	shareCache shareMetaCache
+	contests   *ContestService
 }
 
 func NewCommunityService(repo CommunityRepository, media *CommunityMediaStore, settings imageToolSettings) *CommunityService {
@@ -585,6 +589,12 @@ func (s *CommunityService) Work(ctx context.Context, id, viewerID int64) (*Work,
 	}
 	list := []Work{*w}
 	s.decorateWorks(ctx, list, viewerID)
+	if s.contests != nil {
+		// The author also sees entries waiting for review.
+		if contests, err := s.repo.WorkContests(ctx, id, w.UserID == viewerID); err == nil {
+			list[0].Contests = contests
+		}
+	}
 	return &list[0], nil
 }
 

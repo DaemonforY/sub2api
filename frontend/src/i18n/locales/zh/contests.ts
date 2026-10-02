@@ -45,6 +45,7 @@ export default {
     },
     rules: '活动规则',
     entries: {
+      viewWork: '在画布查看作品',
       title: '参赛作品',
       sortVotes: '按票数',
       sortNew: '最新',
@@ -75,6 +76,15 @@ export default {
       myEntries: '我的投稿'
     },
     submit: {
+      fromUpload: '上传图片',
+      fromWork: '从画布作品选择',
+      pickWork: '选择你在 HiveGPT 无限画布发布的作品',
+      noWorks: '你还没有在画布发布作品',
+      goCreate: '去画布创作',
+      workHint: '投稿使用作品的封面图；多图作品要投其他图片，可以在画布的作品页点「投稿参赛」。',
+      workPromptHint: '提示词跟随作品：作品公开了提示词，投稿里也会显示。',
+      workRequired: '请选择一个作品',
+      blocked: { private: '私密作品', review: '审核中' },
       button: '投稿',
       title: '提交作品',
       image: '作品图片',

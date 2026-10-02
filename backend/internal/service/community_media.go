@@ -9,6 +9,7 @@ import (
 	_ "image/gif" // decoders for uploaded works
 	"image/jpeg"
 	_ "image/png"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -113,10 +114,14 @@ func decodeUpload(data []byte) (image.Image, string, image.Config, error) {
 
 func encodeJPEG(img image.Image) ([]byte, error) {
 	var out bytes.Buffer
-	if err := jpeg.Encode(&out, img, &jpeg.Options{Quality: 82}); err != nil {
+	if err := encodeJPEGTo(&out, img, 82); err != nil {
 		return nil, err
 	}
 	return out.Bytes(), nil
+}
+
+func encodeJPEGTo(w io.Writer, img image.Image, quality int) error {
+	return jpeg.Encode(w, img, &jpeg.Options{Quality: quality})
 }
 
 // scaleTo draws src into a w×h RGBA on white (thumbnails are JPEG: no transparency).

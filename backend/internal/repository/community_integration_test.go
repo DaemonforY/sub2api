@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/lib/pq"
 	"image"
 	"image/color"
 	"image/png"
@@ -296,4 +297,72 @@ func TestCommunityShareCardsAndRestrictedAuthors(t *testing.T) {
 	}
 	_, err = svc.Publish(ctx, user.ID, service.PublishInput{Images: [][]byte{testPNG(t, 20, 20, color.White)}})
 	require.NoError(t, err, "can publish again")
+}
+
+func TestCommunityWorkContestEntries(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	short := suffix[len(suffix)-7:]
+	author := mustCreateUser(t, integrationEntClient, &service.User{Email: "wc-" + suffix + "@test.local", Username: "wc" + short})
+	other := mustCreateUser(t, integrationEntClient, &service.User{Email: "wc2-" + suffix + "@test.local", Username: "wd" + short})
+	_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - INTERVAL '3 days' WHERE id = ANY($1)`, pq.Array([]int64{author.ID, other.ID}))
+	require.NoError(t, err)
+
+	contests := service.NewContestService(NewContestRepository(integrationDB), NewUserRepository(integrationEntClient, integrationDB),
+		NewRedeemCodeRepository(integrationEntClient), nil, nil, service.NewContestImageStore(t.TempDir()))
+	now := time.Now().UTC()
+	contest, err := contests.CreateContest(ctx, &service.Contest{
+		Title: "作品投稿赛 " + short, Status: service.ContestStatusPublished, MaxEntriesPerUser: 3, VotesPerUser: 3,
+		SubmissionStartAt: now.Add(-time.Hour), SubmissionEndAt: now.Add(time.Hour),
+		VotingStartAt: now.Add(-time.Hour), VotingEndAt: now.Add(2 * time.Hour),
+	}, 0)
+	require.NoError(t, err)
+
+	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), nil)
+	svc.SetContests(contests)
+	_, err = svc.SaveProfile(ctx, author.ID, service.ProfileInput{Handle: "wc" + short})
+	require.NoError(t, err)
+	work, err := svc.Publish(ctx, author.ID, service.PublishInput{
+		Images: [][]byte{testPNG(t, 64, 64, color.White), testPNG(t, 32, 48, color.Black)}, Title: "月光庭院", Description: "说明", Prompt: "隐藏的提示词", ShowPrompt: false, Visibility: "public",
+	})
+	require.NoError(t, err)
+	private, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{testPNG(t, 20, 20, color.White)}, Title: "私密", Visibility: "private"})
+	require.NoError(t, err)
+
+	in := service.WorkContestInput{ContestID: contest.ID, WorkID: work.ID, ImageIndex: 1}
+	_, err = svc.EnterContest(ctx, other.ID, in)
+	require.ErrorIs(t, err, service.ErrCommunityWorkNotFound, "only the author may enter a work")
+	_, err = svc.EnterContest(ctx, author.ID, service.WorkContestInput{ContestID: contest.ID, WorkID: private.ID})
+	require.ErrorIs(t, err, service.ErrCommunityWorkPrivate)
+	_, err = svc.EnterContest(ctx, author.ID, service.WorkContestInput{ContestID: contest.ID, WorkID: work.ID, ImageIndex: 5})
+	require.ErrorIs(t, err, service.ErrCommunityWorkImageNotFound)
+
+	entry, err := svc.EnterContest(ctx, author.ID, in)
+	require.NoError(t, err)
+	require.Equal(t, "月光庭院", entry.Title, "the work's title is the default")
+	require.Equal(t, "说明", entry.Description)
+	require.Empty(t, entry.Prompt, "a hidden prompt stays hidden")
+	require.NotNil(t, entry.WorkID)
+	require.Equal(t, work.ID, *entry.WorkID)
+	_, err = svc.EnterContest(ctx, author.ID, in)
+	require.ErrorIs(t, err, service.ErrContestWorkEntered, "one live entry per work and contest")
+
+	entries, _, err := contests.ListPublicEntries(ctx, contest.ID, 0, "new", 1, 10)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, work.ID, *entries[0].WorkID)
+
+	shown, err := svc.Work(ctx, work.ID, 0)
+	require.NoError(t, err)
+	require.Len(t, shown.Contests, 1)
+	require.Equal(t, contest.ID, shown.Contests[0].ContestID)
+	require.Equal(t, entry.ID, shown.Contests[0].EntryID)
+
+	// Withdrawing frees the work for another entry.
+	require.NoError(t, contests.WithdrawEntry(ctx, contest.ID, entry.ID, author.ID))
+	shown, err = svc.Work(ctx, work.ID, 0)
+	require.NoError(t, err)
+	require.Empty(t, shown.Contests)
+	_, err = svc.EnterContest(ctx, author.ID, service.WorkContestInput{ContestID: contest.ID, WorkID: work.ID, Title: "新标题"})
+	require.NoError(t, err)
 }
