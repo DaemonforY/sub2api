@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="mock.css">
+<style>
+.hero { padding: 56px 40px 40px; background: radial-gradient(900px 300px at 15% 0%, #ede9fe, transparent), radial-gradient(700px 280px at 90% 10%, #ccfbf1, transparent), #fff; border-bottom: 1px solid #ececf1; }
+.hero .in { max-width: 1160px; margin: 0 auto; display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: center; }
+.hero h1 { font-size: 44px; line-height: 1.2; font-weight: 800; letter-spacing: -.01em; }
+.hero h1 em { font-style: normal; background: linear-gradient(100deg, #7c3aed, #14b8a6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { margin-top: 14px; font-size: 17px; color: #4b5563; line-height: 1.7; }
+.hero .chips { margin-top: 18px; display: flex; gap: 10px; }
+.hero .chips span { padding: 6px 14px; border-radius: 999px; background: #fff; border: 1px solid #e9e5ff; font-size: 13px; color: #5b21b6; }
+.cont { background: #fff; border: 1px solid #ececf1; border-radius: 18px; padding: 22px; box-shadow: 0 12px 40px rgba(124,58,237,.08); }
+.cont h4 { font-size: 13px; color: #7c3aed; letter-spacing: .06em; }
+.cont .t { margin-top: 10px; font-size: 20px; font-weight: 700; }
+.cont .s { margin-top: 4px; font-size: 13px; }
+.cont .row { margin-top: 16px; display: flex; align-items: center; gap: 14px; }
+.cont .row .bar { flex: 1; }
+.cont .next { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e5e7eb; font-size: 13px; display: flex; justify-content: space-between; }
+main { max-width: 1160px; margin: 0 auto; padding: 36px 0 60px; }
+h2 { font-size: 22px; font-weight: 700; }
+h2 small { margin-left: 10px; font-size: 14px; font-weight: 400; color: #6b7280; }
+.tracks { margin-top: 18px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.tr { position: relative; background: #fff; border: 1px solid #ececf1; border-radius: 18px; padding: 20px; overflow: hidden; }
+.tr .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 18px; }
+.tr h3 { margin-top: 14px; font-size: 17px; }
+.tr p { margin-top: 6px; font-size: 13px; line-height: 1.6; color: #6b7280; min-height: 42px; }
+.tr .meta { margin-top: 12px; font-size: 12px; color: #6b7280; display: flex; gap: 12px; }
+.tr .foot { margin-top: 16px; display: flex; align-items: center; justify-content: space-between; }
+.tr .proj { margin-top: 12px; padding: 8px 10px; border-radius: 10px; background: #f9fafb; font-size: 12px; color: #4b5563; }
+.tr.soon { opacity: .6; }
+.ring { width: 40px; height: 40px; border-radius: 50%; background: conic-gradient(#7c3aed var(--p), #ede9fe 0); display: grid; place-items: center; }
+.ring::after { content: attr(data-t); width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #6d28d9; }
+.works { margin-top: 18px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+.wk { background: #fff; border: 1px solid #ececf1; border-radius: 14px; overflow: hidden; }
+.wk .img { height: 120px; }
+.wk .b { padding: 10px 12px; font-size: 13px; }
+.wk .b span { display: block; margin-top: 4px; font-size: 12px; color: #9ca3af; }
+.two { margin-top: 36px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.card { background: #fff; border: 1px solid #ececf1; border-radius: 18px; padding: 20px; }
+.reading { margin-top: 12px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 16px; font-size: 14px; }
+.reading a { padding: 8px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; }
+.reading a span { color: #9ca3af; font-size: 12px; }
+.edu { background: linear-gradient(135deg, #f5f3ff, #ecfeff); }
+.edu h3 { font-size: 18px; } .edu p { margin-top: 8px; font-size: 14px; color: #4b5563; line-height: 1.7; }
+</style></head><body>
+<div class="nav"><div class="logo"><i></i>HiveGPT</div>
+  <div class="links"><a>首页</a><a>发现</a><a>工具</a><a class="on">学习</a><a>画布</a></div>
+  <div class="right">余额 ¥36.20<div class="avatar"></div></div></div>
+
+<section class="hero"><div class="in">
+  <div>
+    <h1>边学边做，<br>用一个 Key 学会 <em>AI 应用开发</em>和 <em>AI 创作</em></h1>
+    <p>每节课的代码和提示词都能在页面里直接运行，看到真实结果；遇到问题问 AI 助教。学完一条路线拿结业证书。</p>
+    <div class="chips"><span>页面内直接运行</span><span>每天 20 次免费运行</span><span>AI 助教答疑</span><span>结业证书</span></div>
+  </div>
+  <div class="cont">
+    <h4>继续学习</h4>
+    <div class="t">A3 · 结构化输出</div>
+    <div class="s muted">AI 应用开发入门 · 上次学到「JSON Schema」</div>
+    <div class="row"><div class="bar"><b style="width:31%"></b></div><span class="muted" style="font-size:13px">2 / 8 课</span><a class="btn sm">继续</a></div>
+    <div class="next"><span class="muted">今日免费运行 17 / 20 · 助教 10 / 10</span><a style="color:#7c3aed">我的学习 →</a></div>
+  </div>
+</div></section>
+
+<main>
+  <h2>选择学习路线<small>每课 10–20 分钟，按顺序学效果更好</small></h2>
+  <div class="tracks">
+    <div class="tr"><div class="ic" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">A</div>
+      <h3>AI 应用开发入门</h3><p>从第一次调用 API 到 RAG、Agent、MCP，最后做一个能上线的聊天机器人。</p>
+      <div class="meta"><span>8 课</span><span>约 2 小时</span><span>适合开发 / 学生</span></div>
+      <div class="proj">结业项目：网页问答机器人，用「网站托管」发布</div>
+      <div class="foot"><div class="ring" style="--p:25%" data-t="2/8"></div><a class="btn sm">继续</a></div></div>
+    <div class="tr"><div class="ic" style="background:linear-gradient(135deg,#2dd4bf,#0d9488)">B</div>
+      <h3>AI 绘画与视频创作</h3><p>提示词怎么写、模板怎么用、参考图和局部编辑，最后发布自己的作品集。</p>
+      <div class="meta"><span>7 课</span><span>约 1.5 小时</span><span>零基础</span></div>
+      <div class="proj">结业项目：在画布社区发布作品集</div>
+      <div class="foot"><div class="ring" style="--p:0%" data-t="0/7"></div><a class="btn sm ghost">开始</a></div></div>
+    <div class="tr soon"><div class="ic" style="background:linear-gradient(135deg,#f59e0b,#d97706)">C</div>
+      <h3>AI 编程助手上手</h3><p>把编程助手接入 HiveGPT，让 AI 帮你写一个网页并发布。</p>
+      <div class="meta"><span>5 课</span><span>即将上线</span></div>
+      <div class="foot"><span class="tag">即将上线</span></div></div>
+    <div class="tr soon"><div class="ic" style="background:linear-gradient(135deg,#f472b6,#db2777)">D</div>
+      <h3>AI 面试训练</h3><p>大模型、Agent、RAG、系统设计题库，AI 扮演面试官给你打分。</p>
+      <div class="meta"><span>4 组</span><span>即将上线</span></div>
+      <div class="foot"><span class="tag">即将上线</span></div></div>
+  </div>
+
+  <h2 style="margin-top:40px">学员作品<small>结业项目，来自网站托管和画布社区</small></h2>
+  <div class="works">
+    <div class="wk"><div class="img" style="background:linear-gradient(135deg,#ddd6fe,#a5f3fc)"></div><div class="b">课程表问答助手<span>网页 · 路线 A</span></div></div>
+    <div class="wk"><div class="img" style="background:linear-gradient(135deg,#fde68a,#fca5a5)"></div><div class="b">秋日咖啡馆插画集<span>作品集 · 路线 B</span></div></div>
+    <div class="wk"><div class="img" style="background:linear-gradient(135deg,#bbf7d0,#93c5fd)"></div><div class="b">论文摘要机器人<span>网页 · 路线 A</span></div></div>
+    <div class="wk"><div class="img" style="background:linear-gradient(135deg,#fbcfe8,#c4b5fd)"></div><div class="b">国风节气海报<span>作品集 · 路线 B</span></div></div>
+    <div class="wk"><div class="img" style="background:linear-gradient(135deg,#e9d5ff,#fecdd3)"></div><div class="b">英语口语陪练<span>网页 · 路线 A</span></div></div>
+  </div>
+
+  <div class="two">
+    <div class="card"><h2 style="font-size:18px">延伸阅读<small>JavaGuide《AI 应用开发》专题，Apache-2.0</small></h2>
+      <div class="reading"><a>万字拆解 LLM 运行机制<span>大模型基础</span></a><a>RAG 优化实践<span>RAG</span></a><a>Agent 记忆机制<span>Agent</span></a><a>LLM 网关设计<span>系统设计</span></a><a>MCP 协议详解<span>Agent</span></a><a>全部 33 篇 →<span></span></a></div></div>
+    <div class="card edu"><h3>学生 / 老师</h3><p>用学校 edu.cn 邮箱在 HiveGPT 认证，订阅打 9 折。结业证书可以写进简历，证书页可公开验证。</p><a class="btn sm" style="margin-top:14px">去认证</a></div>
+  </div>
+</main>
+<div class="mock-note">效果示意 · 数据为示例</div>
+</body></html>
