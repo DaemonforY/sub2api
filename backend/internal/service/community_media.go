@@ -38,7 +38,7 @@ var (
 	ErrCommunityImageTooLarge = infraerrors.BadRequest("COMMUNITY_IMAGE_TOO_LARGE", "单张图片不能超过 15 MB、6000 万像素，可以先在「图片工具」里压缩（Image too large）")
 )
 
-var communityMediaFileRe = regexp.MustCompile(`^[a-f0-9]{32}(_t)?\.(png|jpg|webp|gif)$`)
+var communityMediaFileRe = regexp.MustCompile(`^[a-f0-9]{32}(_t)?\.(png|jpg|webp|gif|mp4|webm)$`)
 
 var communityImageExt = map[string]string{"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif"}
 

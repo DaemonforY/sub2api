@@ -42,6 +42,9 @@ export default {
       free: 'Everyone (MB)',
       subscriber: 'Subscribers (MB)'
     },
-    reviewAllHint: 'When off, only works with flagged words wait for review; anything can be reported.'
+    reviewAllHint: 'When off, only works with flagged words wait for review; anything can be reported.',
+    videoReview: 'Review video works before they go public',
+    videoReviewHint: 'Video frames are not checked automatically, so keeping this on is recommended; when off, video works are published like images.',
+    video: 'Video'
   }
 }

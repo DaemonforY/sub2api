@@ -627,7 +627,7 @@ func TestCommunityComments(t *testing.T) {
 	settings := NewSettingRepository(integrationEntClient)
 	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), settings)
 	t.Cleanup(func() {
-		_ = svc.AdminSaveSettings(ctx, false, &service.CommentSettings{CommentsEnabled: true}, nil)
+		_ = svc.AdminSaveSettings(ctx, false, nil, &service.CommentSettings{CommentsEnabled: true}, nil)
 	})
 	_, err = svc.SaveProfile(ctx, author.ID, service.ProfileInput{Handle: "cm0" + short})
 	require.NoError(t, err)
@@ -764,11 +764,11 @@ func TestCommunityComments(t *testing.T) {
 	closed = false
 	_, err = svc.UpdateWork(ctx, author.ID, work.ID, service.UpdateWorkInput{Title: "作品", Visibility: "public", CommentsClosed: &closed})
 	require.NoError(t, err)
-	require.NoError(t, svc.AdminSaveSettings(ctx, false, &service.CommentSettings{CommentsEnabled: true, CommentsReviewAll: true}, nil))
+	require.NoError(t, svc.AdminSaveSettings(ctx, false, nil, &service.CommentSettings{CommentsEnabled: true, CommentsReviewAll: true}, nil))
 	held, err := add(bob, "先审后发", 0)
 	require.NoError(t, err)
 	require.Equal(t, service.CommentStatusPending, held.Status)
-	require.NoError(t, svc.AdminSaveSettings(ctx, false, &service.CommentSettings{CommentsEnabled: false}, nil))
+	require.NoError(t, svc.AdminSaveSettings(ctx, false, nil, &service.CommentSettings{CommentsEnabled: false}, nil))
 	_, err = add(bob, "关闭后", 0)
 	require.ErrorIs(t, err, service.ErrCommunityCommentsOff)
 	page, err = svc.Comments(ctx, work.ID, 0, 0)
@@ -783,4 +783,66 @@ func commentIDs(list []service.WorkComment) []int64 {
 		out = append(out, c.ID)
 	}
 	return out
+}
+
+func TestCommunityVideoWorks(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	short := suffix[len(suffix)-7:]
+	author := mustCreateUser(t, integrationEntClient, &service.User{Email: "cm-v-" + suffix + "@test.local", Username: "cv" + short})
+	_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - INTERVAL '3 days' WHERE id = $1`, author.ID)
+	require.NoError(t, err)
+	svc := service.NewCommunityService(NewCommunityRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), nil)
+	_, err = svc.SaveProfile(ctx, author.ID, service.ProfileInput{Handle: "vd" + short})
+	require.NoError(t, err)
+	reason := func(err error) string { return infraerrors.Reason(err) }
+	mp4 := append([]byte{0, 0, 0, 0x18}, []byte("ftypisom\x00\x00\x02\x00isomiso2")...)
+	cover := testPNG(t, 64, 36, color.White)
+
+	// Not a video, or a video with several images: refused.
+	_, err = svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{cover}, Video: []byte("not a video at all")})
+	require.Equal(t, "COMMUNITY_VIDEO_INVALID", reason(err))
+	_, err = svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{cover, cover}, Video: mp4})
+	require.Equal(t, "COMMUNITY_VIDEO_INVALID", reason(err))
+
+	// A clip with its cover: kind video, waiting for review (no settings: review on).
+	w, err := svc.Publish(ctx, author.ID, service.PublishInput{Images: [][]byte{cover}, Video: mp4, VideoDurationMs: 5200, Title: "海边日落", Visibility: "public"})
+	require.NoError(t, err)
+	require.Equal(t, service.WorkKindVideo, w.Kind)
+	require.Equal(t, service.WorkStatusPending, w.Status)
+	require.NotNil(t, w.Video)
+	require.Equal(t, "video/mp4", w.Video.MimeType)
+	require.Equal(t, 5200, w.Video.DurationMs)
+	require.Equal(t, 64, w.CoverWidth)
+	clip, ok := svc.Media().Path(filepath.Base(w.Video.URL))
+	require.True(t, ok)
+	_, err = os.Stat(clip)
+	require.NoError(t, err)
+
+	videos := func() []service.Work {
+		list, err := svc.Works(ctx, service.WorkQuery{Feed: "latest", Kind: service.WorkKindVideo, Limit: 50})
+		require.NoError(t, err)
+		return list
+	}
+	has := func(list []service.Work, id int64) bool {
+		for _, x := range list {
+			if x.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+	require.False(t, has(videos(), w.ID))
+	require.NoError(t, svc.AdminModerate(ctx, w.ID, "approve", ""))
+	list := videos()
+	require.True(t, has(list, w.ID))
+	for _, x := range list {
+		require.Equal(t, service.WorkKindVideo, x.Kind)
+		require.NotNil(t, x.Video)
+	}
+
+	// Deleting the work removes the clip.
+	require.NoError(t, svc.DeleteWork(ctx, author.ID, w.ID))
+	_, err = os.Stat(clip)
+	require.True(t, os.IsNotExist(err))
 }

@@ -129,7 +129,9 @@ type Work struct {
 	IsMine        bool          `json:"is_mine"`
 	Media         []WorkMedia   `json:"media,omitempty"`
 	Contests      []WorkContest `json:"contests,omitempty"` // work page only
-	Kind          string        `json:"kind"`               // image | site
+	Kind          string        `json:"kind"`               // image | site | video
+	// Video: the clip of a video work (its first image is the cover).
+	Video *WorkVideo `json:"video,omitempty"`
 	// CommentCount: approved comments and replies; the author may close comments.
 	CommentCount   int       `json:"comment_count"`
 	CommentsClosed bool      `json:"comments_closed"`
@@ -150,7 +152,7 @@ type WorkQuery struct {
 	IncludeAll bool
 	// Admin filter: pending | reported | approved | hidden | rejected | "" (all)
 	Status string
-	// Kind: image | site | "" (all)
+	// Kind: image | site | video | "" (all)
 	Kind string
 	// At pins the recommended / latest feeds to one moment while paging: works published later are
 	// left out and scores age from it, so later pages neither repeat nor skip works.
@@ -452,6 +454,9 @@ type PublishInput struct {
 	RemixOf      int64
 	// SiteID makes a web-page work presenting one of the author's live sites (Images are its screenshots).
 	SiteID int64
+	// Video makes a video work: the clip (MP4 / WebM) with Images holding just its cover.
+	Video           []byte
+	VideoDurationMs int
 }
 
 func normalizeVisibility(v string) string {
@@ -525,6 +530,9 @@ func (s *CommunityService) Publish(ctx context.Context, userID int64, in Publish
 	if len(in.Images) == 0 || len(in.Images) > communityMaxImagesPerWork {
 		return nil, ErrCommunityNoImages
 	}
+	if len(in.Video) > 0 && (len(in.Images) != 1 || in.SiteID > 0) {
+		return nil, ErrCommunityVideoInvalid
+	}
 	var site *WorkSite
 	if in.SiteID > 0 {
 		if site, err = s.workSiteFor(ctx, userID, in.SiteID); err != nil {
@@ -567,10 +575,15 @@ func (s *CommunityService) Publish(ctx context.Context, userID int64, in Publish
 	if site != nil {
 		w.Kind, w.Site = WorkKindSite, site
 	}
+	if len(in.Video) > 0 {
+		w.Kind = WorkKindVideo
+	}
 	if flags := communityTextFlags(w.Title, w.Description, w.Prompt, strings.Join(w.Tags, " ")); len(flags) > 0 {
 		w.Status, w.ReviewFlags, w.ReviewReason = WorkStatusPending, flags, "内容命中敏感词，人工审核后公开"
 	} else if s.reviewAll(ctx) {
 		w.Status, w.ReviewReason = WorkStatusPending, "新作品需要人工审核后公开"
+	} else if w.Kind == WorkKindVideo && s.videoReview(ctx) {
+		w.Status, w.ReviewReason = WorkStatusPending, "视频作品需要人工审核后公开"
 	}
 	if w.ReviewFlags == nil {
 		w.ReviewFlags = []string{}
@@ -581,6 +594,17 @@ func (s *CommunityService) Publish(ctx context.Context, userID int64, in Publish
 		for _, m := range media {
 			s.media.Remove(m.File, m.ThumbFile)
 		}
+		if w.Video != nil {
+			s.media.Remove(w.Video.File)
+		}
+	}
+	if len(in.Video) > 0 {
+		video, err := s.media.SaveVideo(in.Video)
+		if err != nil {
+			return nil, err
+		}
+		video.DurationMs = clampVideoDuration(in.VideoDurationMs)
+		w.Video = video
 	}
 	for i, data := range in.Images {
 		stored, err := s.media.SaveImage(data)
@@ -625,6 +649,9 @@ func (s *CommunityService) decorateWorks(ctx context.Context, works []Work, view
 		}
 		for j := range w.Media {
 			w.Media[j].URL, w.Media[j].ThumbURL = CommunityMediaURL(w.Media[j].File), CommunityMediaURL(w.Media[j].ThumbFile)
+		}
+		if w.Video != nil {
+			w.Video.URL = CommunityMediaURL(w.Video.File)
 		}
 		if !w.ShowPrompt && w.UserID != viewerID {
 			w.Prompt = ""
@@ -680,7 +707,7 @@ func (s *CommunityService) Works(ctx context.Context, q WorkQuery) ([]Work, erro
 	default:
 		q.Feed = "recommended"
 	}
-	if q.Kind != WorkKindImage && q.Kind != WorkKindSite {
+	if q.Kind != WorkKindImage && q.Kind != WorkKindSite && q.Kind != WorkKindVideo {
 		q.Kind = ""
 	}
 	if (q.Feed == "following" || q.Feed == "favorites") && q.ViewerID == 0 {
@@ -792,6 +819,9 @@ func (s *CommunityService) DeleteWork(ctx context.Context, userID, workID int64)
 	if full != nil {
 		for _, m := range full.Media {
 			s.media.Remove(m.File, m.ThumbFile)
+		}
+		if full.Video != nil {
+			s.media.Remove(full.Video.File)
 		}
 	}
 	return s.repo.RecountProfile(ctx, userID)

@@ -30,7 +30,8 @@ func NewCommunityHandler(svc *service.CommunityService) *CommunityHandler {
 
 var errCommunityBadRequest = infraerrors.BadRequest("COMMUNITY_BAD_REQUEST", "请求参数不正确（Invalid request）")
 
-// publishBodyLimit: 9 images (the canvas shrinks them before uploading) plus the form fields.
+// publishBodyLimit: 9 images (the canvas shrinks them before uploading), or a video and its cover,
+// plus the form fields.
 const publishBodyLimit = 80 << 20
 
 func viewerID(c *gin.Context) int64 {
@@ -109,12 +110,16 @@ func (h *CommunityHandler) Me(c *gin.Context) {
 }
 
 func readFormFile(fh *multipart.FileHeader) ([]byte, error) {
+	return readFormFileMax(fh, service.CommunityImageMaxBytes)
+}
+
+func readFormFileMax(fh *multipart.FileHeader, limit int64) ([]byte, error) {
 	f, err := fh.Open()
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = f.Close() }()
-	return io.ReadAll(io.LimitReader(f, service.CommunityImageMaxBytes+1))
+	return io.ReadAll(io.LimitReader(f, limit+1))
 }
 
 func tooLarge(err error) bool {
@@ -248,7 +253,8 @@ func splitTags(raw string) []string {
 }
 
 // Publish POST /community/works (multipart: images (1–9), title, description, prompt, show_prompt,
-// model, params (JSON), source, tags, visibility, collection_id, remix_of)
+// model, params (JSON), source, tags, visibility, collection_id, remix_of, site_id; a video work
+// sends video + video_duration_ms with its cover as the one image)
 func (h *CommunityHandler) Publish(c *gin.Context) {
 	uid, ok := mustViewer(c)
 	if !ok {
@@ -278,6 +284,15 @@ func (h *CommunityHandler) Publish(c *gin.Context) {
 	in.CollectionID, _ = strconv.ParseInt(c.PostForm("collection_id"), 10, 64)
 	in.RemixOf, _ = strconv.ParseInt(c.PostForm("remix_of"), 10, 64)
 	in.SiteID, _ = strconv.ParseInt(c.PostForm("site_id"), 10, 64)
+	if videos := form.File["video"]; len(videos) > 0 {
+		data, err := readFormFileMax(videos[0], service.CommunityVideoMaxBytes)
+		if err != nil {
+			response.ErrorFrom(c, service.ErrCommunityVideoInvalid)
+			return
+		}
+		in.Video = data
+		in.VideoDurationMs, _ = strconv.Atoi(c.PostForm("video_duration_ms"))
+	}
 	files := form.File["images"]
 	if len(files) == 0 || len(files) > 9 {
 		response.ErrorFrom(c, service.ErrCommunityNoImages)

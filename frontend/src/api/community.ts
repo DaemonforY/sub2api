@@ -24,7 +24,7 @@ export interface CommunityWork {
   remix_count: number
   description?: string
   /** site: a web page made on the canvas (the cover is a screenshot). */
-  kind?: 'image' | 'site'
+  kind?: 'image' | 'site' | 'video'
   visibility?: 'public' | 'unlisted' | 'private'
   status?: 'approved' | 'pending' | 'rejected' | 'hidden'
 }

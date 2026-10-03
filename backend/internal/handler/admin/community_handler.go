@@ -145,7 +145,7 @@ func (h *CommunityHandler) ModerateComment(c *gin.Context) {
 	response.Success(c, gin.H{"ok": true})
 }
 
-// Settings GET|PUT /api/v1/admin/community/settings {review_all, comments_enabled, comments_review_all, cloud_quota_mb, cloud_subscriber_quota_mb}
+// Settings GET|PUT /api/v1/admin/community/settings {review_all, video_review, comments_enabled, comments_review_all, cloud_quota_mb, cloud_subscriber_quota_mb}
 func (h *CommunityHandler) Settings(c *gin.Context) {
 	response.Success(c, h.svc.AdminSettings(c.Request.Context()))
 }
@@ -153,6 +153,7 @@ func (h *CommunityHandler) Settings(c *gin.Context) {
 func (h *CommunityHandler) SaveSettings(c *gin.Context) {
 	var in struct {
 		ReviewAll         bool   `json:"review_all"`
+		VideoReview       *bool  `json:"video_review"`
 		QuotaMB           *int64 `json:"cloud_quota_mb"`
 		SubscriberQuotaMB *int64 `json:"cloud_subscriber_quota_mb"`
 		CommentsEnabled   *bool  `json:"comments_enabled"`
@@ -170,7 +171,7 @@ func (h *CommunityHandler) SaveSettings(c *gin.Context) {
 	if in.CommentsEnabled != nil && in.CommentsReviewAll != nil {
 		comments = &service.CommentSettings{CommentsEnabled: *in.CommentsEnabled, CommentsReviewAll: *in.CommentsReviewAll}
 	}
-	if err := h.svc.AdminSaveSettings(c.Request.Context(), in.ReviewAll, comments, quotas); err != nil {
+	if err := h.svc.AdminSaveSettings(c.Request.Context(), in.ReviewAll, in.VideoReview, comments, quotas); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

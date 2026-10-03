@@ -445,16 +445,19 @@ func (s *CommunityService) AdminSetReport(ctx context.Context, id int64, status 
 // CommunityAdminSettings: review every new work by hand; comments; the canvas cloud sync quotas (MB).
 type CommunityAdminSettings struct {
 	ReviewAll bool `json:"review_all"`
+	// VideoReview: video works wait for review (on unless switched off).
+	VideoReview bool `json:"video_review"`
 	CommentSettings
 	CanvasCloudQuotaSettings
 }
 
 func (s *CommunityService) AdminSettings(ctx context.Context) CommunityAdminSettings {
-	return CommunityAdminSettings{ReviewAll: s.reviewAll(ctx), CommentSettings: s.commentSettings(ctx), CanvasCloudQuotaSettings: readCanvasCloudQuotas(ctx, s.settings)}
+	return CommunityAdminSettings{ReviewAll: s.reviewAll(ctx), VideoReview: s.videoReview(ctx), CommentSettings: s.commentSettings(ctx), CanvasCloudQuotaSettings: readCanvasCloudQuotas(ctx, s.settings)}
 }
 
-// AdminSaveSettings saves review_all and, when given, the comment switches and the cloud quotas.
-func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool, comments *CommentSettings, quotas *CanvasCloudQuotaSettings) error {
+// AdminSaveSettings saves review_all and, when given, the video review switch, the comment switches
+// and the cloud quotas.
+func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool, videoReview *bool, comments *CommentSettings, quotas *CanvasCloudQuotaSettings) error {
 	if s.settings == nil {
 		return nil
 	}
@@ -464,6 +467,9 @@ func (s *CommunityService) AdminSaveSettings(ctx context.Context, reviewAll bool
 		}
 	}
 	values := map[string]string{settingCommunityReviewAll: boolSetting(reviewAll)}
+	if videoReview != nil {
+		values[settingCommunityVideoReview] = boolSetting(*videoReview)
+	}
 	if comments != nil {
 		values[settingCommunityCommentsEnabled] = boolSetting(comments.CommentsEnabled)
 		values[settingCommunityCommentsReviewAll] = boolSetting(comments.CommentsReviewAll)

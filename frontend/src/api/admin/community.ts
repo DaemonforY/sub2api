@@ -22,6 +22,9 @@ export interface AdminCommunityWork {
   like_count: number
   report_count?: number
   media?: { url: string; thumb_url: string }[]
+  /** image | site | video; a video work has its clip here (the cover is its first image). */
+  kind?: 'image' | 'site' | 'video'
+  video?: { url: string; mime_type: string; size_bytes: number; duration_ms: number }
   created_at: string
 }
 
@@ -96,11 +99,12 @@ export async function moderateComment(id: number, action: 'approve' | 'hide'): P
   await apiClient.post(`/admin/community/comments/${id}/moderate`, { action })
 }
 /**
- * review_all: hand-review every new work; comments_enabled / comments_review_all: comments on works;
+ * review_all: hand-review every new work; video_review: video works wait for review; comments_enabled / comments_review_all: comments on works;
  * cloud quotas: canvas cloud sync space per user (MB).
  */
 export interface CommunitySettings {
   review_all: boolean
+  video_review: boolean
   comments_enabled: boolean
   comments_review_all: boolean
   cloud_quota_mb: number

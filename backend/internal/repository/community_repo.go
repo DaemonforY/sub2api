@@ -136,7 +136,7 @@ SELECT w.id, w.user_id, COALESCE(p.handle, ''), COALESCE(p.display_name, ''), CO
        w.cover_width, w.cover_height, (SELECT COUNT(*) FROM work_media x WHERE x.work_id = w.id),
        w.like_count, w.favorite_count, w.remix_count, w.view_count, w.report_count, w.created_at, w.updated_at,
        w.kind, w.site_id, COALESCE(st.name, ''), COALESCE(st.title, ''), COALESCE(st.status, ''),
-       w.comment_count, w.comments_closed
+       w.comment_count, w.comments_closed, w.video_file, w.video_mime, w.video_size, w.video_duration_ms
 FROM works w
 LEFT JOIN user_profiles p ON p.user_id = w.user_id
 LEFT JOIN work_media m ON m.work_id = w.id AND m.position = 0
@@ -148,13 +148,15 @@ func scanWork(row rowScanner) (*service.Work, error) {
 	var (
 		siteID                          sql.NullInt64
 		siteName, siteTitle, siteStatus string
+		video                           service.WorkVideo
 	)
 	if err := row.Scan(&w.ID, &w.UserID, &w.Author.Handle, &w.Author.DisplayName, &w.Author.AvatarURL,
 		&w.Title, &w.Description, &w.Prompt, &w.ShowPrompt, &w.Model, &params, &w.Source, pq.Array(&w.Tags), &w.Visibility, &w.Status,
 		&w.ReviewReason, pq.Array(&w.ReviewFlags), &w.Featured, &w.CoverFile, &w.CoverThumb,
 		&w.CoverWidth, &w.CoverHeight, &w.ImageCount,
 		&w.LikeCount, &w.FavoriteCount, &w.RemixCount, &w.ViewCount, &w.ReportCount, &w.CreatedAt, &w.UpdatedAt,
-		&w.Kind, &siteID, &siteName, &siteTitle, &siteStatus, &w.CommentCount, &w.CommentsClosed); err != nil {
+		&w.Kind, &siteID, &siteName, &siteTitle, &siteStatus, &w.CommentCount, &w.CommentsClosed,
+		&video.File, &video.MimeType, &video.SizeBytes, &video.DurationMs); err != nil {
 		return nil, err
 	}
 	if w.Kind == service.WorkKindSite {
@@ -163,6 +165,9 @@ func scanWork(row rowScanner) (*service.Work, error) {
 		if siteID.Valid {
 			w.Site.ID = siteID.Int64
 		}
+	}
+	if w.Kind == service.WorkKindVideo && video.File != "" {
+		w.Video = &video
 	}
 	w.Author.UserID = w.UserID
 	w.Params = json.RawMessage(params)
@@ -179,12 +184,18 @@ func (r *communityRepository) CreateWork(ctx context.Context, w *service.Work, m
 	if len(params) == 0 {
 		params = []byte(`{}`)
 	}
+	var video service.WorkVideo
+	if w.Video != nil {
+		video = *w.Video
+	}
 	if err := tx.QueryRowContext(ctx, `
 INSERT INTO works (user_id, title, description, prompt, show_prompt, model, params, source, tags, visibility, status,
-                   review_reason, review_flags, cover_width, cover_height, kind, site_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id, created_at, updated_at`,
+                   review_reason, review_flags, cover_width, cover_height, kind, site_id,
+                   video_file, video_mime, video_size, video_duration_ms)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id, created_at, updated_at`,
 		w.UserID, w.Title, w.Description, w.Prompt, w.ShowPrompt, w.Model, params, w.Source, pq.Array(w.Tags), w.Visibility, w.Status,
-		w.ReviewReason, pq.Array(w.ReviewFlags), w.CoverWidth, w.CoverHeight, w.Kind, workSiteID(w)).Scan(&w.ID, &w.CreatedAt, &w.UpdatedAt); err != nil {
+		w.ReviewReason, pq.Array(w.ReviewFlags), w.CoverWidth, w.CoverHeight, w.Kind, workSiteID(w),
+		video.File, video.MimeType, video.SizeBytes, video.DurationMs).Scan(&w.ID, &w.CreatedAt, &w.UpdatedAt); err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" && pqErr.Constraint == "uq_works_site" {
 			return service.ErrCommunitySiteAlreadyPublished
@@ -394,7 +405,7 @@ func (r *communityRepository) queryWorks(ctx context.Context, query string, args
 }
 
 // RelatedWorks: other authors' public works, most alike first — shared tags (3 each), same model
-// (1) and, for web pages, same kind (2) — then popular and recent; works sharing nothing fill the rest.
+// (1) and, for web pages and videos, same kind (2) — then popular and recent; works sharing nothing fill the rest.
 func (r *communityRepository) RelatedWorks(ctx context.Context, w *service.Work, limit int) ([]service.Work, error) {
 	tags := w.Tags
 	if tags == nil {
@@ -404,7 +415,7 @@ func (r *communityRepository) RelatedWorks(ctx context.Context, w *service.Work,
 WHERE `+publicWork+` AND w.id <> $1 AND w.user_id <> $2
 ORDER BY 3 * CARDINALITY(ARRAY(SELECT UNNEST(w.tags) INTERSECT SELECT UNNEST($3::text[])))
          + CASE WHEN $4 <> '' AND w.model = $4 THEN 1 ELSE 0 END
-         + CASE WHEN $5 = 'site' AND w.kind = 'site' THEN 2 ELSE 0 END DESC,
+         + CASE WHEN $5 <> 'image' AND w.kind = $5 THEN 2 ELSE 0 END DESC,
          `+workEngagement+` / POWER(EXTRACT(EPOCH FROM (NOW() - w.created_at)) / 86400 + 7, 0.3) DESC, w.id DESC
 LIMIT $6`, w.ID, w.UserID, pq.Array(tags), w.Model, w.Kind, limit)
 }

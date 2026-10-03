@@ -201,6 +201,7 @@ export default {
         subtitle: 'Made with AI on HiveGPT Infinite Canvas. Like one? Remix it in a click.',
         more: 'Explore more',
         siteLabel: 'Web page',
+        videoLabel: 'Video',
         aiLabel: 'AI-generated'
       },
       showcase: {

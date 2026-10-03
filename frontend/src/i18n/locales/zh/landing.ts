@@ -201,6 +201,7 @@ export default {
         subtitle: '大家在 HiveGPT 无限画布上用 AI 创作的作品，喜欢的可以一键做同款',
         more: '去发现页看更多',
         siteLabel: '网页',
+        videoLabel: '视频',
         aiLabel: 'AI 生成'
       },
       showcase: {

@@ -42,6 +42,9 @@ export default {
       free: '普通用户（MB）',
       subscriber: '订阅用户（MB）'
     },
-    reviewAllHint: '关闭时只有命中敏感词的作品进入待审核，其余直接公开；任何作品都可以被举报。'
+    reviewAllHint: '关闭时只有命中敏感词的作品进入待审核，其余直接公开；任何作品都可以被举报。',
+    videoReview: '视频作品先审核再公开',
+    videoReviewHint: '视频画面无法自动检查，建议保持开启；关闭后视频作品和图片一样直接公开。',
+    video: '视频'
   }
 }

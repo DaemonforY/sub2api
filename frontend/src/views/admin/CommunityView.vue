@@ -13,6 +13,11 @@
           {{ t('admin.community.reviewAll') }}
         </label>
         <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.reviewAllHint') }}</p>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="settings.video_review" type="checkbox" class="h-4 w-4" data-testid="video-review" />
+          {{ t('admin.community.videoReview') }}
+        </label>
+        <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.community.videoReviewHint') }}</p>
         <div class="space-y-2 border-t border-gray-100 pt-3 dark:border-dark-700">
           <div class="text-sm font-medium">{{ t('admin.community.commentSettings.title') }}</div>
           <label class="flex items-center gap-2 text-sm">
@@ -157,7 +162,17 @@
       <template v-else>
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="community-works">
           <div v-for="w in workList" :key="w.id" class="card overflow-hidden" data-testid="community-work">
-            <a :href="workUrl(w.id)" target="_blank" rel="noopener" class="block bg-gray-100 dark:bg-dark-800">
+            <video
+              v-if="w.kind === 'video' && w.video"
+              :src="w.video.url"
+              :poster="w.cover_thumb_url"
+              controls
+              preload="none"
+              playsinline
+              class="h-48 w-full bg-black object-contain"
+              data-testid="community-work-video"
+            />
+            <a v-else :href="workUrl(w.id)" target="_blank" rel="noopener" class="block bg-gray-100 dark:bg-dark-800">
               <img :src="w.cover_thumb_url" alt="" class="h-48 w-full object-cover" loading="lazy" />
             </a>
             <div class="space-y-1.5 p-3 text-sm">
@@ -165,6 +180,7 @@
                 <span class="truncate font-medium text-gray-900 dark:text-white">{{ w.title || t('admin.community.untitled') }}</span>
                 <span :class="['badge', statusBadge(w.status)]">{{ t(`admin.community.status.${w.status}`) }}</span>
                 <span v-if="w.featured" class="badge badge-purple">{{ t('admin.community.featured') }}</span>
+                <span v-if="w.kind === 'video'" class="badge badge-gray">{{ t('admin.community.video') }}</span>
               </div>
               <div class="text-xs text-gray-500">
                 @{{ w.author.handle }} · {{ formatDateTime(w.created_at) }} · {{ w.image_count }} {{ t('admin.community.images') }} · ♥ {{ w.like_count }}
@@ -230,7 +246,7 @@ const reportList = ref<AdminWorkReport[]>([])
 const restrictedList = ref<RestrictedAuthor[]>([])
 const commentList = ref<AdminComment[]>([])
 const commentFilter = ref<CommentFilter>('pending')
-const settings = ref<CommunitySettings>({ review_all: false, comments_enabled: true, comments_review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
+const settings = ref<CommunitySettings>({ review_all: false, video_review: true, comments_enabled: true, comments_review_all: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
 const reasonFor = ref<{ work: AdminCommunityWork; action: 'reject' | 'hide' } | null>(null)
 const reason = ref('')
 

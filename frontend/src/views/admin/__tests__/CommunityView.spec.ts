@@ -74,6 +74,25 @@ describe('admin CommunityView', () => {
     expect(saveSettings).toHaveBeenCalledWith({ review_all: true, cloud_quota_mb: 500, cloud_subscriber_quota_mb: 2048 })
   })
 
+  it('plays video works in the queue and saves the video review switch', async () => {
+    works.mockResolvedValue([{ ...pendingWork, id: 8, title: '海边日落', review_flags: [], kind: 'video', video: { url: '/api/v1/community/media/v.mp4', mime_type: 'video/mp4', size_bytes: 1, duration_ms: 5000 } }])
+    const wrapper = mount(CommunityView, { global: { stubs } })
+    await flushPromises()
+    const video = wrapper.get('[data-testid="community-work-video"]')
+    expect(video.attributes('src')).toBe('/api/v1/community/media/v.mp4')
+    expect(video.attributes('poster')).toBe(pendingWork.cover_thumb_url)
+    expect(wrapper.get('[data-testid="community-work"]').text()).toContain('admin.community.video')
+
+    getSettings.mockResolvedValue({ review_all: false, video_review: true, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
+    saveSettings.mockResolvedValue({ review_all: false, video_review: false, cloud_quota_mb: 200, cloud_subscriber_quota_mb: 2048 })
+    await wrapper.findAll('button').find((b) => b.text() === 'admin.community.tabs.settings')!.trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="video-review"]').setValue(false)
+    await wrapper.get('[data-testid="community-settings"] button').trigger('click')
+    await flushPromises()
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ video_review: false }))
+  })
+
   it('lists restricted authors and lifts a restriction', async () => {
     works.mockResolvedValue([])
     restricted.mockResolvedValue([{ user_id: 3, email: 'a@x.test', handle: 'xiaolin', display_name: '小林', works_count: 4, updated_at: '2026-10-02T00:00:00Z' }])
