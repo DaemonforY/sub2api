@@ -677,6 +677,23 @@ export default {
     linkCopied: 'Invite link copied',
     loadFailed: 'Failed to load affiliate data',
     transferFailed: 'Failed to transfer affiliate quota',
+    bind: {
+      title: 'Add a friend\'s invite code',
+      description: 'Forgot to enter the friend\'s invite code when signing up? You can add it once before {deadline}. Your top-ups and subscriptions then earn your friend rebates, and your first order gets the invitee bonus if you have not ordered yet.',
+      placeholder: 'Friend\'s invite code',
+      submit: 'Link',
+      binding: 'Linking…',
+      success: 'Linked to your friend\'s invite code',
+      failed: 'Could not link the code, please try again later',
+      errors: {
+        AFFILIATE_CODE_INVALID: 'This invite code was not found; check the spelling',
+        AFFILIATE_SELF_CODE: 'You can\'t use your own invite code',
+        AFFILIATE_CODE_CYCLE: 'You can\'t use the code of someone you invited',
+        AFFILIATE_ALREADY_BOUND: 'You already have an inviter',
+        AFFILIATE_LATE_BIND_EXPIRED: 'It has been more than 7 days since you signed up',
+        AFFILIATE_DISABLED: 'Invites are turned off'
+      }
+    },
     stats: {
       rebateRate: 'My Rebate Rate',
       rebateRateHint: 'What you earn each time an invitee recharges',

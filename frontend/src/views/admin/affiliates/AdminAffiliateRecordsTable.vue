@@ -12,6 +12,10 @@
           <button class="btn btn-secondary px-2 md:px-3" :disabled="loading" :title="t('common.refresh')" @click="loadRecords">
             <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
           </button>
+          <button v-if="props.type === 'invites'" class="btn btn-secondary" data-testid="affiliate-find-user" @click="lookupDialog = true">
+            <Icon name="userPlus" size="md" />
+            <span>{{ t('admin.affiliates.inviter.findUser') }}</span>
+          </button>
         </div>
       </template>
 
@@ -136,6 +140,43 @@
           <OverviewStat :label="t('admin.affiliates.overview.availableQuota')" :value="'$' + formatAmount(selectedOverview.available_quota)" />
           <OverviewStat :label="t('admin.affiliates.overview.historyQuota')" :value="'$' + formatAmount(selectedOverview.history_quota)" />
         </div>
+        <div class="rounded-lg border border-gray-100 p-4 dark:border-dark-700" data-testid="affiliate-inviter-editor">
+          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.affiliates.inviter.title') }}</div>
+          <div class="mt-1 text-sm text-gray-600 dark:text-dark-300">
+            <template v-if="selectedOverview.inviter_id">
+              #{{ selectedOverview.inviter_id }} {{ selectedOverview.inviter_email || selectedOverview.inviter_username }}
+              <span class="ml-1 font-mono text-xs text-gray-500">{{ selectedOverview.inviter_aff_code }}</span>
+            </template>
+            <template v-else>{{ t('admin.affiliates.inviter.none') }}</template>
+          </div>
+          <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input v-model="inviterCode" type="text" class="input font-mono" :placeholder="t('admin.affiliates.inviter.placeholder')" data-testid="affiliate-inviter-code" />
+            <button class="btn btn-primary shrink-0" :disabled="savingInviter || !inviterCode.trim()" data-testid="affiliate-inviter-save" @click="saveInviter(inviterCode)">
+              {{ t('admin.affiliates.inviter.save') }}
+            </button>
+            <button v-if="selectedOverview.inviter_id" class="btn btn-secondary shrink-0" :disabled="savingInviter" @click="saveInviter('')">
+              {{ t('admin.affiliates.inviter.clear') }}
+            </button>
+          </div>
+          <p class="mt-2 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.affiliates.inviter.hint') }}</p>
+        </div>
+      </div>
+    </BaseDialog>
+
+    <BaseDialog :show="lookupDialog" :title="t('admin.affiliates.inviter.findUser')" width="normal" @close="lookupDialog = false">
+      <input v-model="lookupQuery" type="text" class="input" :placeholder="t('admin.affiliates.inviter.lookupPlaceholder')" data-testid="affiliate-lookup-input" @input="debounceLookup" />
+      <div class="mt-3 max-h-80 space-y-1 overflow-y-auto">
+        <button
+          v-for="u in lookupResults"
+          :key="u.id"
+          class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-800"
+          data-testid="affiliate-lookup-result"
+          @click="pickLookup(u.id)"
+        >
+          <span><span class="font-mono text-gray-500">#{{ u.id }}</span> {{ u.email }}</span>
+          <span class="text-gray-500">{{ u.username }}</span>
+        </button>
+        <p v-if="lookupQuery.trim() && !lookupResults.length && !lookupLoading" class="py-4 text-center text-sm text-gray-500">{{ t('admin.affiliates.inviter.noUsers') }}</p>
       </div>
     </BaseDialog>
   </AppLayout>
@@ -153,7 +194,7 @@ import Icon from '@/components/icons/Icon.vue'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
 import type { Column } from '@/components/common/types'
 import { useAppStore } from '@/stores/app'
-import { affiliatesAPI, type AffiliateInviteRecord, type AffiliateRebateRecord, type AffiliateTransferRecord, type AffiliateUserOverview, type ListAffiliateRecordsParams } from '@/api/admin/affiliates'
+import { affiliatesAPI, type AffiliateInviteRecord, type AffiliateRebateRecord, type AffiliateTransferRecord, type AffiliateUserOverview, type ListAffiliateRecordsParams, type SimpleUser } from '@/api/admin/affiliates'
 import type { PaginatedResponse } from '@/types'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { formatDateTime as formatDisplayDateTime } from '@/utils/format'
@@ -175,6 +216,13 @@ const overviewDialog = ref(false)
 const overviewLoading = ref(false)
 const selectedOverview = ref<AffiliateUserOverview | null>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+const inviterCode = ref('')
+const savingInviter = ref(false)
+const lookupDialog = ref(false)
+const lookupQuery = ref('')
+const lookupLoading = ref(false)
+const lookupResults = ref<SimpleUser[]>([])
+let lookupTimer: ReturnType<typeof setTimeout> | null = null
 
 const columns = computed<Column[]>(() => {
   if (props.type === 'invites') {
@@ -316,8 +364,50 @@ function formatDateTime(value: string | null | undefined): string {
   return value ? formatDisplayDateTime(value) : '-'
 }
 
+async function saveInviter(code: string) {
+  if (!selectedOverview.value || savingInviter.value) return
+  savingInviter.value = true
+  try {
+    selectedOverview.value = await affiliatesAPI.setUserInviter(selectedOverview.value.user_id, code.trim())
+    inviterCode.value = ''
+    appStore.showSuccess(t(code.trim() ? 'admin.affiliates.inviter.saved' : 'admin.affiliates.inviter.cleared'))
+    void loadRecords()
+  } catch (error) {
+    appStore.showError(extractI18nErrorMessage(error, t, 'admin.affiliates.inviter.errors', t('common.error')))
+  } finally {
+    savingInviter.value = false
+  }
+}
+
+function debounceLookup() {
+  if (lookupTimer) clearTimeout(lookupTimer)
+  lookupTimer = setTimeout(() => void runLookup(), 300)
+}
+
+async function runLookup() {
+  const q = lookupQuery.value.trim()
+  if (!q) {
+    lookupResults.value = []
+    return
+  }
+  lookupLoading.value = true
+  try {
+    lookupResults.value = await affiliatesAPI.lookupUsers(q)
+  } catch (error) {
+    appStore.showError(extractI18nErrorMessage(error, t, 'admin.affiliates.errors', t('common.error')))
+  } finally {
+    lookupLoading.value = false
+  }
+}
+
+function pickLookup(userId: number) {
+  lookupDialog.value = false
+  void openUserOverview(userId)
+}
+
 async function openUserOverview(userId: number) {
   if (!userId) return
+  inviterCode.value = ''
   overviewDialog.value = true
   overviewLoading.value = true
   selectedOverview.value = null

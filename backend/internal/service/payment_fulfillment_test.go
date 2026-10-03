@@ -72,6 +72,10 @@ func (r *paymentFulfillmentAffiliateRepoStub) GetAffiliateByCode(context.Context
 	panic("unexpected GetAffiliateByCode call")
 }
 
+func (r *paymentFulfillmentAffiliateRepoStub) SetInviter(context.Context, int64, *int64) error {
+	return nil
+}
+
 func (r *paymentFulfillmentAffiliateRepoStub) BindInviter(context.Context, int64, int64) (bool, error) {
 	panic("unexpected BindInviter call")
 }

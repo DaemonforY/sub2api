@@ -420,6 +420,24 @@ export default {
         rebatedAt: '返利时间',
         transferredAt: '提取时间'
       },
+      inviter: {
+        title: '该用户的邀请人',
+        none: '没有邀请人',
+        placeholder: '邀请人的邀请码',
+        save: '设为邀请人',
+        clear: '清除邀请人',
+        saved: '已设置邀请人',
+        cleared: '已清除邀请人',
+        hint: '用于补登漏填邀请码的用户。返利只从设置之后的充值和订阅开始计算，返利有效期仍从被邀请人注册时算起。',
+        findUser: '查找用户',
+        lookupPlaceholder: '邮箱、用户名或用户 ID',
+        noUsers: '没有找到用户',
+        errors: {
+          AFFILIATE_CODE_INVALID: '没有找到这个邀请码',
+          AFFILIATE_SELF_CODE: '不能把用户设成自己的邀请人',
+          AFFILIATE_CODE_CYCLE: '对方是这个用户邀请的，不能互为邀请人'
+        }
+      },
       overview: {
         title: '用户返利概览',
         affCode: '邀请码',

@@ -681,6 +681,23 @@ export default {
     linkCopied: '邀请链接已复制',
     loadFailed: '加载邀请返利数据失败',
     transferFailed: '转入余额失败',
+    bind: {
+      title: '补填好友邀请码',
+      description: '注册时忘了填好友的邀请码？{deadline} 前可以补填一次，之后你的充值和订阅会给好友带来返利，你的首单也能拿到奖励（如果还没有下过单）。',
+      placeholder: '好友的邀请码',
+      submit: '绑定',
+      binding: '绑定中…',
+      success: '已绑定好友邀请码',
+      failed: '绑定失败，请稍后再试',
+      errors: {
+        AFFILIATE_CODE_INVALID: '没有找到这个邀请码，请检查拼写',
+        AFFILIATE_SELF_CODE: '不能填写自己的邀请码',
+        AFFILIATE_CODE_CYCLE: '不能填写你邀请的好友的邀请码',
+        AFFILIATE_ALREADY_BOUND: '你已经绑定过邀请人了',
+        AFFILIATE_LATE_BIND_EXPIRED: '注册已超过 7 天，不能再补填邀请码',
+        AFFILIATE_DISABLED: '邀请返利暂未开放'
+      }
+    },
     stats: {
       rebateRate: '我的返利比例',
       rebateRateHint: '被邀请用户每次充值后你可获得的返利比例',

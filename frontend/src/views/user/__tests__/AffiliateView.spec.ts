@@ -3,14 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AffiliateView from '../AffiliateView.vue'
 
-const { copyToClipboard, getAffiliateDetail } = vi.hoisted(() => ({
+const { copyToClipboard, getAffiliateDetail, bindAffiliateInviter } = vi.hoisted(() => ({
   copyToClipboard: vi.fn(),
   getAffiliateDetail: vi.fn(),
+  bindAffiliateInviter: vi.fn(),
 }))
 
 vi.mock('@/api/user', () => ({
   default: {
     getAffiliateDetail,
+    bindAffiliateInviter,
     transferAffiliateQuota: vi.fn(),
   },
 }))
@@ -112,5 +114,21 @@ describe('AffiliateView', () => {
       `${window.location.origin}/register?aff=${encodeURIComponent(affiliateCode)}`,
       'affiliate.linkCopied',
     )
+  })
+
+  it('lets a new user add a friend\'s invite code, then hides the form', async () => {
+    const base = await getAffiliateDetail()
+    getAffiliateDetail.mockResolvedValueOnce({ ...base, can_bind_inviter: true, bind_inviter_deadline: '2026-10-09T15:19:56Z' })
+    bindAffiliateInviter.mockResolvedValueOnce({ ...base, inviter_id: 7, can_bind_inviter: false })
+    const wrapper = mount(AffiliateView, { global: { stubs: { AppLayout: { template: '<main><slot /></main>' }, Icon: true, InvitePosterCard: true, InviteLeaderboardCard: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="affiliate-bind-inviter"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="affiliate-bind-input"]').setValue(' U9GCR4C53L2B ')
+    await wrapper.get('[data-testid="affiliate-bind-submit"]').trigger('click')
+    await flushPromises()
+
+    expect(bindAffiliateInviter).toHaveBeenCalledWith('U9GCR4C53L2B')
+    expect(wrapper.find('[data-testid="affiliate-bind-inviter"]').exists()).toBe(false)
   })
 })

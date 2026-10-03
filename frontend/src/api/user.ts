@@ -181,6 +181,12 @@ export async function getAffiliateDetail(): Promise<UserAffiliateDetail> {
   return data
 }
 
+/** Adds the friend's invite code within 7 days of signing up; returns the refreshed detail. */
+export async function bindAffiliateInviter(code: string): Promise<UserAffiliateDetail> {
+  const { data } = await apiClient.post<UserAffiliateDetail>('/user/aff/bind', { code })
+  return data
+}
+
 export async function transferAffiliateQuota(): Promise<AffiliateTransferResponse> {
   const { data } = await apiClient.post<AffiliateTransferResponse>('/user/aff/transfer')
   return data
@@ -209,6 +215,7 @@ export const userAPI = {
   startOAuthBinding,
   getAffiliateDetail,
   transferAffiliateQuota,
+  bindAffiliateInviter,
   getMyPlatformQuotas,
 }
 

@@ -2,10 +2,12 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RegisterView from '@/views/auth/RegisterView.vue'
 
-const { getPublicSettingsMock, registerMock, showErrorMock } = vi.hoisted(() => ({
+const { getPublicSettingsMock, registerMock, showErrorMock, validateAffiliateCodeMock, validateInvitationCodeMock } = vi.hoisted(() => ({
   getPublicSettingsMock: vi.fn(),
   registerMock: vi.fn(),
-  showErrorMock: vi.fn()
+  showErrorMock: vi.fn(),
+  validateAffiliateCodeMock: vi.fn(),
+  validateInvitationCodeMock: vi.fn()
 }))
 
 const publicSettings = {
@@ -58,7 +60,9 @@ vi.mock('@/api/auth', async () => {
   const actual = await vi.importActual<typeof import('@/api/auth')>('@/api/auth')
   return {
     ...actual,
-    getPublicSettings: (...args: unknown[]) => getPublicSettingsMock(...args)
+    getPublicSettings: (...args: unknown[]) => getPublicSettingsMock(...args),
+    validateAffiliateCode: (...args: unknown[]) => validateAffiliateCodeMock(...args),
+    validateInvitationCode: (...args: unknown[]) => validateInvitationCodeMock(...args)
   }
 })
 
@@ -88,6 +92,9 @@ describe('RegisterView invitation layout', () => {
     showErrorMock.mockReset()
     getPublicSettingsMock.mockResolvedValue(publicSettings)
     registerMock.mockResolvedValue({})
+    validateAffiliateCodeMock.mockReset()
+    validateInvitationCodeMock.mockReset()
+    validateAffiliateCodeMock.mockResolvedValue({ valid: true })
   })
 
   it('keeps the optional affiliate invitation field before Turnstile', async () => {
@@ -105,7 +112,7 @@ describe('RegisterView invitation layout', () => {
     ).toBeTruthy()
   })
 
-  it('uses the mandatory invitation field without duplicating the affiliate field', async () => {
+  it('keeps the friend\'s invite code field next to a mandatory invitation code', async () => {
     getPublicSettingsMock.mockResolvedValueOnce({
       ...publicSettings,
       invitation_code_enabled: true
@@ -114,8 +121,54 @@ describe('RegisterView invitation layout', () => {
     const wrapper = mountRegister()
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="affiliate-invitation-field"]').exists()).toBe(false)
     expect(wrapper.get('#invitation_code').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="affiliate-invitation-field"]').text()).toContain('auth.affiliateCodeLabel')
+    expect(wrapper.text()).toContain('auth.registrationInvitationCodeLabel')
+  })
+
+  it('moves a friend\'s invite code typed into the invitation code box', async () => {
+    vi.useFakeTimers()
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, invitation_code_enabled: true })
+    validateInvitationCodeMock.mockResolvedValue({ valid: false, error_code: 'INVITATION_CODE_NOT_FOUND' })
+
+    const wrapper = mountRegister()
+    await flushPromises()
+    await wrapper.get('#invitation_code').setValue('U9GCR4C53L2B')
+    await vi.advanceTimersByTimeAsync(600)
+    await flushPromises()
+    vi.useRealTimers()
+
+    expect(validateAffiliateCodeMock).toHaveBeenCalledWith('U9GCR4C53L2B')
+    expect((wrapper.get('#invitation_code').element as HTMLInputElement).value).toBe('')
+    expect((wrapper.get('#affiliate_code').element as HTMLInputElement).value).toBe('U9GCR4C53L2B')
+    expect(wrapper.find('[data-testid="affiliate-moved-notice"]').exists()).toBe(true)
+  })
+
+  it('blocks sign-up with an unknown friend\'s invite code and sends a valid one', async () => {
+    vi.useFakeTimers()
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false })
+    validateAffiliateCodeMock.mockResolvedValueOnce({ valid: false, error_code: 'AFFILIATE_CODE_INVALID' })
+
+    const wrapper = mountRegister()
+    await flushPromises()
+    await wrapper.get('#email').setValue('friend@allowed.com')
+    await wrapper.get('#password').setValue('secret-123')
+    await wrapper.get('#affiliate_code').setValue('TYPO1234')
+    await vi.advanceTimersByTimeAsync(600)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="affiliate-invalid"]').exists()).toBe(true)
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(registerMock).not.toHaveBeenCalled()
+    expect(showErrorMock).toHaveBeenCalledWith('auth.affiliateCodeInvalidCannotRegister')
+
+    await wrapper.get('#affiliate_code').setValue('U9GCR4C53L2B')
+    await vi.advanceTimersByTimeAsync(600)
+    await flushPromises()
+    vi.useRealTimers()
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+    expect(registerMock).toHaveBeenCalledWith(expect.objectContaining({ aff_code: 'U9GCR4C53L2B' }))
   })
 
   it('submits a non-whitelist email domain so the backend can enforce its registration quota', async () => {

@@ -516,6 +516,15 @@ export interface ValidateInvitationCodeResponse {
 }
 
 /**
+ * Check a friend's invite code (邀请返利) as it is typed on the sign-up form (public).
+ * error_code: AFFILIATE_CODE_INVALID | AFFILIATE_DISABLED
+ */
+export async function validateAffiliateCode(code: string): Promise<ValidateInvitationCodeResponse> {
+  const { data } = await apiClient.post<ValidateInvitationCodeResponse>('/auth/validate-affiliate-code', { code })
+  return data
+}
+
+/**
  * Validate invitation code (public endpoint, no auth required)
  * @param code - Invitation code to validate
  * @returns Validation result
@@ -698,6 +707,7 @@ export const authAPI = {
   sendPendingOAuthVerifyCode,
   validatePromoCode,
   validateInvitationCode,
+  validateAffiliateCode,
   forgotPassword,
   resetPassword,
   refreshToken,

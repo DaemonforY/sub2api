@@ -8,6 +8,30 @@
       </div>
 
       <template v-else-if="detail">
+        <!-- Signed up without a friend's code: add it within 7 days -->
+        <div v-if="detail.can_bind_inviter" class="card border border-emerald-200 p-5 dark:border-emerald-900/50" data-testid="affiliate-bind-inviter">
+          <h3 class="flex items-center gap-2 text-base font-semibold text-gray-900 dark:text-white">
+            <Icon name="gift" size="md" class="text-emerald-500" />
+            {{ t('affiliate.bind.title') }}
+          </h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            {{ t('affiliate.bind.description', { deadline: detail.bind_inviter_deadline ? formatDateTime(detail.bind_inviter_deadline) : '' }) }}
+          </p>
+          <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              v-model="bindCode"
+              type="text"
+              class="input font-mono sm:max-w-xs"
+              :placeholder="t('affiliate.bind.placeholder')"
+              data-testid="affiliate-bind-input"
+              @keyup.enter="bindInviter"
+            />
+            <button class="btn btn-primary" :disabled="!bindCode.trim() || binding" data-testid="affiliate-bind-submit" @click="bindInviter">
+              {{ binding ? t('affiliate.bind.binding') : t('affiliate.bind.submit') }}
+            </button>
+          </div>
+        </div>
+
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div class="card p-5">
             <p class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-dark-400">
@@ -166,7 +190,7 @@ import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { useClipboard } from '@/composables/useClipboard'
 import { formatCurrency, formatDateTime } from '@/utils/format'
-import { extractApiErrorMessage } from '@/utils/apiError'
+import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -175,6 +199,8 @@ const { copyToClipboard } = useClipboard()
 
 const loading = ref(true)
 const transferring = ref(false)
+const bindCode = ref('')
+const binding = ref(false)
 const detail = ref<UserAffiliateDetail | null>(null)
 
 const inviteLink = computed(() => {
@@ -207,6 +233,21 @@ async function loadAffiliateDetail(silent = false): Promise<void> {
     if (!silent) {
       loading.value = false
     }
+  }
+}
+
+async function bindInviter(): Promise<void> {
+  const code = bindCode.value.trim()
+  if (!code || binding.value) return
+  binding.value = true
+  try {
+    detail.value = await userAPI.bindAffiliateInviter(code)
+    bindCode.value = ''
+    appStore.showSuccess(t('affiliate.bind.success'))
+  } catch (error) {
+    appStore.showError(extractI18nErrorMessage(error, t, 'affiliate.bind.errors', t('affiliate.bind.failed')))
+  } finally {
+    binding.value = false
   }
 }
 

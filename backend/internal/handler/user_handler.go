@@ -7,6 +7,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/handler/quotaview"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -208,7 +209,65 @@ func (h *UserHandler) GetAffiliate(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	if user, err := h.userService.GetByID(c.Request.Context(), subject.UserID); err == nil && user != nil {
+		h.affiliateService.FillLateBind(c.Request.Context(), detail, user.CreatedAt)
+	}
 	response.Success(c, detail)
+}
+
+// BindAffiliateInviter adds the inviter of a user who signed up without (or with a mistyped)
+// invite code, within 7 days of registering.
+// POST /api/v1/user/aff/bind {code}
+func (h *UserHandler) BindAffiliateInviter(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorFrom(c, service.ErrAffiliateCodeInvalid)
+		return
+	}
+	user, err := h.userService.GetByID(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if err := h.affiliateService.BindInviterLate(c.Request.Context(), subject.UserID, user.CreatedAt, req.Code); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	detail, err := h.affiliateService.GetAffiliateDetail(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, detail)
+}
+
+// ValidateAffiliateCode tells the sign-up form whether a friend's invite code is usable.
+// POST /api/v1/auth/validate-affiliate-code {code} → {valid, error_code}
+func (h *UserHandler) ValidateAffiliateCode(c *gin.Context) {
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.affiliateService.CheckCode(c.Request.Context(), req.Code); err != nil {
+		code := infraerrors.Reason(err)
+		if code == "" {
+			response.ErrorFrom(c, err)
+			return
+		}
+		response.Success(c, gin.H{"valid": false, "error_code": code})
+		return
+	}
+	response.Success(c, gin.H{"valid": true})
 }
 
 // TransferAffiliateQuota transfers all available affiliate quota into current balance.

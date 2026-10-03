@@ -420,6 +420,24 @@ export default {
         rebatedAt: 'Rebated At',
         transferredAt: 'Transferred At'
       },
+      inviter: {
+        title: "This user's inviter",
+        none: 'No inviter',
+        placeholder: "The inviter's invite code",
+        save: 'Set inviter',
+        clear: 'Clear inviter',
+        saved: 'Inviter set',
+        cleared: 'Inviter cleared',
+        hint: 'For users who missed the invite code at sign-up. Rebates only accrue on top-ups and subscriptions after this; the rebate window still runs from the invitee\'s registration.',
+        findUser: 'Find user',
+        lookupPlaceholder: 'Email, username or user ID',
+        noUsers: 'No users found',
+        errors: {
+          AFFILIATE_CODE_INVALID: 'This invite code was not found',
+          AFFILIATE_SELF_CODE: "A user can't be their own inviter",
+          AFFILIATE_CODE_CYCLE: 'That user was invited by this one; they cannot invite each other'
+        }
+      },
       overview: {
         title: 'Affiliate User Overview',
         affCode: 'Invite Code',

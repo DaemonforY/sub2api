@@ -32,9 +32,15 @@ SELECT ua.user_id,
        ua.aff_count,
        COALESCE(rebated.rebated_invitee_count, 0),
        (ua.aff_quota + COALESCE(matured.matured_frozen_quota, 0))::double precision,
-       ua.aff_history_quota::double precision
+       ua.aff_history_quota::double precision,
+       COALESCE(ua.inviter_id, 0),
+       COALESCE(iu.email, ''),
+       COALESCE(iu.username, ''),
+       COALESCE(ia.aff_code, '')
 FROM user_affiliates ua
 JOIN users u ON u.id = ua.user_id
+LEFT JOIN users iu ON iu.id = ua.inviter_id
+LEFT JOIN user_affiliates ia ON ia.user_id = ua.inviter_id
 LEFT JOIN (
     SELECT user_id, COUNT(DISTINCT source_user_id)::integer AS rebated_invitee_count
     FROM user_affiliate_ledger
@@ -112,6 +118,52 @@ func (r *affiliateRepository) BindInviter(ctx context.Context, userID, inviterID
 		return false, err
 	}
 	return bound, nil
+}
+
+func (r *affiliateRepository) SetInviter(ctx context.Context, userID int64, inviterID *int64) error {
+	return r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			return err
+		}
+		if inviterID != nil {
+			if _, err := ensureUserAffiliateWithClient(txCtx, txClient, *inviterID); err != nil {
+				return err
+			}
+		}
+		rows, err := txClient.QueryContext(txCtx, "SELECT inviter_id FROM user_affiliates WHERE user_id = $1 FOR UPDATE", userID)
+		if err != nil {
+			return fmt.Errorf("lock affiliate: %w", err)
+		}
+		var current sql.NullInt64
+		found := rows.Next()
+		if found {
+			err = rows.Scan(&current)
+		}
+		_ = rows.Close()
+		if err != nil {
+			return fmt.Errorf("read inviter: %w", err)
+		}
+		if !found {
+			return service.ErrAffiliateProfileNotFound
+		}
+		if (inviterID == nil && !current.Valid) || (inviterID != nil && current.Valid && current.Int64 == *inviterID) {
+			return nil
+		}
+		if _, err := txClient.ExecContext(txCtx, "UPDATE user_affiliates SET inviter_id = $1, updated_at = NOW() WHERE user_id = $2", inviterID, userID); err != nil {
+			return fmt.Errorf("set inviter: %w", err)
+		}
+		if current.Valid {
+			if _, err := txClient.ExecContext(txCtx, "UPDATE user_affiliates SET aff_count = GREATEST(aff_count - 1, 0), updated_at = NOW() WHERE user_id = $1", current.Int64); err != nil {
+				return fmt.Errorf("decrement old inviter aff_count: %w", err)
+			}
+		}
+		if inviterID != nil {
+			if _, err := txClient.ExecContext(txCtx, "UPDATE user_affiliates SET aff_count = aff_count + 1, updated_at = NOW() WHERE user_id = $1", *inviterID); err != nil {
+				return fmt.Errorf("increment inviter aff_count: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
 func (r *affiliateRepository) AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int, sourceOrderID *int64) (bool, error) {
@@ -662,6 +714,10 @@ func (r *affiliateRepository) GetAffiliateUserOverview(ctx context.Context, user
 		&overview.RebatedInviteeCount,
 		&overview.AvailableQuota,
 		&overview.HistoryQuota,
+		&overview.InviterID,
+		&overview.InviterEmail,
+		&overview.InviterUsername,
+		&overview.InviterAffCode,
 	); err != nil {
 		return nil, err
 	}

@@ -164,6 +164,9 @@ export interface UserAffiliateDetail {
   /** 当前用户作为邀请人时实际生效的返利比例（专属覆盖全局）。0-100。 */
   effective_rebate_rate_percent: number
   invitees: AffiliateInvitee[]
+  /** No inviter yet and still within 7 days of signing up: a friend's code may be added. */
+  can_bind_inviter?: boolean
+  bind_inviter_deadline?: string
 }
 
 export interface AffiliateTransferResponse {

@@ -90,7 +90,7 @@
         <!-- Invitation Code Input (Required when enabled) -->
         <div v-if="invitationCodeEnabled">
           <label for="invitation_code" class="input-label">
-            {{ t('auth.invitationCodeLabel') }}
+            {{ affiliateEnabled ? t('auth.registrationInvitationCodeLabel') : t('auth.invitationCodeLabel') }}
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
@@ -134,31 +134,54 @@
           </transition>
         </div>
 
-        <!-- Affiliate Invitation Code Input (Optional) -->
-        <div v-else-if="affiliateEnabled" data-testid="affiliate-invitation-field">
+        <!-- Friend's invite code (邀请返利, optional) — separate from the admin-issued invitation code above -->
+        <div v-if="affiliateEnabled" data-testid="affiliate-invitation-field">
           <label for="affiliate_code" class="input-label">
-            {{ t('auth.invitationCodeLabel') }}
+            {{ t('auth.affiliateCodeLabel') }}
             <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="key" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="gift" size="md" :class="affiliateValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
             </div>
             <input
               id="affiliate_code"
               v-model="formData.aff_code"
               type="text"
               :disabled="registrationActionDisabled"
-              class="input pl-11"
-              :placeholder="t('auth.invitationCodePlaceholder')"
+              class="input pl-11 pr-10"
+              :class="{
+                'border-green-500 focus:border-green-500 focus:ring-green-500': affiliateValidation.valid,
+                'border-red-500 focus:border-red-500 focus:ring-red-500': affiliateValidation.invalid
+              }"
+              :placeholder="t('auth.affiliateCodePlaceholder')"
+              @input="handleAffiliateCodeInput"
             />
+            <div v-if="affiliateValidating" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
+              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <div v-else-if="affiliateValidation.valid" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
+              <Icon name="checkCircle" size="md" class="text-green-500" />
+            </div>
+            <div v-else-if="affiliateValidation.invalid" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
+              <Icon name="exclamationCircle" size="md" class="text-red-500" />
+            </div>
           </div>
+          <p v-if="affiliateMovedNotice" class="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-700 dark:bg-sky-900/20 dark:text-sky-300" data-testid="affiliate-moved-notice">
+            {{ t('auth.affiliateCodeMoved') }}
+          </p>
+          <p v-if="affiliateValidation.invalid" class="mt-2 text-sm text-red-600 dark:text-red-400" data-testid="affiliate-invalid">
+            {{ t('auth.affiliateCodeInvalid') }}
+          </p>
           <p
-            v-if="inviteeBonusRate > 0 && formData.aff_code"
+            v-else-if="formData.aff_code && affiliateValidation.valid"
             class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
             data-testid="invitee-bonus-notice"
           >
-            🎁 {{ inviteeBonusCap > 0 ? t('growth.inviteeBonus.registerNoticeCapped', { rate: inviteeBonusRate, cap: inviteeBonusCap }) : t('growth.inviteeBonus.registerNotice', { rate: inviteeBonusRate }) }}
+            🎁 {{ t('auth.affiliateCodeValid') }}<template v-if="inviteeBonusRate > 0">{{ inviteeBonusCap > 0 ? t('growth.inviteeBonus.registerNoticeCapped', { rate: inviteeBonusRate, cap: inviteeBonusCap }) : t('growth.inviteeBonus.registerNotice', { rate: inviteeBonusRate }) }}</template>
           </p>
         </div>
 
@@ -359,7 +382,8 @@ import {
   startOAuthLogin,
   type OAuthLoginStart,
   validatePromoCode,
-  validateInvitationCode
+  validateInvitationCode,
+  validateAffiliateCode
 } from '@/api/auth'
 import { buildAuthErrorMessage } from '@/utils/authError'
 import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
@@ -466,6 +490,13 @@ const invitationValidation = reactive({
 })
 let invitationValidateTimeout: ReturnType<typeof setTimeout> | null = null
 
+// Friend's invite code (邀请返利) validation
+const affiliateValidating = ref<boolean>(false)
+const affiliateValidation = reactive({ valid: false, invalid: false })
+// Shown after a friend's code typed into the invitation-code box was moved to its own field.
+const affiliateMovedNotice = ref<boolean>(false)
+let affiliateValidateTimeout: ReturnType<typeof setTimeout> | null = null
+
 const formData = reactive({
   email: '',
   password: '',
@@ -518,6 +549,7 @@ function syncAffiliateReferralCode(): string {
   const code = resolveAffiliateReferralCode(route.query.aff, route.query.aff_code)
   if (code) {
     formData.aff_code = code
+    scheduleAffiliateValidation(0)
   }
   return code
 }
@@ -604,6 +636,9 @@ onUnmounted(() => {
   }
   if (invitationValidateTimeout) {
     clearTimeout(invitationValidateTimeout)
+  }
+  if (affiliateValidateTimeout) {
+    clearTimeout(affiliateValidateTimeout)
   }
 })
 
@@ -777,6 +812,8 @@ async function validateInvitationCodeDebounced(code: string): Promise<void> {
       invitationValidation.valid = true
       invitationValidation.invalid = false
       invitationValidation.message = ''
+    } else if (await movedAffiliateCode(code)) {
+      return
     } else {
       invitationValidation.valid = false
       invitationValidation.invalid = true
@@ -788,6 +825,62 @@ async function validateInvitationCodeDebounced(code: string): Promise<void> {
     invitationValidation.message = t('auth.invitationCodeInvalid')
   } finally {
     invitationValidating.value = false
+  }
+}
+
+// A friend's invite code typed into the invitation-code box: move it to its own field.
+async function movedAffiliateCode(code: string): Promise<boolean> {
+  if (!affiliateEnabled.value) return false
+  try {
+    const result = await validateAffiliateCode(code)
+    if (!result.valid || formData.invitation_code.trim() !== code) return false
+  } catch {
+    return false
+  }
+  formData.invitation_code = ''
+  invitationValidation.valid = false
+  invitationValidation.invalid = false
+  invitationValidation.message = ''
+  formData.aff_code = code
+  affiliateValidation.valid = true
+  affiliateValidation.invalid = false
+  affiliateMovedNotice.value = true
+  return true
+}
+
+// ==================== Friend's Invite Code Validation ====================
+
+function handleAffiliateCodeInput(): void {
+  affiliateMovedNotice.value = false
+  scheduleAffiliateValidation()
+}
+
+function scheduleAffiliateValidation(delay = 500): void {
+  affiliateValidation.valid = false
+  affiliateValidation.invalid = false
+  if (affiliateValidateTimeout) {
+    clearTimeout(affiliateValidateTimeout)
+    affiliateValidateTimeout = null
+  }
+  const code = formData.aff_code.trim()
+  if (!code) return
+  affiliateValidateTimeout = setTimeout(() => {
+    void checkAffiliateCode(code)
+  }, delay)
+}
+
+async function checkAffiliateCode(code: string): Promise<void> {
+  affiliateValidating.value = true
+  try {
+    const result = await validateAffiliateCode(code)
+    if (formData.aff_code.trim() !== code) return
+    affiliateValidation.valid = result.valid
+    // Invites turned off: the code is ignored at sign-up, so it never blocks it.
+    affiliateValidation.invalid = !result.valid && result.error_code !== 'AFFILIATE_DISABLED'
+  } catch {
+    // Network or rate limit: leave it unchecked rather than block sign-up.
+  } finally {
+    affiliateValidating.value = false
   }
 }
 
@@ -988,6 +1081,19 @@ async function handleRegister(): Promise<void> {
     }
   }
 
+  // A mistyped friend's code would silently not count: fix or clear it first.
+  if (formData.aff_code.trim()) {
+    if (affiliateValidating.value) {
+      errorMessage.value = t('auth.affiliateCodeValidating')
+      return
+    }
+    if (affiliateValidation.invalid) {
+      errorMessage.value = t('auth.affiliateCodeInvalidCannotRegister')
+      appStore.showError(errorMessage.value)
+      return
+    }
+  }
+
   // Check invitation code validation status (if enabled and code provided)
   if (invitationCodeEnabled.value) {
     // If still validating, wait
@@ -1039,6 +1145,7 @@ async function handleRegister(): Promise<void> {
           promo_code: formData.promo_code || undefined,
           invitation_code: formData.invitation_code || undefined,
           ...(affCode ? { aff_code: affCode } : {}),
+          ...(affCode && affiliateValidation.valid ? { aff_code_valid: true } : {}),
           ...(postRegisterRedirect.value ? { pending_redirect: postRegisterRedirect.value } : {})
         })
       )
@@ -1064,6 +1171,9 @@ async function handleRegister(): Promise<void> {
 
     // Show success toast
     appStore.showSuccess(t('auth.accountCreatedSuccess', { siteName: siteName.value }))
+    if (affCode && affiliateValidation.valid) {
+      appStore.showSuccess(t('auth.affiliateBound'))
+    }
 
     // Redirect to where the visitor came from (e.g. the canvas connect popup), else the dashboard
     await router.push(postRegisterRedirect.value || '/dashboard')

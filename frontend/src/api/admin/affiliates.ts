@@ -87,6 +87,11 @@ export interface AffiliateUserOverview {
   rebated_invitee_count: number
   available_quota: number
   history_quota: number
+  /** The user's own inviter (0 / '': none). */
+  inviter_id: number
+  inviter_email: string
+  inviter_username: string
+  inviter_aff_code: string
 }
 
 export interface UpdateAffiliateUserRequest {
@@ -215,7 +220,14 @@ export async function getUserOverview(
   return data
 }
 
+/** Sets the user's inviter by the inviter's invite code; an empty code clears it. */
+export async function setUserInviter(userId: number, inviterCode: string): Promise<AffiliateUserOverview> {
+  const { data } = await apiClient.put<AffiliateUserOverview>(`/admin/affiliates/users/${userId}/inviter`, { inviter_code: inviterCode })
+  return data
+}
+
 export const affiliatesAPI = {
+  setUserInviter,
   listUsers,
   lookupUsers,
   updateUserSettings,

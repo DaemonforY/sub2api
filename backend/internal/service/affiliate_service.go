@@ -92,12 +92,17 @@ type AffiliateDetail struct {
 	// 用于在用户的 /affiliate 页面直观展示「分享后能拿到多少」。
 	EffectiveRebateRatePercent float64            `json:"effective_rebate_rate_percent"`
 	Invitees                   []AffiliateInvitee `json:"invitees"`
+	// CanBindInviter: no inviter yet and still within AffiliateLateBindWindow of signing up.
+	CanBindInviter      bool       `json:"can_bind_inviter"`
+	BindInviterDeadline *time.Time `json:"bind_inviter_deadline,omitempty"`
 }
 
 type AffiliateRepository interface {
 	EnsureUserAffiliate(ctx context.Context, userID int64) (*AffiliateSummary, error)
 	GetAffiliateByCode(ctx context.Context, code string) (*AffiliateSummary, error)
 	BindInviter(ctx context.Context, userID, inviterID int64) (bool, error)
+	// SetInviter replaces (or, with nil, clears) the user's inviter and adjusts both inviters' counts.
+	SetInviter(ctx context.Context, userID int64, inviterID *int64) error
 	AccrueQuota(ctx context.Context, inviterID, inviteeUserID int64, amount float64, freezeHours int, sourceOrderID *int64) (bool, error)
 	GetAccruedRebateFromInvitee(ctx context.Context, inviterID, inviteeUserID int64) (float64, error)
 	ThawFrozenQuota(ctx context.Context, userID int64) (float64, error)
@@ -202,6 +207,11 @@ type AffiliateUserOverview struct {
 	RebatedInviteeCount int     `json:"rebated_invitee_count"`
 	AvailableQuota      float64 `json:"available_quota"`
 	HistoryQuota        float64 `json:"history_quota"`
+	// The user's own inviter (0 / "": none).
+	InviterID       int64  `json:"inviter_id"`
+	InviterEmail    string `json:"inviter_email"`
+	InviterUsername string `json:"inviter_username"`
+	InviterAffCode  string `json:"inviter_aff_code"`
 }
 
 type AffiliateService struct {
@@ -594,6 +604,10 @@ func (s *AffiliateService) AdminGetUserOverview(ctx context.Context, userID int6
 	}
 	if s == nil || s.repo == nil {
 		return nil, infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
+	}
+	// Users who never opened the affiliate page have no row yet (the admin may set their inviter).
+	if _, err := s.repo.EnsureUserAffiliate(ctx, userID); err != nil {
+		return nil, err
 	}
 	overview, err := s.repo.GetAffiliateUserOverview(ctx, userID)
 	if err != nil {
