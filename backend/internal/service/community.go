@@ -470,7 +470,7 @@ func normalizeVisibility(v string) string {
 
 func normalizeSource(v string) string {
 	switch v {
-	case "image_workbench", "tools", "contest", "canvas", "site":
+	case "image_workbench", "video_workbench", "tools", "contest", "canvas", "site":
 		return v
 	default:
 		return "canvas"
