@@ -365,6 +365,33 @@ func (_u *PaymentOrderUpdate) ClearSubscriptionDays() *PaymentOrderUpdate {
 	return _u
 }
 
+// SetCourseID sets the "course_id" field.
+func (_u *PaymentOrderUpdate) SetCourseID(v int64) *PaymentOrderUpdate {
+	_u.mutation.ResetCourseID()
+	_u.mutation.SetCourseID(v)
+	return _u
+}
+
+// SetNillableCourseID sets the "course_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableCourseID(v *int64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetCourseID(*v)
+	}
+	return _u
+}
+
+// AddCourseID adds value to the "course_id" field.
+func (_u *PaymentOrderUpdate) AddCourseID(v int64) *PaymentOrderUpdate {
+	_u.mutation.AddCourseID(v)
+	return _u
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (_u *PaymentOrderUpdate) ClearCourseID() *PaymentOrderUpdate {
+	_u.mutation.ClearCourseID()
+	return _u
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (_u *PaymentOrderUpdate) SetProviderInstanceID(v string) *PaymentOrderUpdate {
 	_u.mutation.SetProviderInstanceID(v)
@@ -941,6 +968,15 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if _u.mutation.SubscriptionDaysCleared() {
 		_spec.ClearField(paymentorder.FieldSubscriptionDays, field.TypeInt)
 	}
+	if value, ok := _u.mutation.CourseID(); ok {
+		_spec.SetField(paymentorder.FieldCourseID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedCourseID(); ok {
+		_spec.AddField(paymentorder.FieldCourseID, field.TypeInt64, value)
+	}
+	if _u.mutation.CourseIDCleared() {
+		_spec.ClearField(paymentorder.FieldCourseID, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
 	}
@@ -1425,6 +1461,33 @@ func (_u *PaymentOrderUpdateOne) AddSubscriptionDays(v int) *PaymentOrderUpdateO
 // ClearSubscriptionDays clears the value of the "subscription_days" field.
 func (_u *PaymentOrderUpdateOne) ClearSubscriptionDays() *PaymentOrderUpdateOne {
 	_u.mutation.ClearSubscriptionDays()
+	return _u
+}
+
+// SetCourseID sets the "course_id" field.
+func (_u *PaymentOrderUpdateOne) SetCourseID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetCourseID()
+	_u.mutation.SetCourseID(v)
+	return _u
+}
+
+// SetNillableCourseID sets the "course_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableCourseID(v *int64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetCourseID(*v)
+	}
+	return _u
+}
+
+// AddCourseID adds value to the "course_id" field.
+func (_u *PaymentOrderUpdateOne) AddCourseID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.AddCourseID(v)
+	return _u
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (_u *PaymentOrderUpdateOne) ClearCourseID() *PaymentOrderUpdateOne {
+	_u.mutation.ClearCourseID()
 	return _u
 }
 
@@ -2033,6 +2096,15 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if _u.mutation.SubscriptionDaysCleared() {
 		_spec.ClearField(paymentorder.FieldSubscriptionDays, field.TypeInt)
+	}
+	if value, ok := _u.mutation.CourseID(); ok {
+		_spec.SetField(paymentorder.FieldCourseID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedCourseID(); ok {
+		_spec.AddField(paymentorder.FieldCourseID, field.TypeInt64, value)
+	}
+	if _u.mutation.CourseIDCleared() {
+		_spec.ClearField(paymentorder.FieldCourseID, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)

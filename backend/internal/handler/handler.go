@@ -50,6 +50,7 @@ type AdminHandlers struct {
 	ImageTools             *admin.ImageToolsHandler
 	SiteHosting            *admin.SiteHostingHandler
 	Community              *admin.CommunityHandler
+	Course                 *admin.CourseHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -84,6 +85,7 @@ type Handlers struct {
 	CanvasSession    *CanvasSessionHandler
 	CanvasCloud      *CanvasCloudHandler
 	Community        *CommunityHandler
+	Course           *CourseHandler
 }
 
 // BuildInfo contains build-time information

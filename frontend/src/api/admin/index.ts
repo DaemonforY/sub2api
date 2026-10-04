@@ -42,6 +42,7 @@ import promptLibraryAPI from './promptLibrary'
 import imageToolsAPI from './imageTools'
 import sitesAPI from './sites'
 import communityAPI from './community'
+import coursesAPI from './courses'
 
 /**
  * Unified admin API object for convenient access
@@ -85,7 +86,8 @@ export const adminAPI = {
   promptLibrary: promptLibraryAPI,
   imageTools: imageToolsAPI,
   sites: sitesAPI,
-  community: communityAPI
+  community: communityAPI,
+  courses: coursesAPI
 }
 
 export {

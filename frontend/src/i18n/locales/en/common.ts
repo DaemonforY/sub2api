@@ -215,6 +215,8 @@ export default {
     mySites: 'My sites',
     sitesAdmin: 'Site hosting',
     communityAdmin: 'Canvas community',
+    myCourses: 'My courses',
+    coursesAdmin: 'Courses',
   },
 
   // Auth

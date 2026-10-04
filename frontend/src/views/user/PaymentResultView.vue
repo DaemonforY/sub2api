@@ -87,7 +87,11 @@
           </div>
         </div>
         <!-- Actions -->
-        <div class="flex gap-3">
+        <div v-if="isCourseOrder" class="flex gap-3">
+          <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
+          <button class="btn btn-primary flex-1" data-testid="result-my-courses" @click="router.push('/my-courses')">{{ t('courses.mine.go') }}</button>
+        </div>
+        <div v-else class="flex gap-3">
           <button class="btn btn-secondary flex-1" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
           <button class="btn btn-primary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
         </div>
@@ -194,6 +198,9 @@ function normalizedOrderPaymentType(paymentType: string): string {
 function formatGatewayAmount(value: number): string {
   return formatPaymentAmount(value, currency.value, localeCode.value)
 }
+
+// Course orders lead to 我的课程 instead of back to top-up.
+const isCourseOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'course')
 
 function setResolvedOrder(nextOrder: ResolvedOrder | null): void {
   order.value = nextOrder

@@ -84,7 +84,11 @@ type CreateOrderRequest struct {
 	PaymentSource   string
 	OrderType       string
 	PlanID          int64
-	Locale          string
+	// CourseID: the course of an order_type = course order.
+	CourseID int64
+	Locale   string
+	// courseTitle names the payment of a course order (set while validating).
+	courseTitle string
 }
 
 type CreateOrderResponse struct {
@@ -199,12 +203,18 @@ type PaymentService struct {
 	affiliateService         *AffiliateService
 	notificationEmailService *NotificationEmailService
 	growthService            *GrowthService
+	courses                  *CourseService
 }
 
 func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService) *PaymentService {
 	svc := &PaymentService{entClient: entClient, registry: registry, loadBalancer: newVisibleMethodLoadBalancer(loadBalancer, configService), redeemService: redeemService, subscriptionSvc: subscriptionSvc, configService: configService, userRepo: userRepo, groupRepo: groupRepo, affiliateService: affiliateService}
 	svc.resumeService = psNewPaymentResumeService(configService)
 	return svc
+}
+
+// SetCourseService enables course orders.
+func (s *PaymentService) SetCourseService(courses *CourseService) {
+	s.courses = courses
 }
 
 // SetGrowthService enables education-discounted plan prices and the invitee first-order bonus.

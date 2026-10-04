@@ -13,6 +13,7 @@ import promptLibrary from './promptLibrary'
 import imageTools from './imageTools'
 import sites from './sites'
 import community from './community'
+import courses from './courses'
 
 export default {
   ...overview,
@@ -30,4 +31,5 @@ export default {
   ...imageTools,
   ...sites,
   ...community,
+  ...courses,
 }

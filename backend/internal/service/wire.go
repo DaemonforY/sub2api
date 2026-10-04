@@ -655,6 +655,15 @@ func ProvideCommunityService(repo CommunityRepository, settings SettingRepositor
 	return svc
 }
 
+// ProvideCourseService wires paid courses; images live beside the community's (community.dir/../courses).
+func ProvideCourseService(repo CourseRepository, encryptor SecretEncryptor, cfg *config.Config) *CourseService {
+	dir := "./data/courses"
+	if cfg != nil && cfg.Community.Dir != "" {
+		dir = filepath.Join(filepath.Dir(filepath.Clean(cfg.Community.Dir)), "courses")
+	}
+	return NewCourseService(repo, NewCommunityMediaStore(dir), encryptor)
+}
+
 // ProvideSiteHostingService wires static-site hosting (SITES_DOMAIN enables it) and starts the hourly
 // subscription / renewal maintenance.
 func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *SiteHostingService {
@@ -1085,6 +1094,7 @@ var ProviderSet = wire.NewSet(
 	ProvideCanvasSessionService,
 	ProvideCanvasCloudService,
 	ProvideCommunityService,
+	ProvideCourseService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,
@@ -1118,10 +1128,11 @@ func ProvideBalanceNotifyService(emailService *EmailService, settingRepo Setting
 }
 
 // ProvidePaymentService creates PaymentService and attaches notification email delivery.
-func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService, notificationEmailService *NotificationEmailService, growthService *GrowthService) *PaymentService {
+func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService, notificationEmailService *NotificationEmailService, growthService *GrowthService, courses *CourseService) *PaymentService {
 	svc := NewPaymentService(entClient, registry, loadBalancer, redeemService, subscriptionSvc, configService, userRepo, groupRepo, affiliateService)
 	svc.SetNotificationEmailService(notificationEmailService)
 	svc.SetGrowthService(growthService)
+	svc.SetCourseService(courses)
 	return svc
 }
 

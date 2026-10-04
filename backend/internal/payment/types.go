@@ -44,6 +44,8 @@ const (
 const (
 	OrderTypeBalance      = "balance"
 	OrderTypeSubscription = "subscription"
+	// OrderTypeCourse buys a paid course (course_id); fulfilment opens it for the buyer.
+	OrderTypeCourse = "course"
 )
 
 // Entity statuses shared across users, groups, etc.

@@ -30,6 +30,7 @@ const showSuccess = vi.hoisted(() => vi.fn())
 const authUser = vi.hoisted(() => ({ username: 'demo-user', balance: 0 }))
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
+const getCourse = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -88,6 +89,10 @@ vi.mock('@/api/payment', () => ({
     getCheckoutInfo,
     purchaseSubscriptionWithBalance,
   },
+}))
+
+vi.mock('@/api/courses', () => ({
+  getCourse,
 }))
 
 vi.mock('@/utils/device', () => ({
@@ -786,5 +791,68 @@ describe('PaymentView pay subscription with balance', () => {
     expect(showSuccess).toHaveBeenCalledWith('payment.balancePay.success')
     expect(refreshUser).toHaveBeenCalled()
     expect(fetchActiveSubscriptions).toHaveBeenCalledWith(true)
+  })
+})
+
+describe('PaymentView course checkout', () => {
+  const course = {
+    id: 5, slug: 'ai-agent', title: 'AI Agent 实战', subtitle: '', category: '', cover_url: '', price: 199, original_price: 299,
+    outline: [], status: 'published', sort_order: 0, lesson_count: 3, student_count: 0, owned: false, created_at: '', updated_at: '',
+  }
+
+  async function mountCourse(query: Record<string, unknown>, found: Record<string, unknown> = course) {
+    vi.useRealTimers()
+    routeState.path = '/purchase'
+    routeState.query = query
+    routerReplace.mockReset().mockResolvedValue(undefined)
+    routerPush.mockReset().mockResolvedValue(undefined)
+    createOrder.mockReset()
+    showInfo.mockReset()
+    showError.mockReset()
+    getCourse.mockReset().mockResolvedValue(found)
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
+    window.localStorage.clear()
+    const wrapper = shallowMount(PaymentView, {
+      global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Teleport: true, Transition: false } },
+    })
+    await flushPromises()
+    await flushPromises()
+    return wrapper
+  }
+
+  it('orders the course only after the refund terms are accepted', async () => {
+    createOrder.mockResolvedValue(oauthOrderFixture())
+    const wrapper = await mountCourse({ course: 'ai-agent' })
+    expect(getCourse).toHaveBeenCalledWith('ai-agent')
+    expect(wrapper.find('[data-testid="course-checkout"]').text()).toContain('AI Agent 实战')
+    const pay = wrapper.get('[data-testid="course-pay"]')
+    expect(pay.attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-testid="course-agree"]').setValue(true)
+    expect(wrapper.get('[data-testid="course-pay"]').attributes('disabled')).toBeUndefined()
+    await wrapper.get('[data-testid="course-pay"]').trigger('click')
+    await flushPromises()
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({ order_type: 'course', course_id: 5, amount: 199 }))
+  })
+
+  it('sends a bought course to 我的课程', async () => {
+    await mountCourse({ course: 'ai-agent' }, { ...course, owned: true })
+    expect(showInfo).toHaveBeenCalledWith('courses.checkout.owned')
+    expect(routerReplace).toHaveBeenCalledWith('/my-courses')
+    expect(createOrder).not.toHaveBeenCalled()
+  })
+
+  it('keeps the course through the WeChat sign-in round trip', async () => {
+    createOrder.mockResolvedValue(oauthOrderFixture())
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', { configurable: true, value: { href: 'http://localhost/purchase', origin: 'http://localhost' } })
+    await mountCourse({
+      course: 'ai-agent', wechat_resume: '1', wechat_resume_token: 'resume-course-5', payment_type: 'wxpay', order_type: 'course', course_id: '5',
+    })
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({
+      order_type: 'course', course_id: 5, wechat_resume_token: 'resume-course-5',
+    }))
+    expect(routerReplace).toHaveBeenCalledWith({ path: '/purchase', query: { course: 'ai-agent' } })
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
   })
 })

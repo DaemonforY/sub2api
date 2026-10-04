@@ -6,7 +6,7 @@
       </div>
       <template v-else>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
             class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
@@ -33,8 +33,59 @@
         </template>
         <!-- Tab content (select phase) -->
         <template v-else>
+          <!-- Course checkout (/purchase?course=<slug>) -->
+          <template v-if="course">
+            <div class="card flex gap-4 p-5" data-testid="course-checkout">
+              <img v-if="course.cover_url" :src="course.cover_url" alt="" class="h-20 w-32 shrink-0 rounded-lg object-cover" />
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('courses.checkout.label') }}</p>
+                <h3 class="mt-1 truncate text-lg font-bold text-gray-900 dark:text-white">{{ course.title }}</h3>
+                <p v-if="course.subtitle" class="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">{{ course.subtitle }}</p>
+                <div class="mt-2 flex items-baseline gap-2">
+                  <span v-if="course.original_price" class="text-sm text-gray-400 line-through">{{ formatCny(course.original_price) }}</span>
+                  <span class="text-2xl font-bold text-primary-600 dark:text-primary-400">{{ formatCny(course.price) }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
+              <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
+            </div>
+            <template v-else>
+              <div class="card p-6">
+                <PaymentMethodSelector :methods="courseMethodOptions" :selected="selectedMethod" @select="selectedMethod = $event" />
+              </div>
+              <div v-if="feeRate > 0" class="card p-6">
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatCny(course.price) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatCny(courseFeeAmount) }}</span>
+                  </div>
+                  <div class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
+                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatCny(courseTotalAmount) }}</span>
+                  </div>
+                </div>
+              </div>
+              <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <input v-model="courseAgree" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0" data-testid="course-agree" />
+                <span>{{ t('courses.checkout.agree') }}</span>
+              </label>
+              <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitCourse || submitting" data-testid="course-pay" @click="confirmCourse">
+                <span v-if="submitting" class="flex items-center justify-center gap-2">
+                  <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  {{ t('common.processing') }}
+                </span>
+                <span v-else>{{ t('payment.createOrder') }} {{ formatCny(courseTotalAmount) }}</span>
+              </button>
+            </template>
+            <button class="btn btn-secondary w-full" @click="leaveCourse">{{ t('common.cancel') }}</button>
+          </template>
           <!-- Top-up Tab -->
-          <template v-if="activeTab === 'recharge'">
+          <template v-else-if="activeTab === 'recharge'">
             <!-- Recharge Account Card -->
             <div class="card p-5">
               <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
@@ -336,6 +387,7 @@ import { planValiditySuffix as validitySuffixOf } from '@/components/payment/val
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'
 import { buildPaymentErrorToastMessage, describePaymentScenarioError } from './paymentUx'
 import { hasWechatResumeQuery, parseWechatResumeRoute, stripWechatResumeQuery } from './paymentWechatResume'
+import { getCourse, type Course } from '@/api/courses'
 
 const i18n = useI18n()
 const { t } = i18n
@@ -375,6 +427,7 @@ const previewImage = ref('')
 const paymentPhase = ref<'select' | 'paying'>('select')
 
 interface CreateOrderOptions {
+  courseId?: number
   openid?: string
   wechatResumeToken?: string
   paymentType?: string
@@ -485,7 +538,7 @@ async function redirectToPaymentResult(state: PaymentRecoverySnapshot): Promise<
 
 function buildWechatOAuthAuthorizeUrl(
   authorizeUrl: string,
-  context: { paymentType: string; orderType: OrderType; planId?: number; orderAmount: number },
+  context: { paymentType: string; orderType: OrderType; planId?: number; courseId?: number; orderAmount: number },
 ): string {
   const normalizedUrl = authorizeUrl.trim()
   if (!normalizedUrl || typeof window === 'undefined') {
@@ -505,6 +558,11 @@ function buildWechatOAuthAuthorizeUrl(
       redirectUrl.searchParams.set('plan_id', String(context.planId))
     } else {
       redirectUrl.searchParams.delete('plan_id')
+    }
+    if (context.courseId) {
+      redirectUrl.searchParams.set('course_id', String(context.courseId))
+    } else {
+      redirectUrl.searchParams.delete('course_id')
     }
 
     if (context.orderAmount > 0) {
@@ -781,6 +839,75 @@ function planPeakRateLabel(plan: SubscriptionPlan): string {
   return formatPeakRateWindow(plan, serverTimezoneLabel(appStore.cachedPublicSettings?.server_utc_offset))
 }
 
+// --- Course checkout (/purchase?course=<slug>) ---
+const course = ref<Course | null>(null)
+const courseAgree = ref(false)
+
+// Courses are priced and paid in CNY.
+function formatCny(value: number): string {
+  return formatPaymentAmount(value, DEFAULT_PAYMENT_CURRENCY, localeCode.value)
+}
+
+const courseFeeAmount = computed(() => {
+  const price = course.value?.price ?? 0
+  if (feeRate.value <= 0 || price <= 0) return 0
+  return ceilPaymentAmount((price * feeRate.value) / 100, DEFAULT_PAYMENT_CURRENCY)
+})
+const courseTotalAmount = computed(() => roundPaymentAmount((course.value?.price ?? 0) + courseFeeAmount.value, DEFAULT_PAYMENT_CURRENCY))
+
+const courseMethodOptions = computed<PaymentMethodOption[]>(() =>
+  enabledMethods.value.map((type) => {
+    const ml = visibleMethods.value[type]
+    return {
+      type,
+      display_name: ml?.display_name,
+      fee_rate: ml?.fee_rate ?? 0,
+      available: ml?.available !== false
+        && normalizePaymentCurrency(ml?.currency) === DEFAULT_PAYMENT_CURRENCY
+        && amountFitsMethod(courseTotalAmount.value, type),
+    }
+  })
+)
+
+const canSubmitCourse = computed(() =>
+  course.value !== null
+    && courseAgree.value
+    && courseMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)
+)
+
+async function confirmCourse() {
+  if (!course.value || !canSubmitCourse.value || submitting.value) return
+  await createOrder(course.value.price, 'course', undefined, { courseId: course.value.id })
+}
+
+function leaveCourse() {
+  const slug = course.value?.slug
+  course.value = null
+  router.push(slug ? `/courses/${slug}` : '/courses')
+}
+
+// Opens the course checkout; a bought course goes to 我的课程 instead.
+async function loadCourseFromQuery(): Promise<void> {
+  const slug = typeof route.query.course === 'string' ? route.query.course.trim() : ''
+  if (!slug) return
+  try {
+    const found = await getCourse(slug)
+    if (found.owned) {
+      appStore.showInfo(t('courses.checkout.owned'))
+      await router.replace('/my-courses')
+      return
+    }
+    course.value = found
+    // Pick a CNY method when the default one is not.
+    const usable = courseMethodOptions.value.find(m => m.available)
+    if (usable && !courseMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)) {
+      selectedMethod.value = usable.type
+    }
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('courses.loadFailed')))
+  }
+}
+
 // --- Pay with balance ---
 const showBalanceConfirm = ref(false)
 const balanceCost = computed(() => selectedPlan.value?.balance_price ?? 0)
@@ -863,6 +990,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       paymentType: requestType,
       orderType,
       planId,
+      courseId: options.courseId,
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: isMobileDevice(),
       isWechatBrowser: typeof window !== 'undefined' && /MicroMessenger/i.test(window.navigator.userAgent),
@@ -927,6 +1055,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
         paymentType: visibleMethod,
         orderType,
         planId,
+        courseId: options.courseId,
         orderAmount,
       })
       return
@@ -968,6 +1097,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
               orderAmount,
               orderType,
               planId,
+              courseId: options.courseId,
               paymentType: visibleMethod,
               attempted: options.mobileQrFallbackAttempted === true,
             },
@@ -986,6 +1116,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
           orderAmount,
           orderType,
           planId,
+          courseId: options.courseId,
           paymentType: visibleMethod,
           attempted: options.mobileQrFallbackAttempted === true,
         })
@@ -1015,6 +1146,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       orderAmount,
       orderType,
       planId,
+      courseId: options.courseId,
       paymentType: requestType,
       attempted: options.mobileQrFallbackAttempted === true,
     })) {
@@ -1042,6 +1174,7 @@ interface MobileQrFallbackContext {
   orderAmount: number
   orderType: OrderType
   planId?: number
+  courseId?: number
   paymentType: string
   attempted: boolean
 }
@@ -1091,6 +1224,7 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
       paymentType: visibleMethod,
       orderType: context.orderType,
       planId: context.planId,
+      courseId: context.courseId,
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: false,
       isWechatBrowser: false,
@@ -1166,8 +1300,11 @@ async function resumeWechatPaymentFromQuery() {
 
   await router.replace({ path: route.path, query: stripWechatResumeQuery(route.query) })
 
+  const courseId = resume.orderType === 'course' ? resume.courseId ?? course.value?.id : undefined
+
   if (resume.wechatResumeToken) {
     await createOrder(0, resume.orderType, resume.planId, {
+      courseId,
       wechatResumeToken: resume.wechatResumeToken,
       paymentType: resume.paymentType,
       isResume: true,
@@ -1177,6 +1314,7 @@ async function resumeWechatPaymentFromQuery() {
 
   if (resume.orderAmount > 0 && resume.openid) {
     await createOrder(resume.orderAmount, resume.orderType, resume.planId, {
+      courseId,
       openid: resume.openid,
       paymentType: resume.paymentType,
       isResume: true,
@@ -1222,6 +1360,7 @@ onMounted(async () => {
         removeRecoverySnapshot()
       }
     }
+    await loadCourseFromQuery()
     await resumeWechatPaymentFromQuery()
     if (checkout.value.balance_disabled) {
       activeTab.value = 'subscription'

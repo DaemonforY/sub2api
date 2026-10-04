@@ -87,6 +87,10 @@ func (PaymentOrder) Fields() []ent.Field {
 		field.Int("subscription_days").
 			Optional().
 			Nillable(),
+		// course_id: the course bought by an order_type = course order.
+		field.Int64("course_id").
+			Optional().
+			Nillable(),
 		field.String("provider_instance_id").
 			Optional().
 			Nillable().

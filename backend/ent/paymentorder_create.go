@@ -211,6 +211,20 @@ func (_c *PaymentOrderCreate) SetNillableSubscriptionDays(v *int) *PaymentOrderC
 	return _c
 }
 
+// SetCourseID sets the "course_id" field.
+func (_c *PaymentOrderCreate) SetCourseID(v int64) *PaymentOrderCreate {
+	_c.mutation.SetCourseID(v)
+	return _c
+}
+
+// SetNillableCourseID sets the "course_id" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableCourseID(v *int64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetCourseID(*v)
+	}
+	return _c
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (_c *PaymentOrderCreate) SetProviderInstanceID(v string) *PaymentOrderCreate {
 	_c.mutation.SetProviderInstanceID(v)
@@ -769,6 +783,10 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 		_spec.SetField(paymentorder.FieldSubscriptionDays, field.TypeInt, value)
 		_node.SubscriptionDays = &value
 	}
+	if value, ok := _c.mutation.CourseID(); ok {
+		_spec.SetField(paymentorder.FieldCourseID, field.TypeInt64, value)
+		_node.CourseID = &value
+	}
 	if value, ok := _c.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
 		_node.ProviderInstanceID = &value
@@ -1213,6 +1231,30 @@ func (u *PaymentOrderUpsert) AddSubscriptionDays(v int) *PaymentOrderUpsert {
 // ClearSubscriptionDays clears the value of the "subscription_days" field.
 func (u *PaymentOrderUpsert) ClearSubscriptionDays() *PaymentOrderUpsert {
 	u.SetNull(paymentorder.FieldSubscriptionDays)
+	return u
+}
+
+// SetCourseID sets the "course_id" field.
+func (u *PaymentOrderUpsert) SetCourseID(v int64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldCourseID, v)
+	return u
+}
+
+// UpdateCourseID sets the "course_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateCourseID() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldCourseID)
+	return u
+}
+
+// AddCourseID adds v to the "course_id" field.
+func (u *PaymentOrderUpsert) AddCourseID(v int64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldCourseID, v)
+	return u
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (u *PaymentOrderUpsert) ClearCourseID() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldCourseID)
 	return u
 }
 
@@ -1925,6 +1967,34 @@ func (u *PaymentOrderUpsertOne) UpdateSubscriptionDays() *PaymentOrderUpsertOne 
 func (u *PaymentOrderUpsertOne) ClearSubscriptionDays() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.ClearSubscriptionDays()
+	})
+}
+
+// SetCourseID sets the "course_id" field.
+func (u *PaymentOrderUpsertOne) SetCourseID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCourseID(v)
+	})
+}
+
+// AddCourseID adds v to the "course_id" field.
+func (u *PaymentOrderUpsertOne) AddCourseID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddCourseID(v)
+	})
+}
+
+// UpdateCourseID sets the "course_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateCourseID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCourseID()
+	})
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (u *PaymentOrderUpsertOne) ClearCourseID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearCourseID()
 	})
 }
 
@@ -2857,6 +2927,34 @@ func (u *PaymentOrderUpsertBulk) UpdateSubscriptionDays() *PaymentOrderUpsertBul
 func (u *PaymentOrderUpsertBulk) ClearSubscriptionDays() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.ClearSubscriptionDays()
+	})
+}
+
+// SetCourseID sets the "course_id" field.
+func (u *PaymentOrderUpsertBulk) SetCourseID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetCourseID(v)
+	})
+}
+
+// AddCourseID adds v to the "course_id" field.
+func (u *PaymentOrderUpsertBulk) AddCourseID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddCourseID(v)
+	})
+}
+
+// UpdateCourseID sets the "course_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateCourseID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateCourseID()
+	})
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (u *PaymentOrderUpsertBulk) ClearCourseID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearCourseID()
 	})
 }
 

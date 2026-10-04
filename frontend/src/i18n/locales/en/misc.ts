@@ -522,6 +522,7 @@ export default {
       orders: 'Orders',
       balanceOrder: 'Balance Top-Up',
       subscriptionOrder: 'Subscription',
+      courseOrder: 'Course',
       paidAt: 'Paid At',
       completedAt: 'Completed At',
       expiresAt: 'Expires At',

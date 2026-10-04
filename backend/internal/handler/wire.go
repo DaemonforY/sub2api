@@ -54,6 +54,7 @@ func ProvideAdminHandlers(
 	adminImageToolsHandler *admin.ImageToolsHandler,
 	adminSiteHostingHandler *admin.SiteHostingHandler,
 	adminCommunityHandler *admin.CommunityHandler,
+	adminCourseHandler *admin.CourseHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
 ) *AdminHandlers {
@@ -103,6 +104,7 @@ func ProvideAdminHandlers(
 		ImageTools:             adminImageToolsHandler,
 		SiteHosting:            adminSiteHostingHandler,
 		Community:              adminCommunityHandler,
+		Course:                 adminCourseHandler,
 	}
 }
 
@@ -217,6 +219,7 @@ func ProvideHandlers(
 	canvasSessionHandler *CanvasSessionHandler,
 	canvasCloudHandler *CanvasCloudHandler,
 	communityHandler *CommunityHandler,
+	courseHandler *CourseHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -252,6 +255,7 @@ func ProvideHandlers(
 		CanvasSession:    canvasSessionHandler,
 		CanvasCloud:      canvasCloudHandler,
 		Community:        communityHandler,
+		Course:           courseHandler,
 	}
 }
 
@@ -287,6 +291,7 @@ var ProviderSet = wire.NewSet(
 	NewCanvasSessionHandler,
 	NewCanvasCloudHandler,
 	NewCommunityHandler,
+	NewCourseHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,
@@ -330,6 +335,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewImageToolsHandler,
 	admin.NewSiteHostingHandler,
 	admin.NewCommunityHandler,
+	admin.NewCourseHandler,
 	admin.NewGrowthHandler,
 
 	// AdminHandlers and Handlers constructors

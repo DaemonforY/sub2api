@@ -136,6 +136,7 @@ func RegisterAdminRoutes(
 		registerImageToolsAdminRoutes(admin, h)
 		registerSiteHostingAdminRoutes(admin, h)
 		registerCommunityAdminRoutes(admin, h)
+		registerCourseAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -217,6 +218,28 @@ func registerCommunityAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.POST("/comments/:id/moderate", h.Admin.Community.ModerateComment)
 		g.GET("/settings", h.Admin.Community.Settings)
 		g.PUT("/settings", h.Admin.Community.SaveSettings)
+	}
+}
+
+// registerCourseAdminRoutes 付费课程：课程编辑、封面与配图、网盘发货信息（版本）、学员开通 / 收回。
+func registerCourseAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.Course == nil {
+		return
+	}
+	g := admin.Group("/courses")
+	{
+		g.GET("", h.Admin.Course.List)
+		g.POST("", h.Admin.Course.Create)
+		g.POST("/images", h.Admin.Course.UploadImage)
+		g.GET("/:id", h.Admin.Course.Get)
+		g.PUT("/:id", h.Admin.Course.Update)
+		g.DELETE("/:id", h.Admin.Course.Delete)
+		g.POST("/:id/cover", h.Admin.Course.Cover)
+		g.GET("/:id/deliveries", h.Admin.Course.Deliveries)
+		g.POST("/:id/deliveries", h.Admin.Course.SaveDelivery)
+		g.GET("/:id/enrollments", h.Admin.Course.Enrollments)
+		g.POST("/:id/enrollments", h.Admin.Course.Grant)
+		g.DELETE("/:id/enrollments/:user_id", h.Admin.Course.Revoke)
 	}
 }
 

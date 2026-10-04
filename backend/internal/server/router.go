@@ -130,6 +130,7 @@ func registerRoutes(
 	routes.RegisterUserRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter)
 	routes.RegisterModelPlazaRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterContestRoutes(v1, h, jwtAuth, optionalJWTAuth, apiKeyAuth, settingService, panelRateLimiter)
+	routes.RegisterCourseRoutes(v1, h, jwtAuth, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterGrowthRoutes(v1, h, settingService, panelRateLimiter)
 	routes.RegisterAppStateRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
 	routes.RegisterPromptLibraryRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)

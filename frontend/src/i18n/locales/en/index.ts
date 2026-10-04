@@ -9,6 +9,7 @@ import contests from './contests'
 import growth from './growth'
 import imageToolUses from './imageToolUses'
 import sites from './sites'
+import courses from './courses'
 
 export default {
   ...landing,
@@ -22,4 +23,5 @@ export default {
   ...growth,
   ...imageToolUses,
   ...sites,
+  ...courses,
 }

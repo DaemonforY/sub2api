@@ -260,6 +260,7 @@ type CreateOrderRequest struct {
 	PaymentSource     string  `json:"payment_source"`
 	OrderType         string  `json:"order_type"`
 	PlanID            int64   `json:"plan_id"`
+	CourseID          int64   `json:"course_id"`
 	// IsMobile lets the frontend declare its mobile status directly. When
 	// nil we fall back to User-Agent heuristics (which miss iPadOS / some
 	// embedded browsers that strip the "Mobile" keyword).
@@ -309,6 +310,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		PaymentSource:   req.PaymentSource,
 		OrderType:       req.OrderType,
 		PlanID:          req.PlanID,
+		CourseID:        req.CourseID,
 		Locale:          c.GetHeader("Accept-Language"),
 	})
 	if err != nil {
@@ -352,6 +354,9 @@ func applyWeChatPaymentResumeClaims(req *CreateOrderRequest, claims *service.WeC
 	}
 	if claims.PlanID > 0 {
 		req.PlanID = claims.PlanID
+	}
+	if claims.CourseID > 0 {
+		req.CourseID = claims.CourseID
 	}
 	return nil
 }
@@ -545,6 +550,7 @@ type PublicOrderResult struct {
 	RefundRequestedBy   *string    `json:"refund_requested_by,omitempty"`
 	RefundRequestReason *string    `json:"refund_request_reason,omitempty"`
 	PlanID              *int64     `json:"plan_id,omitempty"`
+	CourseID            *int64     `json:"course_id,omitempty"`
 }
 
 // PublicOrderVerifyResult is returned by the legacy anonymous out_trade_no
@@ -580,6 +586,7 @@ func buildPublicOrderResult(order *dbent.PaymentOrder) PublicOrderResult {
 		RefundRequestedBy:   order.RefundRequestedBy,
 		RefundRequestReason: order.RefundRequestReason,
 		PlanID:              order.PlanID,
+		CourseID:            order.CourseID,
 	}
 }
 
@@ -689,6 +696,7 @@ type PaymentOrderResult struct {
 	RefundRequestedBy   *string    `json:"refund_requested_by,omitempty"`
 	RefundRequestReason *string    `json:"refund_request_reason,omitempty"`
 	PlanID              *int64     `json:"plan_id,omitempty"`
+	CourseID            *int64     `json:"course_id,omitempty"`
 	ProviderInstanceID  *string    `json:"provider_instance_id,omitempty"`
 }
 
@@ -727,6 +735,7 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 		RefundRequestedBy:   order.RefundRequestedBy,
 		RefundRequestReason: order.RefundRequestReason,
 		PlanID:              order.PlanID,
+		CourseID:            order.CourseID,
 		ProviderInstanceID:  order.ProviderInstanceID,
 	}
 }

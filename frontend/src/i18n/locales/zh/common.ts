@@ -215,6 +215,8 @@ export default {
     mySites: '我的网站',
     sitesAdmin: '网站托管',
     communityAdmin: '画布社区',
+    myCourses: '我的课程',
+    coursesAdmin: '课程管理',
   },
 
   // Auth

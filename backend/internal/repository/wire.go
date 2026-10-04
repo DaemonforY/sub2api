@@ -99,6 +99,7 @@ var ProviderSet = wire.NewSet(
 	NewCanvasSessionRepository,
 	NewCanvasCloudRepository,
 	NewCommunityRepository,
+	NewCourseRepository,
 	NewPasskeyRepository,
 	NewPasskeySessionStore,
 	NewUserSubscriptionRepository,

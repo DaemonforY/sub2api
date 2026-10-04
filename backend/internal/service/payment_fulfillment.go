@@ -221,6 +221,9 @@ func (s *PaymentService) executeFulfillment(ctx context.Context, oid int64) erro
 	if o.OrderType == payment.OrderTypeSubscription {
 		return s.ExecuteSubscriptionFulfillment(ctx, oid)
 	}
+	if o.OrderType == payment.OrderTypeCourse {
+		return s.ExecuteCourseFulfillment(ctx, oid)
+	}
 	return s.ExecuteBalanceFulfillment(ctx, oid)
 }
 
@@ -464,6 +467,38 @@ func (s *PaymentService) sendSubscriptionPurchaseSuccessNotification(ctx context
 		SourceID:       strconv.FormatInt(o.ID, 10),
 		Variables:      variables,
 	})
+}
+
+// ExecuteCourseFulfillment opens the bought course for the buyer.
+func (s *PaymentService) ExecuteCourseFulfillment(ctx context.Context, oid int64) error {
+	o, err := s.entClient.PaymentOrder.Get(ctx, oid)
+	if err != nil {
+		return infraerrors.NotFound("NOT_FOUND", "order not found")
+	}
+	if o.Status == OrderStatusCompleted {
+		return nil
+	}
+	if psIsRefundStatus(o.Status) {
+		return infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
+	}
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed && o.Status != OrderStatusRecharging {
+		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
+	}
+	if o.CourseID == nil || s.courses == nil {
+		return infraerrors.BadRequest("INVALID_STATUS", "missing course info")
+	}
+	lease, err := s.acquirePaymentFulfillmentLease(ctx, o)
+	if err != nil {
+		return err
+	}
+	if lease == nil {
+		return nil
+	}
+	if err := s.courses.EnrollFromOrder(ctx, o.UserID, *o.CourseID, o.ID); err != nil {
+		s.markFailed(ctx, oid, lease, err)
+		return err
+	}
+	return s.markCompleted(ctx, o, lease, "COURSE_SUCCESS")
 }
 
 func (s *PaymentService) ExecuteSubscriptionFulfillment(ctx context.Context, oid int64) error {

@@ -30127,6 +30127,8 @@ type PaymentOrderMutation struct {
 	addsubscription_group_id *int64
 	subscription_days        *int
 	addsubscription_days     *int
+	course_id                *int64
+	addcourse_id             *int64
 	provider_instance_id     *string
 	provider_key             *string
 	provider_snapshot        *map[string]interface{}
@@ -31115,6 +31117,76 @@ func (m *PaymentOrderMutation) ResetSubscriptionDays() {
 	m.subscription_days = nil
 	m.addsubscription_days = nil
 	delete(m.clearedFields, paymentorder.FieldSubscriptionDays)
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *PaymentOrderMutation) SetCourseID(i int64) {
+	m.course_id = &i
+	m.addcourse_id = nil
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *PaymentOrderMutation) CourseID() (r int64, exists bool) {
+	v := m.course_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the PaymentOrder entity.
+// If the PaymentOrder object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentOrderMutation) OldCourseID(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// AddCourseID adds i to the "course_id" field.
+func (m *PaymentOrderMutation) AddCourseID(i int64) {
+	if m.addcourse_id != nil {
+		*m.addcourse_id += i
+	} else {
+		m.addcourse_id = &i
+	}
+}
+
+// AddedCourseID returns the value that was added to the "course_id" field in this mutation.
+func (m *PaymentOrderMutation) AddedCourseID() (r int64, exists bool) {
+	v := m.addcourse_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (m *PaymentOrderMutation) ClearCourseID() {
+	m.course_id = nil
+	m.addcourse_id = nil
+	m.clearedFields[paymentorder.FieldCourseID] = struct{}{}
+}
+
+// CourseIDCleared returns if the "course_id" field was cleared in this mutation.
+func (m *PaymentOrderMutation) CourseIDCleared() bool {
+	_, ok := m.clearedFields[paymentorder.FieldCourseID]
+	return ok
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *PaymentOrderMutation) ResetCourseID() {
+	m.course_id = nil
+	m.addcourse_id = nil
+	delete(m.clearedFields, paymentorder.FieldCourseID)
 }
 
 // SetProviderInstanceID sets the "provider_instance_id" field.
@@ -32123,7 +32195,7 @@ func (m *PaymentOrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentOrderMutation) Fields() []string {
-	fields := make([]string, 0, 39)
+	fields := make([]string, 0, 40)
 	if m.user != nil {
 		fields = append(fields, paymentorder.FieldUserID)
 	}
@@ -32177,6 +32249,9 @@ func (m *PaymentOrderMutation) Fields() []string {
 	}
 	if m.subscription_days != nil {
 		fields = append(fields, paymentorder.FieldSubscriptionDays)
+	}
+	if m.course_id != nil {
+		fields = append(fields, paymentorder.FieldCourseID)
 	}
 	if m.provider_instance_id != nil {
 		fields = append(fields, paymentorder.FieldProviderInstanceID)
@@ -32285,6 +32360,8 @@ func (m *PaymentOrderMutation) Field(name string) (ent.Value, bool) {
 		return m.SubscriptionGroupID()
 	case paymentorder.FieldSubscriptionDays:
 		return m.SubscriptionDays()
+	case paymentorder.FieldCourseID:
+		return m.CourseID()
 	case paymentorder.FieldProviderInstanceID:
 		return m.ProviderInstanceID()
 	case paymentorder.FieldProviderKey:
@@ -32372,6 +32449,8 @@ func (m *PaymentOrderMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldSubscriptionGroupID(ctx)
 	case paymentorder.FieldSubscriptionDays:
 		return m.OldSubscriptionDays(ctx)
+	case paymentorder.FieldCourseID:
+		return m.OldCourseID(ctx)
 	case paymentorder.FieldProviderInstanceID:
 		return m.OldProviderInstanceID(ctx)
 	case paymentorder.FieldProviderKey:
@@ -32549,6 +32628,13 @@ func (m *PaymentOrderMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSubscriptionDays(v)
 		return nil
+	case paymentorder.FieldCourseID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
 	case paymentorder.FieldProviderInstanceID:
 		v, ok := value.(string)
 		if !ok {
@@ -32722,6 +32808,9 @@ func (m *PaymentOrderMutation) AddedFields() []string {
 	if m.addsubscription_days != nil {
 		fields = append(fields, paymentorder.FieldSubscriptionDays)
 	}
+	if m.addcourse_id != nil {
+		fields = append(fields, paymentorder.FieldCourseID)
+	}
 	if m.addrefund_amount != nil {
 		fields = append(fields, paymentorder.FieldRefundAmount)
 	}
@@ -32745,6 +32834,8 @@ func (m *PaymentOrderMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSubscriptionGroupID()
 	case paymentorder.FieldSubscriptionDays:
 		return m.AddedSubscriptionDays()
+	case paymentorder.FieldCourseID:
+		return m.AddedCourseID()
 	case paymentorder.FieldRefundAmount:
 		return m.AddedRefundAmount()
 	}
@@ -32798,6 +32889,13 @@ func (m *PaymentOrderMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddSubscriptionDays(v)
 		return nil
+	case paymentorder.FieldCourseID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCourseID(v)
+		return nil
 	case paymentorder.FieldRefundAmount:
 		v, ok := value.(float64)
 		if !ok {
@@ -32833,6 +32931,9 @@ func (m *PaymentOrderMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(paymentorder.FieldSubscriptionDays) {
 		fields = append(fields, paymentorder.FieldSubscriptionDays)
+	}
+	if m.FieldCleared(paymentorder.FieldCourseID) {
+		fields = append(fields, paymentorder.FieldCourseID)
 	}
 	if m.FieldCleared(paymentorder.FieldProviderInstanceID) {
 		fields = append(fields, paymentorder.FieldProviderInstanceID)
@@ -32907,6 +33008,9 @@ func (m *PaymentOrderMutation) ClearField(name string) error {
 		return nil
 	case paymentorder.FieldSubscriptionDays:
 		m.ClearSubscriptionDays()
+		return nil
+	case paymentorder.FieldCourseID:
+		m.ClearCourseID()
 		return nil
 	case paymentorder.FieldProviderInstanceID:
 		m.ClearProviderInstanceID()
@@ -33008,6 +33112,9 @@ func (m *PaymentOrderMutation) ResetField(name string) error {
 		return nil
 	case paymentorder.FieldSubscriptionDays:
 		m.ResetSubscriptionDays()
+		return nil
+	case paymentorder.FieldCourseID:
+		m.ResetCourseID()
 		return nil
 	case paymentorder.FieldProviderInstanceID:
 		m.ResetProviderInstanceID()

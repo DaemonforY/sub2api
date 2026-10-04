@@ -54,4 +54,22 @@ describe('stripWechatResumeQuery', () => {
       foo: 'bar',
     })
   })
+
+  it('reads course orders back from the WeChat callback', () => {
+    expect(parseWechatResumeRoute({
+      wechat_resume: '1',
+      wechat_resume_token: 'resume-course',
+      payment_type: 'wxpay',
+      order_type: 'course',
+      course_id: '5',
+      course: 'ai-agent',
+    }, [], 0)).toEqual({
+      wechatResumeToken: 'resume-course',
+      paymentType: 'wxpay',
+      orderType: 'course',
+      orderAmount: 0,
+      courseId: 5,
+    })
+    expect(stripWechatResumeQuery({ course: 'ai-agent', course_id: '5', wechat_resume: '1' })).toEqual({ course: 'ai-agent' })
+  })
 })

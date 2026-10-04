@@ -177,6 +177,30 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/courses',
+    name: 'Courses',
+    component: () => import('@/views/CoursesView.vue'),
+    meta: { requiresAuth: false, title: 'Courses', titleKey: 'courses.title' }
+  },
+  {
+    path: '/courses/:slug([a-z0-9-]+)',
+    name: 'CourseDetail',
+    component: () => import('@/views/CourseDetailView.vue'),
+    meta: { requiresAuth: false, title: 'Course', titleKey: 'courses.title' }
+  },
+  {
+    path: '/my-courses',
+    name: 'MyCourses',
+    component: () => import('@/views/user/MyCoursesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'My courses',
+      titleKey: 'courses.mine.title',
+      descriptionKey: 'courses.mine.description'
+    }
+  },
+  {
     path: '/contests',
     name: 'Contests',
     component: () => import('@/views/ContestsView.vue'),
@@ -505,6 +529,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Prompt library',
       titleKey: 'admin.promptLibrary.title',
       descriptionKey: 'admin.promptLibrary.description'
+    }
+  },
+  {
+    path: '/admin/courses',
+    name: 'AdminCourses',
+    component: () => import('@/views/admin/CoursesView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Courses',
+      titleKey: 'admin.courses.title',
+      descriptionKey: 'admin.courses.description'
     }
   },
   {
