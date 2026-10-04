@@ -52,6 +52,19 @@ func TestLearnCatalogMatchesSite(t *testing.T) {
 			}
 		}
 	}
+	// Big-data interview pages: one per bigdata topic, using its own bank.
+	for _, id := range c.InterviewTopics {
+		if c.Interviews[id].Track != "bigdata" {
+			continue
+		}
+		page, err := os.ReadFile("../../../learn/bigdata/interview/" + id + ".md")
+		require.NoError(t, err, "interview page %s", id)
+		require.Contains(t, string(page), `<MockInterview topic="`+id+`" />`)
+		for _, q := range c.Interviews[id].Questions {
+			require.Contains(t, string(page), "### "+q.Q, "%s question %s on the page", id, q.ID)
+		}
+	}
+	require.Equal(t, []string{"llm", "agent", "rag", "design"}, c.certTopics()) // big-data topics don't count for track D
 
 	bad := strings.Replace(string(learnCatalogJSON), `"answer": [`, `"answer": [9, `, 1)
 	_, err = loadLearnCatalog([]byte(bad))
@@ -297,6 +310,7 @@ func TestLearnInterview(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		require.Contains(t, string(body), "json_schema")
 		require.Contains(t, string(body), "参考要点")
+		require.Contains(t, string(body), "AI 应用开发岗位")
 		grade, _ := json.Marshal(map[string]any{"score": score, "comment": "要点基本完整", "better": "1. …"})
 		resp, _ := json.Marshal(map[string]any{"model": "gpt-5.5", "choices": []any{map[string]any{"finish_reason": "stop", "message": map[string]any{"content": string(grade)}}}})
 		_, _ = w.Write(resp)

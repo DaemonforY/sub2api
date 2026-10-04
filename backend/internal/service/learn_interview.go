@@ -79,6 +79,7 @@ func (s *LearnService) interviewView(iv *LearnInterview) *LearnInterview {
 type LearnInterviewTopicView struct {
 	ID    string `json:"id"`
 	Title string `json:"title"`
+	Track string `json:"track"`
 	Count int    `json:"count"`
 	Best  int    `json:"best"`
 }
@@ -95,7 +96,7 @@ func (s *LearnService) InterviewTopics(ctx context.Context, userID int64) ([]Lea
 	out := make([]LearnInterviewTopicView, 0, len(s.catalog.InterviewTopics))
 	for _, id := range s.catalog.InterviewTopics {
 		t := s.catalog.Interviews[id]
-		out = append(out, LearnInterviewTopicView{ID: id, Title: t.Title, Count: len(t.Questions), Best: best[id]})
+		out = append(out, LearnInterviewTopicView{ID: id, Title: t.Title, Track: t.Track, Count: len(t.Questions), Best: best[id]})
 	}
 	return out, nil
 }
@@ -197,19 +198,19 @@ func (s *LearnService) AnswerInterview(ctx context.Context, userID, id int64, an
 		return nil, ErrLearnInterviewDone
 	}
 	q := s.findInterviewQuestion(iv.Topic, iv.Questions[len(iv.Answers)].ID)
-	topicTitle := s.catalog.Interviews[iv.Topic].Title
+	topic := s.catalog.Interviews[iv.Topic]
 
 	// Grading is part of the interview (the free count is per interview), so no free quota here.
 	call, st, err := s.acquire(ctx, userID, "d0", learnKindInterview, iv.KeyID, 0, nil)
 	if err != nil {
 		return nil, err
 	}
-	system := fmt.Sprintf(`你是 AI 应用开发岗位的技术面试官，正在进行「%s」方向的模拟面试。请为候选人对下面这道题的回答打分并点评。
+	system := fmt.Sprintf(`你是%s岗位的技术面试官，正在进行「%s」方向的模拟面试。请为候选人对下面这道题的回答打分并点评。
 评分标准（0–10 分）：0–3 没答到要点或有明显错误；4–6 答到部分要点；7–8 要点基本完整、表达清楚；9–10 完整准确，还有自己的实践和取舍。
 回答「不会」或与题目无关时给 0–1 分，并在 better 里讲清楚这道题该怎么答。
 点评要具体，指出答对了什么、缺了什么；不要因为回答长就给高分。用中文。
 题目：%s
-参考要点（候选人看不到）：%s`, topicTitle, q.Q, q.Points)
+参考要点（候选人看不到）：%s`, topic.Role, topic.Title, q.Q, q.Points)
 	in := LearnRunInput{Lesson: "d0", Messages: []LearnMessage{{Role: "system", Content: system}, {Role: "user", Content: "候选人的回答：\n" + answer}},
 		ResponseFormat: learnGradeSchema}
 	started := s.now()

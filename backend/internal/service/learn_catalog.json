@@ -1123,7 +1123,10 @@
   "llm",
   "agent",
   "rag",
-  "design"
+  "design",
+  "spark",
+  "flink",
+  "paimon"
  ],
  "interviews": {
   "llm": {
@@ -1179,7 +1182,9 @@
      "q": "推理模型（reasoning model）和普通对话模型有什么区别？什么场景值得用它？",
      "points": "回答前先生成较长的内部推理，靠强化学习训练出来；数学、代码、多步规划类任务更强；代价是更慢、更贵，推理 token 也计费；简单问答、抽取、改写不划算；可调推理强度；提示词写清目标和约束即可，不必要求一步步思考"
     }
-   ]
+   ],
+   "track": "d",
+   "role": "AI 应用开发"
   },
   "agent": {
    "title": "Agent",
@@ -1234,7 +1239,9 @@
      "q": "Agent 能调用真实工具后，会有哪些安全风险？你会加哪些防护？",
      "points": "风险：提示词注入，尤其是网页、文档、邮件里的间接注入；越权操作、误删数据、乱花钱、数据外泄；防护：最小权限的工具和凭据、权限在代码里校验、高风险操作人工确认、沙箱执行、外部内容只当数据、审计日志、频率和预算上限"
     }
-   ]
+   ],
+   "track": "d",
+   "role": "AI 应用开发"
   },
   "rag": {
    "title": "RAG",
@@ -1289,7 +1296,9 @@
      "q": "GraphRAG 是什么？什么场景下它比普通的向量 RAG 更合适？",
      "points": "用大模型从文档抽取实体和关系建成知识图谱，按社区聚类并生成分层摘要；适合跨文档的多跳关系问题和全局总结类问题；分局部查询和全局查询；代价：建图需要大量模型调用、成本高，增量更新难；多数事实问答普通 RAG 就够"
     }
-   ]
+   ],
+   "track": "d",
+   "role": "AI 应用开发"
   },
   "design": {
    "title": "AI 应用系统设计",
@@ -1343,6 +1352,179 @@
      "id": "design10",
      "q": "生成视频、处理长文档这类要跑几分钟的任务，你会怎么设计接口和后台？",
      "points": "异步：提交即返回任务 ID，客户端轮询，或用 Webhook、SSE 推送进度；消息队列加 worker，控制并发；任务状态持久化（排队、运行、成功、失败）；超时、重试和幂等键；结果存对象存储返回链接；支持取消；预扣费用，失败退还"
+    }
+   ],
+   "track": "d",
+   "role": "AI 应用开发"
+  },
+  "spark": {
+   "title": "Spark",
+   "track": "bigdata",
+   "role": "大数据开发",
+   "questions": [
+    {
+     "id": "spark1",
+     "q": "说说 Spark 中 Job、Stage、Task 的关系，Stage 是怎么按宽窄依赖切分的？",
+     "points": "Action 调 runJob 提交 Job；宽依赖处切 Stage，分 ResultStage 和 ShuffleMapStage；每个需计算的分区一个 Task；从后往前切、从前往后跑；coalesce 也是窄依赖；分区器相同不 Shuffle；take 可多 Job"
+    },
+    {
+     "id": "spark2",
+     "q": "DAGScheduler 和 TaskScheduler 各负责什么？说说数据本地性、延迟调度和推测执行。",
+     "points": "DAGScheduler 单线程事件循环，切 Stage、提交 TaskSet；TaskSetManager 按 FIFO/FAIR 分配；五级本地性；locality.wait 默认 3 秒后降级；推测执行默认关，完成 90% 且超中位数 3 倍才推测；解决不了倾斜"
+    },
+    {
+     "id": "spark3",
+     "q": "Spark 的 Shuffle 是怎么写和读的？SortShuffleManager 的三种 Writer 分别在什么条件下被选用？",
+     "points": "Hash Shuffle 已移除，每个 Map Task 写 data 和 index；Bypass：无预聚合且分区≤200；Unsafe：可重定位序列化、无预聚合、分区≤2^24，只排指针；否则 SortShuffleWriter 预聚合、溢写归并；读端查位置后拉取"
+    },
+    {
+     "id": "spark4",
+     "q": "Spark 的统一内存管理是怎么划分 Executor 内存的？Execution 和 Storage 之间怎么互相借用？",
+     "points": "堆减 300MB 后乘 0.6 为统一内存，Storage 保底占一半；Storage 只借 Execution 空闲内存；Execution 可驱逐缓存但只收回到边界；说明不对称原因；每 Task 1/2N 到 1/N；容器超限调 overhead"
+    },
+    {
+     "id": "spark5",
+     "q": "调用 rdd.cache() 之后数据存在哪、怎么被读出来？广播变量又是怎么分发到各个 Executor 的？",
+     "points": "缓存、Shuffle、广播都是块，BlockManager 管理、Master 记位置；cache 惰性，首次 Action 才写入；RDD 默认 MEMORY_ONLY、Dataset 默认 MEMORY_AND_DISK；LRU 淘汰；广播切 4m 块、随机拉取、拉到即成数据源"
+    },
+    {
+     "id": "spark6",
+     "q": "Task 失败、Executor 丢失和 FetchFailed 分别怎么处理？为什么非确定性 Stage 被重算可能让整个 Job 失败？",
+     "points": "Task 失败就地重试，默认 4 次，local[N] 不重试；FetchFailed 由 DAGScheduler 重提上游 Stage、只算丢失分区、不计入 Task 失败；空闲 Executor 丢失靠 FetchFailed 发现；非确定 Stage 下游全重跑，回滚不了则失败"
+    },
+    {
+     "id": "spark7",
+     "q": "一条 SQL 在 Catalyst 中会经历哪几个阶段？举例说说真正生效的优化规则。",
+     "points": "解析（ANTLR，DataFrame 跳过）、分析（绑定表列函数，报列名错误）、优化（规则按批次，Once/FixedPoint）、物理计划（取第一个候选，按阈值广播，插 Exchange）；举出常量折叠、谓词下推、约束推导、列裁剪"
+    },
+    {
+     "id": "spark8",
+     "q": "什么是全阶段代码生成？它比火山模型快在哪里，什么情况下会放弃？",
+     "points": "火山模型逐行 next 虚调用、表达式递归 eval；全阶段代码生成把连续算子融合成一个循环，中间值为局部变量，Janino 编译；produce 向下、consume 向上；Exchange 为边界；字段超 100、方法过大、编译失败时放弃"
+    },
+    {
+     "id": "spark9",
+     "q": "AQE 是怎么工作的？说说它的三大优化。",
+     "points": "以 Shuffle 为界切阶段，执行完用真实统计重新优化，按 Shuffle 个数比代价；3.2 起默认开启；合并小分区；SortMergeJoin 改广播由 JoinSelection 重新规划完成；倾斜阈值 max(256MB, 中位数×5)，拆分倾斜分区"
+    },
+    {
+     "id": "spark10",
+     "q": "线上一个 Spark 作业总卡在某个 Stage 的少数几个 Task 上，最后 Executor OOM 或被 YARN 杀掉，你会怎么排查和处理？",
+     "points": "先看 UI 的 Task 耗时与数据量分布、Spill、GC，区分倾斜和内存不足；heap space、容器超限（调 memoryOverhead）、Driver OOM 分别处理；AQE 倾斜 Join、加分区、减 executor.cores、小表广播；推测执行无效"
+    }
+   ]
+  },
+  "flink": {
+   "title": "Flink",
+   "track": "bigdata",
+   "role": "大数据开发（实时计算）",
+   "questions": [
+    {
+     "id": "flink1",
+     "q": "一个 DataStream 作业从提交到 Task 跑起来，要经过哪几次图的转换？各在哪里完成？",
+     "points": "Transformation→StreamGraph（客户端）→JobGraph（定算子链）→ExecutionGraph（按并行度展开）；2.x 由 JM 生成 JobGraph；链接需并行度相同、Forward、同 slot 组；每 Task 一线程，Mailbox 串行无锁"
+    },
+    {
+     "id": "flink2",
+     "q": "Checkpoint 是怎么触发的？Barrier 对齐和非对齐 Checkpoint 有什么区别？",
+     "points": "Coordinator 周期触发，只发 Source；先 prepareSnapshotPreBarrier、再发 Barrier、再同步快照，异步上传后 ack；对齐阻塞先到通道，背压时排队变慢；非对齐 Barrier 超车存 in-flight 数据，更大、仅精确一次；对齐超时自动切换"
+    },
+    {
+     "id": "flink3",
+     "q": "Flink 怎么做到端到端 exactly-once？Sink 的两阶段提交分别发生在什么时候？",
+     "points": "Source 进度与状态同在一个 Checkpoint；Barrier 前 prepareCommit，Committable 进 Committer 状态；完成后才 commit；恢复会重提交，须幂等、事务 ID 重启前后唯一；可见延迟约一个间隔，不开 Checkpoint 不提交"
+    },
+    {
+     "id": "flink4",
+     "q": "HashMap 和 RocksDB 状态后端有什么区别？RocksDB 的增量 Checkpoint 是怎么做的？",
+     "points": "Backend 管运行时存放，Storage 管快照去向；HashMap 堆内最快，COW 快照但只能全量；RocksDB 每次读写序列化，原地改须 update；增量：硬链接 SST、只传新文件、按文件名复用放 shared/，以完成的 Checkpoint 为基准，JM 管共享文件删除"
+    },
+    {
+     "id": "flink5",
+     "q": "什么是 KeyGroup？扩缩容时 keyed state 怎么重新分配？为什么最大并行度不能随便改？",
+     "points": "murmurHash(key) 对最大并行度取模得 KeyGroup，subtask 负责连续区间，keyBy 与状态同一算法；扩缩容按 KeyGroup 整块迁移，JM 求区间交集，RocksDB 用 deleteRange 裁剪、多来源合并；改最大并行度恢复报错，上线前显式设置"
+    },
+    {
+     "id": "flink6",
+     "q": "Credit-based 流控是怎么工作的？背压是怎么一层层传回 Source 的，怎么定位瓶颈？",
+     "points": "多通道共用 TCP 连接会互相堵塞；下游按空闲 buffer 发 credit（独占加浮动），上游有 credit 才发，事件不耗 credit；下游慢→无 credit→上游 buffer 堆满→停处理→传到 Source、Kafka lag 涨；找第一个不被背压但 busy 高的算子"
+    },
+    {
+     "id": "flink7",
+     "q": "Watermark 是怎么生成和传播的？为什么一个空闲分区会让窗口一直不触发？",
+     "points": "onEvent 只记最大时间戳，每 200ms 发 最大值−乱序容忍−1；新 Source 按 split 生成取最小；与数据同通道，会被背压挡住；多输入取 ACTIVE 通道最小值，先触发 Timer 再转发；空闲通道停在 MIN 卡住窗口，用 withIdleness"
+    },
+    {
+     "id": "flink8",
+     "q": "事件时间窗口是怎么触发的？迟到数据有哪几种结局，允许迟到时间有什么副作用？",
+     "points": "对齐 UTC 纪元、左闭右开；maxTimestamp 注册 Timer，Watermark 越过即 FIRE，不清状态；清理 Timer 在加上允许迟到时间后；四结局：正常、允许范围内进状态并再触发、侧输出、静默丢弃；副作用：同窗口多次输出需 upsert、状态更久"
+    },
+    {
+     "id": "flink9",
+     "q": "一条 Flink SQL 是怎么变成 Transformation 的？Group Aggregate 的 changelog、MiniBatch 和两阶段聚合是怎么回事？",
+     "points": "解析→校验→RelNode→分阶段优化（HEP+Volcano）→ExecNode→Transformation，代码生成后 Janino 编译；发不发 -U 由下游 sink 或聚合决定，与主键无关；MiniBatch 每 key 每批只读写一次状态；两阶段聚合治热点，须开 MiniBatch"
+    },
+    {
+     "id": "flink10",
+     "q": "线上作业 Checkpoint 频繁超时，同时有背压、状态不断增长，你会怎么排查和处理？",
+     "points": "拆分耗时：Alignment 长是背压排队，Sync 长是 RocksDB flush，Async 长是状态大或上传慢；按 busy/backPressured 找瓶颈、查倾斜，加并行度或两阶段聚合；开 Debloating、对齐超时；增量 Checkpoint、TTL、窗口用 aggregate"
+    }
+   ]
+  },
+  "paimon": {
+   "title": "Paimon",
+   "track": "bigdata",
+   "role": "大数据开发（湖仓）",
+   "questions": [
+    {
+     "id": "paimon1",
+     "q": "Paimon 表在存储上是怎么组织的？请从 snapshot 一直讲到数据文件。",
+     "points": "按 bucket 的 LSM 树 + 快照元数据树 + 乐观提交；snapshot 指向 base、delta、changelog 三个 manifest list；manifest 存 ADD/DELETE 和 DataFileMeta；后者记 level、key 与 sequence 范围、统计"
+    },
+    {
+     "id": "paimon2",
+     "q": "主键表的一条数据从写入到对读可见，要经过哪些步骤？bucket 在其中起什么作用？",
+     "points": "MergeTreeWriter 写排序缓冲，KeyValue 带 sequenceNumber 和 RowKind；缓冲满默认溢写磁盘，prepareCommit 写出 L0 并触发异步合并；提交出快照后才可见；bucket 是独立 LSM 和最小并行单元"
+    },
+    {
+     "id": "paimon3",
+     "q": "UniversalCompaction 是怎么挑选要合并的文件的？合并结果放到哪一层？",
+     "points": "L0 每文件一个 run，L1+ 每层一个，最新在前；先看空间放大（超 200% 全量合并），再按 size-ratio 滚雪球吸收，run 数超 trigger（默认 5）兜底；只选最新连续前缀；输出到下一个更老 run 的 level-1，不进 L0"
+    },
+    {
+     "id": "paimon4",
+     "q": "合并真正执行时，哪些文件只「升级」不重写，哪些必须重写？为什么这样设计？",
+     "points": "IntervalPartition 切不相交的 section；key 重叠的多个 run 归并重写；小文件跟着重写；大文件只改 level、零 IO；遇大文件先刷候选，防同层重叠；到最高层含 DELETE、强制重写、TTL 过期时大文件也重写"
+    },
+    {
+     "id": "paimon5",
+     "q": "Paimon 的提交怎么保证并发安全？「抢快照号失败」和「真正的冲突」有什么区别？",
+     "points": "不锁表，写好 manifest 后原子创建下一个 snapshot，先到先得；抢号失败退避重试；残留 DELETE 或同层 key 重叠是真冲突，抛异常 failover；APPEND 默认不检测、COMPACT 必检测；commitUser+identifier+kind 幂等"
+    },
+    {
+     "id": "paimon6",
+     "q": "主键表批读什么时候需要归并？删除向量（deletion vectors）是怎么做到免合并读的？",
+     "points": "规划时算 rawConvertible：无 L0、无 DELETE，且开 DV、first-row 或全部同层才直接读，否则多路归并；重叠 section 只能下推主键过滤；DV 在 L0 上推时用位图标记旧行，读时跳过 L0；代价是写时 lookup、L0 合并前不可见"
+    },
+    {
+     "id": "paimon7",
+     "q": "Paimon 的 changelog 有哪几种产生方式？lookup 模式是怎么产出 -U/+U 的？",
+     "points": "none（下游 Normalize 状态重）、input（完整 CDC）、lookup、full-compaction；lookup 在 L0 上推时产出，与数据同快照提交；查高层旧值作 before，合并得 after，产出 +I/-D/-U+U；row-deduplicate 去掉值不变的"
+    },
+    {
+     "id": "paimon8",
+     "q": "Paimon 的 Flink Sink 如何配合 checkpoint 做两阶段提交，保证 exactly-once？",
+     "points": "多 writer + 单并发 committer；barrier 前刷文件、发 Committable，committer 存状态，identifier 即 checkpointId；不支持 unaligned；完成后提交所有 ≤N；commitUser 存状态；恢复时跳过已提交，补提交后故意失败"
+    },
+    {
+     "id": "paimon9",
+     "q": "Flink 流式读取 Paimon 时，消费位点是什么？consumer-id 解决了什么问题？",
+     "points": "Enumerator 定时追新快照生成 split，同 bucket 同一 reader 保证有序，并行度超 bucket 数浪费；位点是 nextSnapshotId + split + recordsToSkip；快照过期则重启失败；consumer-id 把进度写进表，阻止未读快照过期"
+    },
+    {
+     "id": "paimon10",
+     "q": "一张主键表同时出现小文件多、checkpoint 慢、批读慢，你怎么排查？在写放大和读放大之间怎么取舍？",
+     "points": "先查 t$files、t$snapshots 和合并日志；小文件：加大 checkpoint 间隔；checkpoint 慢：lookup-compact=GENTLE，write-only + 独立合并作业；批读慢：开 DV 或全量合并，把读放大换成写成本；按实时性取舍"
     }
    ]
   }

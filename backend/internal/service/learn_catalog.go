@@ -49,7 +49,11 @@ type LearnInterviewQuestion struct {
 }
 
 type LearnInterviewTopic struct {
-	Title     string                   `json:"title"`
+	Title string `json:"title"`
+	// Track: "d" (counts for the AI interview certificate) or "bigdata".
+	Track string `json:"track"`
+	// Role the interviewer hires for (in the grading prompt), e.g. "AI 应用开发".
+	Role      string                   `json:"role"`
 	Questions []LearnInterviewQuestion `json:"questions"`
 }
 
@@ -124,7 +128,7 @@ func (c *learnCatalog) validate() error {
 	}
 	for _, topic := range c.InterviewTopics {
 		t, ok := c.Interviews[topic]
-		if !ok || len(t.Questions) < learnInterviewQuestions {
+		if !ok || len(t.Questions) < learnInterviewQuestions || (t.Track != "d" && t.Track != "bigdata") || t.Role == "" {
 			return fmt.Errorf("learn catalog: interview topic %s", topic)
 		}
 		ids := map[string]bool{}
@@ -145,6 +149,17 @@ func (c *learnCatalog) track(id string) *LearnTrackDef {
 		}
 	}
 	return nil
+}
+
+// certTopics are the interview topics track D's certificate needs.
+func (c *learnCatalog) certTopics() []string {
+	var out []string
+	for _, id := range c.InterviewTopics {
+		if c.Interviews[id].Track == "d" {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 func mustLearnCatalog() *learnCatalog {

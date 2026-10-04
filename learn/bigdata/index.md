@@ -14,7 +14,7 @@ description: Apache Spark、Flink、Paimon 源码学习：基于最新版本源�
 - **有 Spark 使用经验**：从 [Spark 学习路线](/bigdata/spark/roadmap) 开始，先编译源码、跟一遍 SparkPi，再按讲次往下读。
 - **做实时计算**：从 [Flink 作业执行全链路](/bigdata/flink/01-execution) 开始，Checkpoint 和状态后端两篇是重点。
 - **做湖仓 / 数据集成**：读 [Paimon 学习计划](/bigdata/paimon/00-plan)，按 14 周的安排边读边做实验；Flink 两篇（08、09）讲 Paimon 和 Flink 的配合。
-- 准备面试：[Spark 面试拆解：Job、Stage、Task](/bigdata/spark/02-job-stage-task) 是常考题；AI 方向的面试题在 [D · AI 面试训练](/d/)。
+- 准备面试：每个系列都有一套面试题和 AI 模拟面试——[Spark](/bigdata/interview/spark)、[Flink](/bigdata/interview/flink)、[Paimon](/bigdata/interview/paimon)。每场随机抽 5 题，AI 面试官按 0–10 分打分、点评，并告诉你好的回答应该覆盖哪些要点。AI 方向的面试题在 [D · AI 面试训练](/d/)。
 
 每篇开头都标了源码版本和路径缩写，`文件:行号` 都在对应版本里核对过。建议把源码拉到本地，边读边在 IDE 里跳转。
 

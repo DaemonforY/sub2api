@@ -24,3 +24,5 @@ description: "从 env.execute() 到 processElement()，Checkpoint、状态后端
 | 9 | [Source / Sink 新架构](/bigdata/flink/09-source-sink) | FLIP-27 新 Source 架构（SplitEnumerator / SourceReader）与新版 Sink 的两阶段提交。 |
 
 读的时候有疑问，可以打开源码对照；每篇开头都标了源码版本和路径缩写。
+
+读完想检验一下？去做 [Flink 面试题](/bigdata/interview/flink)，AI 面试官会逐题打分、点评。

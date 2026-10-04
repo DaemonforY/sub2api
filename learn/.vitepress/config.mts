@@ -65,7 +65,18 @@ export default defineConfig({
       '/b/': trackSidebar('b'),
       '/c/': trackSidebar('c'),
       '/d/': trackSidebar('d'),
-      '/bigdata/': [{ text: '大数据', items: [{ text: '概览', link: '/bigdata/' }] }, ...bigdataSidebar],
+      '/bigdata/': [
+        { text: '大数据', items: [{ text: '概览', link: '/bigdata/' }] },
+        ...bigdataSidebar,
+        {
+          text: '面试题与模拟面试',
+          items: [
+            { text: 'Spark 面试题', link: '/bigdata/interview/spark' },
+            { text: 'Flink 面试题', link: '/bigdata/interview/flink' },
+            { text: 'Paimon 面试题', link: '/bigdata/interview/paimon' },
+          ],
+        },
+      ],
       '/guide/': [{ text: '延伸阅读（JavaGuide）', items: [{ text: '目录与来源', link: '/guide/' }] }, ...guideSidebar],
     },
     outline: { level: [2, 3], label: '本页目录' },

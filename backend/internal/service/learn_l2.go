@@ -480,19 +480,20 @@ func (s *LearnService) projectItem(ctx context.Context, userID int64, track *Lea
 		}
 		passed := 0
 		var missing []string
-		for _, topic := range s.catalog.InterviewTopics {
+		topics := s.catalog.certTopics()
+		for _, topic := range topics {
 			if best[topic] >= learnInterviewPassScore {
 				passed++
 			} else {
 				missing = append(missing, s.catalog.Interviews[topic].Title)
 			}
 		}
-		detail := fmt.Sprintf("已通过 %d / %d 组", passed, len(s.catalog.InterviewTopics))
+		detail := fmt.Sprintf("已通过 %d / %d 组", passed, len(topics))
 		if len(missing) > 0 {
 			detail += "，还差：" + strings.Join(missing, "、")
 		}
 		return LearnCertItem{Kind: "project", Title: fmt.Sprintf("每组模拟面试都拿到 %d 分以上", learnInterviewPassScore),
-			Done: passed == len(s.catalog.InterviewTopics), Detail: detail}, nil
+			Done: passed == len(topics), Detail: detail}, nil
 	}
 	return LearnCertItem{Kind: "project", Title: "结业项目"}, nil
 }

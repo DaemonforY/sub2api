@@ -29,3 +29,5 @@ description: "从编译源码、跟踪一个 Job 的一生，到调度、Shuffle
 | 14 | [第 10 讲：AQE、DSv2 与 Spark Connect](/bigdata/spark/lecture-10-aqe-dsv2) | AQE 自适应执行、DataSource V2 接口和 Spark Connect 的源码实现。 |
 
 读的时候有疑问，可以打开源码对照；每篇开头都标了源码版本和路径缩写。
+
+读完想检验一下？去做 [Spark 面试题](/bigdata/interview/spark)，AI 面试官会逐题打分、点评。
