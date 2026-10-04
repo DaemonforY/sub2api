@@ -309,6 +309,9 @@ type LearnCertificate struct {
 	QuizScore   int        `json:"quiz_score"`
 	IssuedAt    time.Time  `json:"issued_at"`
 	RevokedAt   *time.Time `json:"revoked_at,omitempty"`
+	// Showcase: the holder shows the project on the learner wall; ShowcaseHidden: an admin took it off.
+	Showcase       bool `json:"showcase"`
+	ShowcaseHidden bool `json:"showcase_hidden"`
 	// InviteCode (public view only): the holder's invite code for the share poster.
 	InviteCode string `json:"invite_code,omitempty"`
 }
@@ -521,7 +524,7 @@ func newLearnCertCode() (string, error) {
 }
 
 // ClaimCertificate issues the track's certificate once every requirement is met (again: returns it).
-func (s *LearnService) ClaimCertificate(ctx context.Context, userID int64, trackID, displayName, projectURL string) (*LearnCertificate, error) {
+func (s *LearnService) ClaimCertificate(ctx context.Context, userID int64, trackID, displayName, projectURL string, showcase bool) (*LearnCertificate, error) {
 	st, err := s.CertStatus(ctx, userID, trackID)
 	if err != nil {
 		return nil, err
@@ -545,7 +548,7 @@ func (s *LearnService) ClaimCertificate(ctx context.Context, userID int64, track
 		return nil, err
 	}
 	cert := &LearnCertificate{Code: code, UserID: userID, Track: st.Track, TrackTitle: st.Title, DisplayName: name,
-		ProjectURL: project, QuizScore: st.QuizScore, IssuedAt: s.now()}
+		ProjectURL: project, QuizScore: st.QuizScore, IssuedAt: s.now(), Showcase: showcase}
 	if err := s.repo.CreateCertificate(ctx, cert); err != nil {
 		return nil, err
 	}

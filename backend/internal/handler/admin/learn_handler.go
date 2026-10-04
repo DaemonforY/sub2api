@@ -74,3 +74,29 @@ func (h *LearnHandler) RevokeCertificate(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"ok": true})
 }
+
+// SetShowcaseHidden POST /api/v1/admin/learn/certificates/:code/showcase {hidden}
+func (h *LearnHandler) SetShowcaseHidden(c *gin.Context) {
+	var in struct {
+		Hidden bool `json:"hidden"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数格式不正确")
+		return
+	}
+	if err := h.svc.SetShowcaseHidden(c.Request.Context(), c.Param("code"), in.Hidden); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"ok": true})
+}
+
+// Insights GET /api/v1/admin/learn/insights — track funnels, the last 14 days, quiz results.
+func (h *LearnHandler) Insights(c *gin.Context) {
+	out, err := h.svc.Insights(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}

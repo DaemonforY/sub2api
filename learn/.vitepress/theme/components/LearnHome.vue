@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { tracks, type Track } from '../tracks'
 import { learnConfig, loadProgress, progress, token } from '../api'
+import Showcase from './Showcase.vue'
 
 const freeRuns = ref(20)
 const signedIn = ref(false)
@@ -90,16 +91,22 @@ const totalMinutes = (t: Track) => t.lessons.reduce((n, l) => n + l.minutes, 0)
       </component>
     </div>
 
+    <Showcase compact :limit="6">
+      <template #head>
+        <h2 class="home-h2">学员作品 <small><a :href="withBase('/showcase')">看全部 →</a></small></h2>
+      </template>
+    </Showcase>
+
     <div class="home-two">
       <a class="home-card" :href="withBase('/guide/')">
         <h3>延伸阅读</h3>
         <p>JavaGuide《AI 应用开发》专题 33 篇：大模型基础、Agent、RAG、系统设计和面试题。适合学完动手课后系统补理论。</p>
         <span class="lesson-next">去读 →</span>
       </a>
-      <a class="home-card edu" href="/purchase?tab=subscription">
-        <h3>学生 / 老师</h3>
-        <p>用学校 edu.cn 邮箱在 HiveGPT 认证，订阅和付费课程都有教育优惠。</p>
-        <span class="lesson-next">去认证 →</span>
+      <a class="home-card edu" :href="withBase('/campus')">
+        <h3>大学生专区</h3>
+        <p>按课程设计、简历作品、实习面试推荐路线；学校邮箱认证享教育优惠，结业证书可以写进简历。</p>
+        <span class="lesson-next">去看看 →</span>
       </a>
     </div>
   </div>

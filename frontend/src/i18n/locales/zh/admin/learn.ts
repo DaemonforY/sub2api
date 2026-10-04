@@ -23,6 +23,11 @@ export default {
     completed: '完成人数',
     runs: '成功运行次数',
     noData: '还没有学习数据',
+    quizTakers: '做过测验',
+    quizPassRate: '测验通过率',
+    quizAvg: '平均最好成绩',
+    funnel: { started: '开始学习', half: '学完一半', finished: '学完全部', certificates: '领取证书' },
+    trend: { title: '近 14 天', learners: '学习人数', runs: '运行', tutor: '助教', interviews: '面试评分', completions: '完成课时', certificates: '新证书' },
     certs: {
       title: '结业证书',
       code: '编号',
@@ -34,7 +39,12 @@ export default {
       revoke: '撤销',
       restore: '恢复',
       confirm: '撤销证书 {code}？撤销后证书页不再显示，学员可以重新领取。',
-      empty: '还没有人领取证书'
+      empty: '还没有人领取证书',
+      wall: '作品墙',
+      wallShown: '展示中',
+      wallHidden: '已隐藏',
+      wallHide: '从作品墙隐藏',
+      wallRestore: '恢复展示'
     }
   }
 }

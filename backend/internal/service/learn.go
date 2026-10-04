@@ -99,6 +99,17 @@ type LearnRepository interface {
 	CountInterviews(ctx context.Context, userID int64, since time.Time) (int, error)
 	// BestInterviewScores: the best finished score per topic.
 	BestInterviewScores(ctx context.Context, userID int64) (map[string]int, error)
+
+	// SetShowcase shows / hides the learner's live certificate of a track on the wall.
+	SetShowcase(ctx context.Context, userID int64, track string, on bool) error
+	SetShowcaseHidden(ctx context.Context, code string, hidden bool) error
+	// Showcase lists wall entries (track "" = all), newest first.
+	Showcase(ctx context.Context, track string, limit int) ([]LearnCertificate, error)
+	// Insights for the admin page.
+	TrackProgress(ctx context.Context) ([]LearnTrackProgress, error)
+	CertificateCounts(ctx context.Context) (map[string]int, error)
+	Daily(ctx context.Context, since time.Time) ([]LearnDay, error)
+	QuizStats(ctx context.Context) (map[string]LearnQuizStat, error)
 }
 
 type learnSettingStore interface {
@@ -204,6 +215,7 @@ type LearnService struct {
 	sources    LearnSources
 	// lessonText is a lesson page's title and text (for the tutor); nil without the built site.
 	lessonText func(lessonID string) (title, text string)
+	showcase   learnShowcaseCache
 }
 
 // NewLearnService: gatewayURL is this server's own base URL (e.g. http://127.0.0.1:8080).

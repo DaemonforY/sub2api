@@ -151,3 +151,66 @@ func TestLearnRepositoryL2(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, ivs, 1)
 }
+
+func TestLearnRepositoryL3(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	u1 := mustCreateUser(t, integrationEntClient, &service.User{Email: "ln3-1-" + suffix + "@test.local", Username: "lw1" + suffix[len(suffix)-6:]})
+	repo := NewLearnRepository(integrationDB)
+	since := time.Now().Add(-24 * time.Hour)
+
+	code := "W" + suffix[len(suffix)-9:]
+	require.NoError(t, repo.CreateCertificate(ctx, &service.LearnCertificate{Code: code, UserID: u1.ID, Track: "c", DisplayName: "小周", IssuedAt: time.Now(), Showcase: true}))
+	wall, err := repo.Showcase(ctx, "c", 50)
+	require.NoError(t, err)
+	require.Contains(t, codesOf(wall), code)
+	require.NoError(t, repo.SetShowcaseHidden(ctx, code, true))
+	wall, err = repo.Showcase(ctx, "", 50)
+	require.NoError(t, err)
+	require.NotContains(t, codesOf(wall), code)
+	require.NoError(t, repo.SetShowcaseHidden(ctx, code, false))
+	require.NoError(t, repo.SetShowcase(ctx, u1.ID, "c", false))
+	wall, err = repo.Showcase(ctx, "c", 50)
+	require.NoError(t, err)
+	require.NotContains(t, codesOf(wall), code)
+	require.ErrorIs(t, repo.SetShowcase(ctx, u1.ID, "a", true), service.ErrLearnCertNotFound)
+	require.ErrorIs(t, repo.SetShowcaseHidden(ctx, "NOPE", true), service.ErrLearnCertNotFound)
+
+	require.NoError(t, repo.MarkDone(ctx, u1.ID, []string{"c1", "c2"}))
+	run, err := repo.StartRun(ctx, u1.ID, "c2", "tutor", 0)
+	require.NoError(t, err)
+	require.NoError(t, repo.FinishRun(ctx, run, "ok", 10, 1, 1))
+	_, err = repo.SaveQuizResult(ctx, u1.ID, "c1", 4, 4)
+	require.NoError(t, err)
+
+	progress, err := repo.TrackProgress(ctx)
+	require.NoError(t, err)
+	found := false
+	for _, p := range progress {
+		if p.UserID == u1.ID && p.Track == "c" {
+			found = true
+			require.Equal(t, 2, p.Lessons)
+		}
+	}
+	require.True(t, found)
+	counts, err := repo.CertificateCounts(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, counts["c"], 1)
+	days, err := repo.Daily(ctx, since)
+	require.NoError(t, err)
+	require.NotEmpty(t, days)
+	last := days[len(days)-1]
+	require.GreaterOrEqual(t, last.Tutor+last.Completions+last.Certificates, 1)
+	require.Regexp(t, `^\d{4}-\d{2}-\d{2}$`, last.Date)
+	quiz, err := repo.QuizStats(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, quiz["c1"].Passed, 1)
+}
+
+func codesOf(certs []service.LearnCertificate) []string {
+	out := make([]string, 0, len(certs))
+	for _, c := range certs {
+		out = append(out, c.Code)
+	}
+	return out
+}

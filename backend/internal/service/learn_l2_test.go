@@ -137,7 +137,7 @@ func TestLearnCheckpointsAndCertificate(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, st.Eligible)
 	require.True(t, st.ProjectLink)
-	_, err = svc.ClaimCertificate(ctx, 1, "a", "小林", "https://github.com/x/y")
+	_, err = svc.ClaimCertificate(ctx, 1, "a", "小林", "https://github.com/x/y", false)
 	require.Equal(t, "LEARN_CERT_NOT_READY", infraerrors.Reason(err))
 
 	track := svc.catalog.track("a")
@@ -162,19 +162,19 @@ func TestLearnCheckpointsAndCertificate(t *testing.T) {
 	require.Contains(t, repo.checkpoints, "call") // verified on the way
 
 	// The project: a link (no site) or one of the learner's sites.
-	_, err = svc.ClaimCertificate(ctx, 1, "a", "小林", "")
+	_, err = svc.ClaimCertificate(ctx, 1, "a", "小林", "", false)
 	require.Equal(t, "LEARN_CERT_PROJECT", infraerrors.Reason(err))
-	_, err = svc.ClaimCertificate(ctx, 1, "a", "小林", "javascript:alert(1)")
+	_, err = svc.ClaimCertificate(ctx, 1, "a", "小林", "javascript:alert(1)", false)
 	require.Equal(t, "LEARN_CERT_PROJECT", infraerrors.Reason(err))
-	_, err = svc.ClaimCertificate(ctx, 1, "a", "<b>x</b>", "https://github.com/x/y")
+	_, err = svc.ClaimCertificate(ctx, 1, "a", "<b>x</b>", "https://github.com/x/y", false)
 	require.Equal(t, "LEARN_CERT_NAME", infraerrors.Reason(err))
 	sites.sites = []Site{{Name: "mybot", Status: SiteStatusActive, Version: 1}, {Name: "draft", Status: SiteStatusPending}}
-	cert, err := svc.ClaimCertificate(ctx, 1, "a", " 小林 ", "")
+	cert, err := svc.ClaimCertificate(ctx, 1, "a", " 小林 ", "", false)
 	require.NoError(t, err)
 	require.Equal(t, "https://mybot.s.example.test", cert.ProjectURL)
 	require.Equal(t, "小林", cert.DisplayName)
 	require.Len(t, cert.Code, learnCertCodeLen)
-	again, err := svc.ClaimCertificate(ctx, 1, "a", "别的名字", "")
+	again, err := svc.ClaimCertificate(ctx, 1, "a", "别的名字", "", false)
 	require.NoError(t, err)
 	require.Equal(t, cert.Code, again.Code) // one per track
 

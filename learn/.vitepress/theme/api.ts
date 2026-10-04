@@ -88,6 +88,7 @@ export interface Certificate {
   project_url: string
   quiz_score: number
   issued_at: string
+  showcase?: boolean
   invite_code?: string
 }
 
@@ -337,8 +338,48 @@ export function certStatus(track: string): Promise<CertStatus> {
   return api<CertStatus>(`/learn/certificates/${track}`)
 }
 
-export function claimCert(track: string, displayName: string, projectUrl: string): Promise<Certificate> {
-  return api<Certificate>(`/learn/certificates/${track}`, { method: 'POST', body: JSON.stringify({ display_name: displayName, project_url: projectUrl }) })
+export function claimCert(track: string, displayName: string, projectUrl: string, showcase: boolean): Promise<Certificate> {
+  return api<Certificate>(`/learn/certificates/${track}`, {
+    method: 'POST',
+    body: JSON.stringify({ display_name: displayName, project_url: projectUrl, showcase }),
+  })
+}
+
+export function setShowcase(track: string, showcase: boolean): Promise<{ showcase: boolean }> {
+  return api(`/learn/certificates/${track}/showcase`, { method: 'PUT', body: JSON.stringify({ showcase }) })
+}
+
+// --- The learner wall -------------------------------------------------------------------------
+
+export interface ShowcaseItem {
+  code: string
+  track: string
+  track_title: string
+  display_name: string
+  project_url: string
+  issued_at: string
+  works: { url: string; image: string; title: string; kind: string }[]
+}
+
+export function showcase(track = '', limit = 0): Promise<ShowcaseItem[]> {
+  const q = new URLSearchParams()
+  if (track) q.set('track', track)
+  if (limit) q.set('limit', String(limit))
+  return api<ShowcaseItem[]>(`/learn/showcase${q.size ? `?${q}` : ''}`)
+}
+
+// --- Main-site growth program (education discount, invitee bonus) -----------------------------
+
+export interface GrowthConfig {
+  affiliate_enabled: boolean
+  invitee_bonus_rate_percent: number
+  edu_verify_enabled: boolean
+  edu_discount_percent: number
+  edu_email_suffixes: string[]
+}
+
+export function growthConfig(): Promise<GrowthConfig | null> {
+  return api<GrowthConfig>('/growth/config').catch(() => null)
 }
 
 export function publicCert(code: string): Promise<Certificate> {

@@ -2,7 +2,7 @@
 // A track's certificate: what is still missing, claiming it, and the share poster.
 import { computed, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
-import { ApiError, certStatus, claimCert, currentUser, loginUrl, refreshMe, token, type CertStatus } from '../api'
+import { ApiError, certStatus, claimCert, currentUser, loginUrl, refreshMe, setShowcase, token, type CertStatus } from '../api'
 import { findTrack } from '../tracks'
 import CertPoster from './CertPoster.vue'
 
@@ -13,6 +13,8 @@ const loading = ref(false)
 const name = ref('')
 const project = ref('')
 const claiming = ref(false)
+const showOnWall = ref(true)
+const savingWall = ref(false)
 const error = ref('')
 const track = computed(() => findTrack(props.track))
 
@@ -35,11 +37,26 @@ onMounted(() => {
   if (signedIn.value) void load()
 })
 
+async function toggleWall() {
+  const cert = status.value?.certificate
+  if (!cert) return
+  savingWall.value = true
+  error.value = ''
+  try {
+    const res = await setShowcase(props.track, !cert.showcase)
+    cert.showcase = res.showcase
+  } catch (e) {
+    error.value = (e as ApiError).message
+  } finally {
+    savingWall.value = false
+  }
+}
+
 async function claim() {
   claiming.value = true
   error.value = ''
   try {
-    await claimCert(props.track, name.value, project.value)
+    await claimCert(props.track, name.value, project.value, showOnWall.value)
     await Promise.all([load(), refreshMe()])
   } catch (e) {
     error.value = (e as ApiError).message
@@ -74,6 +91,16 @@ async function claim() {
           ✓ 已领取 · 证书编号 {{ status.certificate.code }} ·
           <a :href="withBase(`/cert.html?c=${status.certificate.code}`)">查看证书页</a>
         </p>
+        <p class="runbox-note cert-wall">
+          <template v-if="status.certificate.showcase">
+            ✓ 已展示在 <a :href="withBase('/showcase')">学员作品墙</a>
+            <button class="runbox-btn ghost small" :disabled="savingWall" @click="toggleWall">不展示了</button>
+          </template>
+          <template v-else>
+            没有展示在学员作品墙
+            <button class="runbox-btn ghost small" :disabled="savingWall" data-testid="cert-wall-on" @click="toggleWall">展示到作品墙</button>
+          </template>
+        </p>
         <CertPoster :cert="status.certificate" />
       </template>
       <template v-else>
@@ -94,6 +121,10 @@ async function claim() {
           </label>
           <label v-if="status.project_link && !status.projects.some((p) => p.url === project)">
             结业项目链接<input v-model="project" placeholder="https://github.com/你的名字/项目" />
+          </label>
+          <label class="cert-check-line">
+            <input v-model="showOnWall" type="checkbox" data-testid="cert-wall" />
+            把我的名字和结业项目展示在<a :href="withBase('/showcase')" target="_blank">学员作品墙</a>（随时可以关闭）
           </label>
           <div class="runbox-actions">
             <button class="runbox-btn" :disabled="claiming || !name.trim()" data-testid="cert-claim" @click="claim">{{ claiming ? '领取中…' : '领取结业证书' }}</button>

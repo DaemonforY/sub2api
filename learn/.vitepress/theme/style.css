@@ -949,3 +949,130 @@ a.home-track:hover {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Learner wall */
+.showcase {
+  margin: 20px 0;
+}
+.showcase-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.showcase-tab {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.showcase-tab.on {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+  color: #6d28d9;
+  font-weight: 600;
+}
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.showcase.compact .showcase-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.showcase-card {
+  overflow: hidden;
+  border: 1px solid #ececf1;
+  border-radius: 14px;
+  background: #fff;
+}
+.showcase-imgs {
+  display: grid;
+  gap: 2px;
+  height: 140px;
+  background: #f3f4f6;
+}
+.showcase-imgs.n2 {
+  grid-template-columns: 1fr 1fr;
+}
+.showcase-imgs.n3 {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+.showcase-imgs.n3 a:first-child {
+  grid-row: span 2;
+}
+.showcase-imgs a,
+.showcase-imgs img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+.showcase-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 140px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 48px;
+  font-weight: 800;
+}
+.showcase-body {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px 12px;
+  font-size: 14px;
+}
+.showcase-link,
+.showcase-cert {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.showcase-cert {
+  color: var(--learn-muted) !important;
+}
+.cert-check-line {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400 !important;
+}
+.cert-wall .runbox-btn {
+  margin-left: 8px;
+}
+
+/* Campus */
+.campus-perks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+.campus-perk {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e9e5ff;
+  background: linear-gradient(135deg, #faf5ff, #f0fdfa);
+}
+.campus-perk-icon {
+  font-size: 26px;
+}
+.campus-perk p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+.campus-perk .runbox-btn {
+  justify-self: start;
+  margin-top: 4px;
+}

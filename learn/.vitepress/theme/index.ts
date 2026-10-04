@@ -11,6 +11,8 @@ import CertPanel from './components/CertPanel.vue'
 import CertView from './components/CertView.vue'
 import MockInterview from './components/MockInterview.vue'
 import AgentLoop from './components/AgentLoop.vue'
+import Showcase from './components/Showcase.vue'
+import CampusPerks from './components/CampusPerks.vue'
 import './style.css'
 
 export default {
@@ -27,5 +29,7 @@ export default {
     app.component('CertView', CertView)
     app.component('MockInterview', MockInterview)
     app.component('AgentLoop', AgentLoop)
+    app.component('Showcase', Showcase)
+    app.component('CampusPerks', CampusPerks)
   },
 } satisfies Theme

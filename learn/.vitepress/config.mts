@@ -47,8 +47,13 @@ export default defineConfig({
     siteTitle: 'HiveGPT AI 学习',
     nav: [
       { text: '学习首页', link: '/' },
-      { text: 'A 应用开发', link: '/a/', activeMatch: '^/a/' },
-      { text: 'B 绘画与视频', link: '/b/', activeMatch: '^/b/' },
+      {
+        text: '学习路线',
+        activeMatch: '^/[a-d]/',
+        items: tracks.map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
+      },
+      { text: '学员作品', link: '/showcase', activeMatch: '^/showcase' },
+      { text: '校园', link: '/campus', activeMatch: '^/campus' },
       { text: '延伸阅读', link: '/guide/', activeMatch: '^/guide/' },
       { text: '付费课程', link: 'https://hivegpt.cn/courses', target: '_self' },
       { text: '回到 HiveGPT', link: 'https://hivegpt.cn/', target: '_self' },
@@ -56,6 +61,8 @@ export default defineConfig({
     sidebar: {
       '/a/': trackSidebar('a'),
       '/b/': trackSidebar('b'),
+      '/c/': trackSidebar('c'),
+      '/d/': trackSidebar('d'),
       '/guide/': [{ text: '延伸阅读（JavaGuide）', items: [{ text: '目录与来源', link: '/guide/' }] }, ...guideSidebar],
     },
     outline: { level: [2, 3], label: '本页目录' },

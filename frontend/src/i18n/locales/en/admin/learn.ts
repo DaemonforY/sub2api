@@ -23,6 +23,11 @@ export default {
     completed: 'Completed',
     runs: 'Successful runs',
     noData: 'No learning data yet',
+    quizTakers: 'Quiz takers',
+    quizPassRate: 'Quiz pass rate',
+    quizAvg: 'Avg best score',
+    funnel: { started: 'Started', half: 'Half done', finished: 'All done', certificates: 'Certified' },
+    trend: { title: 'Last 14 days', learners: 'Learners', runs: 'Runs', tutor: 'Tutor', interviews: 'Interview grading', completions: 'Lessons done', certificates: 'Certificates' },
     certs: {
       title: 'Certificates',
       code: 'Code',
@@ -34,7 +39,12 @@ export default {
       revoke: 'Revoke',
       restore: 'Restore',
       confirm: 'Revoke certificate {code}? Its page stops showing it and the learner may claim again.',
-      empty: 'No certificates yet'
+      empty: 'No certificates yet',
+      wall: 'Wall',
+      wallShown: 'Shown',
+      wallHidden: 'Hidden',
+      wallHide: 'Hide from wall',
+      wallRestore: 'Show again'
     }
   }
 }

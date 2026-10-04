@@ -258,6 +258,8 @@ func registerLearnAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/stats", h.Admin.Learn.Stats)
 		g.GET("/certificates", h.Admin.Learn.Certificates)
 		g.POST("/certificates/:code/revoke", h.Admin.Learn.RevokeCertificate)
+		g.POST("/certificates/:code/showcase", h.Admin.Learn.SetShowcaseHidden)
+		g.GET("/insights", h.Admin.Learn.Insights)
 	}
 }
 

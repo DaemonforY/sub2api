@@ -51,6 +51,22 @@ export interface LearnCertificate {
   quiz_score: number
   issued_at: string
   revoked_at?: string
+  showcase: boolean
+  showcase_hidden: boolean
+}
+
+export interface LearnInsights {
+  funnels: { track: string; title: string; lessons: number; started: number; half: number; finished: number; certificates: number }[]
+  days: { date: string; learners: number; completions: number; runs: number; tutor: number; interviews: number; certificates: number }[]
+  quizzes: Record<string, { takers: number; passed: number; avg_score: number; attempts: number }>
+}
+
+export async function insights(): Promise<LearnInsights> {
+  const { data } = await apiClient.get('/admin/learn/insights')
+  return data
+}
+export async function setShowcaseHidden(code: string, hidden: boolean): Promise<void> {
+  await apiClient.post(`/admin/learn/certificates/${encodeURIComponent(code)}/showcase`, { hidden })
 }
 
 export async function certificates(page = 1, pageSize = 20): Promise<{ items: LearnCertificate[]; total: number }> {
@@ -61,4 +77,4 @@ export async function setCertificateRevoked(code: string, revoked: boolean): Pro
   await apiClient.post(`/admin/learn/certificates/${encodeURIComponent(code)}/revoke`, { revoked })
 }
 
-export default { getSettings, saveSettings, stats, certificates, setCertificateRevoked }
+export default { getSettings, saveSettings, stats, certificates, setCertificateRevoked, insights, setShowcaseHidden }

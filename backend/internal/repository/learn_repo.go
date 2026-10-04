@@ -163,12 +163,12 @@ func (r *learnRepository) PassCheckpoint(ctx context.Context, userID int64, chec
 	return err
 }
 
-const learnCertColumns = `c.code, c.user_id, COALESCE(u.email, ''), c.track, c.display_name, c.project_url, c.quiz_score, c.issued_at, c.revoked_at`
+const learnCertColumns = `c.code, c.user_id, COALESCE(u.email, ''), c.track, c.display_name, c.project_url, c.quiz_score, c.issued_at, c.revoked_at, c.showcase, c.showcase_hidden`
 
 func scanLearnCert(row interface{ Scan(...any) error }) (service.LearnCertificate, error) {
 	var c service.LearnCertificate
 	var revoked sql.NullTime
-	err := row.Scan(&c.Code, &c.UserID, &c.UserEmail, &c.Track, &c.DisplayName, &c.ProjectURL, &c.QuizScore, &c.IssuedAt, &revoked)
+	err := row.Scan(&c.Code, &c.UserID, &c.UserEmail, &c.Track, &c.DisplayName, &c.ProjectURL, &c.QuizScore, &c.IssuedAt, &revoked, &c.Showcase, &c.ShowcaseHidden)
 	if revoked.Valid {
 		c.RevokedAt = &revoked.Time
 	}
@@ -177,10 +177,10 @@ func scanLearnCert(row interface{ Scan(...any) error }) (service.LearnCertificat
 
 func (r *learnRepository) CreateCertificate(ctx context.Context, c *service.LearnCertificate) error {
 	_, err := r.db.ExecContext(ctx, `
-INSERT INTO learn_certificates (code, user_id, track, display_name, project_url, quiz_score, issued_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO learn_certificates (code, user_id, track, display_name, project_url, quiz_score, issued_at, showcase)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (user_id, track) WHERE revoked_at IS NULL DO NOTHING`,
-		c.Code, c.UserID, c.Track, c.DisplayName, c.ProjectURL, c.QuizScore, c.IssuedAt)
+		c.Code, c.UserID, c.Track, c.DisplayName, c.ProjectURL, c.QuizScore, c.IssuedAt, c.Showcase)
 	return err
 }
 
@@ -345,6 +345,127 @@ func (r *learnRepository) BestInterviewScores(ctx context.Context, userID int64)
 			return nil, err
 		}
 		out[topic] = score
+	}
+	return out, rows.Err()
+}
+
+func (r *learnRepository) SetShowcase(ctx context.Context, userID int64, track string, on bool) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE learn_certificates SET showcase = $3 WHERE user_id = $1 AND track = $2 AND revoked_at IS NULL`, userID, track, on)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return service.ErrLearnCertNotFound
+	}
+	return nil
+}
+
+func (r *learnRepository) SetShowcaseHidden(ctx context.Context, code string, hidden bool) error {
+	res, err := r.db.ExecContext(ctx, `UPDATE learn_certificates SET showcase_hidden = $2 WHERE code = $1`, code, hidden)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return service.ErrLearnCertNotFound
+	}
+	return nil
+}
+
+func (r *learnRepository) Showcase(ctx context.Context, track string, limit int) ([]service.LearnCertificate, error) {
+	return r.queryCerts(ctx, `SELECT `+learnCertColumns+`
+FROM learn_certificates c LEFT JOIN users u ON u.id = c.user_id
+WHERE c.showcase AND NOT c.showcase_hidden AND c.revoked_at IS NULL AND ($1 = '' OR c.track = $1)
+ORDER BY c.issued_at DESC LIMIT $2`, track, limit)
+}
+
+func (r *learnRepository) TrackProgress(ctx context.Context) ([]service.LearnTrackProgress, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT LEFT(lesson_id, 1), user_id, COUNT(*) FROM learn_progress GROUP BY 1, 2`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.LearnTrackProgress{}
+	for rows.Next() {
+		var p service.LearnTrackProgress
+		if err := rows.Scan(&p.Track, &p.UserID, &p.Lessons); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+func (r *learnRepository) CertificateCounts(ctx context.Context) (map[string]int, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT track, COUNT(*) FROM learn_certificates WHERE revoked_at IS NULL GROUP BY track`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]int{}
+	for rows.Next() {
+		var track string
+		var n int
+		if err := rows.Scan(&track, &n); err != nil {
+			return nil, err
+		}
+		out[track] = n
+	}
+	return out, rows.Err()
+}
+
+// Daily counts per Beijing-time day since the time (days without activity are absent).
+func (r *learnRepository) Daily(ctx context.Context, since time.Time) ([]service.LearnDay, error) {
+	rows, err := r.db.QueryContext(ctx, `
+WITH runs AS (
+    SELECT (created_at AT TIME ZONE 'Asia/Shanghai')::date AS d, kind, user_id FROM learn_runs WHERE created_at >= $1 AND status = 'ok'
+), done AS (
+    SELECT (completed_at AT TIME ZONE 'Asia/Shanghai')::date AS d, user_id FROM learn_progress WHERE completed_at >= $1
+), certs AS (
+    SELECT (issued_at AT TIME ZONE 'Asia/Shanghai')::date AS d FROM learn_certificates WHERE issued_at >= $1
+), days AS (
+    SELECT d FROM runs UNION SELECT d FROM done UNION SELECT d FROM certs
+)
+SELECT to_char(days.d, 'YYYY-MM-DD'),
+       (SELECT COUNT(*) FROM runs WHERE runs.d = days.d AND kind = 'run'),
+       (SELECT COUNT(*) FROM runs WHERE runs.d = days.d AND kind = 'tutor'),
+       (SELECT COUNT(*) FROM runs WHERE runs.d = days.d AND kind = 'interview'),
+       (SELECT COUNT(*) FROM done WHERE done.d = days.d),
+       (SELECT COUNT(DISTINCT user_id) FROM (SELECT user_id FROM runs WHERE runs.d = days.d UNION SELECT user_id FROM done WHERE done.d = days.d) a),
+       (SELECT COUNT(*) FROM certs WHERE certs.d = days.d)
+FROM days ORDER BY days.d`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.LearnDay{}
+	for rows.Next() {
+		var d service.LearnDay
+		if err := rows.Scan(&d.Date, &d.Runs, &d.Tutor, &d.Interviews, &d.Completions, &d.Learners, &d.Certificates); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+func (r *learnRepository) QuizStats(ctx context.Context) (map[string]service.LearnQuizStat, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT lesson_id, COUNT(*), COUNT(*) FILTER (WHERE total > 0 AND correct * 100 >= total * 80),
+       COALESCE(ROUND(AVG(CASE WHEN total > 0 THEN correct * 100.0 / total END)), 0), COALESCE(SUM(attempts), 0)
+FROM learn_quiz_results GROUP BY lesson_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]service.LearnQuizStat{}
+	for rows.Next() {
+		var id string
+		var q service.LearnQuizStat
+		if err := rows.Scan(&id, &q.Takers, &q.Passed, &q.AvgScore, &q.Attempts); err != nil {
+			return nil, err
+		}
+		out[id] = q
 	}
 	return out, rows.Err()
 }

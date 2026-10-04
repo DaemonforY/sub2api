@@ -162,12 +162,36 @@ func (h *LearnHandler) ClaimCert(c *gin.Context) {
 	var in struct {
 		DisplayName string `json:"display_name"`
 		ProjectURL  string `json:"project_url"`
+		Showcase    bool   `json:"showcase"`
 	}
 	if !bindLearn(c, &in) {
 		return
 	}
-	out, err := h.svc.ClaimCertificate(c.Request.Context(), subject.UserID, c.Param("track"), in.DisplayName, in.ProjectURL)
+	out, err := h.svc.ClaimCertificate(c.Request.Context(), subject.UserID, c.Param("track"), in.DisplayName, in.ProjectURL, in.Showcase)
 	learnReply(c, out, err)
+}
+
+// SetShowcase PUT /api/v1/learn/certificates/:track/showcase {showcase}
+func (h *LearnHandler) SetShowcase(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Showcase bool `json:"showcase"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	err := h.svc.SetShowcase(c.Request.Context(), subject.UserID, c.Param("track"), in.Showcase)
+	learnReply(c, gin.H{"showcase": in.Showcase}, err)
+}
+
+// Showcase GET /api/v1/learn/showcase?track=&limit= (public): the learner wall.
+func (h *LearnHandler) Showcase(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	items, err := h.svc.Showcase(c.Request.Context(), c.Query("track"), limit)
+	learnReply(c, items, err)
 }
 
 // Certificate GET /api/v1/learn/cert/:code (public)

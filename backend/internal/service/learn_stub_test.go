@@ -239,3 +239,58 @@ func (s *learnWorksStub) ListWorks(context.Context, WorkQuery) ([]Work, error) {
 func (s *learnWorksStub) GetProfileByUser(context.Context, int64) (*CommunityProfile, error) {
 	return &CommunityProfile{CommunityAuthor: CommunityAuthor{Handle: s.handle}}, nil
 }
+
+func (r *learnRepoStub) SetShowcase(_ context.Context, userID int64, track string, on bool) error {
+	for i := range r.certs {
+		if r.certs[i].UserID == userID && r.certs[i].Track == track && r.certs[i].RevokedAt == nil {
+			r.certs[i].Showcase = on
+			return nil
+		}
+	}
+	return ErrLearnCertNotFound
+}
+func (r *learnRepoStub) SetShowcaseHidden(_ context.Context, code string, hidden bool) error {
+	for i := range r.certs {
+		if r.certs[i].Code == code {
+			r.certs[i].ShowcaseHidden = hidden
+			return nil
+		}
+	}
+	return ErrLearnCertNotFound
+}
+func (r *learnRepoStub) Showcase(_ context.Context, track string, limit int) ([]LearnCertificate, error) {
+	out := []LearnCertificate{}
+	for i := len(r.certs) - 1; i >= 0 && len(out) < limit; i-- {
+		c := r.certs[i]
+		if c.Showcase && !c.ShowcaseHidden && c.RevokedAt == nil && (track == "" || c.Track == track) {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+func (r *learnRepoStub) TrackProgress(context.Context) ([]LearnTrackProgress, error) {
+	counts := map[string]int{}
+	for id := range r.done {
+		counts[id[:1]]++
+	}
+	out := []LearnTrackProgress{}
+	for t, n := range counts {
+		out = append(out, LearnTrackProgress{Track: t, UserID: 1, Lessons: n})
+	}
+	return out, nil
+}
+func (r *learnRepoStub) CertificateCounts(context.Context) (map[string]int, error) {
+	out := map[string]int{}
+	for _, c := range r.certs {
+		if c.RevokedAt == nil {
+			out[c.Track]++
+		}
+	}
+	return out, nil
+}
+func (r *learnRepoStub) Daily(context.Context, time.Time) ([]LearnDay, error) {
+	return []LearnDay{{Date: time.Now().In(learnDayZone).Format("2006-01-02"), Runs: 3, Learners: 1}}, nil
+}
+func (r *learnRepoStub) QuizStats(context.Context) (map[string]LearnQuizStat, error) {
+	return map[string]LearnQuizStat{"a1": {Takers: 1, Passed: 1, AvgScore: 100, Attempts: 2}}, nil
+}
