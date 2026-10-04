@@ -128,7 +128,7 @@ export default {
       navLabel: 'Learn AI',
       card: {
         title: 'AI Application Development Guide',
-        desc: '33 in-depth articles covering LLM basics, Agents, RAG and AI system design, plus interview questions and a learning roadmap. Free to read.',
+        desc: 'Learn by doing: AI app development and AI art lessons whose code runs right in the page, with free daily runs after signing in.',
         tags: 'LLM Basics,AI Agent,RAG,System Design,Interview',
         cta: 'Read for free'
       }

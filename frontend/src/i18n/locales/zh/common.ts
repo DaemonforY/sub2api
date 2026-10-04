@@ -217,6 +217,7 @@ export default {
     communityAdmin: '画布社区',
     myCourses: '我的课程',
     coursesAdmin: '课程管理',
+    learnAdmin: 'AI 学习',
   },
 
   // Auth

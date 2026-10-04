@@ -83,3 +83,9 @@ deploy/redis_data/
 .claude/
 issues/
 CLAUDE.md
+
+# AI 学习 (/learn): the site's content is Markdown; build outputs and deps are rebuilt in the image.
+!learn/**/*.md
+learn/node_modules
+learn/.vitepress/dist
+learn/.vitepress/cache

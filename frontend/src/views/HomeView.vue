@@ -172,11 +172,9 @@
             <Icon name="bolt" size="sm" />
             <span>{{ t('home.v2.nav.tools') }}</span>
           </a>
-          <!-- Learning site link (cross-site) -->
+          <!-- AI 学习 (/learn, a static site served beside the SPA) -->
           <a
             :href="learnUrl('nav')"
-            target="_blank"
-            rel="noopener noreferrer"
             class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
             :title="t('home.learn.card.title')"
           >
@@ -567,7 +565,7 @@
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('home.v2.footer.support') }}</h3>
           <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
             <li v-if="docUrl"><a :href="docUrl" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.docs') }}</a></li>
-            <li><a :href="learnUrl('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.learn') }}</a></li>
+            <li><a :href="learnUrl('footer')" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.learn') }}</a></li>
             <li><router-link to="/keys" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.keys') }}</router-link></li>
             <li v-for="site in partnerSites" :key="site.key">
               <a :href="partnerSiteUrl(site, '/', 'footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">
@@ -631,8 +629,8 @@ const isDark = ref(document.documentElement.classList.contains('dark'))
 // GitHub URL
 const githubUrl = 'https://github.com/Wei-Shaw/sub2api'
 // 互推站点：AI 应用开发学习站（带 UTM 便于统计引流）
-const learnSiteUrl = 'https://ai-learn.xinduanju.top/'
-const learnUrl = (medium: string) => `${learnSiteUrl}?utm_source=hivegpt&utm_medium=${medium}`
+// AI 学习 lives at /learn/ (VitePress pages served by the backend, not SPA routes).
+const learnUrl = (medium: string) => `/learn/?utm_source=home&utm_medium=${medium}`
 // 互推站点：无限画布（子域名部署的生图工作台），预填本站网关地址
 const canvasLink = (medium: string, path: '/' | `/${string}` = '/') =>
   canvasUrl({ medium, baseUrl: window.location.origin, path })

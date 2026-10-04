@@ -137,6 +137,7 @@ func RegisterAdminRoutes(
 		registerSiteHostingAdminRoutes(admin, h)
 		registerCommunityAdminRoutes(admin, h)
 		registerCourseAdminRoutes(admin, h)
+		registerLearnAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -242,6 +243,19 @@ func registerCourseAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/:id/enrollments", h.Admin.Course.Enrollments)
 		g.POST("/:id/enrollments", h.Admin.Course.Grant)
 		g.DELETE("/:id/enrollments/:user_id", h.Admin.Course.Revoke)
+	}
+}
+
+// registerLearnAdminRoutes AI 学习：在线运行设置（学习专用 Key、模型、免费次数）和学习数据。
+func registerLearnAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Admin.Learn == nil {
+		return
+	}
+	g := admin.Group("/learn")
+	{
+		g.GET("/settings", h.Admin.Learn.Settings)
+		g.PUT("/settings", h.Admin.Learn.SaveSettings)
+		g.GET("/stats", h.Admin.Learn.Stats)
 	}
 }
 

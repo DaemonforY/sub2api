@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -655,6 +656,19 @@ func ProvideCommunityService(repo CommunityRepository, settings SettingRepositor
 	return svc
 }
 
+// ProvideLearnService wires AI 学习; example runs call this server's own gateway on loopback.
+func ProvideLearnService(repo LearnRepository, settings SettingRepository, encryptor SecretEncryptor, cfg *config.Config) *LearnService {
+	port := 8080
+	if cfg != nil && cfg.Server.Port > 0 {
+		port = cfg.Server.Port
+	}
+	var store learnSettingStore
+	if settings != nil {
+		store = settings
+	}
+	return NewLearnService(repo, store, encryptor, "http://127.0.0.1:"+strconv.Itoa(port))
+}
+
 // ProvideCourseService wires paid courses; images live beside the community's (community.dir/../courses).
 func ProvideCourseService(repo CourseRepository, encryptor SecretEncryptor, cfg *config.Config, growth *GrowthService, settings SettingRepository, mailer *NotificationEmailService, redeem *RedeemService) *CourseService {
 	dir := "./data/courses"
@@ -1106,6 +1120,7 @@ var ProviderSet = wire.NewSet(
 	ProvideCanvasCloudService,
 	ProvideCommunityService,
 	ProvideCourseService,
+	ProvideLearnService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

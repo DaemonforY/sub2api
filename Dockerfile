@@ -44,6 +44,21 @@ COPY docs/legal/ /app/docs/legal/
 RUN pnpm run build
 
 # -----------------------------------------------------------------------------
+# Stage 1b: AI 学习 (/learn, VitePress static site; served by the Go binary)
+# -----------------------------------------------------------------------------
+FROM --platform=${BUILDPLATFORM} ${NODE_IMAGE} AS learn-builder
+ARG NPM_CONFIG_REGISTRY
+
+WORKDIR /app/learn
+RUN corepack enable && corepack prepare pnpm@9 --activate
+COPY learn/package.json learn/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=sub2api-pnpm-store,target=/root/.local/share/pnpm/store \
+    if [ -n "${NPM_CONFIG_REGISTRY}" ]; then pnpm config set registry "${NPM_CONFIG_REGISTRY}"; fi && \
+    pnpm install --frozen-lockfile --prefer-offline
+COPY learn/ ./
+RUN pnpm run build
+
+# -----------------------------------------------------------------------------
 # Stage 2: Backend Builder
 # -----------------------------------------------------------------------------
 # --platform=$BUILDPLATFORM: run the Go toolchain on the native host arch and
@@ -82,6 +97,7 @@ COPY backend/ ./
 
 # Copy frontend dist from previous stage (must be after backend copy to avoid being overwritten)
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
+COPY --from=learn-builder /app/learn/.vitepress/dist ./internal/web/dist/learn
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
 # Version precedence: build arg VERSION > exact git tag > cmd/server/VERSION

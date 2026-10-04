@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -99,6 +100,12 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			cleanPath = "index.html"
 		}
 
+		// /learn is a separate static site (VitePress), not part of the SPA.
+		if cleanPath == "learn" || strings.HasPrefix(cleanPath, "learn/") {
+			s.serveLearn(c, cleanPath)
+			return
+		}
+
 		// For index.html or SPA routes, serve with injected settings
 		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
 			s.serveIndexHTML(c)
@@ -115,6 +122,49 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 		s.fileServer.ServeHTTP(c.Writer, c.Request)
 		c.Abort()
 	}
+}
+
+// serveLearn serves the /learn static site: pages (also without ".html"), its assets (hashed
+// names under learn/assets/ are cached for good), and its own 404 page.
+func (s *FrontendServer) serveLearn(c *gin.Context, cleanPath string) {
+	if cleanPath == "learn" {
+		c.Redirect(http.StatusMovedPermanently, "/learn/")
+		c.Abort()
+		return
+	}
+	name := cleanPath
+	if strings.HasSuffix(name, "/") {
+		name += "index.html"
+	}
+	candidates := []string{name}
+	if path.Ext(name) == "" {
+		candidates = append(candidates, name+".html", name+"/index.html")
+	}
+	for _, candidate := range candidates {
+		if !s.isFile(candidate) {
+			continue
+		}
+		if strings.HasPrefix(candidate, "learn/assets/") {
+			c.Header("Cache-Control", staticAssetsCacheControl)
+		} else if strings.HasSuffix(candidate, ".html") {
+			c.Header("Cache-Control", "no-cache")
+		}
+		http.ServeFileFS(c.Writer, c.Request, s.distFS, candidate)
+		c.Abort()
+		return
+	}
+	body, err := fs.ReadFile(s.distFS, "learn/404.html")
+	if err != nil {
+		c.String(http.StatusNotFound, "Not found")
+	} else {
+		c.Data(http.StatusNotFound, "text/html; charset=utf-8", body)
+	}
+	c.Abort()
+}
+
+func (s *FrontendServer) isFile(name string) bool {
+	info, err := fs.Stat(s.distFS, name)
+	return err == nil && !info.IsDir()
 }
 
 func (s *FrontendServer) fileExists(path string) bool {

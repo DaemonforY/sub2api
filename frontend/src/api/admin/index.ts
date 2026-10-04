@@ -43,6 +43,7 @@ import imageToolsAPI from './imageTools'
 import sitesAPI from './sites'
 import communityAPI from './community'
 import coursesAPI from './courses'
+import learnAPI from './learn'
 
 /**
  * Unified admin API object for convenient access
@@ -87,7 +88,8 @@ export const adminAPI = {
   imageTools: imageToolsAPI,
   sites: sitesAPI,
   community: communityAPI,
-  courses: coursesAPI
+  courses: coursesAPI,
+  learn: learnAPI
 }
 
 export {

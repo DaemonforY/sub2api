@@ -217,6 +217,7 @@ export default {
     communityAdmin: 'Canvas community',
     myCourses: 'My courses',
     coursesAdmin: 'Courses',
+    learnAdmin: 'AI Learning',
   },
 
   // Auth

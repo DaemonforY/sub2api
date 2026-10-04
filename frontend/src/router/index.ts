@@ -177,6 +177,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    // AI 学习 is a separate static site at /learn (served by the backend). In-app navigation there,
+    // e.g. the redirect after signing in, has to leave the SPA.
+    path: '/learn/:pathMatch(.*)*',
+    name: 'LearnSite',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { requiresAuth: false, title: 'AI 学习' },
+    beforeEnter: (to) => {
+      window.location.assign(to.fullPath)
+      return false
+    }
+  },
+  {
     path: '/courses',
     name: 'Courses',
     component: () => import('@/views/CoursesView.vue'),
@@ -529,6 +541,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Prompt library',
       titleKey: 'admin.promptLibrary.title',
       descriptionKey: 'admin.promptLibrary.description'
+    }
+  },
+  {
+    path: '/admin/learn',
+    name: 'AdminLearn',
+    component: () => import('@/views/admin/LearnView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'AI Learning',
+      titleKey: 'admin.learn.title',
+      descriptionKey: 'admin.learn.description'
     }
   },
   {

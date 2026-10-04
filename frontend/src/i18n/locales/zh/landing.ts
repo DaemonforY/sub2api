@@ -128,7 +128,7 @@ export default {
       navLabel: 'AI 学习',
       card: {
         title: 'AI 应用开发知识体系',
-        desc: '33 篇系统文章：大模型基础、Agent、RAG、AI 系统设计，配套高频面试题与学习路线，免费阅读。',
+        desc: '边学边做：AI 应用开发和 AI 绘画课程，每节课的代码都能在页面里直接运行，登录后每天有免费次数。',
         tags: '大模型基础,AI Agent,RAG,系统设计,面试题',
         cta: '免费阅读'
       }

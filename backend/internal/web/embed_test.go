@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -908,4 +909,48 @@ func BenchmarkFrontendServerServeIndexHTML(b *testing.B) {
 
 		server.serveIndexHTML(c)
 	}
+}
+
+func TestFrontendServer_ServesLearnSite(t *testing.T) {
+	learnFS := fstest.MapFS{
+		"index.html":               {Data: []byte("<html>spa</html>")},
+		"learn/index.html":         {Data: []byte("<html>learn home</html>")},
+		"learn/a/a1.html":          {Data: []byte("<html>lesson a1</html>")},
+		"learn/404.html":           {Data: []byte("<html>learn 404</html>")},
+		"learn/assets/app.Ab12.js": {Data: []byte("console.log(1)")},
+	}
+	server := &FrontendServer{distFS: learnFS, fileServer: http.FileServer(http.FS(learnFS)), baseHTML: []byte("<html>spa</html>"), cache: NewHTMLCache(), settings: &mockSettingsProvider{settings: map[string]string{}}}
+	router := gin.New()
+	router.Use(server.Middleware())
+	get := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		return w
+	}
+
+	w := get("/learn")
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+	assert.Equal(t, "/learn/", w.Header().Get("Location"))
+
+	w = get("/learn/")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "learn home")
+	assert.Equal(t, "no-cache", w.Header().Get("Cache-Control"))
+
+	for _, p := range []string{"/learn/a/a1.html", "/learn/a/a1"} {
+		w = get(p)
+		assert.Equal(t, http.StatusOK, w.Code, p)
+		assert.Contains(t, w.Body.String(), "lesson a1", p)
+	}
+
+	w = get("/learn/assets/app.Ab12.js")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, staticAssetsCacheControl, w.Header().Get("Cache-Control"))
+
+	// Unknown /learn pages get the learn site's 404, not the SPA.
+	w = get("/learn/nope")
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), "learn 404")
+	w = get("/learn/a/")
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
