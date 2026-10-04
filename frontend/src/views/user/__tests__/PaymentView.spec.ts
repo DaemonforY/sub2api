@@ -91,7 +91,8 @@ vi.mock('@/api/payment', () => ({
   },
 }))
 
-vi.mock('@/api/courses', () => ({
+vi.mock('@/api/courses', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/courses')>()),
   getCourse,
 }))
 
@@ -798,6 +799,7 @@ describe('PaymentView course checkout', () => {
   const course = {
     id: 5, slug: 'ai-agent', title: 'AI Agent 实战', subtitle: '', category: '', cover_url: '', price: 199, original_price: 299,
     outline: [], status: 'published', sort_order: 0, lesson_count: 3, student_count: 0, owned: false, created_at: '', updated_at: '',
+    sale_price: 149, sale_ends_at: '2099-01-01T00:00:00Z', edu_discount: true, trial_video_url: '', current_price: 149, sale_active: true, edu_applied: false,
   }
 
   async function mountCourse(query: Record<string, unknown>, found: Record<string, unknown> = course) {
@@ -832,7 +834,9 @@ describe('PaymentView course checkout', () => {
     expect(wrapper.get('[data-testid="course-pay"]').attributes('disabled')).toBeUndefined()
     await wrapper.get('[data-testid="course-pay"]').trigger('click')
     await flushPromises()
-    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({ order_type: 'course', course_id: 5, amount: 199 }))
+    // The limited-time price is charged; the list price is crossed out.
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({ order_type: 'course', course_id: 5, amount: 149 }))
+    expect(wrapper.get('[data-testid="course-checkout"]').text()).toContain('199')
   })
 
   it('sends a bought course to 我的课程', async () => {

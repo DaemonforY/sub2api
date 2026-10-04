@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
 )
@@ -31,16 +32,28 @@ SELECT c.id, c.slug, c.title, c.subtitle, c.category, c.cover_file, c.price::flo
        (SELECT COUNT(*) FROM course_enrollments e WHERE e.course_id = c.id AND ` + activeEnrollment + `) AS student_count,
        COALESCE((SELECT SUM(po.pay_amount)::float8 FROM payment_orders po
                  WHERE po.order_type = 'course' AND po.course_id = c.id AND po.status = 'COMPLETED'), 0) AS revenue,
-       COALESCE((SELECT MAX(d.version) FROM course_deliveries d WHERE d.course_id = c.id), 0) AS delivery_version
+       COALESCE((SELECT MAX(d.version) FROM course_deliveries d WHERE d.course_id = c.id), 0) AS delivery_version,
+       c.sale_price::float8, c.sale_ends_at, c.edu_discount, c.trial_video_url,
+       COALESCE((SELECT SUM(s.views) FROM course_daily_stats s WHERE s.course_id = c.id AND s.day > CURRENT_DATE - 30), 0) AS views_30d,
+       (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.created_at > NOW() - INTERVAL '30 days') AS orders_30d,
+       (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.paid_at > NOW() - INTERVAL '30 days') AS paid_30d,
+       (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.status = 'REFUNDED') AS refunds
 FROM courses c`
 
-func scanCourse(row rowScanner) (*service.Course, error) {
+// scanCourse reads courseSelect's columns, then any extra destinations.
+func scanCourse(row rowScanner, extra ...any) (*service.Course, error) {
 	var c service.Course
 	var outline []byte
-	if err := row.Scan(&c.ID, &c.Slug, &c.Title, &c.Subtitle, &c.Category, &c.CoverFile, &c.Price, &c.OriginalPrice,
+	var saleEnds sql.NullTime
+	dest := []any{&c.ID, &c.Slug, &c.Title, &c.Subtitle, &c.Category, &c.CoverFile, &c.Price, &c.OriginalPrice,
 		&c.IntroMD, &outline, &c.TrialMD, &c.FaqMD, &c.Status, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt,
-		&c.StudentCount, &c.Revenue, &c.DeliveryVersion); err != nil {
+		&c.StudentCount, &c.Revenue, &c.DeliveryVersion,
+		&c.SalePrice, &saleEnds, &c.EduDiscount, &c.TrialVideoURL, &c.Views30d, &c.Orders30d, &c.Paid30d, &c.Refunds}
+	if err := row.Scan(append(dest, extra...)...); err != nil {
 		return nil, err
+	}
+	if saleEnds.Valid {
+		c.SaleEndsAt = &saleEnds.Time
 	}
 	c.Outline = service.UnmarshalOutline(outline)
 	return &c, nil
@@ -86,10 +99,11 @@ func (r *courseRepository) GetCourseBySlug(ctx context.Context, slug string) (*s
 
 func (r *courseRepository) CreateCourse(ctx context.Context, c *service.Course) error {
 	err := r.db.QueryRowContext(ctx, `
-INSERT INTO courses (slug, title, subtitle, category, cover_file, price, original_price, intro_md, outline, trial_md, faq_md, status, sort_order)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, created_at, updated_at`,
+INSERT INTO courses (slug, title, subtitle, category, cover_file, price, original_price, intro_md, outline, trial_md, faq_md, status, sort_order,
+                     sale_price, sale_ends_at, edu_discount, trial_video_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id, created_at, updated_at`,
 		c.Slug, c.Title, c.Subtitle, c.Category, c.CoverFile, c.Price, c.OriginalPrice, c.IntroMD, service.MarshalOutline(c.Outline),
-		c.TrialMD, c.FaqMD, c.Status, c.SortOrder).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
+		c.TrialMD, c.FaqMD, c.Status, c.SortOrder, c.SalePrice, c.SaleEndsAt, c.EduDiscount, c.TrialVideoURL).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
 	if isUniqueViolation(err) {
 		return service.ErrCourseSlugTaken
 	}
@@ -99,10 +113,11 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, cr
 func (r *courseRepository) UpdateCourse(ctx context.Context, c *service.Course) error {
 	_, err := r.db.ExecContext(ctx, `
 UPDATE courses SET slug = $2, title = $3, subtitle = $4, category = $5, cover_file = $6, price = $7, original_price = $8,
-       intro_md = $9, outline = $10, trial_md = $11, faq_md = $12, status = $13, sort_order = $14, updated_at = NOW()
+       intro_md = $9, outline = $10, trial_md = $11, faq_md = $12, status = $13, sort_order = $14,
+       sale_price = $15, sale_ends_at = $16, edu_discount = $17, trial_video_url = $18, updated_at = NOW()
 WHERE id = $1`,
 		c.ID, c.Slug, c.Title, c.Subtitle, c.Category, c.CoverFile, c.Price, c.OriginalPrice, c.IntroMD, service.MarshalOutline(c.Outline),
-		c.TrialMD, c.FaqMD, c.Status, c.SortOrder)
+		c.TrialMD, c.FaqMD, c.Status, c.SortOrder, c.SalePrice, c.SaleEndsAt, c.EduDiscount, c.TrialVideoURL)
 	if isUniqueViolation(err) {
 		return service.ErrCourseSlugTaken
 	}
@@ -166,11 +181,16 @@ func (r *courseRepository) UpsertEnrollment(ctx context.Context, e *service.Cour
 	if e.OrderID > 0 {
 		orderID = e.OrderID
 	}
-	_, err := r.db.ExecContext(ctx, `
+	const query = `
 INSERT INTO course_enrollments (user_id, course_id, order_id, source, status, note) VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (user_id, course_id) DO UPDATE SET order_id = EXCLUDED.order_id, source = EXCLUDED.source, status = EXCLUDED.status,
-    note = EXCLUDED.note, updated_at = NOW()`,
-		e.UserID, e.CourseID, orderID, e.Source, e.Status, e.Note)
+    note = EXCLUDED.note, updated_at = NOW()`
+	// Inside a redeem transaction the enrollment commits (or rolls back) with the code.
+	if tx := dbent.TxFromContext(ctx); tx != nil {
+		_, err := tx.Client().ExecContext(ctx, query, e.UserID, e.CourseID, orderID, e.Source, e.Status, e.Note)
+		return err
+	}
+	_, err := r.db.ExecContext(ctx, query, e.UserID, e.CourseID, orderID, e.Source, e.Status, e.Note)
 	return err
 }
 
@@ -198,24 +218,19 @@ ORDER BY e.created_at DESC`, userID)
 	defer func() { _ = rows.Close() }()
 	var out []service.MyCourse
 	for rows.Next() {
-		var c service.Course
-		var outline []byte
 		var e service.CourseEnrollment
 		var first, last sql.NullTime
-		if err := rows.Scan(&c.ID, &c.Slug, &c.Title, &c.Subtitle, &c.Category, &c.CoverFile, &c.Price, &c.OriginalPrice,
-			&c.IntroMD, &outline, &c.TrialMD, &c.FaqMD, &c.Status, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt,
-			&c.StudentCount, &c.Revenue, &c.DeliveryVersion,
-			&e.UserID, &e.CourseID, &e.OrderID, &e.Source, &e.Status, &e.Note, &first, &last, &e.ViewCount, &e.SeenVersion, &e.Refunded, &e.CreatedAt); err != nil {
+		c, err := scanCourse(rows, &e.UserID, &e.CourseID, &e.OrderID, &e.Source, &e.Status, &e.Note, &first, &last, &e.ViewCount, &e.SeenVersion, &e.Refunded, &e.CreatedAt)
+		if err != nil {
 			return nil, err
 		}
-		c.Outline = service.UnmarshalOutline(outline)
 		if first.Valid {
 			e.FirstViewedAt = &first.Time
 		}
 		if last.Valid {
 			e.LastViewedAt = &last.Time
 		}
-		out = append(out, service.MyCourse{Course: c, Enrollment: e})
+		out = append(out, service.MyCourse{Course: *c, Enrollment: e})
 	}
 	return out, rows.Err()
 }
@@ -347,4 +362,32 @@ func (r *courseRepository) FindUserID(ctx context.Context, idOrEmail string) (in
 		return 0, nil
 	}
 	return id, err
+}
+
+// AddView counts a course page view for today.
+func (r *courseRepository) AddView(ctx context.Context, courseID int64) error {
+	_, err := r.db.ExecContext(ctx, `
+INSERT INTO course_daily_stats (course_id, day, views) VALUES ($1, CURRENT_DATE, 1)
+ON CONFLICT (course_id, day) DO UPDATE SET views = course_daily_stats.views + 1`, courseID)
+	return err
+}
+
+// ActiveStudents lists the buyers who still have the course (for emails).
+func (r *courseRepository) ActiveStudents(ctx context.Context, courseID int64) ([]service.CourseStudent, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT u.id, u.email, u.username FROM course_enrollments e JOIN users u ON u.id = e.user_id
+WHERE e.course_id = $1 AND u.deleted_at IS NULL AND `+activeEnrollment, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []service.CourseStudent
+	for rows.Next() {
+		var st service.CourseStudent
+		if err := rows.Scan(&st.UserID, &st.Email, &st.Username); err != nil {
+			return nil, err
+		}
+		out = append(out, st)
+	}
+	return out, rows.Err()
 }

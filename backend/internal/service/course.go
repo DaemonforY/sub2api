@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +29,10 @@ const (
 
 	CourseSourcePurchase = "purchase"
 	CourseSourceAdmin    = "admin"
+	CourseSourceRedeem   = "redeem"
+
+	// settingCourseAffiliateRate: percent of a course order credited to the buyer's inviter (0 = off).
+	settingCourseAffiliateRate = "course_affiliate_rate_percent"
 
 	CourseMediaPublicPrefix = "/api/v1/courses/media/"
 
@@ -46,6 +52,7 @@ var (
 	ErrCourseTooManyViews  = infraerrors.TooManyRequests("COURSE_TOO_MANY_VIEWS", "查看太频繁，请稍后再试（Too many requests）")
 	ErrCourseUserNotFound  = infraerrors.NotFound("COURSE_USER_NOT_FOUND", "找不到这个用户，请填写用户 ID 或注册邮箱（User not found）")
 	ErrCourseImageRequired = infraerrors.BadRequest("COURSE_IMAGE_REQUIRED", "请选择一张图片（Pick an image）")
+	ErrCourseRedeemInvalid = infraerrors.BadRequest("COURSE_REDEEM_INVALID", "这个兑换码对应的课程不存在或已下架（Course not available）")
 )
 
 func errCourseInvalid(what string) error {
@@ -82,8 +89,21 @@ type Course struct {
 	FaqMD         string          `json:"faq_md,omitempty"`
 	Status        string          `json:"status"`
 	SortOrder     int             `json:"sort_order"`
-	LessonCount   int             `json:"lesson_count"`
-	StudentCount  int             `json:"student_count"`
+	// SalePrice applies until SaleEndsAt (limited-time price); 0 = none.
+	SalePrice  float64    `json:"sale_price"`
+	SaleEndsAt *time.Time `json:"sale_ends_at,omitempty"`
+	// EduDiscount: verified students / teachers get the education discount on this course.
+	EduDiscount bool `json:"edu_discount"`
+	// TrialVideoURL: a direct video link (OSS / CDN) or a Bilibili page, shown as the free preview.
+	TrialVideoURL string `json:"trial_video_url"`
+	// CurrentPrice is what the viewer pays now (limited-time price, then their education discount).
+	CurrentPrice float64 `json:"current_price"`
+	SaleActive   bool    `json:"sale_active"`
+	EduApplied   bool    `json:"edu_applied"`
+	// EduPercent (when the viewer is not verified): the discount verification would give.
+	EduPercent   float64 `json:"edu_percent,omitempty"`
+	LessonCount  int     `json:"lesson_count"`
+	StudentCount int     `json:"student_count"`
 	// Owned: the viewer has an active enrollment.
 	Owned     bool      `json:"owned"`
 	CreatedAt time.Time `json:"created_at"`
@@ -91,6 +111,11 @@ type Course struct {
 	// Admin only.
 	Revenue         float64 `json:"revenue,omitempty"`
 	DeliveryVersion int     `json:"delivery_version,omitempty"`
+	// Last 30 days (admin only): page views, orders created, orders paid; refunds ever.
+	Views30d  int `json:"views_30d,omitempty"`
+	Orders30d int `json:"orders_30d,omitempty"`
+	Paid30d   int `json:"paid_30d,omitempty"`
+	Refunds   int `json:"refunds,omitempty"`
 }
 
 // CourseDeliveryRecord is a stored delivery version (fields encrypted).
@@ -172,6 +197,27 @@ type CourseRepository interface {
 	RecordAccess(ctx context.Context, courseID, userID int64, ip string, version int) error
 
 	FindUserID(ctx context.Context, idOrEmail string) (int64, error)
+	AddView(ctx context.Context, courseID int64) error
+	ActiveStudents(ctx context.Context, courseID int64) ([]CourseStudent, error)
+}
+
+// CourseStudent is a buyer to notify.
+type CourseStudent struct {
+	UserID   int64
+	Email    string
+	Username string
+}
+
+// coursePricer prices for verified students (GrowthService).
+type coursePricer interface {
+	DiscountedPrice(ctx context.Context, userID int64, price float64) (float64, bool)
+	GetSettings(ctx context.Context) (*GrowthSettings, error)
+}
+
+// courseSettings stores the course rebate rate.
+type courseSettings interface {
+	GetMultiple(ctx context.Context, keys []string) (map[string]string, error)
+	SetMultiple(ctx context.Context, values map[string]string) error
 }
 
 type CourseService struct {
@@ -179,7 +225,19 @@ type CourseService struct {
 	media     *CommunityMediaStore
 	encryptor SecretEncryptor
 	now       func() time.Time
+	pricer    coursePricer
+	settings  courseSettings
+	mailer    *NotificationEmailService
 }
+
+// SetPricer enables education-discounted course prices.
+func (s *CourseService) SetPricer(p coursePricer) { s.pricer = p }
+
+// SetSettings enables the course rebate rate setting.
+func (s *CourseService) SetSettings(st courseSettings) { s.settings = st }
+
+// SetMailer enables course emails (purchase, link updated).
+func (s *CourseService) SetMailer(m *NotificationEmailService) { s.mailer = m }
 
 func NewCourseService(repo CourseRepository, media *CommunityMediaStore, encryptor SecretEncryptor) *CourseService {
 	return &CourseService{repo: repo, media: media, encryptor: encryptor, now: time.Now}
@@ -214,6 +272,44 @@ func (s *CourseService) decorate(c *Course, owned bool, full bool) {
 	}
 }
 
+// priceFor sets what userID pays now: the limited-time price while it runs, then the education
+// discount for verified students (or, for others, the discount verification would give).
+func (s *CourseService) priceFor(ctx context.Context, c *Course, userID int64, edu *GrowthSettings) {
+	price := c.Price
+	c.SaleActive = c.SalePrice > 0 && c.SalePrice < c.Price && c.SaleEndsAt != nil && s.now().Before(*c.SaleEndsAt)
+	if c.SaleActive {
+		price = c.SalePrice
+	}
+	c.CurrentPrice, c.EduApplied, c.EduPercent = price, false, 0
+	if !c.EduDiscount || s.pricer == nil {
+		return
+	}
+	if userID > 0 {
+		if discounted, ok := s.pricer.DiscountedPrice(ctx, userID, price); ok {
+			c.CurrentPrice, c.EduApplied = discounted, true
+			return
+		}
+	}
+	if edu != nil && edu.EduVerifyEnabled && edu.EduDiscountPercent > 0 {
+		c.EduPercent = edu.EduDiscountPercent
+	}
+}
+
+func (s *CourseService) eduSettings(ctx context.Context) *GrowthSettings {
+	if s.pricer == nil {
+		return nil
+	}
+	settings, err := s.pricer.GetSettings(ctx)
+	if err != nil {
+		return nil
+	}
+	return settings
+}
+
+func hideAdminFields(c *Course) {
+	c.Revenue, c.DeliveryVersion, c.Views30d, c.Orders30d, c.Paid30d, c.Refunds = 0, 0, 0, 0, 0, 0
+}
+
 // Courses on sale, with the viewer's purchases marked.
 func (s *CourseService) Courses(ctx context.Context, viewerID int64) ([]Course, error) {
 	list, err := s.repo.ListCourses(ctx, []string{CourseStatusPublished})
@@ -229,9 +325,11 @@ func (s *CourseService) Courses(ctx context.Context, viewerID int64) ([]Course, 
 	if list == nil {
 		list = []Course{}
 	}
+	edu := s.eduSettings(ctx)
 	for i := range list {
 		s.decorate(&list[i], owned[list[i].ID], false)
-		list[i].Revenue, list[i].DeliveryVersion = 0, 0
+		s.priceFor(ctx, &list[i], viewerID, edu)
+		hideAdminFields(&list[i])
 	}
 	return list, nil
 }
@@ -258,7 +356,11 @@ func (s *CourseService) Course(ctx context.Context, slug string, viewerID int64)
 		return nil, ErrCourseNotFound
 	}
 	s.decorate(c, owned, true)
-	c.Revenue, c.DeliveryVersion = 0, 0
+	s.priceFor(ctx, c, viewerID, s.eduSettings(ctx))
+	hideAdminFields(c)
+	if !owned {
+		_ = s.repo.AddView(ctx, c.ID)
+	}
 	return c, nil
 }
 
@@ -274,7 +376,7 @@ func (s *CourseService) MyCourses(ctx context.Context, userID int64) ([]MyCourse
 	for i := range list {
 		s.decorate(&list[i].Course, list[i].Enrollment.Active(), false)
 		list[i].Updated = list[i].Enrollment.SeenVersion > 0 && list[i].Course.DeliveryVersion > list[i].Enrollment.SeenVersion
-		list[i].Course.Revenue, list[i].Course.DeliveryVersion = 0, 0
+		hideAdminFields(&list[i].Course)
 	}
 	return list, nil
 }
@@ -339,7 +441,8 @@ func (s *CourseService) decrypt(rec *CourseDeliveryRecord) (*CourseDelivery, err
 
 // --- Payment hooks ---------------------------------------------------------------------------
 
-// CourseForOrder prices a course order: on sale and not already bought.
+// CourseForOrder prices a course order (CurrentPrice is the buyer's price): on sale and not
+// already bought.
 func (s *CourseService) CourseForOrder(ctx context.Context, userID, courseID int64) (*Course, error) {
 	c, err := s.repo.GetCourse(ctx, courseID)
 	if err != nil {
@@ -355,6 +458,7 @@ func (s *CourseService) CourseForOrder(ctx context.Context, userID, courseID int
 	if e.Active() {
 		return nil, ErrCourseOwned
 	}
+	s.priceFor(ctx, c, userID, nil)
 	return c, nil
 }
 
@@ -379,6 +483,10 @@ type CourseInput struct {
 	FaqMD         string          `json:"faq_md"`
 	Status        string          `json:"status"`
 	SortOrder     int             `json:"sort_order"`
+	SalePrice     float64         `json:"sale_price"`
+	SaleEndsAt    *time.Time      `json:"sale_ends_at"`
+	EduDiscount   bool            `json:"edu_discount"`
+	TrialVideoURL string          `json:"trial_video_url"`
 }
 
 func roundCents(v float64) float64 { return math.Round(v*100) / 100 }
@@ -431,6 +539,21 @@ func (in CourseInput) apply(c *Course) error {
 		c.Status = CourseStatusDraft
 	}
 	c.SortOrder = in.SortOrder
+	c.SalePrice, c.SaleEndsAt = roundCents(in.SalePrice), in.SaleEndsAt
+	if c.SalePrice < 0 || math.IsNaN(c.SalePrice) || c.SalePrice >= c.Price {
+		c.SalePrice = 0
+	}
+	if c.SalePrice > 0 && c.SaleEndsAt == nil {
+		return errCourseInvalid("限时价需要设置截止时间")
+	}
+	if c.SalePrice == 0 {
+		c.SaleEndsAt = nil
+	}
+	c.EduDiscount = in.EduDiscount
+	c.TrialVideoURL = strings.TrimSpace(in.TrialVideoURL)
+	if c.TrialVideoURL != "" && (!strings.HasPrefix(c.TrialVideoURL, "https://") || len(c.TrialVideoURL) > 500) {
+		return errCourseInvalid("试看视频须是 https:// 开头的链接")
+	}
 	return nil
 }
 
@@ -550,6 +673,8 @@ type DeliveryInput struct {
 	Code     string `json:"code"`
 	Password string `json:"password"`
 	Note     string `json:"note"`
+	// Notify emails the course's buyers that the link changed.
+	Notify bool `json:"notify"`
 }
 
 func (s *CourseService) seal(v string) (string, error) {
@@ -559,8 +684,9 @@ func (s *CourseService) seal(v string) (string, error) {
 	return s.encryptor.Encrypt(v)
 }
 
-// SaveDelivery stores a new version of the course's link (buyers see it at once).
-func (s *CourseService) SaveDelivery(ctx context.Context, courseID, adminID int64, in DeliveryInput) (*CourseDelivery, error) {
+// SaveDelivery stores a new version of the course's link (buyers see it at once); with Notify,
+// buyers are emailed (in the background) to look under 我的课程 at siteURL.
+func (s *CourseService) SaveDelivery(ctx context.Context, courseID, adminID int64, in DeliveryInput, siteURL string) (*CourseDelivery, error) {
 	c, err := s.repo.GetCourse(ctx, courseID)
 	if err != nil {
 		return nil, err
@@ -584,6 +710,9 @@ func (s *CourseService) SaveDelivery(ctx context.Context, courseID, adminID int6
 	}
 	if err := s.repo.AddDelivery(ctx, rec); err != nil {
 		return nil, err
+	}
+	if in.Notify && rec.Version > 1 {
+		go s.notifyDeliveryUpdated(context.WithoutCancel(ctx), c, siteURL)
 	}
 	return s.decrypt(rec)
 }
@@ -659,4 +788,114 @@ func UnmarshalOutline(b []byte) []CourseSection {
 		return []CourseSection{}
 	}
 	return o
+}
+
+// --- Emails --------------------------------------------------------------------------------------
+
+func myCoursesURL(siteURL string) string {
+	return strings.TrimRight(siteURL, "/") + "/my-courses"
+}
+
+func (s *CourseService) sendCourseEmail(ctx context.Context, event string, c *Course, student CourseStudent, siteURL string) error {
+	if s.mailer == nil || student.Email == "" {
+		return nil
+	}
+	return s.mailer.Send(ctx, NotificationEmailSendInput{
+		Event:          event,
+		RecipientEmail: student.Email,
+		RecipientName:  firstNonEmpty(student.Username, student.Email),
+		UserID:         student.UserID,
+		SourceType:     "course",
+		SourceID:       fmt.Sprintf("%d", c.ID),
+		Variables:      map[string]string{"course_title": c.Title, "courses_url": myCoursesURL(siteURL)},
+	})
+}
+
+func (s *CourseService) notifyDeliveryUpdated(ctx context.Context, c *Course, siteURL string) {
+	students, err := s.repo.ActiveStudents(ctx, c.ID)
+	if err != nil {
+		slog.Warn("course link update: list students", "course_id", c.ID, "err", err)
+		return
+	}
+	for _, st := range students {
+		if err := s.sendCourseEmail(ctx, NotificationEmailEventCourseDeliveryUpdated, c, st, siteURL); err != nil {
+			slog.Warn("course link update email failed", "course_id", c.ID, "user_id", st.UserID, "err", err)
+		}
+	}
+}
+
+// NotifyPurchased emails the buyer where to find a course they just bought.
+func (s *CourseService) NotifyPurchased(ctx context.Context, courseID int64, student CourseStudent, siteURL string) error {
+	c, err := s.repo.GetCourse(ctx, courseID)
+	if err != nil || c == nil {
+		return err
+	}
+	return s.sendCourseEmail(ctx, NotificationEmailEventCoursePurchaseSuccess, c, student, siteURL)
+}
+
+// --- Redeem codes (type course, value = course ID) ------------------------------------------------
+
+// CheckRedeem: the code's course can be opened for userID (before the code is used up).
+func (s *CourseService) CheckRedeem(ctx context.Context, userID, courseID int64) error {
+	c, err := s.repo.GetCourse(ctx, courseID)
+	if err != nil {
+		return err
+	}
+	if c == nil || c.Status == CourseStatusDraft {
+		return ErrCourseRedeemInvalid
+	}
+	e, err := s.repo.GetEnrollment(ctx, userID, courseID)
+	if err != nil {
+		return err
+	}
+	if e.Active() {
+		return ErrCourseOwned
+	}
+	return nil
+}
+
+// EnrollRedeem opens the course; inside the redeem transaction when ctx carries one.
+func (s *CourseService) EnrollRedeem(ctx context.Context, userID, courseID int64, code string) error {
+	return s.repo.UpsertEnrollment(ctx, &CourseEnrollment{UserID: userID, CourseID: courseID, Source: CourseSourceRedeem, Status: CourseEnrollmentActive, Note: "兑换码 " + cleanText(code, 64)})
+}
+
+// --- Settings ------------------------------------------------------------------------------------
+
+// CourseSettings: the share of a course order credited to the buyer's inviter.
+type CourseSettings struct {
+	AffiliateRatePercent float64 `json:"affiliate_rate_percent"`
+}
+
+// AffiliateRate is the course rebate rate in percent (0 = course orders earn no rebate).
+func (s *CourseService) AffiliateRate(ctx context.Context) float64 {
+	if s.settings == nil {
+		return 0
+	}
+	values, err := s.settings.GetMultiple(ctx, []string{settingCourseAffiliateRate})
+	if err != nil {
+		return 0
+	}
+	rate, err := strconv.ParseFloat(strings.TrimSpace(values[settingCourseAffiliateRate]), 64)
+	if err != nil || rate < 0 || rate > 100 || math.IsNaN(rate) {
+		return 0
+	}
+	return rate
+}
+
+func (s *CourseService) Settings(ctx context.Context) CourseSettings {
+	return CourseSettings{AffiliateRatePercent: s.AffiliateRate(ctx)}
+}
+
+func (s *CourseService) SaveSettings(ctx context.Context, in CourseSettings) (CourseSettings, error) {
+	if in.AffiliateRatePercent < 0 || in.AffiliateRatePercent > 50 || math.IsNaN(in.AffiliateRatePercent) {
+		return CourseSettings{}, errCourseInvalid("返利比例须在 0–50% 之间")
+	}
+	if s.settings == nil {
+		return CourseSettings{}, nil
+	}
+	rate := strconv.FormatFloat(roundCents(in.AffiliateRatePercent), 'f', -1, 64)
+	if err := s.settings.SetMultiple(ctx, map[string]string{settingCourseAffiliateRate: rate}); err != nil {
+		return CourseSettings{}, err
+	}
+	return s.Settings(ctx), nil
 }

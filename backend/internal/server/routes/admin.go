@@ -231,6 +231,8 @@ func registerCourseAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("", h.Admin.Course.List)
 		g.POST("", h.Admin.Course.Create)
 		g.POST("/images", h.Admin.Course.UploadImage)
+		g.GET("/settings", h.Admin.Course.Settings)
+		g.PUT("/settings", h.Admin.Course.SaveSettings)
 		g.GET("/:id", h.Admin.Course.Get)
 		g.PUT("/:id", h.Admin.Course.Update)
 		g.DELETE("/:id", h.Admin.Course.Delete)

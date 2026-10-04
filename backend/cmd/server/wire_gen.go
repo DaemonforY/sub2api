@@ -237,7 +237,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	growthRepository := repository.NewGrowthRepository(db)
 	growthService := service.NewGrowthService(settingRepository, growthRepository, settingService, emailService, billingCacheService, apiKeyAuthCacheInvalidator)
 	courseRepository := repository.NewCourseRepository(db)
-	courseService := service.ProvideCourseService(courseRepository, secretEncryptor, configConfig)
+	courseService := service.ProvideCourseService(courseRepository, secretEncryptor, configConfig, growthService, settingRepository, notificationEmailService, redeemService)
 	paymentService := service.ProvidePaymentService(client, registry, defaultLoadBalancer, redeemService, subscriptionService, paymentConfigService, userRepository, groupRepository, affiliateService, notificationEmailService, growthService, courseService)
 	settingHandler := handler.ProvideAdminSettingHandler(settingService, emailService, turnstileService, aliyunCaptchaService, opsService, paymentConfigService, paymentService, userAttributeService, notificationEmailService, totpService, userService)
 	opsHandler := admin.NewOpsHandler(opsService)

@@ -15,6 +15,15 @@ export interface CourseInput {
   faq_md: string
   status: CourseStatus
   sort_order: number
+  sale_price: number
+  sale_ends_at: string | null
+  edu_discount: boolean
+  trial_video_url: string
+}
+
+export interface CourseSettings {
+  /** Percent of a course order credited to the buyer's inviter (0 = none). */
+  affiliate_rate_percent: number
 }
 
 export interface DeliveryInput {
@@ -22,6 +31,8 @@ export interface DeliveryInput {
   code: string
   password: string
   note: string
+  /** Email the course's buyers that the link changed. */
+  notify: boolean
 }
 
 export async function list(): Promise<Course[]> {
@@ -76,4 +87,13 @@ export async function revoke(id: number, userId: number): Promise<void> {
   await apiClient.delete(`/admin/courses/${id}/enrollments/${userId}`)
 }
 
-export default { list, get, create, update, remove, uploadCover, uploadImage, deliveries, saveDelivery, enrollments, grant, revoke }
+export async function getSettings(): Promise<CourseSettings> {
+  const { data } = await apiClient.get('/admin/courses/settings')
+  return data
+}
+export async function saveSettings(settings: CourseSettings): Promise<CourseSettings> {
+  const { data } = await apiClient.put('/admin/courses/settings', settings)
+  return data
+}
+
+export default { getSettings, saveSettings, list, get, create, update, remove, uploadCover, uploadImage, deliveries, saveDelivery, enrollments, grant, revoke }

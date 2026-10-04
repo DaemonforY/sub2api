@@ -27,6 +27,8 @@ const (
 	NotificationEmailEventSubscriptionExpiryReminder  = "subscription.expiry_reminder"
 	NotificationEmailEventBalanceLow                  = "balance.low"
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
+	NotificationEmailEventCoursePurchaseSuccess       = "course.purchase_success"
+	NotificationEmailEventCourseDeliveryUpdated       = "course.delivery_updated"
 	NotificationEmailEventAccountQuotaAlert           = "account.quota_alert"
 	NotificationEmailEventContentModerationViolation  = "content_moderation.violation_notice"
 	NotificationEmailEventContentModerationDisabled   = "content_moderation.account_disabled"
@@ -913,6 +915,8 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"recharge_url":        "https://example.com/recharge",
 			"recharge_amount":     "50.00",
 			"order_id":            "1024",
+			"course_title":        "AI Agent 实战",
+			"courses_url":         "https://example.com/my-courses",
 			"unsubscribe_url":     "https://example.com/unsubscribe",
 			"account_id":          "1001",
 			"account_name":        "openai-main",
@@ -961,6 +965,8 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"recharge_url":        "https://example.com/recharge",
 		"recharge_amount":     "50.00",
 		"order_id":            "1024",
+		"course_title":        "AI Agent in practice",
+		"courses_url":         "https://example.com/my-courses",
 		"unsubscribe_url":     "https://example.com/unsubscribe",
 		"account_id":          "1001",
 		"account_name":        "openai-main",
@@ -1028,6 +1034,8 @@ var notificationEmailEventOrder = []string{
 	NotificationEmailEventSubscriptionExpiryReminder,
 	NotificationEmailEventBalanceLow,
 	NotificationEmailEventBalanceRechargeSuccess,
+	NotificationEmailEventCoursePurchaseSuccess,
+	NotificationEmailEventCourseDeliveryUpdated,
 	NotificationEmailEventAccountQuotaAlert,
 	NotificationEmailEventContentModerationViolation,
 	NotificationEmailEventContentModerationDisabled,
@@ -1092,6 +1100,22 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Category:     "billing",
 		Optional:     false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "recharge_amount", "current_balance", "order_id"),
+	},
+	NotificationEmailEventCoursePurchaseSuccess: {
+		Event:        NotificationEmailEventCoursePurchaseSuccess,
+		Label:        "Course purchase success",
+		Description:  "Sent after a paid course order is fulfilled; points the buyer to My courses.",
+		Category:     "course",
+		Optional:     false,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "course_title", "courses_url"),
+	},
+	NotificationEmailEventCourseDeliveryUpdated: {
+		Event:        NotificationEmailEventCourseDeliveryUpdated,
+		Label:        "Course link updated",
+		Description:  "Sent to a course's buyers when the admin replaces its download link and chooses to notify them.",
+		Category:     "course",
+		Optional:     false,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "course_title", "courses_url"),
 	},
 	NotificationEmailEventAccountQuotaAlert: {
 		Event:       NotificationEmailEventAccountQuotaAlert,
@@ -1290,6 +1314,38 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>您的余额充值 <strong>${{recharge_amount}}</strong> 已完成。</p>
 <p>当前余额：<strong>${{current_balance}}</strong></p>
 			<p>订单号：{{order_id}}</p>`),
+		},
+	},
+	NotificationEmailEventCoursePurchaseSuccess: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] Your course is ready: {{course_title}}",
+			HTML: notificationEmailCard("#7c3aed", "Course purchased", `
+<p>Hello {{recipient_name}},</p>
+<p>Thank you for buying <strong>{{course_title}}</strong>.</p>
+<p>Open <a href="{{courses_url}}">My courses</a> and click <strong>Get course</strong> for the download link and code.</p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 课程已开通：{{course_title}}",
+			HTML: notificationEmailCard("#7c3aed", "课程已开通", `
+<p>{{recipient_name}}，您好：</p>
+<p>感谢购买 <strong>{{course_title}}</strong>。</p>
+<p>打开 <a href="{{courses_url}}">我的课程</a>，点「获取课程」即可看到网盘链接和提取码。</p>`),
+		},
+	},
+	NotificationEmailEventCourseDeliveryUpdated: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] New download link: {{course_title}}",
+			HTML: notificationEmailCard("#7c3aed", "Course link updated", `
+<p>Hello {{recipient_name}},</p>
+<p>The download link of <strong>{{course_title}}</strong> has been updated.</p>
+<p>Open <a href="{{courses_url}}">My courses</a> to get the new link.</p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 课程链接已更新：{{course_title}}",
+			HTML: notificationEmailCard("#7c3aed", "课程链接已更新", `
+<p>{{recipient_name}}，您好：</p>
+<p>您购买的 <strong>{{course_title}}</strong> 网盘链接已更新。</p>
+<p>请打开 <a href="{{courses_url}}">我的课程</a> 获取新链接。</p>`),
 		},
 	},
 	NotificationEmailEventAccountQuotaAlert: {

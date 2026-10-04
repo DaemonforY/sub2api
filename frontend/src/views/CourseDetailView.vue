@@ -46,9 +46,21 @@
             </div>
           </section>
 
-          <section v-if="trialHtml" class="card p-6" data-testid="course-trial">
+          <section v-if="trialHtml || course.trial_video_url" class="card p-6" data-testid="course-trial">
             <h2 class="mb-3 text-lg font-semibold text-gray-900 dark:text-white">{{ t('courses.trialTitle') }}</h2>
-            <div class="course-md" v-html="trialHtml"></div>
+            <div v-if="course.trial_video_url" class="mb-4 aspect-video overflow-hidden rounded-xl bg-black">
+              <iframe
+                v-if="trialEmbed"
+                :src="trialEmbed"
+                class="h-full w-full"
+                allowfullscreen
+                sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
+                referrerpolicy="no-referrer"
+                data-testid="course-trial-embed"
+              ></iframe>
+              <video v-else :src="course.trial_video_url" controls playsinline preload="metadata" class="h-full w-full" data-testid="course-trial-video"></video>
+            </div>
+            <div v-if="trialHtml" class="course-md" v-html="trialHtml"></div>
           </section>
 
           <section class="card p-6">
@@ -65,10 +77,15 @@
 
         <aside class="hidden lg:block">
           <div class="card sticky top-20 space-y-4 p-6">
-            <div class="flex items-baseline gap-2">
-              <span class="text-3xl font-bold text-primary-600 dark:text-primary-400">¥{{ course.price }}</span>
-              <span v-if="course.original_price" class="text-sm text-gray-400 line-through">¥{{ course.original_price }}</span>
+            <div class="flex items-baseline gap-2" data-testid="course-price">
+              <span class="text-3xl font-bold text-primary-600 dark:text-primary-400">¥{{ course.current_price }}</span>
+              <span v-if="strike" class="text-sm text-gray-400 line-through">¥{{ strike }}</span>
             </div>
+            <div class="flex flex-wrap gap-1.5 text-xs">
+              <span v-if="course.sale_active" class="rounded bg-rose-50 px-2 py-0.5 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300" data-testid="course-sale">{{ saleLeft }}</span>
+              <span v-if="course.edu_applied" class="rounded bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">🎓 {{ t('courses.eduPrice') }}</span>
+            </div>
+            <p v-if="course.edu_percent && !course.owned" class="text-xs text-gray-500 dark:text-dark-400" data-testid="course-edu-hint">🎓 {{ t('courses.eduHint', { off: course.edu_percent }) }}</p>
             <button class="btn btn-primary w-full py-3" data-testid="course-buy" @click="buy">{{ buyLabel }}</button>
             <ul class="space-y-1.5 text-xs text-gray-500 dark:text-dark-400">
               <li>📚 {{ t('courses.lessons', { count: course.lesson_count }) }}</li>
@@ -83,8 +100,9 @@
     <!-- Mobile buy bar -->
     <div v-if="course" class="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-dark-700 dark:bg-dark-900/95 lg:hidden">
       <span class="flex items-baseline gap-1.5">
-        <span class="text-xl font-bold text-primary-600 dark:text-primary-400">¥{{ course.price }}</span>
-        <span v-if="course.original_price" class="text-xs text-gray-400 line-through">¥{{ course.original_price }}</span>
+        <span class="text-xl font-bold text-primary-600 dark:text-primary-400">¥{{ course.current_price }}</span>
+        <span v-if="strike" class="text-xs text-gray-400 line-through">¥{{ strike }}</span>
+        <span v-if="course.sale_active" class="text-xs text-rose-500">{{ saleLeft }}</span>
       </span>
       <button class="btn btn-primary px-6" @click="buy">{{ buyLabel }}</button>
     </div>
@@ -92,11 +110,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
-import { getCourse, type Course } from '@/api/courses'
+import { bilibiliEmbed, getCourse, strikePrice, type Course } from '@/api/courses'
 import { useAuthStore } from '@/stores/auth'
 import { renderMarkdown } from '@/utils/markdown'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -114,6 +132,22 @@ const errorText = ref('')
 const introHtml = computed(() => renderMarkdown(course.value?.intro_md))
 const trialHtml = computed(() => renderMarkdown(course.value?.trial_md))
 const faqHtml = computed(() => renderMarkdown(course.value?.faq_md))
+const trialEmbed = computed(() => bilibiliEmbed(course.value?.trial_video_url || ''))
+const strike = computed(() => (course.value ? strikePrice(course.value) : 0))
+
+// Limited-time price countdown, refreshed every minute.
+const now = ref(Date.now())
+const clock = window.setInterval(() => (now.value = Date.now()), 60_000)
+onUnmounted(() => window.clearInterval(clock))
+const saleLeft = computed(() => {
+  const ends = course.value?.sale_ends_at ? Date.parse(course.value.sale_ends_at) : 0
+  const minutes = Math.max(0, Math.floor((ends - now.value) / 60_000))
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+  if (days > 0) return t('courses.saleLeftDays', { days, hours })
+  return t('courses.saleLeftHours', { hours, minutes: minutes % 60 })
+})
+
 const buyLabel = computed(() => (course.value?.owned ? t('courses.mine.go') : t('courses.buy')))
 
 function buy() {

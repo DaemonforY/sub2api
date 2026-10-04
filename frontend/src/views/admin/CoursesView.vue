@@ -7,6 +7,14 @@
           <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('admin.courses.hint') }}</p>
           <button class="btn btn-primary" data-testid="course-new" @click="startNew">{{ t('admin.courses.new') }}</button>
         </div>
+        <div class="card flex flex-wrap items-end gap-3 p-4" data-testid="course-settings">
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.courses.rebateRate') }}</span>
+            <input v-model.number="settings.affiliate_rate_percent" type="number" min="0" max="50" step="0.5" class="input w-32" data-testid="course-rebate-rate" />
+          </label>
+          <button class="btn btn-secondary" :disabled="busy" data-testid="course-settings-save" @click="saveSettings">{{ t('common.save') }}</button>
+          <p class="min-w-0 flex-1 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.courses.rebateHint') }}</p>
+        </div>
         <div v-if="!courses.length && !loading" class="card py-16 text-center text-sm text-gray-500">{{ t('admin.courses.empty') }}</div>
         <div v-else class="card overflow-x-auto">
           <table class="w-full whitespace-nowrap text-sm" data-testid="course-table">
@@ -17,6 +25,8 @@
                 <th class="px-4 py-2">{{ t('admin.courses.fields.price') }}</th>
                 <th class="px-4 py-2">{{ t('admin.courses.students') }}</th>
                 <th class="px-4 py-2">{{ t('admin.courses.revenue') }}</th>
+                <th class="px-4 py-2" :title="t('admin.courses.funnelHint')">{{ t('admin.courses.funnel') }}</th>
+                <th class="px-4 py-2">{{ t('admin.courses.refundsCol') }}</th>
                 <th class="px-4 py-2">{{ t('admin.courses.delivery') }}</th>
                 <th class="px-4 py-2"></th>
               </tr>
@@ -28,9 +38,14 @@
                   <div class="text-xs text-gray-400">/courses/{{ c.slug }}</div>
                 </td>
                 <td class="px-4 py-3"><span :class="['badge', statusBadge(c.status)]">{{ t(`admin.courses.status.${c.status}`) }}</span></td>
-                <td class="px-4 py-3">¥{{ c.price }}</td>
+                <td class="px-4 py-3">
+                  ¥{{ c.price }}
+                  <div v-if="c.sale_active" class="text-xs text-rose-500">{{ t('admin.courses.saleNow', { price: c.sale_price }) }}</div>
+                </td>
                 <td class="px-4 py-3">{{ c.student_count }}</td>
                 <td class="px-4 py-3">¥{{ (c.revenue || 0).toFixed(2) }}</td>
+                <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300" data-testid="course-funnel">{{ c.views_30d || 0 }} / {{ c.orders_30d || 0 }} / {{ c.paid_30d || 0 }}</td>
+                <td class="px-4 py-3">{{ c.refunds || 0 }}</td>
                 <td class="px-4 py-3">
                   <span v-if="c.delivery_version" class="text-gray-600 dark:text-gray-300">{{ t('admin.courses.version', { v: c.delivery_version }) }}</span>
                   <span v-else class="text-amber-600">{{ t('admin.courses.noDelivery') }}</span>
@@ -89,6 +104,24 @@
             <label class="text-sm">
               <span class="input-label">{{ t('admin.courses.fields.originalPrice') }}</span>
               <input v-model.number="form.original_price" type="number" min="0" step="0.01" class="input" />
+            </label>
+            <label class="text-sm">
+              <span class="input-label">{{ t('admin.courses.fields.salePrice') }}</span>
+              <input v-model.number="form.sale_price" type="number" min="0" step="0.01" class="input" data-testid="course-sale-price" />
+              <span class="input-hint">{{ t('admin.courses.salePriceHint') }}</span>
+            </label>
+            <label class="text-sm">
+              <span class="input-label">{{ t('admin.courses.fields.saleEndsAt') }}</span>
+              <input v-model="saleEndsLocal" type="datetime-local" class="input" data-testid="course-sale-ends" />
+            </label>
+            <label class="flex items-center gap-2 text-sm md:col-span-2">
+              <input v-model="form.edu_discount" type="checkbox" class="h-4 w-4" data-testid="course-edu" />
+              {{ t('admin.courses.fields.eduDiscount') }}
+            </label>
+            <label class="text-sm md:col-span-2">
+              <span class="input-label">{{ t('admin.courses.fields.trialVideo') }}</span>
+              <input v-model="form.trial_video_url" class="input" placeholder="https://www.bilibili.com/video/BV... / https://.../trial.mp4" data-testid="course-trial-url" />
+              <span class="input-hint">{{ t('admin.courses.trialVideoHint') }}</span>
             </label>
             <label class="text-sm">
               <span class="input-label">{{ t('admin.courses.fields.sortOrder') }}</span>
@@ -172,6 +205,10 @@
             <label class="block text-sm">
               <span class="input-label">{{ t('admin.courses.fields.note') }}</span>
               <textarea v-model="delivery.note" rows="3" class="input" maxlength="2000"></textarea>
+            </label>
+            <label v-if="deliveries.length" class="flex items-center gap-2 text-sm">
+              <input v-model="delivery.notify" type="checkbox" class="h-4 w-4" data-testid="delivery-notify" />
+              {{ t('admin.courses.notifyStudents', { count: current.student_count }) }}
             </label>
             <button class="btn btn-primary" :disabled="busy || !delivery.link" data-testid="delivery-save" @click="saveDelivery">{{ t('admin.courses.saveDelivery') }}</button>
           </div>
@@ -265,12 +302,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { adminAPI } from '@/api/admin'
-import type { CourseInput, DeliveryInput } from '@/api/admin/courses'
+import type { CourseInput, CourseSettings, DeliveryInput } from '@/api/admin/courses'
 import type { Course, CourseDelivery, CourseEnrollment } from '@/api/courses'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -296,9 +333,24 @@ const confirmDelete = ref(false)
 const emptyForm = (): CourseInput => ({
   slug: '', title: '', subtitle: '', category: '', price: 0, original_price: 0,
   intro_md: '', outline: [], trial_md: '', faq_md: '', status: 'draft', sort_order: 0,
+  sale_price: 0, sale_ends_at: null, edu_discount: true, trial_video_url: '',
 })
 const form = reactive<CourseInput>(emptyForm())
-const delivery = reactive<DeliveryInput>({ link: '', code: '', password: '', note: '' })
+const delivery = reactive<DeliveryInput>({ link: '', code: '', password: '', note: '', notify: true })
+const settings = reactive<CourseSettings>({ affiliate_rate_percent: 0 })
+
+// <input type="datetime-local"> works in local time without a zone; the API takes ISO times.
+const saleEndsLocal = computed({
+  get: () => {
+    if (!form.sale_ends_at) return ''
+    const d = new Date(form.sale_ends_at)
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  },
+  set: (v: string) => {
+    form.sale_ends_at = v ? new Date(v).toISOString() : null
+  },
+})
 const deliveries = ref<CourseDelivery[]>([])
 const students = ref<CourseEnrollment[]>([])
 const studentTotal = ref(0)
@@ -336,6 +388,7 @@ function fillForm(c: Course | null) {
     slug: c.slug, title: c.title, subtitle: c.subtitle, category: c.category, price: c.price, original_price: c.original_price,
     intro_md: c.intro_md || '', trial_md: c.trial_md || '', faq_md: c.faq_md || '', status: c.status, sort_order: c.sort_order,
     outline: JSON.parse(JSON.stringify(c.outline || [])),
+    sale_price: c.sale_price || 0, sale_ends_at: c.sale_ends_at || null, edu_discount: c.edu_discount, trial_video_url: c.trial_video_url || '',
   })
 }
 
@@ -444,7 +497,7 @@ async function saveDelivery() {
   busy.value = true
   try {
     await api.saveDelivery(current.value.id, { ...delivery })
-    Object.assign(delivery, { link: '', code: '', password: '', note: '' })
+    Object.assign(delivery, { link: '', code: '', password: '', note: '', notify: true })
     deliveries.value = await api.deliveries(current.value.id)
     appStore.showSuccess(t('admin.courses.deliverySaved'))
   } catch (err) {
@@ -495,7 +548,30 @@ async function revoke(userId: number) {
   }
 }
 
-onMounted(loadList)
+async function loadSettings() {
+  try {
+    Object.assign(settings, await api.getSettings())
+  } catch {
+    // keep defaults
+  }
+}
+
+async function saveSettings() {
+  busy.value = true
+  try {
+    Object.assign(settings, await api.saveSettings({ ...settings }))
+    appStore.showSuccess(t('common.saved'))
+  } catch (err) {
+    fail(err)
+  } finally {
+    busy.value = false
+  }
+}
+
+onMounted(() => {
+  void loadList()
+  void loadSettings()
+})
 </script>
 
 <style scoped>

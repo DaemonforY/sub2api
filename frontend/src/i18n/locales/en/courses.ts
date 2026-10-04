@@ -1,5 +1,6 @@
 export default {
   courses: {
+    navLabel: 'Courses',
     title: 'Courses',
     subtitle: 'Learn AI app development and AI creation. After buying, get the Baidu Netdisk link under My courses.',
     allCategories: 'All',
@@ -16,6 +17,11 @@ export default {
     trialTitle: 'Free preview',
     faq: 'FAQ',
     buy: 'Buy now',
+    saleBadge: 'Limited-time price',
+    eduPrice: 'Student price',
+    eduHint: 'Students and teachers save another {off}% after verifying an edu.cn email; you can verify at checkout',
+    saleLeftDays: 'Limited-time price · {days}d {hours}h left',
+    saleLeftHours: 'Limited-time price · {hours}h {minutes}m left',
     browse: 'Browse courses',
     deliveryHint: 'After paying, get the Baidu Netdisk link and code under My courses',
     builtinFaq: {

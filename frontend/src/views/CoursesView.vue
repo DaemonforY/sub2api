@@ -43,6 +43,7 @@
             <img v-if="c.cover_url" :src="c.cover_url" alt="" class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
             <span v-else class="absolute inset-0 flex items-center justify-center text-6xl opacity-90">📘</span>
             <span v-if="c.owned" class="absolute left-3 top-3 rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-medium text-white">{{ t('courses.owned') }}</span>
+            <span v-else-if="c.sale_active" class="absolute left-3 top-3 rounded-full bg-rose-500 px-2.5 py-0.5 text-xs font-medium text-white">{{ t('courses.saleBadge') }}</span>
             <span v-if="c.category" class="absolute right-3 top-3 rounded-full bg-black/50 px-2.5 py-0.5 text-xs text-white">{{ c.category }}</span>
           </div>
           <div class="flex flex-1 flex-col p-5">
@@ -53,8 +54,9 @@
                 {{ t('courses.lessons', { count: c.lesson_count }) }}<template v-if="c.student_count"> · {{ t('courses.students', { count: c.student_count }) }}</template>
               </span>
               <span class="flex items-baseline gap-1.5">
-                <span v-if="c.original_price" class="text-xs text-gray-400 line-through">¥{{ c.original_price }}</span>
-                <span class="text-lg font-bold text-primary-600 dark:text-primary-400">¥{{ c.price }}</span>
+                <span v-if="c.edu_applied" class="text-xs text-emerald-600 dark:text-emerald-400">{{ t('courses.eduPrice') }}</span>
+                <span v-if="strikePrice(c)" class="text-xs text-gray-400 line-through">¥{{ strikePrice(c) }}</span>
+                <span class="text-lg font-bold text-primary-600 dark:text-primary-400">¥{{ c.current_price }}</span>
               </span>
             </div>
           </div>
@@ -68,7 +70,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
-import { listCourses, type Course } from '@/api/courses'
+import { listCourses, strikePrice, type Course } from '@/api/courses'
 import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()

@@ -41,12 +41,15 @@
                 <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('courses.checkout.label') }}</p>
                 <h3 class="mt-1 truncate text-lg font-bold text-gray-900 dark:text-white">{{ course.title }}</h3>
                 <p v-if="course.subtitle" class="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">{{ course.subtitle }}</p>
-                <div class="mt-2 flex items-baseline gap-2">
-                  <span v-if="course.original_price" class="text-sm text-gray-400 line-through">{{ formatCny(course.original_price) }}</span>
-                  <span class="text-2xl font-bold text-primary-600 dark:text-primary-400">{{ formatCny(course.price) }}</span>
+                <div class="mt-2 flex flex-wrap items-baseline gap-2">
+                  <span v-if="strikePrice(course)" class="text-sm text-gray-400 line-through">{{ formatCny(strikePrice(course)) }}</span>
+                  <span class="text-2xl font-bold text-primary-600 dark:text-primary-400" data-testid="course-checkout-price">{{ formatCny(course.current_price) }}</span>
+                  <span v-if="course.sale_active" class="rounded bg-rose-50 px-1.5 py-0.5 text-xs text-rose-600 dark:bg-rose-900/30 dark:text-rose-300">{{ t('courses.saleBadge') }}</span>
+                  <span v-if="course.edu_applied" class="rounded bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">🎓 {{ t('courses.eduPrice') }}</span>
                 </div>
               </div>
             </div>
+            <EduVerifyCard v-if="course.edu_percent" @verified="reloadCourse" />
             <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
               <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
             </div>
@@ -58,7 +61,7 @@
                 <div class="space-y-2 text-sm">
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
-                    <span class="text-gray-900 dark:text-white">{{ formatCny(course.price) }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatCny(course.current_price) }}</span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
@@ -387,7 +390,7 @@ import { planValiditySuffix as validitySuffixOf } from '@/components/payment/val
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'
 import { buildPaymentErrorToastMessage, describePaymentScenarioError } from './paymentUx'
 import { hasWechatResumeQuery, parseWechatResumeRoute, stripWechatResumeQuery } from './paymentWechatResume'
-import { getCourse, type Course } from '@/api/courses'
+import { getCourse, strikePrice, type Course } from '@/api/courses'
 
 const i18n = useI18n()
 const { t } = i18n
@@ -849,11 +852,11 @@ function formatCny(value: number): string {
 }
 
 const courseFeeAmount = computed(() => {
-  const price = course.value?.price ?? 0
+  const price = course.value?.current_price ?? 0
   if (feeRate.value <= 0 || price <= 0) return 0
   return ceilPaymentAmount((price * feeRate.value) / 100, DEFAULT_PAYMENT_CURRENCY)
 })
-const courseTotalAmount = computed(() => roundPaymentAmount((course.value?.price ?? 0) + courseFeeAmount.value, DEFAULT_PAYMENT_CURRENCY))
+const courseTotalAmount = computed(() => roundPaymentAmount((course.value?.current_price ?? 0) + courseFeeAmount.value, DEFAULT_PAYMENT_CURRENCY))
 
 const courseMethodOptions = computed<PaymentMethodOption[]>(() =>
   enabledMethods.value.map((type) => {
@@ -877,7 +880,17 @@ const canSubmitCourse = computed(() =>
 
 async function confirmCourse() {
   if (!course.value || !canSubmitCourse.value || submitting.value) return
-  await createOrder(course.value.price, 'course', undefined, { courseId: course.value.id })
+  await createOrder(course.value.current_price, 'course', undefined, { courseId: course.value.id })
+}
+
+// After edu.cn verification the course price drops; the order is priced by the server anyway.
+async function reloadCourse() {
+  if (!course.value) return
+  try {
+    course.value = await getCourse(course.value.slug)
+  } catch {
+    // keep the shown price
+  }
 }
 
 function leaveCourse() {

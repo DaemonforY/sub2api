@@ -656,12 +656,23 @@ func ProvideCommunityService(repo CommunityRepository, settings SettingRepositor
 }
 
 // ProvideCourseService wires paid courses; images live beside the community's (community.dir/../courses).
-func ProvideCourseService(repo CourseRepository, encryptor SecretEncryptor, cfg *config.Config) *CourseService {
+func ProvideCourseService(repo CourseRepository, encryptor SecretEncryptor, cfg *config.Config, growth *GrowthService, settings SettingRepository, mailer *NotificationEmailService, redeem *RedeemService) *CourseService {
 	dir := "./data/courses"
 	if cfg != nil && cfg.Community.Dir != "" {
 		dir = filepath.Join(filepath.Dir(filepath.Clean(cfg.Community.Dir)), "courses")
 	}
-	return NewCourseService(repo, NewCommunityMediaStore(dir), encryptor)
+	svc := NewCourseService(repo, NewCommunityMediaStore(dir), encryptor)
+	if growth != nil {
+		svc.SetPricer(growth)
+	}
+	if settings != nil {
+		svc.SetSettings(settings)
+	}
+	svc.SetMailer(mailer)
+	if redeem != nil {
+		redeem.SetCourseRedeemer(svc)
+	}
+	return svc
 }
 
 // ProvideSiteHostingService wires static-site hosting (SITES_DOMAIN enables it) and starts the hourly

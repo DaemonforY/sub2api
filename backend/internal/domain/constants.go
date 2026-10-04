@@ -63,6 +63,8 @@ const (
 	RedeemTypeConcurrency  = "concurrency"
 	RedeemTypeSubscription = "subscription"
 	RedeemTypeInvitation   = "invitation"
+	// RedeemTypeCourse opens a paid course; value is the course ID.
+	RedeemTypeCourse = "course"
 )
 
 // PromoCode status constants

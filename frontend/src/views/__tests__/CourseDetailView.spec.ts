@@ -5,7 +5,7 @@ import CourseDetailView from '../CourseDetailView.vue'
 
 const { getCourse, push, auth } = vi.hoisted(() => ({ getCourse: vi.fn(), push: vi.fn(), auth: { isAuthenticated: false } }))
 
-vi.mock('@/api/courses', () => ({ getCourse }))
+vi.mock('@/api/courses', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/courses')>()), getCourse }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { slug: 'ai-agent' } }), useRouter: () => ({ push }) }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))
@@ -15,7 +15,8 @@ const course = {
   id: 5, slug: 'ai-agent', title: 'AI Agent 实战', subtitle: '从零做 Agent', category: 'AI 开发', cover_url: '', price: 199, original_price: 299,
   intro_md: '## 适合谁\n<script>alert(1)</script>后端开发', trial_md: '', faq_md: '',
   outline: [{ title: '第一章', lessons: [{ title: 'Agent 是什么', duration: '12:00', trial: true }, { title: '工具调用', duration: '', trial: false }] }],
-  status: 'published', sort_order: 0, lesson_count: 2, student_count: 3, owned: false, created_at: '', updated_at: ''
+  status: 'published', sort_order: 0, lesson_count: 2, student_count: 3, owned: false, created_at: '', updated_at: '',
+  sale_price: 0, edu_discount: true, trial_video_url: '', current_price: 199, sale_active: false, edu_applied: false
 }
 
 describe('CourseDetailView', () => {
@@ -54,5 +55,24 @@ describe('CourseDetailView', () => {
     expect(owned.get('[data-testid="course-buy"]').text()).toBe('courses.mine.go')
     await owned.get('[data-testid="course-buy"]').trigger('click')
     expect(push).toHaveBeenLastCalledWith('/my-courses')
+  })
+
+  it('embeds a Bilibili trial, plays direct video links, and shows the running sale and the student hint', async () => {
+    getCourse.mockResolvedValue({
+      ...course, trial_video_url: 'https://www.bilibili.com/video/BV1xx411c7mD?p=1', sale_price: 149, current_price: 149, sale_active: true,
+      sale_ends_at: new Date(Date.now() + 26 * 3600e3).toISOString(), edu_percent: 10
+    })
+    const wrapper = mount(CourseDetailView, { global: { stubs } })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="course-trial-embed"]').attributes('src')).toBe('https://player.bilibili.com/player.html?bvid=BV1xx411c7mD&autoplay=0&high_quality=1')
+    expect(wrapper.get('[data-testid="course-price"]').text()).toContain('¥149')
+    expect(wrapper.get('[data-testid="course-price"]').text()).toContain('¥199')
+    expect(wrapper.get('[data-testid="course-sale"]').text()).toBe('courses.saleLeftDays')
+    expect(wrapper.find('[data-testid="course-edu-hint"]').exists()).toBe(true)
+
+    getCourse.mockResolvedValue({ ...course, trial_video_url: 'https://cdn.example.com/trial.mp4' })
+    const direct = mount(CourseDetailView, { global: { stubs } })
+    await flushPromises()
+    expect(direct.get('[data-testid="course-trial-video"]').attributes('src')).toBe('https://cdn.example.com/trial.mp4')
   })
 })

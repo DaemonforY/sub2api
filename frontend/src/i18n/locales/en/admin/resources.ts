@@ -251,6 +251,10 @@ export default {
       subscription: 'Subscription',
       invitation: 'Invitation',
       invitationHint: 'Invitation codes are used to restrict user registration. They are automatically marked as used after use.',
+      course: 'Course',
+      selectCourse: 'Select course',
+      courseRequired: 'Please select a course',
+      courseHint: 'Redeeming opens this course for the user (users who already own it get an error and the code stays unused). Draft courses cannot be redeemed.',
       unused: 'Unused',
       used: 'Used',
       columns: {
@@ -316,6 +320,7 @@ export default {
         concurrency: 'Concurrency',
         subscription: 'Subscription',
         invitation: 'Invitation',
+        course: 'Course',
         // Admin adjustment types (created when admin modifies user balance/concurrency)
         admin_balance: 'Balance (Admin)',
         admin_concurrency: 'Concurrency (Admin)'

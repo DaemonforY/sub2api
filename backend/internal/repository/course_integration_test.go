@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -111,9 +112,9 @@ func TestCourses(t *testing.T) {
 	require.Equal(t, "COURSE_NO_DELIVERY", reason(err))
 
 	// The admin adds the link (stored encrypted); the buyer gets it, others do not.
-	_, err = svc.SaveDelivery(ctx, course.ID, 0, service.DeliveryInput{Link: "http://pan.baidu.com/s/x"})
+	_, err = svc.SaveDelivery(ctx, course.ID, 0, service.DeliveryInput{Link: "http://pan.baidu.com/s/x"}, "https://hivegpt.test")
 	require.Equal(t, "COURSE_INVALID", reason(err))
-	_, err = svc.SaveDelivery(ctx, course.ID, 0, service.DeliveryInput{Link: "https://pan.baidu.com/s/1abc", Code: "ab12", Note: "解压后先看 README"})
+	_, err = svc.SaveDelivery(ctx, course.ID, 0, service.DeliveryInput{Link: "https://pan.baidu.com/s/1abc", Code: "ab12", Note: "解压后先看 README"}, "https://hivegpt.test")
 	require.NoError(t, err)
 	var stored string
 	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT link_enc FROM course_deliveries WHERE course_id = $1`, course.ID).Scan(&stored))
@@ -127,7 +128,7 @@ func TestCourses(t *testing.T) {
 	require.Equal(t, "COURSE_NOT_ENROLLED", reason(err))
 
 	// A replaced link: "updated" until the buyer looks again.
-	_, err = svc.SaveDelivery(ctx, course.ID, 0, service.DeliveryInput{Link: "https://pan.baidu.com/s/2new", Code: "cd34"})
+	_, err = svc.SaveDelivery(ctx, course.ID, 0, service.DeliveryInput{Link: "https://pan.baidu.com/s/2new", Code: "cd34"}, "https://hivegpt.test")
 	require.NoError(t, err)
 	mine, err := svc.MyCourses(ctx, buyer.ID)
 	require.NoError(t, err)
@@ -188,4 +189,67 @@ func TestCourses(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, mine[0].Enrollment.Refunded)
 	require.False(t, mine[0].Course.Owned)
+}
+
+func TestCoursesC2(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	buyer := mustCreateUser(t, integrationEntClient, &service.User{Email: "c2-b-" + suffix + "@test.local", Username: "c2b" + suffix[len(suffix)-6:]})
+	svc := service.NewCourseService(NewCourseRepository(integrationDB), service.NewCommunityMediaStore(t.TempDir()), reverseEncryptor{})
+	reason := func(err error) string { return infraerrors.Reason(err) }
+	ends := time.Now().Add(48 * time.Hour)
+	slug := "c2-" + suffix[len(suffix)-8:]
+
+	// Limited-time price needs an end; trial video must be https.
+	_, err := svc.CreateCourse(ctx, service.CourseInput{Slug: slug, Title: "限时课", Price: 199, SalePrice: 99, Status: service.CourseStatusPublished})
+	require.Equal(t, "COURSE_INVALID", reason(err))
+	_, err = svc.CreateCourse(ctx, service.CourseInput{Slug: slug, Title: "限时课", Price: 199, TrialVideoURL: "http://x/v.mp4", Status: service.CourseStatusPublished})
+	require.Equal(t, "COURSE_INVALID", reason(err))
+	course, err := svc.CreateCourse(ctx, service.CourseInput{Slug: slug, Title: "限时课", Price: 199, SalePrice: 99, SaleEndsAt: &ends, EduDiscount: true,
+		TrialVideoURL: "https://www.bilibili.com/video/BV1xx411c7mD", Status: service.CourseStatusPublished})
+	require.NoError(t, err)
+	require.Equal(t, 99.0, course.SalePrice)
+	require.True(t, course.EduDiscount)
+	require.NotNil(t, course.SaleEndsAt)
+
+	// The page shows the running sale; visitors are counted, admin sees them.
+	page, err := svc.Course(ctx, slug, buyer.ID)
+	require.NoError(t, err)
+	require.True(t, page.SaleActive)
+	require.Equal(t, 99.0, page.CurrentPrice)
+	require.Zero(t, page.Views30d) // admin-only numbers stay hidden
+	_, err = svc.Course(ctx, slug, 0)
+	require.NoError(t, err)
+	admin, err := svc.AdminCourse(ctx, course.ID)
+	require.NoError(t, err)
+	require.Equal(t, 2, admin.Views30d)
+	priced, err := svc.CourseForOrder(ctx, buyer.ID, course.ID)
+	require.NoError(t, err)
+	require.Equal(t, 99.0, priced.CurrentPrice)
+
+	// A course redeem code opens the course inside the redeem transaction: a rollback leaves nothing.
+	require.NoError(t, svc.CheckRedeem(ctx, buyer.ID, course.ID))
+	require.Equal(t, "COURSE_REDEEM_INVALID", reason(svc.CheckRedeem(ctx, buyer.ID, course.ID+100000)))
+	tx, err := integrationEntClient.Tx(ctx)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnrollRedeem(dbent.NewTxContext(ctx, tx), buyer.ID, course.ID, "CODE-1"))
+	require.NoError(t, tx.Rollback())
+	_, err = svc.Delivery(ctx, buyer.ID, course.ID, "1.1.1.1")
+	require.Equal(t, "COURSE_NOT_ENROLLED", reason(err))
+	tx, err = integrationEntClient.Tx(ctx)
+	require.NoError(t, err)
+	require.NoError(t, svc.EnrollRedeem(dbent.NewTxContext(ctx, tx), buyer.ID, course.ID, "CODE-1"))
+	require.NoError(t, tx.Commit())
+	require.Equal(t, "COURSE_ALREADY_OWNED", reason(svc.CheckRedeem(ctx, buyer.ID, course.ID)))
+	students, _, err := svc.Enrollments(ctx, course.ID, 1, 30)
+	require.NoError(t, err)
+	require.Equal(t, service.CourseSourceRedeem, students[0].Source)
+	require.Equal(t, "兑换码 CODE-1", students[0].Note)
+
+	// Owners' visits are not counted.
+	_, err = svc.Course(ctx, slug, buyer.ID)
+	require.NoError(t, err)
+	admin, err = svc.AdminCourse(ctx, course.ID)
+	require.NoError(t, err)
+	require.Equal(t, 2, admin.Views30d)
 }

@@ -355,6 +355,16 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "用户添加并验证额外通知邮箱时发送。",
     categoryLabel: "认证安全",
   },
+  "course.purchase_success": {
+    label: "课程开通成功",
+    timing: "课程订单付款成功并开通后发送，提示买家去「我的课程」获取网盘链接。",
+    categoryLabel: "课程",
+  },
+  "course.delivery_updated": {
+    label: "课程链接已更新",
+    timing: "管理员更换课程网盘链接并勾选「通知学员」时，发给所有已购学员。",
+    categoryLabel: "课程",
+  },
   "subscription.purchase_success": {
     label: "订阅开通成功",
     timing: "订阅订单完成支付并成功开通或续期后发送。",
@@ -417,6 +427,16 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
     label: "Notification Email Verification",
     timing: "Sent when a user adds and verifies an extra notification email address.",
     categoryLabel: "Auth",
+  },
+  "course.purchase_success": {
+    label: "Course Purchased",
+    timing: "Sent after a course order is paid; points the buyer to My courses for the download link.",
+    categoryLabel: "Course",
+  },
+  "course.delivery_updated": {
+    label: "Course Link Updated",
+    timing: "Sent to a course's buyers when the admin replaces its download link and chooses to notify them.",
+    categoryLabel: "Course",
   },
   "subscription.purchase_success": {
     label: "Subscription Activated",

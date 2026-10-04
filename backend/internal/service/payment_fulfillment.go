@@ -405,6 +405,10 @@ func (s *PaymentService) dispatchPaymentFulfillmentNotification(o *dbent.Payment
 			err = s.sendBalanceRechargeSuccessNotification(ctx, o)
 		case "SUBSCRIPTION_SUCCESS":
 			err = s.sendSubscriptionPurchaseSuccessNotification(ctx, o)
+		case "COURSE_SUCCESS":
+			if s.courses != nil && o.CourseID != nil {
+				err = s.courses.NotifyPurchased(ctx, *o.CourseID, CourseStudent{UserID: o.UserID, Email: o.UserEmail, Username: o.UserName}, "https://"+o.SrcHost)
+			}
 		default:
 			return
 		}
@@ -469,6 +473,13 @@ func (s *PaymentService) sendSubscriptionPurchaseSuccessNotification(ctx context
 	})
 }
 
+func (s *PaymentService) courseRebateRate(ctx context.Context) float64 {
+	if s.courses == nil {
+		return 0
+	}
+	return s.courses.AffiliateRate(ctx)
+}
+
 // ExecuteCourseFulfillment opens the bought course for the buyer.
 func (s *PaymentService) ExecuteCourseFulfillment(ctx context.Context, oid int64) error {
 	o, err := s.entClient.PaymentOrder.Get(ctx, oid)
@@ -495,6 +506,10 @@ func (s *PaymentService) ExecuteCourseFulfillment(ctx context.Context, oid int64
 		return nil
 	}
 	if err := s.courses.EnrollFromOrder(ctx, o.UserID, *o.CourseID, o.ID); err != nil {
+		s.markFailed(ctx, oid, lease, err)
+		return err
+	}
+	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		s.markFailed(ctx, oid, lease, err)
 		return err
 	}
@@ -686,7 +701,15 @@ func (s *PaymentService) applyAffiliateRebateForOrder(ctx context.Context, o *db
 	}
 
 	sourceOrderID := o.ID
-	rebateAmount, err := s.affiliateService.AccrueInviteRebateForOrder(txCtx, o.UserID, baseAmount, &sourceOrderID)
+	var rebateAmount float64
+	if o.OrderType == payment.OrderTypeCourse {
+		// Course orders earn the course rebate rate (0 = none).
+		if rate := s.courseRebateRate(ctx); rate > 0 {
+			rebateAmount, err = s.affiliateService.AccrueInviteRebateWithRate(txCtx, o.UserID, baseAmount, &sourceOrderID, rate)
+		}
+	} else {
+		rebateAmount, err = s.affiliateService.AccrueInviteRebateForOrder(txCtx, o.UserID, baseAmount, &sourceOrderID)
+	}
 	if err != nil {
 		s.writeAuditLog(ctx, o.ID, "AFFILIATE_REBATE_FAILED", "system", map[string]any{
 			"error": err.Error(),
@@ -756,7 +779,7 @@ func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
 		return 0
 	}
 	switch o.OrderType {
-	case payment.OrderTypeBalance, payment.OrderTypeSubscription:
+	case payment.OrderTypeBalance, payment.OrderTypeSubscription, payment.OrderTypeCourse:
 		return o.Amount
 	default:
 		return 0

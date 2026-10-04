@@ -142,7 +142,17 @@ type RedeemService struct {
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	affiliateService     *AffiliateService
+	courses              courseRedeemer
 }
+
+// courseRedeemer opens courses for course redeem codes (CourseService).
+type courseRedeemer interface {
+	CheckRedeem(ctx context.Context, userID, courseID int64) error
+	EnrollRedeem(ctx context.Context, userID, courseID int64, code string) error
+}
+
+// SetCourseRedeemer enables course redeem codes.
+func (s *RedeemService) SetCourseRedeemer(c courseRedeemer) { s.courses = c }
 
 // NewRedeemService 创建兑换码服务实例
 func NewRedeemService(
@@ -424,6 +434,14 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 		if redeemCode.GroupID == nil {
 			return nil, infraerrors.BadRequest("REDEEM_CODE_INVALID", "invalid subscription redeem code: missing group_id")
 		}
+	case RedeemTypeCourse:
+		// Checked before the code is used up: an unknown course or one already owned keeps the code.
+		if s.courses == nil {
+			return nil, unsupportedRedeemTypeError(redeemCode.Type)
+		}
+		if err := s.courses.CheckRedeem(ctx, userID, int64(redeemCode.Value)); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, unsupportedRedeemTypeError(redeemCode.Type)
 	}
@@ -502,6 +520,12 @@ func (s *RedeemService) Redeem(ctx context.Context, userID int64, code string) (
 			if err != nil {
 				return nil, fmt.Errorf("assign or extend subscription: %w", err)
 			}
+		}
+
+	case RedeemTypeCourse:
+		// Same transaction as the code: both commit or neither.
+		if err := s.courses.EnrollRedeem(txCtx, userID, int64(redeemCode.Value), redeemCode.Code); err != nil {
+			return nil, fmt.Errorf("open course: %w", err)
 		}
 
 	default:

@@ -257,6 +257,7 @@ export default {
         concurrency: '并发数',
         subscription: '订阅',
         invitation: '邀请码',
+        course: '课程',
         // 管理员在用户管理页面调整余额/并发时产生的记录
         admin_balance: '余额（管理员）',
         admin_concurrency: '并发数（管理员）'
@@ -267,6 +268,10 @@ export default {
       subscription: '订阅',
       invitation: '邀请码',
       invitationHint: '邀请码用于限制用户注册，使用后自动标记为已使用。',
+      course: '课程',
+      selectCourse: '选择课程',
+      courseRequired: '请选择课程',
+      courseHint: '用户兑换后直接开通这门课程（已拥有这门课的用户兑换会失败，码不会被用掉）。草稿状态的课程不能兑换。',
       allTypes: '全部类型',
       allStatus: '全部状态',
       unused: '未使用',

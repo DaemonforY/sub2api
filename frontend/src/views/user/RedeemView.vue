@@ -105,6 +105,10 @@
                       {{ t('redeem.added') }}: {{ redeemResult.value }}
                       {{ t('redeem.concurrentRequests') }}
                     </p>
+                    <p v-else-if="redeemResult.type === 'course'" class="font-medium" data-testid="redeem-course-result">
+                      {{ t('redeem.courseOpened') }}
+                      <RouterLink to="/my-courses" class="ml-1 underline">{{ t('courses.mine.go') }}</RouterLink>
+                    </p>
                     <p v-else-if="redeemResult.type === 'subscription'" class="font-medium">
                       {{ t('redeem.subscriptionAssigned') }}
                       <span v-if="redeemResult.group_name"> - {{ redeemResult.group_name }}</span>
@@ -401,6 +405,8 @@ const getHistoryItemTitle = (item: RedeemHistoryItem) => {
     return item.value >= 0 ? t('redeem.concurrencyAddedAdmin') : t('redeem.concurrencyReducedAdmin')
   } else if (item.type === 'subscription') {
     return t('redeem.subscriptionAssigned')
+  } else if (item.type === 'course') {
+    return t('redeem.courseOpened')
   }
   return t('common.unknown')
 }
@@ -409,6 +415,8 @@ const formatHistoryValue = (item: RedeemHistoryItem) => {
   if (isBalanceType(item.type)) {
     const sign = item.value >= 0 ? '+' : ''
     return `${sign}$${item.value.toFixed(2)}`
+  } else if (item.type === 'course') {
+    return t('nav.myCourses')
   } else if (isSubscriptionType(item.type)) {
     // 订阅类型显示有效天数和分组名称
     const days = item.validity_days || Math.round(item.value)

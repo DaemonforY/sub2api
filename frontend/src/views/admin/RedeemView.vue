@@ -131,6 +131,7 @@
           <template #cell-value="{ value, row }">
             <span class="text-sm font-medium text-gray-900 dark:text-white">
               <template v-if="row.type === 'balance'">${{ value.toFixed(2) }}</template>
+              <template v-else-if="row.type === 'course'">{{ courseTitle(value) }}</template>
               <template v-else-if="row.type === 'subscription'">
                 {{ row.validity_days || 30 }} {{ t('admin.redeem.days') }}
                 <span v-if="row.group" class="ml-1 text-xs text-gray-500 dark:text-gray-400"
@@ -288,7 +289,7 @@
               <Select v-model="generateForm.type" :options="typeOptions" />
             </div>
             <!-- 余额/并发类型：显示数值输入 -->
-            <div v-if="generateForm.type !== 'subscription' && generateForm.type !== 'invitation'">
+            <div v-if="generateForm.type !== 'subscription' && generateForm.type !== 'invitation' && generateForm.type !== 'course'">
               <label class="input-label">
                 {{
                   generateForm.type === 'balance'
@@ -304,6 +305,17 @@
                 required
                 class="input"
               />
+            </div>
+            <!-- 课程类型：value 是课程 ID -->
+            <div v-if="generateForm.type === 'course'" class="space-y-2">
+              <label class="input-label">{{ t('admin.redeem.selectCourse') }}</label>
+              <select v-model.number="generateForm.value" class="input" data-testid="redeem-course-select">
+                <option :value="0" disabled>{{ t('admin.redeem.selectCourse') }}</option>
+                <option v-for="c in redeemCourses" :key="c.id" :value="c.id" :disabled="c.status === 'draft'">
+                  {{ c.title }}<template v-if="c.status !== 'published'">（{{ t(`admin.courses.status.${c.status}`) }}）</template>
+                </option>
+              </select>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.redeem.courseHint') }}</p>
             </div>
             <!-- 邀请码类型：显示提示信息 -->
             <div v-if="generateForm.type === 'invitation'" class="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
@@ -611,6 +623,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Course } from '@/api/courses'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -743,7 +756,8 @@ const typeOptions = computed(() => [
   { value: 'balance', label: t('admin.redeem.balance') },
   { value: 'concurrency', label: t('admin.redeem.concurrency') },
   { value: 'subscription', label: t('admin.redeem.subscription') },
-  { value: 'invitation', label: t('admin.redeem.invitation') }
+  { value: 'invitation', label: t('admin.redeem.invitation') },
+  { value: 'course', label: t('admin.redeem.course') }
 ])
 
 const filterTypeOptions = computed(() => [
@@ -751,7 +765,8 @@ const filterTypeOptions = computed(() => [
   { value: 'balance', label: t('admin.redeem.balance') },
   { value: 'concurrency', label: t('admin.redeem.concurrency') },
   { value: 'subscription', label: t('admin.redeem.subscription') },
-  { value: 'invitation', label: t('admin.redeem.invitation') }
+  { value: 'invitation', label: t('admin.redeem.invitation') },
+  { value: 'course', label: t('admin.redeem.course') }
 ])
 
 const filterStatusOptions = computed(() => [
@@ -849,8 +864,9 @@ const generateForm = reactive({
 watch(
   () => generateForm.type,
   (newType) => {
-    if (newType === 'invitation') {
+    if (newType === 'invitation' || newType === 'course') {
       generateForm.value = 0
+      if (newType === 'course') void loadRedeemCourses()
     } else if (generateForm.value === 0) {
       generateForm.value = 10
     }
@@ -1025,7 +1041,27 @@ const buildBatchUpdateFields = (): BatchUpdateRedeemCodeFields | null => {
   return Object.keys(fields).length > 0 ? fields : null
 }
 
+// Courses for course redeem codes (value = course ID).
+const redeemCourses = ref<Course[]>([])
+let redeemCoursesLoaded = false
+async function loadRedeemCourses() {
+  if (redeemCoursesLoaded) return
+  try {
+    redeemCourses.value = await adminAPI.courses.list()
+    redeemCoursesLoaded = true
+  } catch {
+    // the select stays empty; generating still validates on the server
+  }
+}
+function courseTitle(id: number) {
+  return redeemCourses.value.find((c) => c.id === id)?.title || `#${id}`
+}
+
 const handleGenerateCodes = async () => {
+  if (generateForm.type === 'course' && !generateForm.value) {
+    appStore.showError(t('admin.redeem.courseRequired'))
+    return
+  }
   // 订阅类型必须选择分组
   if (generateForm.type === 'subscription' && !generateForm.group_id) {
     appStore.showError(t('admin.redeem.groupRequired'))
@@ -1188,6 +1224,7 @@ const loadSubscriptionGroups = async () => {
 onMounted(() => {
   loadCodes()
   loadSubscriptionGroups()
+  void loadRedeemCourses()
 })
 
 onUnmounted(() => {

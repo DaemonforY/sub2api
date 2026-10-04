@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -1255,6 +1256,11 @@ func (s *adminServiceImpl) GetRedeemCode(ctx context.Context, id int64) (*Redeem
 func (s *adminServiceImpl) GenerateRedeemCodes(ctx context.Context, input *GenerateRedeemCodesInput) ([]RedeemCode, error) {
 	if input.ExpiresAt != nil && !input.ExpiresAt.After(time.Now()) {
 		return nil, ErrRedeemCodeExpired
+	}
+
+	// 课程兑换码：value 是课程 ID（整数）
+	if input.Type == RedeemTypeCourse && (input.Value <= 0 || input.Value != math.Trunc(input.Value)) {
+		return nil, infraerrors.BadRequest("COURSE_REDEEM_INVALID", "请选择课程（Pick a course）")
 	}
 
 	// 如果是订阅类型，验证必须有 GroupID

@@ -34,6 +34,19 @@ export interface Course {
   faq_md?: string
   status: CourseStatus
   sort_order: number
+  /** Limited-time price (until sale_ends_at); 0 = none. */
+  sale_price: number
+  sale_ends_at?: string
+  /** Verified students / teachers get the education discount. */
+  edu_discount: boolean
+  /** A direct video link or a Bilibili page, shown as the free preview. */
+  trial_video_url: string
+  /** What the viewer pays now (limited-time price, then their education discount). */
+  current_price: number
+  sale_active: boolean
+  edu_applied: boolean
+  /** For viewers not verified: the discount verification would give (percent). */
+  edu_percent?: number
   lesson_count: number
   student_count: number
   /** The viewer has bought it (and it was not refunded). */
@@ -43,6 +56,10 @@ export interface Course {
   /** Admin only. */
   revenue?: number
   delivery_version?: number
+  views_30d?: number
+  orders_30d?: number
+  paid_30d?: number
+  refunds?: number
 }
 
 export interface CourseDelivery {
@@ -98,6 +115,21 @@ export async function myCourses(): Promise<MyCourse[]> {
 export async function getDelivery(courseId: number): Promise<CourseDelivery> {
   const { data } = await apiClient.get(`/user/courses/${courseId}/delivery`)
   return data
+}
+
+/** The crossed-out price next to current_price: the list price when discounted, else the original price. */
+export function strikePrice(c: Pick<Course, 'price' | 'current_price' | 'original_price'>): number {
+  if (c.current_price < c.price) return c.price
+  return c.original_price > c.current_price ? c.original_price : 0
+}
+
+/** Bilibili page → embeddable player URL; '' for anything else. */
+export function bilibiliEmbed(url: string): string {
+  const bv = url.match(/bilibili\.com\/video\/(BV[0-9A-Za-z]{10})/)
+  if (bv) return `https://player.bilibili.com/player.html?bvid=${bv[1]}&autoplay=0&high_quality=1`
+  const av = url.match(/bilibili\.com\/video\/av(\d+)/i)
+  if (av) return `https://player.bilibili.com/player.html?aid=${av[1]}&autoplay=0&high_quality=1`
+  return ''
 }
 
 export function totalLessons(outline: CourseSection[]): number {

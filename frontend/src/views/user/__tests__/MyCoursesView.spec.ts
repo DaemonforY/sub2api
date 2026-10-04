@@ -10,7 +10,7 @@ const { myCourses, getDelivery, showError, copyToClipboard } = vi.hoisted(() => 
   copyToClipboard: vi.fn()
 }))
 
-vi.mock('@/api/courses', () => ({ myCourses, getDelivery }))
+vi.mock('@/api/courses', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/courses')>()), myCourses, getDelivery }))
 vi.mock('@/stores', () => ({ useAppStore: () => ({ showError }) }))
 vi.mock('@/composables/useClipboard', () => ({ useClipboard: () => ({ copyToClipboard }) }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))

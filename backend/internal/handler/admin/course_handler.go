@@ -166,7 +166,36 @@ func (h *CourseHandler) Deliveries(c *gin.Context) {
 	response.Success(c, list)
 }
 
-// SaveDelivery POST /api/v1/admin/courses/:id/deliveries {link, code, password, note}
+// requestSiteURL is the site the admin is on (for links in emails).
+func requestSiteURL(c *gin.Context) string {
+	scheme := "https"
+	if c.Request.TLS == nil && c.GetHeader("X-Forwarded-Proto") == "http" {
+		scheme = "http"
+	}
+	return scheme + "://" + c.Request.Host
+}
+
+// Settings GET /api/v1/admin/courses/settings {affiliate_rate_percent}
+func (h *CourseHandler) Settings(c *gin.Context) {
+	response.Success(c, h.svc.Settings(c.Request.Context()))
+}
+
+// SaveSettings PUT /api/v1/admin/courses/settings {affiliate_rate_percent}
+func (h *CourseHandler) SaveSettings(c *gin.Context) {
+	var in service.CourseSettings
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数格式不正确")
+		return
+	}
+	out, err := h.svc.SaveSettings(c.Request.Context(), in)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+// SaveDelivery POST /api/v1/admin/courses/:id/deliveries {link, code, password, note, notify}
 func (h *CourseHandler) SaveDelivery(c *gin.Context) {
 	id, ok := courseID(c)
 	if !ok {
@@ -181,7 +210,7 @@ func (h *CourseHandler) SaveDelivery(c *gin.Context) {
 	if subject, ok := middleware.GetAuthSubjectFromContext(c); ok {
 		adminID = subject.UserID
 	}
-	d, err := h.svc.SaveDelivery(c.Request.Context(), id, adminID, in)
+	d, err := h.svc.SaveDelivery(c.Request.Context(), id, adminID, in, requestSiteURL(c))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

@@ -1,5 +1,6 @@
 export default {
   courses: {
+    navLabel: '课程',
     title: '付费课程',
     subtitle: '系统学习 AI 应用开发和 AI 创作，购买后在「我的课程」获取百度网盘链接。',
     allCategories: '全部',
@@ -16,6 +17,11 @@ export default {
     trialTitle: '试看内容',
     faq: '常见问题',
     buy: '立即购买',
+    saleBadge: '限时价',
+    eduPrice: '学生价',
+    eduHint: '学生 / 老师用 edu.cn 邮箱认证后再减 {off}%，结算页可以直接认证',
+    saleLeftDays: '限时价 · 还剩 {days} 天 {hours} 小时',
+    saleLeftHours: '限时价 · 还剩 {hours} 小时 {minutes} 分',
     browse: '去看看课程',
     deliveryHint: '付款后在「我的课程」获取百度网盘链接和提取码',
     builtinFaq: {

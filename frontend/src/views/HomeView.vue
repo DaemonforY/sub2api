@@ -183,6 +183,16 @@
             <Icon name="book" size="sm" />
             <span class="hidden sm:inline">{{ t('home.learn.navLabel') }}</span>
           </a>
+          <!-- Paid courses (shown once a course is on sale) -->
+          <router-link
+            v-if="hasCourses"
+            to="/courses"
+            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            data-testid="home-courses-link"
+          >
+            <Icon name="book" size="sm" />
+            <span class="hidden sm:inline">{{ t('courses.navLabel') }}</span>
+          </router-link>
           <!-- Doc Link -->
           <a
             v-if="docUrl"
@@ -576,6 +586,7 @@
 </template>
 
 <script setup lang="ts">
+import { listCourses } from '@/api/courses'
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
@@ -671,8 +682,14 @@ function initTheme() {
   }
 }
 
+// The 课程 link shows once a course is on sale.
+const hasCourses = ref(false)
+
 onMounted(() => {
   initTheme()
+  listCourses()
+    .then((list) => (hasCourses.value = list.length > 0))
+    .catch(() => {})
 
   // Check auth state
   authStore.checkAuth()

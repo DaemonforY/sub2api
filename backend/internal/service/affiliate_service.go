@@ -326,6 +326,16 @@ func (s *AffiliateService) AccrueInviteRebate(ctx context.Context, inviteeUserID
 }
 
 func (s *AffiliateService) AccrueInviteRebateForOrder(ctx context.Context, inviteeUserID int64, baseRechargeAmount float64, sourceOrderID *int64) (float64, error) {
+	return s.accrueInviteRebate(ctx, inviteeUserID, baseRechargeAmount, sourceOrderID, nil)
+}
+
+// AccrueInviteRebateWithRate credits the inviter ratePercent of the amount instead of their usual
+// rate (course orders use the course rebate rate); the switch, validity and caps still apply.
+func (s *AffiliateService) AccrueInviteRebateWithRate(ctx context.Context, inviteeUserID int64, baseAmount float64, sourceOrderID *int64, ratePercent float64) (float64, error) {
+	return s.accrueInviteRebate(ctx, inviteeUserID, baseAmount, sourceOrderID, &ratePercent)
+}
+
+func (s *AffiliateService) accrueInviteRebate(ctx context.Context, inviteeUserID int64, baseRechargeAmount float64, sourceOrderID *int64, rateOverride *float64) (float64, error) {
 	if s == nil || s.repo == nil {
 		return 0, nil
 	}
@@ -360,6 +370,9 @@ func (s *AffiliateService) AccrueInviteRebateForOrder(ctx context.Context, invit
 	}
 
 	rebateRatePercent := s.resolveRebateRatePercent(ctx, inviterSummary)
+	if rateOverride != nil {
+		rebateRatePercent = *rateOverride
+	}
 	rebate := roundTo(baseRechargeAmount*(rebateRatePercent/100), 8)
 	if rebate <= 0 {
 		return 0, nil

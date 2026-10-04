@@ -100,3 +100,37 @@ func TestRedeemRejectsInvitationCodeBeforeTransaction(t *testing.T) {
 	require.Equal(t, StatusUnused, redeemRepo.code.Status)
 	require.Nil(t, redeemRepo.code.UsedBy)
 }
+
+type courseRedeemerStub struct {
+	checkErr error
+	checked  int64
+}
+
+func (c *courseRedeemerStub) CheckRedeem(_ context.Context, _ int64, courseID int64) error {
+	c.checked = courseID
+	return c.checkErr
+}
+
+func (c *courseRedeemerStub) EnrollRedeem(context.Context, int64, int64, string) error {
+	panic("unexpected EnrollRedeem call")
+}
+
+// A course code for a course the user already owns (or one that is gone) is refused before the
+// code is used up.
+func TestRedeemCourseCodeCheckedBeforeUse(t *testing.T) {
+	ctx := context.Background()
+	redeemRepo := &redeemRejectRepo{code: RedeemCode{ID: 1, Code: "COURSE-001", Type: RedeemTypeCourse, Value: 5, Status: StatusUnused}}
+	redeemService := NewRedeemService(redeemRepo, nil, nil, nil, nil, nil, nil, nil)
+
+	// Without the course service the type is unsupported.
+	_, err := redeemService.Redeem(ctx, 2, "COURSE-001")
+	require.Equal(t, "REDEEM_CODE_UNSUPPORTED_TYPE", infraerrors.Reason(err))
+
+	courses := &courseRedeemerStub{checkErr: ErrCourseOwned}
+	redeemService.SetCourseRedeemer(courses)
+	_, err = redeemService.Redeem(ctx, 2, "COURSE-001")
+	require.Equal(t, "COURSE_ALREADY_OWNED", infraerrors.Reason(err))
+	require.Equal(t, int64(5), courses.checked)
+	require.False(t, redeemRepo.useCalled)
+	require.Equal(t, StatusUnused, redeemRepo.code.Status)
+}

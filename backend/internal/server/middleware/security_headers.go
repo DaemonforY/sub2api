@@ -47,6 +47,8 @@ const (
 	AirwallexDemoStaticDomain = "https://static-demo.airwallex.com"
 	// AirwallexDemoCheckoutDomain 是 Airwallex 沙箱环境收银台元素和 iframe 域名。
 	AirwallexDemoCheckoutDomain = "https://checkout-demo.airwallex.com"
+	// BilibiliPlayerDomain embeds Bilibili videos (course trial videos).
+	BilibiliPlayerDomain = "https://player.bilibili.com"
 )
 
 var requiredCSPDirectiveValues = []struct {
@@ -83,6 +85,11 @@ var requiredCSPDirectiveValues = []struct {
 	{"style-src", AirwallexDemoStaticDomain},
 	{"style-src", AirwallexDemoCheckoutDomain},
 	{"frame-src", AirwallexDemoCheckoutDomain},
+	// Course trial videos: direct video links (OSS / CDN) and the Bilibili player.
+	{"media-src", "'self'"},
+	{"media-src", "blob:"},
+	{"media-src", "https:"},
+	{"frame-src", BilibiliPlayerDomain},
 }
 
 // GenerateNonce generates a cryptographically secure random nonce.

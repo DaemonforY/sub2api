@@ -3,8 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import RedeemView from '../RedeemView.vue'
 
-const { listRedeemCodes, batchUpdateRedeemCodes, getAllGroups, showSuccess, showError, showInfo } =
+const { listRedeemCodes, batchUpdateRedeemCodes, getAllGroups, listCourses, showSuccess, showError, showInfo } =
   vi.hoisted(() => ({
+    listCourses: vi.fn(),
     listRedeemCodes: vi.fn(),
     batchUpdateRedeemCodes: vi.fn(),
     getAllGroups: vi.fn(),
@@ -25,6 +26,9 @@ vi.mock('@/api/admin', () => ({
     },
     groups: {
       getAll: getAllGroups
+    },
+    courses: {
+      list: listCourses
     }
   }
 }))
@@ -107,6 +111,7 @@ describe('admin RedeemView batch update', () => {
     listRedeemCodes.mockReset()
     batchUpdateRedeemCodes.mockReset()
     getAllGroups.mockReset()
+    listCourses.mockReset().mockResolvedValue([{ id: 5, title: 'AI Agent 实战', status: 'published' }])
     showSuccess.mockReset()
     showError.mockReset()
     showInfo.mockReset()
@@ -183,5 +188,38 @@ describe('admin RedeemView batch update', () => {
       notes: 'maintenance'
     })
     expect(showSuccess).toHaveBeenCalledWith('admin.redeem.batchUpdateSuccess')
+  })
+
+  it('shows the course of course codes by title', async () => {
+    listRedeemCodes.mockResolvedValue({
+      items: [{ id: 3, code: 'COURSE-1', type: 'course', value: 5, status: 'unused', used_by: null, used_at: null, created_at: '2026-01-01T00:00:00Z', expires_at: null }],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1
+    })
+    const wrapper = mount(RedeemView, {
+      attachTo: document.body,
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          TablePageLayout: {
+            template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
+          },
+          DataTable: DataTableStub,
+          Pagination: true,
+          ConfirmDialog: true,
+          Select: SelectStub,
+          GroupBadge: true,
+          GroupOptionItem: true,
+          Icon: true,
+          Teleport: true
+        }
+      }
+    })
+    await flushPromises()
+    expect(listCourses).toHaveBeenCalled()
+    expect(wrapper.text()).toContain('AI Agent 实战')
+    wrapper.unmount()
   })
 })
