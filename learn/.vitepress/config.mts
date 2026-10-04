@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineConfig, type DefaultTheme } from 'vitepress'
 import guideSidebar from './guide-sidebar.json'
+import bigdataSidebar from './bigdata-sidebar.json'
 import { tracks } from './theme/tracks'
 
 // AI 学习 at hivegpt.cn/learn. Pages carry the main site's CSP (script-src 'self' + nonce), so
@@ -52,6 +53,7 @@ export default defineConfig({
         activeMatch: '^/[a-d]/',
         items: tracks.map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
+      { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
       { text: '学员作品', link: '/showcase', activeMatch: '^/showcase' },
       { text: '校园', link: '/campus', activeMatch: '^/campus' },
       { text: '延伸阅读', link: '/guide/', activeMatch: '^/guide/' },
@@ -63,6 +65,7 @@ export default defineConfig({
       '/b/': trackSidebar('b'),
       '/c/': trackSidebar('c'),
       '/d/': trackSidebar('d'),
+      '/bigdata/': [{ text: '大数据', items: [{ text: '概览', link: '/bigdata/' }] }, ...bigdataSidebar],
       '/guide/': [{ text: '延伸阅读（JavaGuide）', items: [{ text: '目录与来源', link: '/guide/' }] }, ...guideSidebar],
     },
     outline: { level: [2, 3], label: '本页目录' },

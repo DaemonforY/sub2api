@@ -445,7 +445,7 @@ a.home-track:hover {
 .home-two {
   margin-top: 32px;
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 .home-card {

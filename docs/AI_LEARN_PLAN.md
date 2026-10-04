@@ -232,6 +232,8 @@ learn/                         主站仓库新目录
 - 修复：顶部导航改为「学习路线」下拉（A–D），C、D 路线页补上左侧大纲。
 - 结业奖励：按已定的第 4 条不发余额奖励，未做。
 
+**大数据模块（2026-10-04）**：`/learn/bigdata/`，Apache Spark（14 篇）、Flink（9 篇）、Paimon（14 篇）源码学习，内容来自 `~/Documents/work/opensource-codes` 下的 spark-source-notes / spark-content / spark-notes、flink-notes、paimon-learning（作者本人，CC BY-NC-SA 4.0）。用 `python3 learn/scripts/import_bigdata.py` 重新导入（文章清单和简介在脚本里）；发布说明注释去掉，文章互链改成站内地址，实验链接指向 GitHub。Spark「开篇」和「Committer 之路 01」还有待填写的【】占位，暂未收录。
+
 **上线前需要你做一件事**：在后台「AI 学习」里填学习专用 Key 和模型，再开启在线运行。没开启时，运行框显示示例输出，并提示用自己的 Key 运行。
 
 ## 7. 原「需要你决定」

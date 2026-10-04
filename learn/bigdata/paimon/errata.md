@@ -1,0 +1,38 @@
+---
+title: "勘误与版本说明"
+description: "教程的勘误记录和源码 / 实验的版本说明。"
+bigdata: "paimon"
+---
+
+# 勘误与版本说明
+
+::: info Apache Paimon 源码学习
+作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
+:::
+
+::: v-pre
+准确是本教程的底线。发现错误请提 Issue（注明章节、原文、你认为正确的说法和依据），确认后会在这里记录并致谢。
+
+## 版本基线
+
+| 内容 | 基于 |
+|---|---|
+| 教程正文中的源码类名、方法、行号 | Apache Paimon master @ `d15d250cf`（2.2-SNAPSHOT，2026-09-24） |
+| `labs/` 实验默认运行版本 | Apache Paimon **2.0.0**（Maven Central 正式版）+ Flink 1.20.1 |
+| 实验记录（`labs/notes/`）中的输出 | 2.2-SNAPSHOT 首次采集；2026-10-02 用 `labs/run-all.sh` 复核：实验 1~4 的 34 项在 **2.0.0 与 2.2-SNAPSHOT** 上全部通过；加入实验 5、6 后共 **46 项在 2.0.0** 上全部通过 |
+
+> 源码行号只对 `d15d250cf` 有效。对照源码调试（实验 4）时，请用该提交编译安装并运行：
+> `PAIMON_VERSION=2.2-SNAPSHOT ./debug.sh sql/lab04/trace-write.sql`
+
+## 已知差异
+
+（暂无。若某个结论在不同版本上表现不同，会记录在这里。）
+
+## 勘误记录
+
+| 日期 | 位置 | 原文 | 更正 | 致谢 |
+|---|---|---|---|---|
+| 2026-10-02 | `labs/README.md` 依赖说明、`labs/pom.xml` | 嵌入式运行需要 `flink-connector-base` 和 `flink-connector-files` | `flink-connector-files` 已 shade 了 `flink-connector-base` 的类，只需前者；单独加 `connector-base` 是多余的（实验 5 场景 3~5 验证） | 自查（实验 5） |
+| 2026-10-02 | `labs/README.md` 依赖说明 | 这些依赖“都是 Flink 发行版 `lib/` 里本来就有的” | Flink 发行版 `lib/` 自带 log4j2 和 `flink-connector-files`，**不带 Hadoop**（Flink 1.20.1 `flink-dist/.../bin.xml`），生产部署需自行提供 Hadoop | 自查（实验 5） |
+| 2026-10-02 | `02-paimon-core整体架构.md` 第 4 节写入流程 | 写缓冲“缓冲满 → flushWriteBuffer()”写出 L0 文件 | 默认 `write-buffer-spillable = true`，缓冲满时先溢写到本地磁盘、提交前统一归并成一个 L0 文件；只有关闭溢写才会提前刷盘（`labs/sql/lab04/compare-buffer-full.sql`：可溢写 1 个文件、关闭溢写 20 个文件）。正常情况下 L0 文件在 `prepareCommit` 时生成（`labs/jdb-stacks.sh` 抓到的调用栈） | 自查（S1 第 5 期、S2 第 1 讲） |
+:::

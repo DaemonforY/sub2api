@@ -13,6 +13,7 @@ import MockInterview from './components/MockInterview.vue'
 import AgentLoop from './components/AgentLoop.vue'
 import Showcase from './components/Showcase.vue'
 import CampusPerks from './components/CampusPerks.vue'
+import BigdataHub from './components/BigdataHub.vue'
 import './style.css'
 
 export default {
@@ -31,5 +32,6 @@ export default {
     app.component('AgentLoop', AgentLoop)
     app.component('Showcase', Showcase)
     app.component('CampusPerks', CampusPerks)
+    app.component('BigdataHub', BigdataHub)
   },
 } satisfies Theme
