@@ -31,6 +31,15 @@
             <input v-model.number="form.daily_cap" type="number" min="0" class="input" />
             <span class="input-hint">{{ t('admin.learn.dailyCapHint') }}</span>
           </label>
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.tutorFree') }}</span>
+            <input v-model.number="form.tutor_free_per_day" type="number" min="0" max="500" class="input" data-testid="learn-tutor" />
+          </label>
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.interviewsFree') }}</span>
+            <input v-model.number="form.interviews_per_day" type="number" min="0" max="50" class="input" data-testid="learn-interviews" />
+            <span class="input-hint">{{ t('admin.learn.interviewsHint') }}</span>
+          </label>
         </div>
         <button class="btn btn-primary" :disabled="saving" data-testid="learn-save" @click="save">{{ t('common.save') }}</button>
       </div>
@@ -61,6 +70,39 @@
         </table>
         <p v-if="!stats?.lessons?.length" class="p-6 text-center text-sm text-gray-500">{{ t('admin.learn.noData') }}</p>
       </div>
+
+      <div class="card overflow-x-auto" data-testid="learn-certs">
+        <div class="px-4 pt-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.learn.certs.title') }}</div>
+        <table class="mt-2 w-full whitespace-nowrap text-sm">
+          <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400">
+            <tr>
+              <th class="px-4 py-2">{{ t('admin.learn.certs.code') }}</th>
+              <th class="px-4 py-2">{{ t('admin.learn.certs.user') }}</th>
+              <th class="px-4 py-2">{{ t('admin.learn.certs.track') }}</th>
+              <th class="px-4 py-2">{{ t('admin.learn.certs.score') }}</th>
+              <th class="px-4 py-2">{{ t('admin.learn.certs.project') }}</th>
+              <th class="px-4 py-2">{{ t('admin.learn.certs.issued') }}</th>
+              <th class="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
+            <tr v-for="c in certs" :key="c.code" :class="{ 'opacity-50': c.revoked_at }">
+              <td class="px-4 py-2"><a :href="`/learn/cert.html?c=${c.code}`" target="_blank" class="font-mono text-primary-600 hover:underline">{{ c.code }}</a></td>
+              <td class="px-4 py-2">{{ c.display_name }}<div class="text-xs text-gray-400">{{ c.user_email }}</div></td>
+              <td class="px-4 py-2">{{ c.track_title || c.track }}</td>
+              <td class="px-4 py-2">{{ c.quiz_score ? `${c.quiz_score}%` : '—' }}</td>
+              <td class="max-w-[16rem] truncate px-4 py-2"><a v-if="c.project_url" :href="c.project_url" target="_blank" rel="noopener noreferrer nofollow" class="text-primary-600 hover:underline">{{ c.project_url }}</a></td>
+              <td class="px-4 py-2">{{ new Date(c.issued_at).toLocaleDateString() }}</td>
+              <td class="px-4 py-2 text-right">
+                <button class="btn btn-secondary btn-sm" data-testid="learn-cert-revoke" @click="toggleRevoke(c)">
+                  {{ c.revoked_at ? t('admin.learn.certs.restore') : t('admin.learn.certs.revoke') }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="!certs.length" class="p-6 text-center text-sm text-gray-500">{{ t('admin.learn.certs.empty') }}</p>
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -70,14 +112,15 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { adminAPI } from '@/api/admin'
-import type { LearnSettings, LearnStats } from '@/api/admin/learn'
+import type { LearnCertificate, LearnSettings, LearnStats } from '@/api/admin/learn'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()
 const appStore = useAppStore()
 
-const form = reactive<LearnSettings>({ run_enabled: false, model: '', free_runs_per_day: 20, daily_cap: 1000, api_key_set: false })
+const form = reactive<LearnSettings>({ run_enabled: false, model: '', free_runs_per_day: 20, daily_cap: 1000, tutor_free_per_day: 10, interviews_per_day: 3, api_key_set: false })
+const certs = ref<LearnCertificate[]>([])
 const apiKey = ref('')
 const saving = ref(false)
 const stats = ref<LearnStats | null>(null)
@@ -91,6 +134,11 @@ const statItems = computed(() => {
     { key: 'runs7d', value: s?.runs_7d ?? 0 },
     { key: 'failed7d', value: s?.failed_runs_7d ?? 0 },
     { key: 'tokens7d', value: (s?.tokens_7d ?? 0).toLocaleString() },
+    { key: 'tutor7d', value: s?.tutor_7d ?? 0 },
+    { key: 'interviews7d', value: s?.interviews_7d ?? 0 },
+    { key: 'ownKey7d', value: s?.own_key_runs_7d ?? 0 },
+    { key: 'quizPassed', value: s?.quiz_passed ?? 0 },
+    { key: 'certificates', value: s?.certificates ?? 0 },
   ]
 })
 
@@ -109,10 +157,26 @@ async function save() {
   }
 }
 
+async function loadCerts() {
+  certs.value = (await adminAPI.learn.certificates()).items
+}
+
+async function toggleRevoke(c: LearnCertificate) {
+  const revoke = !c.revoked_at
+  if (revoke && !window.confirm(t('admin.learn.certs.confirm', { code: c.code }))) return
+  try {
+    await adminAPI.learn.setCertificateRevoked(c.code, revoke)
+    await loadCerts()
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  }
+}
+
 onMounted(async () => {
   try {
     Object.assign(form, await adminAPI.learn.getSettings())
     stats.value = await adminAPI.learn.stats()
+    await loadCerts()
   } catch (err) {
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
   }

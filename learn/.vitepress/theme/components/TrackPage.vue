@@ -36,7 +36,7 @@ onMounted(() => void loadProgress())
     </ol>
     <div class="lesson-goals">
       <b>结业项目</b>
-      <p>{{ track.project }}。全部课时完成并提交项目后发放结业证书（证书即将上线）。</p>
+      <p>{{ track.project }}。满足条件后在本页下方领取结业证书。</p>
     </div>
   </div>
 </template>

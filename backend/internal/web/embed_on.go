@@ -443,3 +443,12 @@ func HasEmbeddedFrontend() bool {
 	_, err := frontendFS.ReadFile("dist/index.html")
 	return err == nil
 }
+
+// LearnLessonText is a built lesson page's title and text (for the AI tutor).
+func LearnLessonText(lessonID string) (string, string) {
+	sub, err := fs.Sub(frontendFS, "dist")
+	if err != nil {
+		return "", ""
+	}
+	return lessonTextFrom(sub, lessonID)
+}

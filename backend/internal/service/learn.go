@@ -28,12 +28,16 @@ const (
 	settingLearnFreeRuns   = "learn_free_runs_per_day"
 	settingLearnDailyCap   = "learn_run_daily_cap"
 	settingLearnAPIKey     = "learn_run_api_key_enc"
+	settingLearnTutorFree  = "learn_tutor_free_per_day"
+	settingLearnInterviews = "learn_interviews_per_day"
 
 	learnDefaultFreeRuns  = 20
 	learnDefaultDailyCap  = 1000
+	learnDefaultTutorFree = 10
+	learnDefaultIntervws  = 3
 	learnMaxOutputTokens  = 800
 	learnRunTimeout       = 90 * time.Second
-	learnMaxMessages      = 12
+	learnMaxMessages      = 16
 	learnMaxMessageChars  = 4000
 	learnMaxTotalChars    = 12000
 	learnMaxSchemaBytes   = 4096
@@ -66,10 +70,35 @@ type LearnRepository interface {
 	Progress(ctx context.Context, userID int64) (map[string]time.Time, error)
 	MarkDone(ctx context.Context, userID int64, lessonIDs []string) error
 	// CountRuns counts runs not failed since the time (userID 0: everyone).
-	CountRuns(ctx context.Context, userID int64, since time.Time) (int, error)
-	StartRun(ctx context.Context, userID int64, lessonID string) (int64, error)
+	// Only free calls (no key_id) count; kind "" counts every kind.
+	CountRuns(ctx context.Context, userID int64, kind string, since time.Time) (int, error)
+	// StartRun records a call (kind run | tutor | interview; keyID: the learner's own key, else 0).
+	StartRun(ctx context.Context, userID int64, lessonID, kind string, keyID int64) (int64, error)
 	FinishRun(ctx context.Context, runID int64, status string, latencyMs, promptTokens, completionTokens int) error
 	Stats(ctx context.Context, since time.Time) (*LearnStats, error)
+
+	QuizResults(ctx context.Context, userID int64) (map[string]LearnQuizResult, error)
+	// SaveQuizResult counts an attempt and keeps the best score; returns the stored result.
+	SaveQuizResult(ctx context.Context, userID int64, lessonID string, correct, total int) (LearnQuizResult, error)
+	Checkpoints(ctx context.Context, userID int64) (map[string]time.Time, error)
+	PassCheckpoint(ctx context.Context, userID int64, checkpointID string) error
+
+	// CreateCertificate stores c unless the learner already holds a live one for the track.
+	CreateCertificate(ctx context.Context, c *LearnCertificate) error
+	CertificateByCode(ctx context.Context, code string) (*LearnCertificate, error)
+	CertificatesByUser(ctx context.Context, userID int64) ([]LearnCertificate, error)
+	ListCertificates(ctx context.Context, limit, offset int) ([]LearnCertificate, int, error)
+	SetCertificateRevoked(ctx context.Context, code string, revoked bool) error
+
+	CreateInterview(ctx context.Context, iv *LearnInterview) error
+	GetInterview(ctx context.Context, id int64) (*LearnInterview, error)
+	// SaveInterview stores the answers, status, score and finish time.
+	SaveInterview(ctx context.Context, iv *LearnInterview) error
+	ListInterviews(ctx context.Context, userID int64, limit int) ([]LearnInterview, error)
+	// CountInterviews counts free interviews started since the time.
+	CountInterviews(ctx context.Context, userID int64, since time.Time) (int, error)
+	// BestInterviewScores: the best finished score per topic.
+	BestInterviewScores(ctx context.Context, userID int64) (map[string]int, error)
 }
 
 type learnSettingStore interface {
@@ -83,6 +112,8 @@ type LearnSettings struct {
 	Model          string `json:"model"`
 	FreeRunsPerDay int    `json:"free_runs_per_day"`
 	DailyCap       int    `json:"daily_cap"`
+	TutorFree      int    `json:"tutor_free_per_day"`
+	InterviewsFree int    `json:"interviews_per_day"`
 	APIKeySet      bool   `json:"api_key_set"`
 	APIKey         string `json:"api_key,omitempty"`
 }
@@ -91,18 +122,32 @@ type LearnSettings struct {
 type LearnConfig struct {
 	RunEnabled     bool   `json:"run_enabled"`
 	FreeRunsPerDay int    `json:"free_runs_per_day"`
+	TutorFree      int    `json:"tutor_free_per_day"`
+	InterviewsFree int    `json:"interviews_per_day"`
 	Model          string `json:"model"`
 }
 
 // LearnMe is the signed-in learner's state.
 type LearnMe struct {
-	Completed map[string]time.Time `json:"completed"`
-	RunsLeft  int                  `json:"runs_left"`
+	Completed      map[string]time.Time       `json:"completed"`
+	RunsLeft       int                        `json:"runs_left"`
+	TutorLeft      int                        `json:"tutor_left"`
+	InterviewsLeft int                        `json:"interviews_left"`
+	Quizzes        map[string]LearnQuizResult `json:"quizzes"`
+	Checkpoints    map[string]time.Time       `json:"checkpoints"`
+	Certificates   []LearnCertificate         `json:"certificates"`
+	// Usage today: free runs / tutor questions / interviews used.
+	RunsToday       int `json:"runs_today"`
+	TutorToday      int `json:"tutor_today"`
+	InterviewsToday int `json:"interviews_today"`
 }
 
+// LearnMessage is one chat message of an example (assistant tool calls and tool results too).
 type LearnMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string          `json:"role"`
+	Content    string          `json:"content"`
+	ToolCalls  json.RawMessage `json:"tool_calls,omitempty"`
+	ToolCallID string          `json:"tool_call_id,omitempty"`
 }
 
 // LearnRunInput is what a lesson's example may send.
@@ -111,6 +156,8 @@ type LearnRunInput struct {
 	Messages       []LearnMessage  `json:"messages"`
 	ResponseFormat json.RawMessage `json:"response_format,omitempty"`
 	Tools          json.RawMessage `json:"tools,omitempty"`
+	// KeyID: run on the learner's own key (billed as usual) instead of a free run.
+	KeyID int64 `json:"key_id,omitempty"`
 }
 
 type LearnRunResult struct {
@@ -122,6 +169,7 @@ type LearnRunResult struct {
 	CompletionTokens int             `json:"completion_tokens"`
 	LatencyMs        int             `json:"latency_ms"`
 	RunsLeft         int             `json:"runs_left"`
+	OwnKey           bool            `json:"own_key,omitempty"`
 }
 
 type LearnLessonStat struct {
@@ -131,6 +179,11 @@ type LearnLessonStat struct {
 }
 
 type LearnStats struct {
+	Certificates  int               `json:"certificates"`
+	QuizPassed    int               `json:"quiz_passed"`
+	Tutor7d       int               `json:"tutor_7d"`
+	Interviews7d  int               `json:"interviews_7d"`
+	OwnKeyRuns7d  int               `json:"own_key_runs_7d"`
 	Learners      int               `json:"learners"`
 	RunsToday     int               `json:"runs_today"`
 	Runs7d        int               `json:"runs_7d"`
@@ -147,12 +200,21 @@ type LearnService struct {
 	gatewayURL string
 	client     *http.Client
 	now        func() time.Time
+	catalog    *learnCatalog
+	sources    LearnSources
+	// lessonText is a lesson page's title and text (for the tutor); nil without the built site.
+	lessonText func(lessonID string) (title, text string)
 }
 
 // NewLearnService: gatewayURL is this server's own base URL (e.g. http://127.0.0.1:8080).
-func NewLearnService(repo LearnRepository, settings learnSettingStore, encryptor SecretEncryptor, gatewayURL string) *LearnService {
+func NewLearnService(repo LearnRepository, settings learnSettingStore, encryptor SecretEncryptor, gatewayURL string, sources LearnSources) *LearnService {
 	return &LearnService{repo: repo, settings: settings, encryptor: encryptor, gatewayURL: strings.TrimRight(gatewayURL, "/"),
-		client: &http.Client{Timeout: learnRunTimeout}, now: time.Now}
+		client: &http.Client{Timeout: learnRunTimeout}, now: time.Now, catalog: mustLearnCatalog(), sources: sources}
+}
+
+// SetLessonText gives the tutor the lesson pages (set once the built site is loaded).
+func (s *LearnService) SetLessonText(fn func(lessonID string) (title, text string)) {
+	s.lessonText = fn
 }
 
 func learnDayStart(t time.Time) time.Time {
@@ -161,11 +223,11 @@ func learnDayStart(t time.Time) time.Time {
 }
 
 func (s *LearnService) loadSettings(ctx context.Context) (LearnSettings, string) {
-	out := LearnSettings{FreeRunsPerDay: learnDefaultFreeRuns, DailyCap: learnDefaultDailyCap}
+	out := LearnSettings{FreeRunsPerDay: learnDefaultFreeRuns, DailyCap: learnDefaultDailyCap, TutorFree: learnDefaultTutorFree, InterviewsFree: learnDefaultIntervws}
 	if s.settings == nil {
 		return out, ""
 	}
-	values, err := s.settings.GetMultiple(ctx, []string{settingLearnRunEnabled, settingLearnRunModel, settingLearnFreeRuns, settingLearnDailyCap, settingLearnAPIKey})
+	values, err := s.settings.GetMultiple(ctx, []string{settingLearnRunEnabled, settingLearnRunModel, settingLearnFreeRuns, settingLearnDailyCap, settingLearnAPIKey, settingLearnTutorFree, settingLearnInterviews})
 	if err != nil {
 		return out, ""
 	}
@@ -176,6 +238,12 @@ func (s *LearnService) loadSettings(ctx context.Context) (LearnSettings, string)
 	}
 	if n, err := strconv.Atoi(values[settingLearnDailyCap]); err == nil && n >= 0 {
 		out.DailyCap = n
+	}
+	if n, err := strconv.Atoi(values[settingLearnTutorFree]); err == nil && n >= 0 {
+		out.TutorFree = n
+	}
+	if n, err := strconv.Atoi(values[settingLearnInterviews]); err == nil && n >= 0 {
+		out.InterviewsFree = n
 	}
 	key := ""
 	if enc := values[settingLearnAPIKey]; enc != "" && s.encryptor != nil {
@@ -195,7 +263,8 @@ func (s *LearnService) Settings(ctx context.Context) LearnSettings {
 
 // SaveSettings stores the run settings; an empty APIKey keeps the stored one.
 func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (LearnSettings, error) {
-	if in.FreeRunsPerDay < 0 || in.FreeRunsPerDay > 500 || in.DailyCap < 0 || in.DailyCap > 100000 {
+	if in.FreeRunsPerDay < 0 || in.FreeRunsPerDay > 500 || in.DailyCap < 0 || in.DailyCap > 100000 ||
+		in.TutorFree < 0 || in.TutorFree > 500 || in.InterviewsFree < 0 || in.InterviewsFree > 50 {
 		return LearnSettings{}, errLearnRunInvalid("次数超出范围")
 	}
 	model := strings.TrimSpace(in.Model)
@@ -210,6 +279,8 @@ func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (Lear
 		settingLearnRunModel:   model,
 		settingLearnFreeRuns:   strconv.Itoa(in.FreeRunsPerDay),
 		settingLearnDailyCap:   strconv.Itoa(in.DailyCap),
+		settingLearnTutorFree:  strconv.Itoa(in.TutorFree),
+		settingLearnInterviews: strconv.Itoa(in.InterviewsFree),
 	}
 	if key := strings.TrimSpace(in.APIKey); key != "" {
 		if s.encryptor == nil {
@@ -236,29 +307,51 @@ func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (Lear
 // Config is public.
 func (s *LearnService) Config(ctx context.Context) LearnConfig {
 	st, key := s.loadSettings(ctx)
-	return LearnConfig{RunEnabled: st.RunEnabled && key != "" && st.Model != "", FreeRunsPerDay: st.FreeRunsPerDay, Model: st.Model}
+	return LearnConfig{RunEnabled: st.RunEnabled && key != "" && st.Model != "", FreeRunsPerDay: st.FreeRunsPerDay,
+		TutorFree: st.TutorFree, InterviewsFree: st.InterviewsFree, Model: st.Model}
 }
 
-func (s *LearnService) runsLeft(ctx context.Context, userID int64, st LearnSettings) (int, error) {
-	used, err := s.repo.CountRuns(ctx, userID, learnDayStart(s.now()))
-	if err != nil {
-		return 0, err
-	}
-	return max(st.FreeRunsPerDay-used, 0), nil
-}
-
-// Me: completed lessons and today's free runs left.
+// Me: progress, quiz results, checkpoints, certificates and what is left free today.
 func (s *LearnService) Me(ctx context.Context, userID int64) (*LearnMe, error) {
-	done, err := s.repo.Progress(ctx, userID)
-	if err != nil {
+	out := &LearnMe{}
+	var err error
+	if out.Completed, err = s.repo.Progress(ctx, userID); err != nil {
 		return nil, err
 	}
+	if out.Quizzes, err = s.repo.QuizResults(ctx, userID); err != nil {
+		return nil, err
+	}
+	if out.Checkpoints, err = s.repo.Checkpoints(ctx, userID); err != nil {
+		return nil, err
+	}
+	if out.Certificates, err = s.repo.CertificatesByUser(ctx, userID); err != nil {
+		return nil, err
+	}
+	live := out.Certificates[:0]
+	for _, c := range out.Certificates {
+		if c.RevokedAt == nil {
+			if t := s.catalog.track(c.Track); t != nil {
+				c.TrackTitle = t.Title
+			}
+			live = append(live, c)
+		}
+	}
+	out.Certificates = live
 	st, _ := s.loadSettings(ctx)
-	left, err := s.runsLeft(ctx, userID, st)
-	if err != nil {
+	since := learnDayStart(s.now())
+	if out.RunsToday, err = s.repo.CountRuns(ctx, userID, learnKindRun, since); err != nil {
 		return nil, err
 	}
-	return &LearnMe{Completed: done, RunsLeft: left}, nil
+	if out.TutorToday, err = s.repo.CountRuns(ctx, userID, learnKindTutor, since); err != nil {
+		return nil, err
+	}
+	if out.InterviewsToday, err = s.repo.CountInterviews(ctx, userID, since); err != nil {
+		return nil, err
+	}
+	out.RunsLeft = max(st.FreeRunsPerDay-out.RunsToday, 0)
+	out.TutorLeft = max(st.TutorFree-out.TutorToday, 0)
+	out.InterviewsLeft = max(st.InterviewsFree-out.InterviewsToday, 0)
+	return out, nil
 }
 
 // MarkDone records completed lessons (also used to merge progress kept in the browser).
@@ -284,6 +377,12 @@ func (s *LearnService) MarkDone(ctx context.Context, userID int64, lessonIDs []s
 	return s.repo.Progress(ctx, userID)
 }
 
+const (
+	learnKindRun       = "run"
+	learnKindTutor     = "tutor"
+	learnKindInterview = "interview"
+)
+
 func validateLearnRun(in *LearnRunInput) error {
 	if !learnLessonRe.MatchString(in.Lesson) {
 		return ErrLearnLessonID
@@ -293,22 +392,40 @@ func validateLearnRun(in *LearnRunInput) error {
 	}
 	total := 0
 	for _, m := range in.Messages {
+		n := utf8.RuneCountInString(m.Content)
 		switch m.Role {
-		case "system", "user", "assistant":
+		case "system", "user":
+			if n == 0 {
+				return errLearnRunInvalid("消息不能为空")
+			}
+		case "assistant":
+			// An assistant turn that only calls tools has no text.
+			if n == 0 && len(m.ToolCalls) == 0 {
+				return errLearnRunInvalid("消息不能为空")
+			}
+			if len(m.ToolCalls) > learnMaxToolsBytes {
+				return errLearnRunInvalid("工具调用太长")
+			}
+		case "tool":
+			if m.ToolCallID == "" || len(m.ToolCallID) > 100 {
+				return errLearnRunInvalid("工具结果缺少 tool_call_id")
+			}
 		default:
 			return errLearnRunInvalid("消息角色")
 		}
-		n := utf8.RuneCountInString(m.Content)
-		if n == 0 || n > learnMaxMessageChars {
-			return errLearnRunInvalid(fmt.Sprintf("每条消息 1–%d 字", learnMaxMessageChars))
+		if m.Role != "assistant" && len(m.ToolCalls) > 0 {
+			return errLearnRunInvalid("只有助手消息可以带工具调用")
 		}
-		total += n
+		if n > learnMaxMessageChars {
+			return errLearnRunInvalid(fmt.Sprintf("每条消息最多 %d 字", learnMaxMessageChars))
+		}
+		total += n + len(m.ToolCalls)
 	}
 	if total > learnMaxTotalChars {
 		return errLearnRunInvalid("内容太长")
 	}
-	if in.Messages[len(in.Messages)-1].Role != "user" {
-		return errLearnRunInvalid("最后一条须是用户消息")
+	if last := in.Messages[len(in.Messages)-1].Role; last != "user" && last != "tool" {
+		return errLearnRunInvalid("最后一条须是用户消息或工具结果")
 	}
 	if len(in.ResponseFormat) > 0 {
 		if len(in.ResponseFormat) > learnMaxSchemaBytes {
@@ -340,46 +457,100 @@ func validateLearnRun(in *LearnRunInput) error {
 	return nil
 }
 
-// Run runs a lesson example for userID.
-func (s *LearnService) Run(ctx context.Context, userID int64, in LearnRunInput) (*LearnRunResult, error) {
-	st, key := s.loadSettings(ctx)
-	if !st.RunEnabled || key == "" || st.Model == "" {
-		return nil, ErrLearnRunDisabled
+// learnCall is a model call that has been allowed: the key to use and what is left free afterwards.
+type learnCall struct {
+	key   string
+	keyID int64
+	left  int
+	runID int64
+}
+
+// acquire allows one call of kind: on the learner's own key (keyID > 0), or as a free call within
+// the learner's daily allowance (free; err) and the site-wide cap. It records the call as pending.
+func (s *LearnService) acquire(ctx context.Context, userID int64, lesson, kind string, keyID int64, free int, quota error) (*learnCall, LearnSettings, error) {
+	st, learnKey := s.loadSettings(ctx)
+	if !st.RunEnabled || learnKey == "" || st.Model == "" {
+		return nil, st, ErrLearnRunDisabled
 	}
-	if err := validateLearnRun(&in); err != nil {
-		return nil, err
-	}
+	call := &learnCall{key: learnKey}
 	since := learnDayStart(s.now())
-	used, err := s.repo.CountRuns(ctx, userID, since)
-	if err != nil {
-		return nil, err
+	if free < 0 {
+		free = st.FreeRunsPerDay
+		if kind == learnKindTutor {
+			free = st.TutorFree
+		}
 	}
-	if used >= st.FreeRunsPerDay {
-		return nil, ErrLearnRunQuota
-	}
-	if st.DailyCap > 0 {
-		all, err := s.repo.CountRuns(ctx, 0, since)
+	if keyID > 0 {
+		k, err := s.ownKey(ctx, userID, keyID)
 		if err != nil {
-			return nil, err
+			return nil, st, err
+		}
+		call.key, call.keyID = k.Key, k.ID
+	} else if quota != nil {
+		used, err := s.repo.CountRuns(ctx, userID, kind, since)
+		if err != nil {
+			return nil, st, err
+		}
+		if used >= free {
+			return nil, st, quota
+		}
+		call.left = free - used - 1
+	}
+	if call.keyID == 0 && st.DailyCap > 0 {
+		all, err := s.repo.CountRuns(ctx, 0, "", since)
+		if err != nil {
+			return nil, st, err
 		}
 		if all >= st.DailyCap {
-			return nil, ErrLearnRunBusy
+			return nil, st, ErrLearnRunBusy
 		}
 	}
-	runID, err := s.repo.StartRun(ctx, userID, in.Lesson)
+	if call.keyID > 0 && quota != nil {
+		used, err := s.repo.CountRuns(ctx, userID, kind, since)
+		if err != nil {
+			return nil, st, err
+		}
+		call.left = max(free-used, 0)
+	}
+	runID, err := s.repo.StartRun(ctx, userID, lesson, kind, call.keyID)
+	if err != nil {
+		return nil, st, err
+	}
+	call.runID = runID
+	return call, st, nil
+}
+
+func (s *LearnService) finish(ctx context.Context, call *learnCall, started time.Time, err error, promptTokens, completionTokens int) int {
+	latency := int(s.now().Sub(started) / time.Millisecond)
+	status := "ok"
+	if err != nil {
+		status = "failed"
+	}
+	_ = s.repo.FinishRun(context.WithoutCancel(ctx), call.runID, status, latency, promptTokens, completionTokens)
+	return latency
+}
+
+// Run runs a lesson example for userID.
+func (s *LearnService) Run(ctx context.Context, userID int64, in LearnRunInput) (*LearnRunResult, error) {
+	if err := validateLearnRun(&in); err != nil {
+		if st, key := s.loadSettings(ctx); !st.RunEnabled || key == "" || st.Model == "" {
+			return nil, ErrLearnRunDisabled
+		}
+		return nil, err
+	}
+	call, st, err := s.acquire(ctx, userID, in.Lesson, learnKindRun, in.KeyID, -1, ErrLearnRunQuota)
 	if err != nil {
 		return nil, err
 	}
 	started := s.now()
-	result, callErr := s.callGateway(ctx, key, st.Model, in)
-	latency := int(s.now().Sub(started) / time.Millisecond)
+	result, callErr := s.callGateway(ctx, call.key, st.Model, in)
 	if callErr != nil {
-		_ = s.repo.FinishRun(context.WithoutCancel(ctx), runID, "failed", latency, 0, 0)
+		s.finish(ctx, call, started, callErr, 0, 0)
 		return nil, callErr
 	}
-	_ = s.repo.FinishRun(context.WithoutCancel(ctx), runID, "ok", latency, result.PromptTokens, result.CompletionTokens)
-	result.LatencyMs = latency
-	result.RunsLeft = max(st.FreeRunsPerDay-used-1, 0)
+	result.LatencyMs = s.finish(ctx, call, started, nil, result.PromptTokens, result.CompletionTokens)
+	result.RunsLeft = call.left
+	result.OwnKey = call.keyID > 0
 	return result, nil
 }
 

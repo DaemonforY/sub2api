@@ -216,6 +216,7 @@ export default {
     sitesAdmin: 'Site hosting',
     communityAdmin: 'Canvas community',
     myCourses: 'My courses',
+    myLearning: 'My learning',
     coursesAdmin: 'Courses',
     learnAdmin: 'AI Learning',
   },

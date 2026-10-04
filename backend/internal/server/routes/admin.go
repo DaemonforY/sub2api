@@ -256,6 +256,8 @@ func registerLearnAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/settings", h.Admin.Learn.Settings)
 		g.PUT("/settings", h.Admin.Learn.SaveSettings)
 		g.GET("/stats", h.Admin.Learn.Stats)
+		g.GET("/certificates", h.Admin.Learn.Certificates)
+		g.POST("/certificates/:code/revoke", h.Admin.Learn.RevokeCertificate)
 	}
 }
 

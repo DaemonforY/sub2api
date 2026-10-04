@@ -309,7 +309,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	communityHandler := admin.NewCommunityHandler(communityService)
 	courseHandler := admin.NewCourseHandler(courseService)
 	learnRepository := repository.NewLearnRepository(db)
-	learnService := service.ProvideLearnService(learnRepository, settingRepository, secretEncryptor, configConfig)
+	learnService := service.ProvideLearnService(learnRepository, settingRepository, secretEncryptor, configConfig, apiKeyRepository, siteHostingRepository, communityRepository, affiliateService)
 	learnHandler := admin.NewLearnHandler(learnService)
 	upstreamBillingProbeService := service.ProvideUpstreamBillingProbeService(accountRepository, accountTestService, settingService, leaderLockCache, db)
 	ollamaCloudUsageService := service.ProvideOllamaCloudUsageService(accountRepository, httpUpstream, settingService, secretEncryptor, configConfig, leaderLockCache, db)

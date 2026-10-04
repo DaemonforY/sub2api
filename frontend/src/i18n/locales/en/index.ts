@@ -10,6 +10,7 @@ import growth from './growth'
 import imageToolUses from './imageToolUses'
 import sites from './sites'
 import courses from './courses'
+import learn from './learn'
 
 export default {
   ...landing,
@@ -24,4 +25,5 @@ export default {
   ...imageToolUses,
   ...sites,
   ...courses,
+  ...learn,
 }

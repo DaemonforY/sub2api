@@ -3,7 +3,8 @@
 // The request can only carry messages plus an optional JSON schema / tools; the server picks
 // the model. Signed out or when runs are off, a recorded sample output is shown instead.
 import { computed, onMounted, ref } from 'vue'
-import { ApiError, learnConfig, loginUrl, progress, runExample, token, type RunMessage, type RunResult } from '../api'
+import { ApiError, QUOTA_REASONS, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, runExample, token, type RunMessage, type RunResult } from '../api'
+import OwnKeyPicker from './OwnKeyPicker.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -30,6 +31,7 @@ const input = ref(props.prompt)
 const running = ref(false)
 const error = ref('')
 const needLogin = ref(false)
+const quotaOut = ref(false)
 const result = ref<RunResult | null>(null)
 const history = ref<RunMessage[]>([])
 const enabled = ref<boolean | null>(null)
@@ -77,6 +79,7 @@ async function run() {
   running.value = true
   error.value = ''
   needLogin.value = false
+  quotaOut.value = false
   const messages: RunMessage[] = []
   if (props.system) messages.push({ role: 'system', content: props.system })
   if (props.chat) messages.push(...history.value)
@@ -94,7 +97,17 @@ async function run() {
     }
   } catch (e) {
     const err = e as ApiError
-    if (err.status === 401) {
+    if (QUOTA_REASONS.includes(err.reason)) {
+      progress.runsLeft = 0
+      if (ownKey.id) {
+        running.value = false
+        return run()
+      }
+      quotaOut.value = true
+    } else if (err.reason === 'LEARN_KEY_INVALID') {
+      chooseOwnKey(null)
+      error.value = err.message
+    } else if (err.status === 401) {
       needLogin.value = true
       error.value = '登录已过期，请重新登录后再运行'
     } else {
@@ -116,7 +129,10 @@ function restart() {
   <div class="runbox" data-testid="runbox">
     <div class="runbox-head">
       <span class="runbox-title">▶ {{ title }}</span>
-      <span v-if="signedIn && enabled && progress.runsLeft !== null" class="runbox-quota">今日免费运行剩余 {{ progress.runsLeft }} 次</span>
+      <span v-if="signedIn && enabled && progress.runsLeft === 0 && ownKey.id" class="runbox-quota">
+        用你的 Key「{{ ownKey.name }}」运行（正常计费）<a href="javascript:void 0" @click="chooseOwnKey(null)">不用了</a>
+      </span>
+      <span v-else-if="signedIn && enabled && progress.runsLeft !== null" class="runbox-quota">今日免费运行剩余 {{ progress.runsLeft }} 次</span>
     </div>
 
     <details v-if="system" class="runbox-system">
@@ -154,6 +170,8 @@ function restart() {
         <span class="runbox-note">Ctrl / ⌘ + Enter 也可以运行</span>
       </template>
     </div>
+
+    <OwnKeyPicker v-if="quotaOut" @chosen="run" />
 
     <div v-if="error" class="runbox-error">
       {{ error }}

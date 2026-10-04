@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { defineConfig, type DefaultTheme } from 'vitepress'
 import guideSidebar from './guide-sidebar.json'
 import { tracks } from './theme/tracks'
@@ -82,6 +84,11 @@ export default defineConfig({
     },
   },
   // The default theme inlines a tiny script for the ⌘ hint in search; the CSP would block it.
+  // The main site's 「我的学习」 page reads the tracks from here.
+  buildEnd(site) {
+    const data = tracks.map((t) => ({ id: t.id, letter: t.letter, title: t.title, project: t.project, lessons: t.lessons.filter((l) => l.ready).map((l) => ({ id: l.id, title: l.title, minutes: l.minutes })) }))
+    writeFileSync(join(site.outDir, 'tracks.json'), JSON.stringify(data))
+  },
   transformHtml: (code) => code.replace(/<script id="check-mac-os">[\s\S]*?<\/script>/, ''),
   vite: {
     server: {

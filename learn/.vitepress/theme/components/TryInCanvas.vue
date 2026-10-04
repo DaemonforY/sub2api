@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// Opens the HiveGPT canvas' image page with this prompt filled in.
+// Opens the HiveGPT canvas' image page (or video page) with this prompt filled in.
 import { ref } from 'vue'
 import { CANVAS_SITE } from '../tracks'
 
-const props = defineProps<{ prompt: string; label?: string }>()
+const props = defineProps<{ prompt: string; label?: string; page?: 'image' | 'video' }>()
 const copied = ref(false)
-const href = `${CANVAS_SITE}/image?prompt=${encodeURIComponent(props.prompt)}&utm_source=learn`
+const href = `${CANVAS_SITE}/${props.page === 'video' ? 'video' : 'image'}?prompt=${encodeURIComponent(props.prompt)}&utm_source=learn`
 
 async function copy() {
   try {

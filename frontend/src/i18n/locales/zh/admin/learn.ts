@@ -4,7 +4,7 @@ export default {
     description: '学习站 /learn 的在线运行设置和学习数据。',
     runTitle: '在线运行',
     openSite: '打开学习站',
-    runHint: '课时里的「动手试试」会用下面这个学习专用 Key 调用本站网关，费用记在这个 Key 上（在「使用记录」里能看到）。登录用户每天有免费次数，用完后提示用自己的 Key 运行。',
+    runHint: '课时里的「动手试试」、AI 助教和模拟面试会用下面这个学习专用 Key 调用本站网关，费用记在这个 Key 上（在「使用记录」里能看到）。登录用户每天有免费次数，用完后可以选择用自己的 Key 继续（按正常价格从学员的 Key 计费）。',
     enabled: '开启在线运行',
     apiKey: '学习专用 Key',
     apiKeySet: '已设置，留空表示不修改',
@@ -14,11 +14,27 @@ export default {
     modelHint: '这个 Key 的分组里可用的模型，建议选便宜、速度快的，例如 gpt-5.5。',
     freeRuns: '每人每天免费次数',
     dailyCap: '全站每天上限',
-    dailyCapHint: '所有人加起来每天最多运行多少次，0 表示不限制。',
-    stats: { learners: '学过的人', learnersToday: '今天运行的人', runsToday: '今天运行', runs7d: '近 7 天运行', failed7d: '近 7 天失败', tokens7d: '近 7 天 tokens' },
+    dailyCapHint: '所有人加起来每天最多用学习专用 Key 调用多少次（运行、助教、面试评分都算），0 表示不限制。',
+    tutorFree: '每人每天免费问助教次数',
+    interviewsFree: '每人每天免费模拟面试场次',
+    interviewsHint: '每场 5 题，每题评分算一次调用。',
+    stats: { learners: '学过的人', learnersToday: '今天运行的人', runsToday: '今天运行', runs7d: '近 7 天运行', failed7d: '近 7 天失败', tokens7d: '近 7 天 tokens', tutor7d: '近 7 天助教提问', interviews7d: '近 7 天模拟面试', ownKey7d: '近 7 天用学员 Key', quizPassed: '通过的测验', certificates: '已发证书' },
     lesson: '课时',
     completed: '完成人数',
     runs: '成功运行次数',
-    noData: '还没有学习数据'
+    noData: '还没有学习数据',
+    certs: {
+      title: '结业证书',
+      code: '编号',
+      user: '学员',
+      track: '路线',
+      score: '测验',
+      project: '结业项目',
+      issued: '发放日期',
+      revoke: '撤销',
+      restore: '恢复',
+      confirm: '撤销证书 {code}？撤销后证书页不再显示，学员可以重新领取。',
+      empty: '还没有人领取证书'
+    }
   }
 }

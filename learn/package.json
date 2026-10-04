@@ -8,8 +8,12 @@
     "preview": "vitepress preview . --port 5174"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "mermaid": "^11",
     "vitepress": "^1.6.4",
     "vue": "^3.5.13"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

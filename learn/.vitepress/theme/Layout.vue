@@ -7,6 +7,7 @@ import { useRoute } from 'vitepress'
 import LessonHeader from './components/LessonHeader.vue'
 import LessonFooter from './components/LessonFooter.vue'
 import NavUser from './components/NavUser.vue'
+import Tutor from './components/Tutor.vue'
 import { loadProgress, progress } from './api'
 
 const { Layout } = DefaultTheme
@@ -30,7 +31,8 @@ watch(() => progress.completed, () => nextTick(markSidebar), { deep: true })
 <template>
   <Layout>
     <template #doc-before><LessonHeader /></template>
-    <template #doc-after><LessonFooter /></template>
+    <template #doc-footer-before><LessonFooter /></template>
     <template #nav-bar-content-after><NavUser /></template>
+    <template #layout-bottom><Tutor /></template>
   </Layout>
 </template>

@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"strconv"
+
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
@@ -43,4 +45,32 @@ func (h *LearnHandler) Stats(c *gin.Context) {
 		return
 	}
 	response.Success(c, stats)
+}
+
+// Certificates GET /api/v1/admin/learn/certificates?page=&page_size=
+func (h *LearnHandler) Certificates(c *gin.Context) {
+	page, _ := strconv.Atoi(c.Query("page"))
+	size, _ := strconv.Atoi(c.Query("page_size"))
+	items, total, err := h.svc.AdminCertificates(c.Request.Context(), page, size)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"items": items, "total": total})
+}
+
+// RevokeCertificate POST /api/v1/admin/learn/certificates/:code/revoke {revoked}
+func (h *LearnHandler) RevokeCertificate(c *gin.Context) {
+	var in struct {
+		Revoked bool `json:"revoked"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数格式不正确")
+		return
+	}
+	if err := h.svc.SetCertificateRevoked(c.Request.Context(), c.Param("code"), in.Revoked); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"ok": true})
 }

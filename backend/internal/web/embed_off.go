@@ -46,3 +46,6 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 func HasEmbeddedFrontend() bool {
 	return false
 }
+
+// LearnLessonText: no built site without the embedded frontend.
+func LearnLessonText(lessonID string) (string, string) { return lessonTextFrom(nil, lessonID) }

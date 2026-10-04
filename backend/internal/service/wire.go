@@ -657,7 +657,9 @@ func ProvideCommunityService(repo CommunityRepository, settings SettingRepositor
 }
 
 // ProvideLearnService wires AI 学习; example runs call this server's own gateway on loopback.
-func ProvideLearnService(repo LearnRepository, settings SettingRepository, encryptor SecretEncryptor, cfg *config.Config) *LearnService {
+// Checkpoints and certificates read keys, hosted sites and community works.
+func ProvideLearnService(repo LearnRepository, settings SettingRepository, encryptor SecretEncryptor, cfg *config.Config,
+	keys APIKeyRepository, sites SiteHostingRepository, community CommunityRepository, affiliate *AffiliateService) *LearnService {
 	port := 8080
 	if cfg != nil && cfg.Server.Port > 0 {
 		port = cfg.Server.Port
@@ -666,7 +668,29 @@ func ProvideLearnService(repo LearnRepository, settings SettingRepository, encry
 	if settings != nil {
 		store = settings
 	}
-	return NewLearnService(repo, store, encryptor, "http://127.0.0.1:"+strconv.Itoa(port))
+	sources := LearnSources{CanvasURL: "https://canvas.hivegpt.cn"}
+	if keys != nil {
+		sources.Keys = keys
+	}
+	if sites != nil {
+		sources.Sites = sites
+	}
+	if community != nil {
+		sources.Works = community
+	}
+	if cfg != nil && cfg.Sites.Domain != "" {
+		domain := cfg.Sites.Domain
+		sources.SiteURL = func(name string) string { return "https://" + name + "." + domain }
+	}
+	if affiliate != nil {
+		sources.InviteCode = func(ctx context.Context, userID int64) string {
+			if sum, err := affiliate.EnsureUserAffiliate(ctx, userID); err == nil && sum != nil {
+				return sum.AffCode
+			}
+			return ""
+		}
+	}
+	return NewLearnService(repo, store, encryptor, "http://127.0.0.1:"+strconv.Itoa(port), sources)
 }
 
 // ProvideCourseService wires paid courses; images live beside the community's (community.dir/../courses).

@@ -4,7 +4,7 @@ export default {
     description: 'Example-run settings and learning stats of the /learn site.',
     runTitle: 'Running examples',
     openSite: 'Open the learning site',
-    runHint: "Lessons' “Try it” boxes call this site's gateway with the learning key below; costs go to that key (see Usage). Signed-in learners get free runs a day, after which they are asked to use their own key.",
+    runHint: "Lessons' “Try it” boxes, the AI tutor and mock interviews call this site's gateway with the learning key below; costs go to that key (see Usage). Signed-in learners get free calls a day, then may go on with their own key (billed on their key as usual).",
     enabled: 'Enable running examples',
     apiKey: 'Learning key',
     apiKeySet: 'Set; leave empty to keep it',
@@ -14,11 +14,27 @@ export default {
     modelHint: 'A model available in the key’s group; pick a cheap, fast one such as gpt-5.5.',
     freeRuns: 'Free runs per learner per day',
     dailyCap: 'Site-wide daily cap',
-    dailyCapHint: 'Most runs a day across everyone; 0 = no cap.',
-    stats: { learners: 'Learners', learnersToday: 'Learners today', runsToday: 'Runs today', runs7d: 'Runs (7 days)', failed7d: 'Failed (7 days)', tokens7d: 'Tokens (7 days)' },
+    dailyCapHint: 'Most calls a day on the learning key across everyone (runs, tutor, interview grading); 0 = no cap.',
+    tutorFree: 'Free tutor questions per learner per day',
+    interviewsFree: 'Free mock interviews per learner per day',
+    interviewsHint: 'Five questions each; each graded answer is one call.',
+    stats: { learners: 'Learners', learnersToday: 'Learners today', runsToday: 'Runs today', runs7d: 'Runs (7 days)', failed7d: 'Failed (7 days)', tokens7d: 'Tokens (7 days)', tutor7d: 'Tutor questions (7 days)', interviews7d: 'Mock interviews (7 days)', ownKey7d: 'On learners’ keys (7 days)', quizPassed: 'Quizzes passed', certificates: 'Certificates' },
     lesson: 'Lesson',
     completed: 'Completed',
     runs: 'Successful runs',
-    noData: 'No learning data yet'
+    noData: 'No learning data yet',
+    certs: {
+      title: 'Certificates',
+      code: 'Code',
+      user: 'Learner',
+      track: 'Track',
+      score: 'Quizzes',
+      project: 'Project',
+      issued: 'Issued',
+      revoke: 'Revoke',
+      restore: 'Restore',
+      confirm: 'Revoke certificate {code}? Its page stops showing it and the learner may claim again.',
+      empty: 'No certificates yet'
+    }
   }
 }

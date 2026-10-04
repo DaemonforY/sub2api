@@ -13,7 +13,10 @@ onMounted(() => {
 
 <template>
   <div class="nav-user">
-    <a v-if="user" href="/dashboard" class="nav-user-link" :title="user.email">{{ user.username || user.email || '我的账户' }}</a>
+    <template v-if="user">
+      <a href="/my-learning" class="nav-user-link">我的学习</a>
+      <a href="/dashboard" class="nav-user-link" :title="user.email">{{ user.username || user.email || '我的账户' }}</a>
+    </template>
     <a v-else :href="login" class="runbox-btn small">登录</a>
   </div>
 </template>

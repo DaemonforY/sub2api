@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import LearnView from '../LearnView.vue'
 
-const api = vi.hoisted(() => ({ getSettings: vi.fn(), saveSettings: vi.fn(), stats: vi.fn() }))
+const api = vi.hoisted(() => ({ getSettings: vi.fn(), saveSettings: vi.fn(), stats: vi.fn(), certificates: vi.fn(), setCertificateRevoked: vi.fn() }))
 const { showSuccess, showError } = vi.hoisted(() => ({ showSuccess: vi.fn(), showError: vi.fn() }))
 
 vi.mock('@/api/admin', () => ({ adminAPI: { learn: api } }))
@@ -17,6 +17,8 @@ describe('admin LearnView', () => {
     for (const fn of Object.values(api)) fn.mockReset()
     api.getSettings.mockResolvedValue({ run_enabled: false, model: '', free_runs_per_day: 20, daily_cap: 1000, api_key_set: true })
     api.stats.mockResolvedValue({ learners: 3, learners_today: 1, runs_today: 4, runs_7d: 9, failed_runs_7d: 1, tokens_7d: 1234, lessons: [{ lesson_id: 'a3', completed: 2, runs: 5 }] })
+    api.certificates.mockResolvedValue({ items: [{ code: 'ABCDEFGH23', user_email: 'a@example.test', track: 'a', track_title: 'AI 应用开发入门', display_name: '小林', project_url: 'https://github.com/x/y', quiz_score: 90, issued_at: '2026-10-04T00:00:00Z' }], total: 1 })
+    api.setCertificateRevoked.mockResolvedValue(undefined)
   })
 
   it('keeps the stored key unless a new one is typed, and shows stats', async () => {
@@ -38,5 +40,18 @@ describe('admin LearnView', () => {
     await flushPromises()
     expect(api.saveSettings.mock.calls[1][0].api_key).toBe('sk-new')
     expect((wrapper.get('[data-testid="learn-key"]').element as HTMLInputElement).value).toBe('')
+  })
+
+  it('lists certificates and revokes one after confirming', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = mount(LearnView, { global: { stubs } })
+    await flushPromises()
+    expect(wrapper.get('[data-testid="learn-certs"]').text()).toContain('ABCDEFGH23')
+    await wrapper.get('[data-testid="learn-cert-revoke"]').trigger('click')
+    await flushPromises()
+    expect(confirm).toHaveBeenCalled()
+    expect(api.setCertificateRevoked).toHaveBeenCalledWith('ABCDEFGH23', true)
+    expect(api.certificates).toHaveBeenCalledTimes(2)
+    confirm.mockRestore()
   })
 })

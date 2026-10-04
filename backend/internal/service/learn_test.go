@@ -9,55 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
-
-type learnRepoStub struct {
-	mu       sync.Mutex
-	done     map[string]time.Time
-	runs     []string // statuses
-	runUsers []int64
-}
-
-func (r *learnRepoStub) Progress(context.Context, int64) (map[string]time.Time, error) {
-	return r.done, nil
-}
-func (r *learnRepoStub) MarkDone(_ context.Context, _ int64, ids []string) error {
-	for _, id := range ids {
-		r.done[id] = time.Now()
-	}
-	return nil
-}
-func (r *learnRepoStub) CountRuns(_ context.Context, userID int64, _ time.Time) (int, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	n := 0
-	for i, st := range r.runs {
-		if st != "failed" && (userID == 0 || r.runUsers[i] == userID) {
-			n++
-		}
-	}
-	return n, nil
-}
-func (r *learnRepoStub) StartRun(_ context.Context, userID int64, _ string) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.runs = append(r.runs, "pending")
-	r.runUsers = append(r.runUsers, userID)
-	return int64(len(r.runs)), nil
-}
-func (r *learnRepoStub) FinishRun(_ context.Context, id int64, status string, _, _, _ int) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.runs[id-1] = status
-	return nil
-}
-func (r *learnRepoStub) Stats(context.Context, time.Time) (*LearnStats, error) { return &LearnStats{}, nil }
 
 type mapSettings map[string]string
 
@@ -100,9 +57,9 @@ func TestLearnRun(t *testing.T) {
 	}))
 	defer gw.Close()
 
-	repo := &learnRepoStub{done: map[string]time.Time{}}
+	repo := newLearnRepoStub()
 	settings := mapSettings{}
-	svc := NewLearnService(repo, settings, prefixEncryptor{}, gw.URL)
+	svc := NewLearnService(repo, settings, prefixEncryptor{}, gw.URL, LearnSources{})
 	reason := func(err error) string { return infraerrors.Reason(err) }
 	in := LearnRunInput{Lesson: "a4", Messages: []LearnMessage{{Role: "user", Content: "明天上海要带伞吗？"}},
 		Tools: json.RawMessage(`[{"type":"function","function":{"name":"get_weather","parameters":{"type":"object"}}}]`)}
@@ -170,8 +127,8 @@ func TestLearnRun(t *testing.T) {
 }
 
 func TestLearnMarkDone(t *testing.T) {
-	repo := &learnRepoStub{done: map[string]time.Time{}}
-	svc := NewLearnService(repo, mapSettings{}, prefixEncryptor{}, "http://127.0.0.1:1")
+	repo := newLearnRepoStub()
+	svc := NewLearnService(repo, mapSettings{}, prefixEncryptor{}, "http://127.0.0.1:1", LearnSources{})
 	_, err := svc.MarkDone(context.Background(), 1, []string{"a1", "drop table"})
 	require.Equal(t, "LEARN_LESSON_INVALID", infraerrors.Reason(err))
 	done, err := svc.MarkDone(context.Background(), 1, []string{"a1", "a1", "b3"})

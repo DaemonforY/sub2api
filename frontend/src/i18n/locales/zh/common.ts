@@ -216,6 +216,7 @@ export default {
     sitesAdmin: '网站托管',
     communityAdmin: '画布社区',
     myCourses: '我的课程',
+    myLearning: '我的学习',
     coursesAdmin: '课程管理',
     learnAdmin: 'AI 学习',
   },
