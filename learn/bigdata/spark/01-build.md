@@ -2,10 +2,9 @@
 title: "源码通关 01｜从零编译 Spark 4.2.0 源码，国内踩坑全记录"
 description: "在国内网络下从零编译 Spark 4.2.0 源码、导入 IDEA，以及编译中遇到的坑和解决办法。"
 bigdata: "spark"
+lesson: "e1"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/01-build-cover.webp"}]]
 ---
-
-# 源码通关 01｜从零编译 Spark 4.2.0 源码，国内踩坑全记录
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

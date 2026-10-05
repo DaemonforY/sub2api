@@ -2,7 +2,7 @@
 // Below a lesson: mark it done and go on.
 import { computed, ref } from 'vue'
 import { useData, withBase } from 'vitepress'
-import { findLesson } from '../tracks'
+import { findLesson, lessonHref, trackHref } from '../tracks'
 import { loginUrl, markDone, progress, token } from '../api'
 import Quiz from './Quiz.vue'
 
@@ -34,9 +34,9 @@ async function complete() {
       <span class="runbox-note">本路线已完成 {{ trackDone }} / {{ found.track.lessons.length }} 课</span>
     </div>
     <div class="lesson-foot-row">
-      <a v-if="next && next.ready" class="lesson-next" :href="withBase(`/${found.track.id}/${next.id}`)">下一课：{{ next.title }} →</a>
+      <a v-if="next && next.ready" class="lesson-next" :href="withBase(lessonHref(found.track, next))">下一课：{{ next.title }} →</a>
       <span v-else-if="next" class="runbox-note">下一课「{{ next.title }}」即将上线，先去 <a :href="withBase('/guide/')">延伸阅读</a> 看看。</span>
-      <span v-else class="runbox-note">这条路线学完了 🎉 <a :href="withBase(`/${found.track.id}/#结业`)">去路线页领取结业证书 →</a></span>
+      <span v-else class="runbox-note">这条路线学完了 🎉 <a :href="withBase(`${trackHref(found.track)}#结业`)">去路线页领取结业证书 →</a></span>
     </div>
     <p v-if="progress.loaded && !signedIn" class="runbox-note">
       进度先保存在这个浏览器里，<a :href="loginUrl()">登录 HiveGPT</a> 后会同步到账号，换设备也在。

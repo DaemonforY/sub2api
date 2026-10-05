@@ -2,10 +2,9 @@
 title: "第 10 讲：AQE、DataSource V2 与 Spark Connect"
 description: "AQE 自适应执行、DataSource V2 接口和 Spark Connect 的源码实现。"
 bigdata: "spark"
+lesson: "e13"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-10-aqe-dsv2-cover.webp"}]]
 ---
-
-# 第 10 讲：AQE、DataSource V2 与 Spark Connect
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

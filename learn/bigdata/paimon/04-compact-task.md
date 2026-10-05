@@ -2,10 +2,9 @@
 title: "04 合并执行：MergeTreeCompactTask"
 description: "MergeTreeCompactTask 的执行：哪些文件直接升级层级，哪些需要重写合并。"
 bigdata: "paimon"
+lesson: "g4"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/04-compact-task-cover.webp"}]]
 ---
-
-# 04 合并执行：MergeTreeCompactTask
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

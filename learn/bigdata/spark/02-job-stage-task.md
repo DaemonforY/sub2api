@@ -2,10 +2,9 @@
 title: "面试拆解 01｜Job、Stage、Task 到底是什么关系？"
 description: "用 7 个实验说清楚 Action、Job、Stage、Task 的对应关系，以及常见面试题怎么答。"
 bigdata: "spark"
+lesson: "e2"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/02-job-stage-task-cover.webp"}]]
 ---
-
-# 面试拆解 01｜Job、Stage、Task 到底是什么关系？
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

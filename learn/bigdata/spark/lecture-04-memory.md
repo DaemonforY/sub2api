@@ -2,10 +2,9 @@
 title: "第 4 讲：内存管理"
 description: "统一内存管理：执行内存与存储内存的划分、互相借用的规则，以及堆外内存。"
 bigdata: "spark"
+lesson: "e7"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-04-memory-cover.webp"}]]
 ---
-
-# 第 4 讲：内存管理
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

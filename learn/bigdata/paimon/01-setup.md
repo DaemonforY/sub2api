@@ -2,10 +2,9 @@
 title: "01 环境搭建与源码编译"
 description: "编译 Paimon 源码、导入 IDEA、跑通第一个实验，以及编译中的常见问题。"
 bigdata: "paimon"
+lesson: "g1"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/01-setup-cover.webp"}]]
 ---
-
-# 01 环境搭建与源码编译
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

@@ -23,18 +23,39 @@ func TestLearnCatalogMatchesSite(t *testing.T) {
 	c, err := loadLearnCatalog(learnCatalogJSON)
 	require.NoError(t, err)
 
-	// Every lesson on the site is in the catalog (a certificate needs all of them), in order.
+	// Every lesson on the site is in the catalog (a certificate needs all of them), in order: tracks.ts
+	// plus the 大数据 tracks generated into bigdata-tracks.json (their pages are the articles).
 	raw, err := os.ReadFile("../../../learn/.vitepress/theme/tracks.ts")
 	require.NoError(t, err)
 	site := map[string][]string{}
+	pages := map[string]string{}
 	for _, m := range regexp.MustCompile(`id: '([a-z])(\d{1,2})', title: '[^']*', minutes: \d+, ready: true`).FindAllStringSubmatch(string(raw), -1) {
-		site[m[1]] = append(site[m[1]], m[1]+m[2])
+		id := m[1] + m[2]
+		site[m[1]] = append(site[m[1]], id)
+		pages[id] = fmt.Sprintf("../../../learn/%s/%s.md", m[1], id)
+	}
+	rawBig, err := os.ReadFile("../../../learn/.vitepress/bigdata-tracks.json")
+	require.NoError(t, err)
+	var big []struct {
+		ID      string `json:"id"`
+		Lessons []struct {
+			ID   string `json:"id"`
+			Link string `json:"link"`
+		} `json:"lessons"`
+	}
+	require.NoError(t, json.Unmarshal(rawBig, &big))
+	for _, tr := range big {
+		for _, l := range tr.Lessons {
+			site[tr.ID] = append(site[tr.ID], l.ID)
+			pages[l.ID] = "../../../learn" + l.Link + ".md"
+		}
 	}
 	for _, track := range c.Tracks {
 		require.Equal(t, site[track.ID], track.Lessons, "track %s", track.ID)
 		for _, id := range track.Lessons {
-			_, err := os.Stat(fmt.Sprintf("../../../learn/%s/%s.md", track.ID, id))
+			page, err := os.ReadFile(pages[id])
 			require.NoError(t, err, "lesson page %s", id)
+			require.Regexp(t, `(?m)^lesson: "?`+id+`"?$`, string(page), "lesson %s frontmatter", id)
 		}
 	}
 	require.Len(t, site, len(c.Tracks))
@@ -42,7 +63,7 @@ func TestLearnCatalogMatchesSite(t *testing.T) {
 	// Pages use only checkpoints and interview topics the server knows.
 	for _, track := range c.Tracks {
 		for _, id := range track.Lessons {
-			page, err := os.ReadFile(fmt.Sprintf("../../../learn/%s/%s.md", track.ID, id))
+			page, err := os.ReadFile(pages[id])
 			require.NoError(t, err)
 			for _, m := range regexp.MustCompile(`<Checkpoint id="([a-z0-9]+)"`).FindAllStringSubmatch(string(page), -1) {
 				require.Contains(t, c.Checkpoints, m[1], "%s checkpoint", id)
@@ -64,7 +85,7 @@ func TestLearnCatalogMatchesSite(t *testing.T) {
 			require.Contains(t, string(page), "### "+q.Q, "%s question %s on the page", id, q.ID)
 		}
 	}
-	require.Equal(t, []string{"llm", "agent", "rag", "design"}, c.certTopics()) // big-data topics don't count for track D
+	require.Equal(t, []string{"llm", "agent", "rag", "design"}, c.track("d").Interviews) // big-data topics don't count for track D
 
 	bad := strings.Replace(string(learnCatalogJSON), `"answer": [`, `"answer": [9, `, 1)
 	_, err = loadLearnCatalog([]byte(bad))
@@ -217,6 +238,12 @@ func TestLearnCheckpointsAndCertificate(t *testing.T) {
 	st, err = svc.CertStatus(ctx, 1, "d")
 	require.NoError(t, err)
 	require.Contains(t, st.Items[len(st.Items)-1].Detail, "已通过 0 / 4")
+
+	// 大数据 tracks: their own interview topic is the project.
+	st, err = svc.CertStatus(ctx, 1, "e")
+	require.NoError(t, err)
+	require.Equal(t, "「Spark」模拟面试拿到 60 分以上", st.Items[len(st.Items)-1].Title)
+	require.Len(t, st.Items, 3) // lessons, quizzes, interview
 }
 
 func TestLearnOwnKeyRun(t *testing.T) {

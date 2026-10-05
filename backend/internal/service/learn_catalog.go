@@ -20,8 +20,9 @@ type LearnTrackDef struct {
 	Lessons     []string `json:"lessons"`
 	Checkpoints []string `json:"checkpoints"`
 	// Project: "site" (a hosted site of theirs), "works" (published community works) or
-	// "interviews" (a passed mock interview in every topic).
-	Project string `json:"project"`
+	// "interviews" (a passed mock interview in each of Interviews).
+	Project    string   `json:"project"`
+	Interviews []string `json:"interviews,omitempty"`
 }
 
 type LearnCheckpointDef struct {
@@ -92,7 +93,16 @@ func (c *learnCatalog) validate() error {
 			}
 		}
 		switch t.Project {
-		case "site", "works", "interviews":
+		case "site", "works":
+		case "interviews":
+			if len(t.Interviews) == 0 {
+				return fmt.Errorf("learn catalog: track %s needs interview topics", t.ID)
+			}
+			for _, topic := range t.Interviews {
+				if _, ok := c.Interviews[topic]; !ok {
+					return fmt.Errorf("learn catalog: track %s interview %q", t.ID, topic)
+				}
+			}
 		default:
 			return fmt.Errorf("learn catalog: track %s project %q", t.ID, t.Project)
 		}
@@ -149,17 +159,6 @@ func (c *learnCatalog) track(id string) *LearnTrackDef {
 		}
 	}
 	return nil
-}
-
-// certTopics are the interview topics track D's certificate needs.
-func (c *learnCatalog) certTopics() []string {
-	var out []string
-	for _, id := range c.InterviewTopics {
-		if c.Interviews[id].Track == "d" {
-			out = append(out, id)
-		}
-	}
-	return out
 }
 
 func mustLearnCatalog() *learnCatalog {

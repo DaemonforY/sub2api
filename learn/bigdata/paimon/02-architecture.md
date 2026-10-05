@@ -2,10 +2,9 @@
 title: "02 paimon-core 整体架构"
 description: "paimon-core 的分层、snapshot 到 data file 的元数据树，写、提交、读三条主流程。"
 bigdata: "paimon"
+lesson: "g2"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/02-architecture-cover.webp"}]]
 ---
-
-# 02 paimon-core 整体架构
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

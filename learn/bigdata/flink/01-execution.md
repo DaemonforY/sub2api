@@ -2,10 +2,9 @@
 title: "Flink 源码导读 01：从 `env.execute()` 到 `processElement()` —— 作业执行全链路"
 description: "用户代码怎样变成 StreamGraph、JobGraph、ExecutionGraph，Task 怎样部署运行到 processElement()。"
 bigdata: "flink"
+lesson: "f1"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/01-execution-cover.webp"}]]
 ---
-
-# Flink 源码导读 01：从 `env.execute()` 到 `processElement()` —— 作业执行全链路
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

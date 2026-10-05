@@ -2,10 +2,9 @@
 title: "第 9 讲：代码生成与 Tungsten"
 description: "全阶段代码生成与 Tungsten：看生成的代码、做性能对比、理解 UnsafeRow。"
 bigdata: "spark"
+lesson: "e12"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-09-codegen-cover.webp"}]]
 ---
-
-# 第 9 讲：代码生成与 Tungsten
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

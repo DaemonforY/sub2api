@@ -2,10 +2,9 @@
 title: "Flink 源码导读 04：网络栈与背压 —— 从 RecordWriter 到 Netty，再到 Credit 流控"
 description: "网络栈：ResultPartition、InputGate、Credit-based 流控，以及背压是怎样产生和传递的。"
 bigdata: "flink"
+lesson: "f4"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/04-network-cover.webp"}]]
 ---
-
-# Flink 源码导读 04：网络栈与背压 —— 从 RecordWriter 到 Netty，再到 Credit 流控
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

@@ -2,10 +2,9 @@
 title: "Flink 源码导读 08：时间、Watermark 与窗口"
 description: "事件时间与 Watermark 的生成和传播、窗口的分配、触发与清理。"
 bigdata: "flink"
+lesson: "f8"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/08-watermark-window-cover.webp"}]]
 ---
-
-# Flink 源码导读 08：时间、Watermark 与窗口
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

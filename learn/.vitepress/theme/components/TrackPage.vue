@@ -2,7 +2,7 @@
 // A track's page: who it is for, the lessons with progress, the final project.
 import { computed, onMounted } from 'vue'
 import { withBase } from 'vitepress'
-import { tracks } from '../tracks'
+import { lessonHref, tracks } from '../tracks'
 import { loadProgress, progress } from '../api'
 
 const props = defineProps<{ id: string }>()
@@ -24,12 +24,12 @@ onMounted(() => void loadProgress())
     <div class="track-progress">
       <div class="home-bar"><b :style="{ width: (done / track.lessons.length) * 100 + '%' }"></b></div>
       <span class="runbox-note">已完成 {{ done }} / {{ track.lessons.length }} 课</span>
-      <a v-if="start" class="runbox-btn" :href="withBase(`/${track.id}/${start.id}`)">{{ done ? '继续学习' : '开始学习' }}</a>
+      <a v-if="start" class="runbox-btn" :href="withBase(lessonHref(track, start))">{{ done ? '继续学习' : '开始学习' }}</a>
     </div>
     <ol class="track-lessons">
       <li v-for="(l, i) in track.lessons" :key="l.id" :class="{ soon: !l.ready, done: progress.completed[l.id] }">
         <span class="track-num">{{ progress.completed[l.id] ? '✓' : i + 1 }}</span>
-        <a v-if="l.ready" :href="withBase(`/${track.id}/${l.id}`)">{{ l.title }}</a>
+        <a v-if="l.ready" :href="withBase(lessonHref(track, l))">{{ l.title }}</a>
         <span v-else>{{ l.title }}</span>
         <span class="runbox-note">{{ l.ready ? `${l.minutes} 分钟` : '即将上线' }}</span>
       </li>

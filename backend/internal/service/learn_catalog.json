@@ -61,7 +61,79 @@
     "d4"
    ],
    "checkpoints": [],
-   "project": "interviews"
+   "project": "interviews",
+   "interviews": [
+    "llm",
+    "agent",
+    "rag",
+    "design"
+   ]
+  },
+  {
+   "id": "e",
+   "title": "Apache Spark 源码",
+   "lessons": [
+    "e1",
+    "e2",
+    "e3",
+    "e4",
+    "e5",
+    "e6",
+    "e7",
+    "e8",
+    "e9",
+    "e10",
+    "e11",
+    "e12",
+    "e13"
+   ],
+   "checkpoints": [],
+   "project": "interviews",
+   "interviews": [
+    "spark"
+   ]
+  },
+  {
+   "id": "f",
+   "title": "Apache Flink 源码",
+   "lessons": [
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "f5",
+    "f6",
+    "f7",
+    "f8",
+    "f9"
+   ],
+   "checkpoints": [],
+   "project": "interviews",
+   "interviews": [
+    "flink"
+   ]
+  },
+  {
+   "id": "g",
+   "title": "Apache Paimon 源码",
+   "lessons": [
+    "g1",
+    "g2",
+    "g3",
+    "g4",
+    "g5",
+    "g6",
+    "g7",
+    "g8",
+    "g9",
+    "g10",
+    "g11"
+   ],
+   "checkpoints": [],
+   "project": "interviews",
+   "interviews": [
+    "paimon"
+   ]
   }
  ],
  "checkpoints": {
@@ -1116,6 +1188,1851 @@
      2
     ],
     "explain": "只对订阅用户开放；支持版本回滚、访问密码，上传内容会自动检查。"
+   }
+  ],
+  "f1": [
+   {
+    "q": "在 Flink 2.x 的本地或 Session 模式下，JobGraph 是在哪里生成的？",
+    "options": [
+     "客户端调用 execute() 时生成，再提交给集群",
+     "JobManager 侧创建调度器时，由提交上来的 StreamGraph 生成",
+     "TaskManager 部署 Task 时生成",
+     "用户调用 keyBy 等 API 时逐步生成"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "2.x 直接提交 StreamGraph，由 JM 侧调度器生成 JobGraph，便于批作业按运行时信息动态调整图。"
+   },
+   {
+    "q": "WordCount 中 Source（并行度 1）和 FlatMap（并行度 N）为什么没有链接成一个 Task？",
+    "options": [
+     "Source 算子的 ChainingStrategy 是 NEVER",
+     "FlatMap 是用户函数，不能参与算子链",
+     "上下游并行度不同，边上的分区器被自动设为 Rebalance 而不是 Forward",
+     "keyBy 在它们之间插入了 Hash 分区"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "并行度不同时默认用 Rebalance；链接要求并行度相同且分区器是 Forward。"
+   },
+   {
+    "q": "为什么 Flink 算子里的状态访问、定时器回调和 snapshotState() 都不需要加锁？",
+    "options": [
+     "状态后端内部对每次访问都加了锁",
+     "每个 key 分配一个独立线程处理",
+     "做 Checkpoint 时整个作业会暂停",
+     "数据处理、定时器、Checkpoint 都在同一个 Task 线程上通过 Mailbox 串行执行"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "Mailbox 把处理数据和各类邮件变成同一线程上串行的任务，算子和用户代码无需加锁。"
+   },
+   {
+    "q": "两个相邻算子要链接成一条算子链，需要满足哪些条件？（多选）",
+    "options": [
+     "两个算子的并行度相同",
+     "边上的分区器是 Forward",
+     "两个算子在同一个 slot sharing group",
+     "下游算子有多条输入边"
+    ],
+    "answer": [
+     0,
+     1,
+     2
+    ],
+    "explain": "链接需并行度相同、Forward 分区、同一 slot 共享组，且下游只有一条输入边。"
+   }
+  ],
+  "f2": [
+   {
+    "q": "为什么 JobManager 触发 Checkpoint 时只向 Source Task 发 RPC？",
+    "options": [
+     "非 Source 算子由流经的 Barrier 驱动，收到 Barrier 后自行做快照",
+     "非 Source 算子没有需要快照的状态",
+     "JobManager 无法向非 Source Task 发送 RPC",
+     "下游 Task 会在收到完成通知时再补做快照"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "CheckpointPlan 只把 Source 放进 tasksToTrigger，下游收到 Barrier 后自行快照并继续广播。"
+   },
+   {
+    "q": "对齐 Checkpoint 中，先收到 Barrier 的通道被「阻塞」，在当前实现里实际发生了什么？",
+    "options": [
+     "下游把该通道之后到达的数据缓存到磁盘",
+     "上游 subpartition 发出对齐 Barrier 后停止向该通道发送，数据留在上游输出 buffer",
+     "下游丢弃该通道之后的数据，恢复时再重放",
+     "把这些数据作为 channel state 写进 Checkpoint"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "缓存到磁盘是早期 BarrierBuffer 的做法；现在上游发出对齐 Barrier 后自我阻塞，数据留在上游。"
+   },
+   {
+    "q": "背压严重时，非对齐 Checkpoint 为什么比对齐 Checkpoint 快得多？",
+    "options": [
+     "只记录 Source 的 offset，跳过算子状态",
+     "临时关闭背压，让积压的数据快速流过",
+     "只等待第一个输入通道的数据处理完",
+     "Barrier 作为优先级事件超车，被越过的 in-flight 数据一起存进快照"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "Barrier 不必排在积压数据后面；代价是这些数据作为 channel state 写入快照，Checkpoint 变大。"
+   },
+   {
+    "q": "关于 Checkpoint 的完成和两阶段提交，下列说法正确的是？（多选）",
+    "options": [
+     "写完 _metadata 文件后，Checkpoint 才算真正落盘",
+     "notifyCheckpointComplete 保证一定会送达每个 Task",
+     "两阶段提交的 Sink 在 notifyCheckpointComplete 时真正提交事务",
+     "Committable 存在状态里、恢复后会重新提交，所以 commit 必须幂等"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "完成通知可能丢失，恢复时会把状态中的 Committable 再提交一遍，所以 commit 必须幂等。"
+   }
+  ],
+  "f3": [
+   {
+    "q": "为什么作业上线后 maxParallelism 不能随意修改？",
+    "options": [
+     "它决定了 Checkpoint 存储的目录结构",
+     "它必须等于 TaskManager 的 slot 总数",
+     "key 到 KeyGroup 的映射取决于它，改了以后旧 Checkpoint 的状态就对不上",
+     "修改它会让 RocksDB 无法压缩数据"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "KeyGroup 由 key 的哈希对 maxParallelism 取模得到，改了它同一 key 会换 KeyGroup，恢复时报错。"
+   },
+   {
+    "q": "HashMap 状态后端如何做到 Checkpoint 时几乎不阻塞数据处理？",
+    "options": [
+     "同步阶段只浅拷贝桶数组并升版本号，之后被修改的旧数据才复制一份（Copy-On-Write）",
+     "快照期间暂停所有状态写入",
+     "每次只把增量变化写入 Checkpoint",
+     "同步阶段把全部状态深拷贝一份"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "同步阶段只复制桶数组，之后读写到快照前的旧 entry 才复制，旧版本留给异步线程序列化。"
+   },
+   {
+    "q": "从 HashMap 切到 RocksDB 后，用 value() 取出对象原地修改、但不调用 update()，结果会怎样？",
+    "options": [
+     "两种后端行为一致，修改都会生效",
+     "RocksDB 会直接抛出异常",
+     "修改会在下一次 Checkpoint 时自动写回",
+     "修改丢失：RocksDB 每次读出的是反序列化的新对象，必须调用 update() 写回"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "RocksDB 每次读写都要序列化，value() 拿到新对象；Heap 后端原地修改只是碰巧生效。"
+   },
+   {
+    "q": "关于 RocksDB 的增量 Checkpoint，下列说法正确的是？（多选）",
+    "options": [
+     "每次 Checkpoint 都重新上传全部 SST 文件",
+     "同步阶段对 SST 文件做硬链接，耗时很短",
+     "按 SST 文件名判断是否上传过，可复用的文件放在 shared/ 目录下",
+     "只有 Checkpoint 确认完成后，这次上传的 SST 才作为后续复用的基准"
+    ],
+    "answer": [
+     1,
+     2,
+     3
+    ],
+    "explain": "SST 不可变，同名即同内容可复用；只以已完成的 Checkpoint 为基准，避免引用被删除的文件。"
+   }
+  ],
+  "f4": [
+   {
+    "q": "Credit-based 流控相比单纯依赖 TCP 自身的流控，主要解决了什么问题？",
+    "options": [
+     "让数据在网络传输时不再需要序列化",
+     "同一对 TM 的多个逻辑通道共用一条 TCP 连接，一个慢通道会堵住其他通道",
+     "TCP 无法传输超过 32KB 的 buffer",
+     "让 Checkpoint Barrier 总能超越数据先到达"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "下游先告知上游有几个空 buffer，上游只发这么多，TCP 上不积压，各逻辑通道互不影响。"
+   },
+   {
+    "q": "上游某个 subpartition 的 credit 为 0 时，还能向下游发送什么？",
+    "options": [
+     "任何数据 buffer",
+     "什么都不能发",
+     "排在队首的事件，例如 Checkpoint Barrier",
+     "只有 Watermark"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "只有数据 buffer 消耗 credit，事件不需要；但排在数据后面的 Barrier 仍要等前面的数据发完。"
+   },
+   {
+    "q": "为什么一个下游变慢，会让整个上游 Task 停止处理，哪怕发往其他下游的通道是空闲的？",
+    "options": [
+     "Netty 连接会整体断开再重连",
+     "JobManager 检测到背压后主动暂停上游",
+     "上游会把所有数据都转发给最慢的下游",
+     "任一 subpartition 占用的 buffer 达到上限，整个 LocalBufferPool 就变为不可用"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "一个 subpartition 占满 10 个 buffer 池子就不可用；Task 无法预知下一条去向，只能整体暂停。"
+   },
+   {
+    "q": "关于 Buffer Debloating 和背压指标，下列说法正确的是？（多选）",
+    "options": [
+     "Debloating 调整的是每个 buffer 实际装多少数据，buffer 个数不变",
+     "Debloating 让 in-flight 数据量接近约 1 秒能处理完的量",
+     "busyTimeMsPerSecond 是直接测量出来的",
+     "瓶颈通常是沿数据流第一个不被背压、但一直很忙的算子"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "Debloating 按吞吐缩小 buffer 实际大小，个数不变；busy 是用 1000 减去 idle 和背压推算的。"
+   }
+  ],
+  "f5": [
+   {
+    "q": "SQL 规划中，物理 RelNode 之后为什么还要再转换成 ExecNode？",
+    "options": [
+     "ExecNode 可以序列化成带版本号的 JSON，支持 Compiled Plan 和跨版本升级",
+     "Calcite 不支持表示物理计划",
+     "ExecNode 负责语法校验和类型推导",
+     "ExecNode 本身运行得比 RelNode 快"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "RelNode 绑定 Calcite、不可序列化；ExecNode 可存成 JSON，升级时拓扑和状态布局能保持不变。"
+   },
+   {
+    "q": "同一个 GROUP BY 查询，有时输出 -U 和 +U，有时只输出 +U。决定因素是什么？",
+    "options": [
+     "sink 表有没有声明主键",
+     "使用的是哪种聚合函数",
+     "下游的需求，例如 sink connector 的 getChangelogMode()",
+     "是否开启了 MiniBatch"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "是否输出 UPDATE_BEFORE 由下游需求自顶向下推导；实测 print sink 加了主键仍输出 -U。"
+   },
+   {
+    "q": "两阶段（Local-Global）聚合为什么必须开启 MiniBatch 才能生效？",
+    "options": [
+     "MiniBatch 会自动打散热点 key",
+     "不开 MiniBatch 就无法做 changelog 推导",
+     "Global 阶段需要 MiniBatch 提供状态 TTL",
+     "Local 聚合没有状态，只能在一个 MiniBatch 的内存 bundle 里合并记录"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "Local 阶段无状态，没有「批」就没有可合并的记录，所以开启 MiniBatch 是生效条件之一。"
+   },
+   {
+    "q": "关于 SQL 的运行时实现和代码生成，下列说法正确的是？（多选）",
+    "options": [
+     "生成的代码在 JobManager 上编译成 class 后分发给 TM",
+     "Group Aggregate 的默认运行时实现就是一个 KeyedProcessFunction",
+     "聚合结果没有变化（且未开启状态 TTL）时，不输出任何记录",
+     "planner 生成的 Java 源码在 TM 上用 Janino 编译"
+    ],
+    "answer": [
+     1,
+     2,
+     3
+    ],
+    "explain": "planner 只生成源码字符串，算子 open 时在 TM 上用 Janino 编译并缓存，不需要 planner 在 TM 上。"
+   }
+  ],
+  "f6": [
+   {
+    "q": "一个带 keyBy 的典型流作业，某个 Task 失败后为什么要重启全部 Task？",
+    "options": [
+     "keyBy 产生 all-to-all 的 pipelined 边，所有 Task 连成了一个 Pipelined Region",
+     "默认的 failover 策略是 full",
+     "Checkpoint 只能做全局恢复",
+     "JobMaster 无法定位是哪个 Task 失败了"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "默认策略是 region，但 keyBy 把所有 Task 连成一个 region；全 forward 的作业才只重启部分。"
+   },
+   {
+    "q": "在 Flink 2.3.0 中，没有配置重启策略、但开启了 Checkpoint，默认使用什么重启策略？",
+    "options": [
+     "fixed-delay，重启 Integer.MAX_VALUE 次",
+     "不重启，第一次失败作业就失败",
+     "failure-rate",
+     "exponential-delay，指数退避，默认不限次数"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "开启 Checkpoint 时默认指数退避，未开启则不重启；fixed-delay 无限次是很早以前的行为。"
+   },
+   {
+    "q": "一个 TM 宕机导致几十个 Task 几乎同时失败，指数退避策略会怎样处理？",
+    "options": [
+     "每个 Task 的失败各算一次重启，计数迅速耗尽",
+     "退避期内的失败合并为同一次，重启计数和退避时间只增长一次",
+     "直接判定为不可恢复错误，作业失败",
+     "立即重启，不等待退避时间"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "退避期内 notifyFailure 返回 false，算作同一次失败，这就是 isNewAttempt 的含义。"
+   },
+   {
+    "q": "关于 AdaptiveScheduler，下列说法正确的是？（多选）",
+    "options": [
+     "资源不够声明的并行度时，先按现有资源能支持的并行度启动",
+     "支持 region 级别的细粒度 failover",
+     "扩缩容本质上是一次重启，从最近的 Checkpoint 恢复状态",
+     "资源变化后会先等待一段时间看是否稳定，避免频繁重启"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "拿到多少资源就用多少；扩缩容会按新并行度重建 ExecutionGraph，且总是重启整个作业。"
+   }
+  ],
+  "f7": [
+   {
+    "q": "想给 Flink 修一个 bug，开始写代码之前应该先做什么？",
+    "options": [
+     "直接提 PR，让 reviewer 决定要不要",
+     "把分支直接推到 apache/flink 仓库",
+     "先在 JIRA 搜索是否有人报过，再新建或认领 issue，等 committer assign",
+     "任何改动都先发起 FLIP 并投票"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "先查 JIRA、建或认领 issue 并等待 assign，避免重复劳动；FLIP 只针对公共 API 等较大改动。"
+   },
+   {
+    "q": "社区要求修 bug 时做「红绿验证」，它指的是什么？",
+    "options": [
+     "确认新测试在去掉修复时会失败，加上修复后才通过",
+     "CI 页面上红色表示失败、绿色表示通过",
+     "先提交一个失败的版本，再提交修复",
+     "reviewer 用颜色标记需要修改的代码行"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "去掉修复后测试仍能通过，说明它根本没测到问题；红绿验证就是为了防止这种情况。"
+   },
+   {
+    "q": "用 AI 工具辅助给 Flink 提交代码时，下列哪些做法符合社区规则？（多选）",
+    "options": [
+     "在 commit 中用 Co-Authored-By 把 AI 列为共同作者",
+     "在 PR 模板中勾选使用了生成式 AI 的声明",
+     "在 commit message 中加上 Generated-by 并写明工具名和版本",
+     "作者必须能讲清并调试设计、代码和测试，实质性回应 review"
+    ],
+    "answer": [
+     1,
+     2,
+     3
+    ],
+    "explain": "社区接受 AI 辅助，但要求透明且作者负责；AI 是助手不是作者，禁止写 Co-Authored-By。"
+   },
+   {
+    "q": "关于 PR 的范围和提交方式，下列哪种做法是正确的？",
+    "options": [
+     "顺手把无关的代码清理放进同一个 commit",
+     "一个 PR 合并修复多个问题，节省 review 时间",
+     "先用 CHECKSTYLE:OFF 绕过检查，合入后再修",
+     "每个 PR 只解决一个问题，清理重构和功能改动分成不同 commit"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "要求一个 PR 只解决一个问题、清理与功能分开提交，并且绝不能用 CHECKSTYLE:OFF 绕过检查。"
+   }
+  ],
+  "f8": [
+   {
+    "q": "使用 forBoundedOutOfOrderness(2s)，目前见过的最大事件时间是 6000ms，周期性发出的 Watermark 是多少？",
+    "options": [
+     "6000",
+     "4000",
+     "3999",
+     "5999"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "Watermark = 最大时间戳 - 乱序容忍 - 1；W 表示 ≤W 的数据不会再来，而 4000 仍可能到达。"
+   },
+   {
+    "q": "Source 并行度大于 Kafka 分区数时，常见「作业在跑、数据在进，窗口却一直不出结果」。原因是什么？",
+    "options": [
+     "空闲通道的 Watermark 一直是 Long.MIN_VALUE，下游取最小值后无法前进",
+     "窗口默认不触发，需要配置自定义 Trigger",
+     "Watermark 只在 Checkpoint 完成时才发出",
+     "多出来的 subtask 会丢弃所有数据"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "StatusWatermarkValve 取活跃通道的最小值，空闲通道卡在堆顶；可用 withIdleness 标记空闲。"
+   },
+   {
+    "q": "设置了 allowedLateness 后，一条迟到但仍在允许范围内的数据到达时会怎样？",
+    "options": [
+     "直接进入侧输出",
+     "被静默丢弃，只增加一个丢弃计数",
+     "暂存起来，等下一个窗口一并输出",
+     "进入窗口状态并立即再触发一次，同一个窗口会输出多次"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "默认 Trigger 返回 FIRE 不清状态，迟到数据进窗口后立即重新触发，输出完整的新结果。"
+   },
+   {
+    "q": "关于 Watermark 的传播和事件时间 Timer，下列说法正确的是？（多选）",
+    "options": [
+     "Watermark 和数据走同一条通道，背压会延迟 Watermark",
+     "算子先触发 Timer，再向下游转发 Watermark",
+     "Watermark 是优先级事件，可以越过缓冲区中的数据",
+     "同一个 (时间, key, 窗口) 的 Timer 只保存一份"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "Watermark 不能超车，会被背压挡住；先触发 Timer 保证窗口结果排在 Watermark 之前到达下游。"
+   }
+  ],
+  "f9": [
+   {
+    "q": "FLIP-27 新 Source 为什么要拆成 SplitEnumerator 和 SourceReader 两部分？",
+    "options": [
+     "让每个并行度各自发现分区、自行决定读哪些",
+     "让 Reader 直接运行在 JobManager 上，减少网络传输",
+     "把 split 的发现与分配集中到 JM 上的 Enumerator，Reader 只读分给它的 split",
+     "让 Source 不再需要参与 Checkpoint"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "旧 SourceFunction 各自发现和读取，难做动态发现和对齐；FLIP-27 把分配集中到 Enumerator。"
+   },
+   {
+    "q": "某个 subtask 失败并回滚到 Checkpoint N，SplitAssignmentTracker 会把哪些 split 还给 Enumerator？",
+    "options": [
+     "该 subtask 曾经分配到的所有 split",
+     "Checkpoint N 之后才分配给该 subtask 的 split",
+     "Checkpoint N 之前分配给该 subtask 的 split",
+     "什么都不还，由 Reader 重新请求"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "N 之前分配的 split 已在 Reader 状态中随之恢复；N 之后的在 N 中没有记录，不还就会丢。"
+   },
+   {
+    "q": "为什么 Sink V2 的 Committer 必须是幂等的？",
+    "options": [
+     "恢复后会把状态中的 committable 再提交一次，Flink 无法确认之前是否已提交成功",
+     "Committer 会被多个线程并发调用",
+     "Writer 每写一条记录都会触发一次 commit",
+     "retryLater() 会在后台异步无限重试"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "从 Checkpoint 恢复时 initializeState 一律重新提交；commit 要识别已提交的事务并跳过。"
+   },
+   {
+    "q": "关于 Sink V2 的两阶段提交，下列说法正确的是？（多选）",
+    "options": [
+     "无界流作业不开 Checkpoint，事务型 Sink 也会定期提交",
+     "prepareCommit 先于 Barrier 发出，commit 在 Checkpoint 全局完成后执行",
+     "retryLater() 会退避一段时间后在后台重试",
+     "事务 ID 必须在重启前后唯一，否则新数据可能被当成已提交而丢失"
+    ],
+    "answer": [
+     1,
+     3
+    ],
+    "explain": "不开 Checkpoint 只在 endInput 时提交；retryLater 是同步立即重试；事务 ID 重名会丢数据。"
+   }
+  ],
+  "g1": [
+   {
+    "q": "在 JDK 17 下编译 Paimon，为什么必须显式加 -Pspark3,flink1？",
+    "options": [
+     "这两个 profile 在根 pom 里根本没有定义",
+     "JDK 17 不支持 activeByDefault 这个配置",
+     "javadoc-jdk9+ profile 自动激活后，activeByDefault 的 profile 全部失效",
+     "不加的话 Maven 会默认改用 JDK 8 编译"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "同一 pom 中有其它 profile 激活时，activeByDefault 的 profile 全部失效。"
+   },
+   {
+    "q": "用 -rf :module 续跑构建，可能带来什么隐患？",
+    "options": [
+     "前面被跳过的模块若没 install 到本地，会从远程拉旧 jar",
+     "会把所有模块清空后重新全量编译，非常慢",
+     "会自动开启 -T 1C 并行，导致锁冲突",
+     "会让 spark3、flink1 两个 profile 失效"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "-rf 会跳过前面的模块；它们没在本地仓库时就会去远程拉与源码不一致的 jar。"
+   },
+   {
+    "q": "构建时报 Could not acquire lock(s)，最可能的原因是？",
+    "options": [
+     "Maven 版本低于 3.6.3",
+     "国内网络访问 Maven Central 太慢",
+     "没有安装 Scala 插件",
+     "多个 Maven 构建并发运行，争抢本地仓库锁"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "并行构建加上残留的构建进程会争抢本地仓库锁，先清掉残留进程。"
+   },
+   {
+    "q": "把 Paimon 导入 IDEA 时，下面哪些是应该做的？（多选）",
+    "options": [
+     "在 Maven 面板勾选 spark3、flink1 两个 profile",
+     "把语言级别改成 17，方便使用新语法",
+     "把 paimon-common 生成的 antlr4 源码目录标为 Sources Root",
+     "安装 Scala 插件"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "要勾选 profile、标记 antlr4 源码目录、装 Scala 插件；语言级别须保持 8。"
+   }
+  ],
+  "g2": [
+   {
+    "q": "Paimon 中读写并行的最小单元是什么？",
+    "options": [
+     "分区（partition）",
+     "bucket",
+     "manifest 文件",
+     "snapshot"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "每个 bucket 是一棵独立的 LSM 树，读写都以 bucket 为单位并行。"
+   },
+   {
+    "q": "snapshot 中的 deltaManifestList 记录的是什么？",
+    "options": [
+     "上一版本的全量文件清单",
+     "供流读消费的 changelog 文件",
+     "动态桶索引和删除向量等索引文件",
+     "本次提交新增和删除的文件"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "base 是上一版本全量清单，delta 是本次提交的增删，changelog 供流读。"
+   },
+   {
+    "q": "主键表写入的数据，什么时候才对读可见？",
+    "options": [
+     "提交成功、原子创建出新的 snapshot 之后",
+     "调用 write() 放进内存排序缓冲时",
+     "缓冲溢写到本地磁盘时",
+     "flush 成 L0 文件的那一刻"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "文件写出后还没有快照引用，只有提交生成新 snapshot 后读端才能看到。"
+   },
+   {
+    "q": "主键表以 KeyValue 存储数据，它除了 value 还包含哪些部分？（多选）",
+    "options": [
+     "key",
+     "所在文件的 level",
+     "sequenceNumber",
+     "RowKind"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "KeyValue 含 key、序号、RowKind 和 value；level 是文件元数据的字段。"
+   }
+  ],
+  "g3": [
+   {
+    "q": "UniversalCompaction 的输入 runs 是怎么排列的？",
+    "options": [
+     "所有文件按大小从小到大排列",
+     "L0 每个文件单独一个 run，最新在前；L1 及以上每层一个 run",
+     "每一层（含 L0）各算一个 run，最老在前",
+     "按文件名字典序排列"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "L0 文件可能互相重叠，所以各算一个 run；index 0 最新，最后一个最老。"
+   },
+   {
+    "q": "默认参数下，pickForSizeAmp 什么时候触发全量合并？",
+    "options": [
+     "任何一个 L0 文件超过 target-file-size 时",
+     "最老 run 的大小超过其它 run 之和时",
+     "run 数超过 num-sorted-run.stop-trigger 时",
+     "除最老 run 外其余 run 总大小超过最老 run 的 2 倍时"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "新数据超过底座 2 倍（max-size-amplification 200%）即全量合并到 maxLevel。"
+   },
+   {
+    "q": "默认参数下 runs = [L0:10, L0:10, L0:10, L3:100, L5:100]（MB），合并结果输出到哪一层？",
+    "options": [
+     "L5，做全量合并",
+     "L3，与 L3 的 run 合在一起",
+     "L2",
+     "L0"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "130 未超 200 不全合；吸收 3 个 L0 后遇到更大的 L3 停下，输出到 3-1=L2。"
+   },
+   {
+    "q": "关于 UniversalCompaction 选文件和输出层，哪些说法正确？（多选）",
+    "options": [
+     "可以跳过中间的 run，只挑大小相近的几个合并",
+     "只能从最新的 run 开始选一段连续前缀",
+     "输出层是下一个更老 run 的 level 减 1，且不允许输出到 L0",
+     "已开始吸收后遇到 L0/L1 的 run，不管大小都继续吸收"
+    ],
+    "answer": [
+     1,
+     2,
+     3
+    ],
+    "explain": "要保持 level 越低越新，只能选连续前缀；剩下 L0/L1 会让输出无处可放。"
+   }
+  ],
+  "g4": [
+   {
+    "q": "IntervalPartition 切出的 section 之间有什么性质？",
+    "options": [
+     "key 范围互不相交，可以各自独立处理",
+     "每个 section 恰好包含一个文件",
+     "section 按文件大小划分，大小相近的在一起",
+     "同一个 section 里的文件一定属于同一层"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "按 minKey 排序并维护右边界切分，section 之间 key 不重叠，可独立升级或重写。"
+   },
+   {
+    "q": "doCompact 遇到一个大文件时，为什么要先把之前攒的小文件候选重写掉？",
+    "options": [
+     "为了尽快释放内存，避免 OOM",
+     "大文件必须单独占用一个异步线程",
+     "否则合并后的新文件 key 范围会跨过大文件，与它重叠",
+     "因为大文件之后的小文件都会被丢弃"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "把大文件前后的小文件合在一起，输出会跨越大文件，破坏同层不重叠。"
+   },
+   {
+    "q": "一个文件只是“升级”（只改 level），提交后在 manifest 里如何表示？",
+    "options": [
+     "只追加一条带新 level 的 ADD",
+     "同名文件一条 DELETE（旧 level）加一条 ADD（新 level）",
+     "生成一个新文件名的 ADD，旧文件立刻物理删除",
+     "不写 manifest，只更新内存中的 Levels"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "升级不改文件名，提交时记为同名的 DELETE(旧 level) + ADD(新 level)。"
+   },
+   {
+    "q": "下列哪些情况下，即使是可以直接升级的大文件也必须重写？（多选）",
+    "options": [
+     "输出到最高层且文件里含 DELETE 记录",
+     "文件大小超过 target-file-size",
+     "开启了强制重写所有文件（如改格式或压缩）",
+     "行级 TTL 下文件中有过期数据"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "到最高层要清除 DELETE、强制重写、有过期数据，这三种情况必须物理重写。"
+   }
+  ],
+  "g5": [
+   {
+    "q": "为什么 APPEND 类型的提交默认不做冲突检测？",
+    "options": [
+     "APPEND 提交有外部锁保护",
+     "APPEND 只新增文件，不会和别人的提交冲突",
+     "APPEND 失败后会直接放弃，不需要检测",
+     "冲突检测只在 Spark 作业里才开启"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "只新增文件不会冲突；compact 要删除旧文件，所以必须检测。"
+   },
+   {
+    "q": "冲突检测时 base 与 delta 合并后仍残留 DELETE 条目，说明什么？",
+    "options": [
+     "本次提交新增了重复文件",
+     "bucket 数发生了变化",
+     "同层文件的 key 范围出现了重叠",
+     "要删除的文件在最新快照里已不存在，被别人删掉了"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "孤立的 DELETE 表示文件已被其它提交删除，报 File deletion conflicts 并放弃。"
+   },
+   {
+    "q": "原子提交 snapshot 时抛出异常（如网络超时），为什么不能清理临时文件？",
+    "options": [
+     "快照可能其实已写成功，下次用 commitUser+identifier+commitKind 判断",
+     "临时文件稍后会被异步合并任务复用",
+     "清理需要先拿到外部锁",
+     "异常说明一定提交失败，保留文件只是为了排查"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "异常时成败不确定；下次尝试的幂等检查会找到自己的快照判定是否已成功。"
+   },
+   {
+    "q": "下列哪些场景会自动重试并最终成功，而不是抛异常让作业 failover？（多选）",
+    "options": [
+     "两个作业只做 APPEND，抢同一个快照号",
+     "两个作业写同一 bucket 且都做合并",
+     "Spark DELETE 与流作业合并冲突，且最新快照是 COMPACT",
+     "两个作业各自把不同的 L0 文件合并到 L1"
+    ],
+    "answer": [
+     0,
+     2
+    ],
+    "explain": "抢号失败会重试；COMPACT 快照可回滚后重试。另两种是文件删除冲突和 LSM 冲突。"
+   }
+  ],
+  "g6": [
+   {
+    "q": "主键表批读时“要不要合并”是在哪里决定的？",
+    "options": [
+     "读取每条记录时动态判断",
+     "scan 规划阶段，由 DataSplit 的 rawConvertible 决定",
+     "建表时由 bucket 数决定，之后不变",
+     "由 Flink 或 Spark 的执行计划决定"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "生成 split 时就标记 rawConvertible，读取时据此选择直接读或归并读。"
+   },
+   {
+    "q": "merge-on-read 时，key 范围重叠的 section 为什么不能下推 value 过滤？",
+    "options": [
+     "文件格式不支持 value 列的统计信息",
+     "下推后需要更多内存",
+     "value 过滤只能在 Spark 中执行",
+     "可能把新版本过滤掉，错误地返回旧值"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "同 key 新旧版本在不同 run，按 value 过滤会漏掉新版本，合并出旧值。"
+   },
+   {
+    "q": "开启删除向量后，批读为什么必须跳过 L0？",
+    "options": [
+     "L0 文件没有统计信息，无法裁剪",
+     "L0 文件格式与高层不同",
+     "L0 还没经过 lookup，高层旧版本未打删除标记，直接读会重复",
+     "L0 文件太小，读取不划算"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "L0 未 lookup，旧版本没被 DV 标记；代价是 L0 合并前不可见。"
+   },
+   {
+    "q": "下列哪些情况下，整个 bucket 可以免合并、直接读文件？（多选）",
+    "options": [
+     "开启删除向量，且无 L0 文件、无 DELETE 行",
+     "只要没有 L0 文件，不论其它条件",
+     "first-row 引擎且无 L0 文件",
+     "所有文件都在同一层（如全量合并之后）"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "DV 已标记旧版本、first-row 写时去重、同层不重叠，三种情况每个 key 只出现一次。"
+   }
+  ],
+  "g7": [
+   {
+    "q": "lookup changelog 为什么选在“L0 数据合并到高层”时产生 changelog？",
+    "options": [
+     "数据离开 L0 时已与旧值合并，高层记录是完整最新状态，可作为 before",
+     "只有这时 L0 文件才会被物理删除",
+     "写入缓冲里已经带有每个 key 的旧值",
+     "只有全量合并时才能拿到旧值"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "不变式保证 L1+ 是 key 的完整最新状态：before 取高层值，after 由它合并 L0 得到。"
+   },
+   {
+    "q": "合并中没有高层记录时，lookup 为什么从 outputLevel + 1 层开始查？",
+    "options": [
+     "outputLevel 本层的文件总是最大的",
+     "不高于 outputLevel 的层要么参与本次合并，要么为空",
+     "更低的层只存 DELETE 记录",
+     "这样能减少本地 lookup 文件的数量"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "输出层是下一个更老 run 的上一层，所以更低层都在本次合并中或为空。"
+   },
+   {
+    "q": "为什么 aggregation 引擎的 L0 文件升级时必须重写，而 deduplicate（无 sequence field）不用？",
+    "options": [
+     "aggregation 的文件格式和高层不同",
+     "deduplicate 不产生 changelog",
+     "aggregation 的 L0 只是增量，只改 level 会让高层存增量，破坏不变式",
+     "aggregation 表不支持删除向量"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "增量必须与旧值合并后写出；dedup 的最新值就是最终结果，可只改 level。"
+   },
+   {
+    "q": "关于 setChangelog 产生的变更记录，哪些说法正确？（多选）",
+    "options": [
+     "没有旧值、新值是 INSERT → 输出 +I",
+     "有旧值、新值是 DELETE → 输出 -D",
+     "有旧值且值相同、未开 row-deduplicate → 不输出任何记录",
+     "有旧值且值不同 → 输出 -U 和 +U"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "值相同时只有开启 row-deduplicate 才不输出，否则仍会输出 -U/+U。"
+   }
+  ],
+  "g8": [
+   {
+    "q": "writer 为什么要在 prepareSnapshotPreBarrier 里发出 committable？",
+    "options": [
+     "为了让数据文件立即对读可见",
+     "保证 committable 先于 barrier 到达，committer 做快照前能收齐",
+     "因为 snapshotState 中不允许写文件",
+     "为了跳过 checkpoint 对齐，降低延迟"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "在 barrier 下发前发出，committer 做 checkpoint N 快照时就已收齐 N 的所有内容。"
+   },
+   {
+    "q": "checkpoint N 完成后，committer 为什么提交 ≤N 的全部待提交内容，而不只提交 N？",
+    "options": [
+     "为了把多个 checkpoint 合成一个快照，减少快照数",
+     "N 之前的内容一定已经提交过，这样做只是校验",
+     "Flink 只会通知最后一个 checkpoint",
+     "Flink 不保证 notifyCheckpointComplete 必达，之前漏掉的要按顺序补提"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "N-1 的完成通知可能丢失，N 到来时用 headMap(≤N) 一起按顺序提交。"
+   },
+   {
+    "q": "RestoreAndFail 模式下，恢复时补提交成功后为什么要故意让作业失败一次？",
+    "options": [
+     "writer 恢复时读的是补提交前的快照，文件视图过期，继续合并会冲突",
+     "为了触发一次全量合并",
+     "为了清理孤儿文件",
+     "补提交会让 checkpoint id 回退，需要重新开始"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "writer 与 committer 并行初始化，再重启一次让 writer 基于新快照重建层级。"
+   },
+   {
+    "q": "关于 Paimon sink 的 commitUser，哪些说法正确？（多选）",
+    "options": [
+     "直接使用 Flink 的 job id",
+     "新作业生成随机 UUID，存入 union list state",
+     "从 savepoint 恢复时从状态读回，保持不变",
+     "与 checkpointId（identifier）一起构成提交的幂等键"
+    ],
+    "answer": [
+     1,
+     2,
+     3
+    ],
+    "explain": "savepoint 恢复后 job id 会变，所以用存在状态里的 UUID 作稳定身份。"
+   }
+  ],
+  "g9": [
+   {
+    "q": "changelog-producer=lookup 的表，流读全量阶段为什么要跳过 L0？",
+    "options": [
+     "L0 文件没有主键",
+     "L0 数据会被立刻删除",
+     "L0 文件太多，读取太慢",
+     "L0 数据之后合并时会以 changelog 再出现，全量里读会重复"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "L0 合并上推时会产出 changelog，全量阶段再读一次就重复了。"
+   },
+   {
+    "q": "主键表 changelog-producer=none 时流读，为什么下游状态会很大？",
+    "options": [
+     "Paimon 会把所有快照的全量数据都发给下游",
+     "Flink 要插入 ChangelogNormalize，用 keyed state 存所有 key 的最新值",
+     "Enumerator 会把所有 split 存进状态",
+     "每条记录都会被重复读取两次"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "none 时只能给出 upsert 流，规划器补 -U 需要存全部 key 的最新值。"
+   },
+   {
+    "q": "流读时为什么同一个 bucket 的 split 必须始终分给同一个 reader？",
+    "options": [
+     "为了让每个 reader 读到的数据量相同",
+     "因为一个 bucket 只能被打开一次",
+     "保证同一 key 的变更有序输出，如 -U 在 +U 之前",
+     "为了减少 JobManager 的内存占用"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "按 bucket 固定分配并按快照顺序下发，同 key 变更才有序；并行度超过 bucket 数浪费。"
+   },
+   {
+    "q": "给流读配置 consumer-id 有哪些作用？（多选）",
+    "options": [
+     "把读取位点持久化到表的 consumer 文件中",
+     "快照过期时不会删除该 consumer 还要读的快照",
+     "consumer 一旦创建就永远阻止快照过期",
+     "同 consumer-id 的新作业即使没有 Flink 状态也能续读"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "过期以 consumer 最小 nextSnapshot 为界；长期不更新的 consumer 会按过期时间清理。"
+   }
+  ],
+  "g10": [
+   {
+    "q": "对主键表执行 MERGE INTO，为什么不需要重写任何旧文件？",
+    "options": [
+     "只把 +I/+U/-D 变化行写成新的 L0 文件，旧版本由 LSM 合并消除",
+     "主键表会用删除向量标记旧行",
+     "Spark 会原地修改 Parquet 文件",
+     "主键表的 MERGE 只支持 INSERT"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "变化行按主键分桶写入新 L0 文件，读时或合并时按 sequence 消除旧版本。"
+   },
+   {
+    "q": "append 表走 copy-on-write 的 MERGE，提交为什么是 OVERWRITE 类型？",
+    "options": [
+     "因为 MERGE 会重建整张表",
+     "因为 append 表不支持 APPEND 提交",
+     "因为 CoW 会改变 bucket 数",
+     "因为提交里含旧文件的 DELETE，需强制冲突检测并允许回滚"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "有 DELETE 条目就升级为 OVERWRITE；遇到 COMPACT 快照冲突可回滚后重试。"
+   },
+   {
+    "q": "MERGE 语句含 WHEN NOT MATCHED BY SOURCE 时，为什么要关闭 target 裁剪？",
+    "options": [
+     "因为此时 source 必须全表扫描",
+     "需要处理未被 source 匹配的 target 行，裁剪会把它们漏掉",
+     "因为该子句只能走 V2 路径",
+     "因为此时会把所有文件都重写"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "NOT MATCHED BY SOURCE 作用于不满足合并条件的 target 行，提前过滤就看不到它们。"
+   },
+   {
+    "q": "关于 MERGE 共享的 full outer join + 逐行判定，哪些说法正确？（多选）",
+    "options": [
+     "_source_row_ 为 null 的行属于 NOT MATCHED BY SOURCE",
+     "_target_row_ 为 null 的行属于 MATCHED",
+     "一行 target 匹配多行 source 时直接报错",
+     "没有任何动作命中的行一律丢弃"
+    ],
+    "answer": [
+     0,
+     2
+    ],
+    "explain": "只有 source 是 NOT MATCHED；未命中但来自被重写文件的行要原样保留。"
+   }
+  ],
+  "g11": [
+   {
+    "q": "使用 REST Catalog 时，提交快照为什么不需要外部锁？",
+    "options": [
+     "REST 模式下只允许一个作业写表",
+     "对象存储的 rename 在 REST 模式下变成原子的",
+     "服务端用 base 快照 uuid 做 CAS，决定提交是否成功",
+     "客户端会在本地加文件锁"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "当前最新快照 uuid 与 baseSnapshotUuid 一致才提交，不依赖 rename 原子性。"
+   },
+   {
+    "q": "同一次提交请求被重发两次，会不会产生重复快照？",
+    "options": [
+     "会，所以提交请求只发一次",
+     "不会，服务端按请求体哈希自动去重",
+     "会，需要用户手动回滚",
+     "不会，第二次 CAS 失败，重试时幂等检查找到自己的快照"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "CAS 失败返回 false，重试时 commitUser + identifier 幂等检查判定已成功。"
+   },
+   {
+    "q": "提交请求里带上 tableUuid，主要防的是什么场景？",
+    "options": [
+     "同名表被删除重建后，旧作业仍向新表提交",
+     "两个作业同时提交同一个快照号",
+     "客户端 token 过期",
+     "分区统计信息不一致"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "表重建后 uuid 变化，服务端校验不一致就拒绝旧作业的提交。"
+   },
+   {
+    "q": "关于 REST Catalog 模式，哪些说法正确？（多选）",
+    "options": [
+     "所有数据文件的读写都经 REST 服务端中转",
+     "数据文件和 manifest 仍由客户端直接读写对象存储",
+     "获取最新快照时直接问服务端，不再列目录",
+     "开启 data token 后，引擎拿到的是按表签发的临时凭证"
+    ],
+    "answer": [
+     1,
+     2,
+     3
+    ],
+    "explain": "服务端只管元数据与权限，数据仍直读存储；最新快照指针和临时凭证由服务端提供。"
+   }
+  ],
+  "e1": [
+   {
+    "q": "拉取 Spark 源码时，文中推荐 --filter=blob:none（部分克隆）而不是 --depth 1（浅克隆），主要原因是？",
+    "options": [
+     "部分克隆下载的数据比浅克隆更少",
+     "部分克隆保留完整提交历史，文件内容用到时再下载，方便做 Git 考古",
+     "部分克隆会自动切换到最新的稳定版本",
+     "部分克隆可以跳过 Maven 依赖下载"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "部分克隆先只下载提交历史和目录结构，内容按需下载；浅克隆会丢掉历史，不便追溯代码由来。"
+   },
+   {
+    "q": "编译过程中进程退出，退出码是 137，第一反应应该怀疑什么？",
+    "options": [
+     "用户按了 Ctrl+C 中断",
+     "源码里有编译错误",
+     "进程收到 SIGKILL 被强制杀死，先查是不是内存不够",
+     "本机 Maven 版本太低"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "退出码 = 128 + 信号编号，137 对应 SIGKILL，常见于 OOM Killer 或容器内存超限。"
+   },
+   {
+    "q": "编译到第 28 个模块时进程被杀，想尽量少做重复工作，正确的做法是？",
+    "options": [
+     "重新执行 clean package，保证产物干净",
+     "删除本地 Maven 仓库后重新编译",
+     "加大 -T 并行度，从头再编一次",
+     "去掉 clean，用 -rf :模块的 artifactId 从中断的模块继续编译"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "-rf 可从指定模块续编；命令里保留 clean 会把前面已编译好的产物删掉。"
+   },
+   {
+    "q": "关于文中的编译配置，哪些说法正确？（多选）",
+    "options": [
+     "用 -s 指定单独的阿里云 settings 文件，不影响电脑上其他 Maven 项目",
+     "build/mvn 会自动下载 pom.xml 要求的 Maven 版本，不必升级本机 Maven",
+     "-DskipTests 连测试代码都不编译，比 -Dmaven.test.skip=true 更彻底",
+     "MAVEN_OPTS 里的 -Xss64m 是为了避免 Scala 编译器栈溢出"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "-DskipTests 只跳过运行测试，测试代码仍会编译；有模块依赖其他模块的测试 jar。"
+   }
+  ],
+  "e2": [
+   {
+    "q": "实验 2 已对 counts（reduceByKey 的结果）执行过 collect()，没有调用 cache()。再执行 counts.count() 会怎样？",
+    "options": [
+     "不产生新 Job，直接返回上次的结果",
+     "整个血缘从头重算，两个 Stage 都会执行",
+     "产生新 Job，但上游 Shuffle 输出仍在，map 端 Stage 被跳过（skipped）",
+     "没有 cache() 就必须重新 Shuffle 一次"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "Shuffle 输出已写在磁盘且所有分区都可用，父 Stage 被跳过，相当于一种隐式缓存。"
+   },
+   {
+    "q": "words 有 4 个分区，执行 words.take(1) 时只启动了 1 个 Task，原因是？",
+    "options": [
+     "take 先只计算 1 个分区，数据够了就返回，不够再扩大范围提交新 Job",
+     "take 不是 Action，所以只做了抽样",
+     "Spark 自动把 4 个分区合并成了 1 个",
+     "Task 数总是等于 Executor 的核数"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "Task 数等于本次 runJob 要计算的分区数，不一定等于 RDD 的分区数。"
+   },
+   {
+    "q": "Stage 是怎样切分和执行的？",
+    "options": [
+     "从第一个 RDD 往后切，从前往后执行",
+     "从后往前切，也从后往前执行",
+     "从第一个 RDD 往后切，执行时从后往前",
+     "从最后一个 RDD 反向遍历依赖来切分，执行时先递归提交父 Stage，从前往后跑"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "只有 Action 作用的最后一个 RDD 是确定的，从它反向遍历能找出真正需要的数据。"
+   },
+   {
+    "q": "关于 Job、Stage、Task，哪些说法正确？（多选）",
+    "options": [
+     "sortByKey 是转换算子，但 RangePartitioner 抽样时会调用 collect，提交一个 Job",
+     "一个 Action 一定只产生一个 Job",
+     "join 的下游 Stage 可以有两个能并行执行的父 Stage，Stage 之间是 DAG",
+     "最后一个 Stage 是 ResultStage，其余都是 ShuffleMapStage"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "take 可能连续提交多个 Job，sortByKey 抽样也会触发 Job，所以一个 Action 不一定只对应一个 Job。"
+   }
+  ],
+  "e3": [
+   {
+    "q": "coalesce(2)（默认不 Shuffle）把 4 个分区合成 2 个，子分区 0 依赖父分区 0 和 1。这是什么依赖？",
+    "options": [
+     "宽依赖，因为一个子分区依赖了多个父分区",
+     "Shuffle 依赖，会切出新的 Stage",
+     "窄依赖：每个父分区的数据整个交给一个子分区，不需要拆开分发",
+     "要看数据量大小才能决定"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "判断窄依赖不看一对几，看父分区数据是否要拆开分发到多个子分区。"
+   },
+   {
+    "q": "pairs.partitionBy(p3).reduceByKey(p3, _ + _) 只 Shuffle 了一次，reduceByKey 为什么没有再 Shuffle？",
+    "options": [
+     "父 RDD 已经有相同的分区器，同一个 key 已在同一分区，直接在分区内聚合",
+     "reduceByKey 在任何情况下都是窄依赖",
+     "partitionBy 会自动缓存数据，后面不用再算",
+     "HashPartitioner 不支持 Shuffle"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "分区器相同时 reduceByKey 走分区内聚合，产生一对一的窄依赖，不需要打散数据。"
+   },
+   {
+    "q": "先 partitionBy(p3)，再 map(identity)，再 reduceByKey(p3, ...)，比把 map 换成 mapValues 多了一次 Shuffle。原因是？",
+    "options": [
+     "map(identity) 本身会触发一次 Shuffle",
+     "mapValues 会自动缓存结果",
+     "map 的执行速度比 mapValues 慢",
+     "map 可能改 key，结果 RDD 丢掉分区器；mapValues 只改 value，保留分区器"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "Spark 无法知道 map 函数有没有改 key，只能丢掉分区器，后续 reduceByKey 只好再 Shuffle。"
+   },
+   {
+    "q": "关于依赖和 Stage 边界，哪些说法正确？（多选）",
+    "options": [
+     "toDebugString 输出里的 +- 表示一个 Shuffle 边界",
+     "union 是窄依赖，只是把分区拼在一起，没有数据移动",
+     "repartition(n) 等价于 coalesce(n, shuffle = true)，是宽依赖",
+     "join 时只要有一侧分区器不同，两侧就都必须 Shuffle"
+    ],
+    "answer": [
+     0,
+     1,
+     2
+    ],
+    "explain": "join 对每个父 RDD 分别判断，分区器相同的一侧是窄依赖，不需要 Shuffle。"
+   }
+  ],
+  "e4": [
+   {
+    "q": "SparkPi 中 rdd.reduce() 调用 sc.runJob 时传入了 reducePartition 和 mergeResult 两个闭包，它们分别在哪里执行？",
+    "options": [
+     "都在 Driver 上执行",
+     "都在 Executor 上执行",
+     "reducePartition 在 Executor 上做分区内归约，mergeResult 在 Driver 上汇总各分区结果",
+     "reducePartition 在 Driver 上执行，mergeResult 在 Executor 上执行"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "分区内归约在 Executor 的 Task 里做，各分区结果回到 Driver 后再由 mergeResult 汇总。"
+   },
+   {
+    "q": "main 线程调用 Action 后，做了什么？",
+    "options": [
+     "自己切分 Stage，并在本线程里执行 Task",
+     "直接通过 RPC 把 Task 发给 Executor",
+     "立即返回，结果之后通过回调打印",
+     "把 JobSubmitted 事件放进 DAGScheduler 的事件队列，然后阻塞等待 Job 完成"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "main 线程投递事件交给 dag-scheduler-event-loop 线程，然后在 awaitReady 处阻塞到所有 Task 完成。"
+   },
+   {
+    "q": "在 MapPartitionsRDD 和 ParallelCollectionRDD 的 compute 上观察到的 Pipeline（流水线）是指什么？",
+    "options": [
+     "每个算子先把整个分区算完，再交给下一个算子",
+     "同一 Stage 内的窄依赖算子串成迭代器链：计算从下游向上游拉，数据从上游向下游流，不产生中间集合",
+     "每个算子的结果都先写到磁盘再读回",
+     "每个算子各自启动一个 Task"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "RDD 的 iterator 层层嵌套调用父 RDD，数据逐条流过各算子，不落盘也不产生中间集合。"
+   },
+   {
+    "q": "关于一个 Job 跨线程执行的过程，哪些说法正确？（多选）",
+    "options": [
+     "一个 Job 横跨多个线程，线程之间通过事件队列、RPC 消息、线程池交接",
+     "submitMissingTasks 会把 Task 的 RDD 和闭包序列化后广播出去",
+     "Task 完成后结果直接写回 main 线程，不再经过 DAGScheduler",
+     "DAGScheduler 负责逻辑调度，TaskScheduler 负责物理调度（分配资源、数据本地性）"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "结果经 task-result-getter 和 CompletionEvent 回到 DAGScheduler 事件循环，再由 JobWaiter 合并。"
+   }
+  ],
+  "e5": [
+   {
+    "q": "DAGScheduler 为什么用单线程事件循环处理请求，而不是多线程加锁？",
+    "options": [
+     "单线程处理计算任务比多线程更快",
+     "相互关联的大量状态都收敛到一个线程修改，天然没有并发问题，避免复杂加锁和死锁",
+     "JVM 规定调度器只能使用一个线程",
+     "为了让 Task 直接在 Driver 上执行"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "DAGScheduler 只做决策不做计算，每个事件处理很快，单线程的代价可以接受。"
+   },
+   {
+    "q": "下游 Task 读 Shuffle 数据时报 FetchFailed，和普通的 Task 失败有什么不同？",
+    "options": [
+     "两者都由 TaskSetManager 重试出错的那个 Task",
+     "FetchFailed 会计入 spark.task.maxFailures",
+     "FetchFailed 会让 Job 立即失败，不做任何重试",
+     "FetchFailed 说明上游 Shuffle 输出丢了，由 DAGScheduler 重新提交上游 Stage，不计入 Task 失败次数"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "问题出在上游输出而非这个 Task 本身，所以由 DAGScheduler 重算上游 Stage，上限是 Stage 重试次数。"
+   },
+   {
+    "q": "一个 Task 的位置偏好是 A 机器，但 A 暂时没有空闲核。默认配置下 Spark 会怎么做？",
+    "options": [
+     "先等一会儿（每个本地性级别默认 3 秒），等不到就降一级，到别的机器上跑",
+     "立刻在任意一台有空闲核的机器上运行",
+     "一直等到 A 机器有空闲核为止",
+     "先把数据复制到另一台机器，再在那里运行"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "这是延迟调度：移动计算比移动数据便宜，所以先等好的本地性，超时再降级。"
+   },
+   {
+    "q": "关于 4.2.0 的调度，哪些说法正确？（多选）",
+    "options": [
+     "FAIR 调度解决的是同一个 Application 内多个 Job 之间的公平，不是多个 Application 之间",
+     "local[4] 模式下 Task 失败 1 次就让 Job 失败，想测试重试要用 local[N,F]",
+     "开启推测执行可以解决数据倾斜导致的慢 Task",
+     "推测执行默认要完成 90% 的 Task，且运行时间超过中位数 3 倍才算慢"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "倾斜时慢 Task 本身数据量大，换机器重跑一样慢，推测执行解决不了。"
+   }
+  ],
+  "e6": [
+   {
+    "q": "Hash Shuffle 为什么被 Sort Shuffle 取代？",
+    "options": [
+     "Sort Shuffle 不需要把数据落盘",
+     "Sort Shuffle 省掉了网络传输",
+     "Hash Shuffle 的文件数是 Map Task 数 × Reduce 分区数；Sort Shuffle 每个 Map Task 只写一个数据文件加一个索引文件",
+     "Sort Shuffle 让下游不必等上游全部完成就能开始"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "海量小文件带来元数据压力和随机小 I/O，写缓冲内存也随分区数线性增长。"
+   },
+   {
+    "q": "为什么 reduceByKey 一定走不了 Bypass 和 tungsten-sort 这两条路径？",
+    "options": [
+     "reduceByKey 的分区数总是大于 200",
+     "这两条路径都要求不做 map 端预聚合，而 reduceByKey 需要预聚合",
+     "reduceByKey 只能使用 Java 序列化",
+     "reduceByKey 根本不会产生 Shuffle"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "有预聚合时只能用通用的 SortShuffleWriter，在内存中边插入边按 key 合并。"
+   },
+   {
+    "q": "Spark SQL 在默认配置下执行 GROUP BY，Map 端用的是哪种 Writer？",
+    "options": [
+     "UnsafeShuffleWriter（tungsten-sort），因为 UnsafeRowSerializer 支持重定位",
+     "SortShuffleWriter，因为要做聚合",
+     "Hash Shuffle 的 Writer",
+     "BypassMergeSortShuffleWriter，因为 spark.sql.shuffle.partitions 默认 200，正好不超过 bypass 阈值 200"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "Bypass 条件最先判断：SQL 不做 RDD 层预聚合且分区数 ≤ 200，调到 201 才换成 tungsten-sort。"
+   },
+   {
+    "q": "关于 tungsten-sort（UnsafeShuffleWriter），哪些说法正确？（多选）",
+    "options": [
+     "排序时只排每条记录 8 字节的指针数组，不移动真实数据",
+     "分区数上限是 2^24，因为指针里分区号只有 24 位",
+     "要求序列化器支持重定位，因为会直接搬动、拼接序列化后的字节",
+     "它在内存里缓存反序列化的对象，边插入边按 key 聚合"
+    ],
+    "answer": [
+     0,
+     1,
+     2
+    ],
+    "explain": "缓存反序列化对象、边插入边聚合的是 SortShuffleWriter 用的 ExternalSorter。"
+   }
+  ],
+  "e7": [
+   {
+    "q": "堆内存为 1g、其余都是默认配置时，Spark 的统一内存（Storage + Execution）大约是多少？",
+    "options": [
+     "1024 MB，整个堆都能用",
+     "约 614 MB，即 1g × 0.6",
+     "约 434 MB，即（堆 - 300MB）× 0.6",
+     "512 MB，即堆的一半"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "先扣固定 300MB 预留内存，剩余部分乘 spark.memory.fraction（0.6），实验测得 434.4 MB。"
+   },
+   {
+    "q": "YARN 上 Executor 报 Container killed … exceeding memory limits，应优先调大哪个参数？",
+    "options": [
+     "spark.executor.memoryOverhead，因为通常是堆外开销超出了 overhead",
+     "spark.executor.memory，因为堆不够",
+     "spark.memory.fraction，扩大统一内存",
+     "spark.memory.storageFraction，扩大缓存区域"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "Netty 缓冲、元空间、本地库等不在堆里却占容器内存，这类报错往往是 overhead 不够。"
+   },
+   {
+    "q": "Execution 需要更多内存，而 Storage 区域（storageFraction 以内）里还有很多缓存块。会发生什么？",
+    "options": [
+     "Execution 会驱逐全部缓存块",
+     "Task 立即 OOM 失败",
+     "Storage 反过来抢占 Execution 正在用的内存",
+     "Execution 只能收回到 Storage 区域边界，区域内缓存受保护，仍不够就溢写"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "保底区域防止计算密集的 Job 挤掉所有缓存，实验中 Execution 收回到边界后转为溢写。"
+   },
+   {
+    "q": "关于 4.2.0 的内存管理，哪些说法正确？（多选）",
+    "options": [
+     "N 个活跃 Task 共享 Execution 池，每个 Task 最多拿 1/N，至少能拿到 1/2N",
+     "Storage 向 Execution 借内存时，只能借空闲的，不能抢正在用的",
+     "spark.shuffle.memoryFraction 在 4.2.0 里仍能调节 Shuffle 内存",
+     "MemoryStore 淘汰缓存块时，不淘汰与正要放入的块属于同一个 RDD 的块"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "静态内存模型在 3.0 已移除，spark.shuffle.memoryFraction 在 4.2.0 中设置了也不生效。"
+   }
+  ],
+  "e8": [
+   {
+    "q": "调用 rdd.cache() 之后，数据什么时候真正被缓存？",
+    "options": [
+     "调用 cache() 时立刻计算并缓存",
+     "cache() 只打上存储级别标记，第一次 Action 计算到这个分区时才写入缓存",
+     "Driver 空闲时在后台缓存",
+     "必须再调用一次 persist() 才会缓存"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "缓存是惰性的：读取时走 getOrCompute，本地和远程都没有，才计算并边算边写入。"
+   },
+   {
+    "q": "RDD 和 Dataset 的 cache() 默认存储级别分别是什么？",
+    "options": [
+     "都是 MEMORY_ONLY",
+     "都是 MEMORY_AND_DISK",
+     "RDD 是 MEMORY_ONLY，放不下的分区不缓存、用时重算；Dataset 默认 MEMORY_AND_DISK，放不下的落盘",
+     "RDD 是 MEMORY_AND_DISK，Dataset 是 MEMORY_ONLY"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "RDD 写死 MEMORY_ONLY；Dataset 的默认级别可配置，默认 MEMORY_AND_DISK。"
+   },
+   {
+    "q": "TorrentBroadcast 中，Executor 为什么要随机打乱块的读取顺序，并在拿到一块后告诉 Master？",
+    "options": [
+     "让不同 Executor 先拉不同的块，拉到后自己也成为数据源，分摊 Driver 的压力",
+     "为了给广播数据加密",
+     "为了减少压缩和解压的开销",
+     "为了让 Driver 知道哪些 Executor 已经失败"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "和 BitTorrent 一样，下载的人越多数据源越多，避免大家都挤着从 Driver 拉同一块。"
+   },
+   {
+    "q": "关于存储体系，哪些说法正确？（多选）",
+    "options": [
+     "缓存的 RDD 分区、Shuffle 文件、广播变量、大的 Task 结果都是块，由 BlockManager 管理",
+     "MEMORY_ONLY_SER 比 MEMORY_ONLY 省内存，但读取时要花 CPU 反序列化",
+     "在 YARN 容器里运行时，spark.local.dir 会被忽略，改用 YARN 分配的本地目录",
+     "ContextCleaner 在对象不再被引用时立即删除块，不依赖 GC"
+    ],
+    "answer": [
+     0,
+     1,
+     2
+    ],
+    "explain": "ContextCleaner 靠 Driver 端 GC 发现无用对象，所以会定期触发 GC，默认间隔 30 分钟。"
+   }
+  ],
+  "e9": [
+   {
+    "q": "RpcEndpointRef 的 send 和 ask 有什么区别？",
+    "options": [
+     "send 同步阻塞，ask 异步不阻塞",
+     "两者完全相同，只是命名不同",
+     "send 只能发给本地端点，ask 只能发给远程端点",
+     "send 发出不等回复，由端点的 receive 处理；ask 返回 Future，由 receiveAndReply 处理并回复"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "send 是 fire-and-forget；ask 发请求并返回 Future，端点要用 context.reply 回复。"
+   },
+   {
+    "q": "用 spark-submit --deploy-mode cluster 提交到 YARN，你的 main 方法在哪里执行？",
+    "options": [
+     "执行提交命令的那台机器上",
+     "集群中 YARN ApplicationMaster 所在的容器里",
+     "每个 Executor 上各执行一次",
+     "YARN ResourceManager 进程里"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "cluster 模式下 Driver 跑在集群的 ApplicationMaster 容器里；client 模式才在提交机器上。"
+   },
+   {
+    "q": "动态资源分配扩容时，为什么每轮申请的 Executor 数量要翻倍（1、2、4、8……）？",
+    "options": [
+     "开始时不知道需要多少，先少量试探；积压一直在，就快速放大到需要的规模",
+     "YARN 只接受 2 的幂次的资源申请",
+     "为了让 Executor 数量始终是偶数",
+     "翻倍可以减少心跳消息的数量"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "指数增长避免一次申请过多，同时几轮之内就能达到 maxNeeded 的规模。"
+   },
+   {
+    "q": "关于 Executor 与部署，哪些说法正确？（多选）",
+    "options": [
+     "Executor 注册成功后，还要等它发来 LaunchedExecutor，Driver 才开始给它派 Task",
+     "Executor 超过 spark.network.timeout（默认 120s）没有心跳，Driver 才认为它已丢失",
+     "4.2.0 开启动态资源分配必须先开启外部 Shuffle 服务，否则报错",
+     "Spark 4.0 起已移除对 Mesos 的支持"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "4.2.0 中 shuffleTracking 默认开启，没有外部 Shuffle 服务（如 K8s 上）也能用动态分配。"
+   }
+  ],
+  "e10": [
+   {
+    "q": "在 local-cluster 上杀掉一个空闲的 Executor，再执行一次 count，实验观察到的顺序是？",
+    "options": [
+     "Driver 立即注销它的 Shuffle 输出，先重算 map Stage，再跑 reduce",
+     "reduce Stage 先跑，读 Shuffle 时报 FetchFailed，再回头只重算丢失的 map 分区",
+     "整个 Job 直接失败",
+     "map Stage 的所有分区全部重算一遍"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "丢失的 Executor 上有运行中的 Task 才会立即通知 DAGScheduler；空闲时靠 FetchFailed 被动发现。"
+   },
+   {
+    "q": "为什么调用 rdd.checkpoint() 之前推荐先 cache()？",
+    "options": [
+     "checkpoint 只能作用在缓存过的 RDD 上",
+     "只有 cache 过，checkpoint 才能写到可靠存储",
+     "checkpoint 会在 Action 结束后再提交一个 Job 写数据，不 cache 就要把整个血缘重算一遍",
+     "不先 cache，checkpoint 写出的数据会丢失"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "实验中不 cache 时源头数据算了 200 次，先 cache 只算 100 次。"
+   },
+   {
+    "q": "非确定性的 Shuffle Map Stage 被重算时，什么情况下 Spark 只能让 Job 失败？",
+    "options": [
+     "ResultStage 已有部分 Task 完成，结果可能已交给用户或写出，无法回滚",
+     "下游 Stage 还没有开始执行",
+     "开启了外部 Shuffle 服务",
+     "同一个 Task 失败超过 4 次"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "非确定上游重算后下游必须全部重跑；ResultStage 已部分完成时回滚不了，只能失败。"
+   },
+   {
+    "q": "关于容错机制，哪些说法正确？（多选）",
+    "options": [
+     "失败的 Task 尝试里对累加器的更新会被丢弃",
+     "在 map 等转换算子里更新累加器，结果一定精确",
+     "localCheckpoint 的数据存在 Executor 本地，Executor 丢失后因血缘已切断而无法恢复",
+     "Driver 挂掉后，集群管理器的自动重启只是从头再跑整个应用"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "转换算子里的累加可能因 Stage 重算、推测执行被重复计入，只有 Action 里的才保证只算一次。"
+   }
+  ],
+  "e11": [
+   {
+    "q": "为什么 Spark 能优化 DataFrame / SQL，却很难优化 RDD 里的 map 函数？",
+    "options": [
+     "RDD 的函数对 Spark 是黑盒；SQL 描述「要什么」，Catalyst 能看懂整个查询结构",
+     "RDD 不支持分布式执行",
+     "DataFrame 永远不会产生 Shuffle",
+     "RDD 只能使用 Java 序列化"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "看懂了查询结构，才能做列裁剪、谓词下推、按表大小选 Join 方式等优化。"
+   },
+   {
+    "q": "实验中优化后的计划凭空多出了 isnotnull(user_id) 过滤条件，它是怎么来的？",
+    "options": [
+     "用户在 WHERE 里写的",
+     "Analyzer 绑定列时自动加上的",
+     "约束推导：内连接 id = user_id 意味着两边都不能为 null，于是推出过滤条件",
+     "Parquet 读取器自己加的"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "InferFiltersFromConstraints 推出非空条件，两张表都能在 Join 前提前过滤。"
+   },
+   {
+    "q": "在物理计划阶段，Join 的实现方式是怎么选出来的？",
+    "options": [
+     "生成多个候选物理计划，按代价比较选最优",
+     "随机选一种 Join 实现",
+     "必须由用户手动指定 Join hint",
+     "只取第一个候选计划，靠 JoinSelection 的启发式规则（如表小于广播阈值就广播），运行时再交给 AQE"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "createSparkPlan 只取 planner 返回的第一个计划，不做代价比较。"
+   },
+   {
+    "q": "关于 Catalyst，哪些说法正确？（多选）",
+    "options": [
+     "transform 就是 transformDown，先处理父节点再处理子节点",
+     "FixedPoint 批次会反复执行规则，直到计划不再变化或达到最大轮数",
+     "列名写错会在解析（Parsing）阶段报错",
+     "Exchange（Shuffle）由准备规则 EnsureRequirements 按算子对分区和排序的要求插入"
+    ],
+    "answer": [
+     0,
+     1,
+     3
+    ],
+    "explain": "解析只管语法，不知道表和列是否存在；列名错误在分析阶段由 CheckAnalysis 报出。"
+   }
+  ],
+  "e12": [
+   {
+    "q": "全阶段代码生成比火山模型快，主要靠什么？",
+    "options": [
+     "让每个算子在独立线程里并行运行",
+     "把所有数据都放到堆外内存",
+     "把同一阶段的多个算子融合进一个循环，去掉逐行的 next() 虚调用，中间值放在局部变量里",
+     "跳过 Shuffle，减少网络传输"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "融合后没有迭代器和虚调用，表达式变成原生 Java 运算，JIT 后中间值常驻寄存器。"
+   },
+   {
+    "q": "实验 B 中，关闭全阶段代码生成慢了约 17 倍，再关闭表达式代码生成又慢了 4 倍多。两部分差距分别来自什么？",
+    "options": [
+     "前者来自算子融合，后者来自表达式代码生成",
+     "前者来自 GC，后者来自磁盘 I/O",
+     "两部分都来自 Shuffle",
+     "前者来自表达式代码生成，后者来自算子融合"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "关闭全阶段后算子间回到迭代器调用；再关表达式生成，就改为递归调用 eval() 解释执行。"
+   },
+   {
+    "q": "一个表达式没有实现 doGenCode，会怎样？",
+    "options": [
+     "整个查询直接失败",
+     "可以混入 CodegenFallback，在生成的代码里回调它的 eval()，整个阶段仍能代码生成",
+     "整个代码生成阶段都必须放弃",
+     "Spark 会自动替它推导出 doGenCode"
+    ],
+    "answer": [
+     1
+    ],
+    "explain": "CodegenFallback 让生成的代码直接回调该表达式的解释执行逻辑，不影响整体代码生成。"
+   },
+   {
+    "q": "关于代码生成和 UnsafeRow，哪些说法正确？（多选）",
+    "options": [
+     "Exchange（Shuffle）是代码生成阶段的天然边界，所以 Shuffle 前后的 *(n) 编号不同",
+     "输出字段数超过 spark.sql.codegen.maxFields（默认 100）时，不做全阶段代码生成",
+     "UnsafeRow 定长区每个字段占 8 字节，字符串存偏移和长度，可按位置直接读取、无需反序列化",
+     "生成的 Java 代码用 javac 在 Driver 启动时一次性编译好"
+    ],
+    "answer": [
+     0,
+     1,
+     2
+    ],
+    "explain": "生成的是源代码字符串，运行时用轻量编译器 Janino 现编现用，并缓存编译结果。"
+   }
+  ],
+  "e13": [
+   {
+    "q": "AQE 以什么为边界把查询切成阶段？每个阶段执行完拿到了什么？",
+    "options": [
+     "以 Shuffle（和广播）为界；阶段执行完拿到真实的分区大小、行数等统计信息，再重新优化剩下的部分",
+     "以每个算子为界，拿到算子的执行耗时",
+     "以每个 Task 为界，拿到 Task 的 GC 时间",
+     "以每条 SQL 语句为界，拿到上一条语句的结果"
+    ],
+    "answer": [
+     0
+    ],
+    "explain": "静态优化靠估计常常不准，AQE 推迟决策，用已执行阶段的真实数据重新优化。"
+   },
+   {
+    "q": "实验 B 中，初始计划的 SortMergeJoin 在执行后变成了 BroadcastHashJoin。这是谁做的？",
+    "options": [
+     "DynamicJoinSelection 规则直接改写成广播",
+     "OptimizeSkewedJoin 规则",
+     "CoalesceShufflePartitions 规则",
+     "重新优化时，普通的 JoinSelection 看到小表真实大小低于广播阈值，选了广播；新计划 Shuffle 更少被采用"
+    ],
+    "answer": [
+     3
+    ],
+    "explain": "DynamicJoinSelection 只加提示，比如避免广播或倾向 Shuffle Hash Join，并不负责换成广播。"
+   },
+   {
+    "q": "Spark Connect 客户端发给服务端的是什么？",
+    "options": [
+     "已经生成好的物理计划",
+     "已经优化过的逻辑计划",
+     "protobuf 格式的未解析计划，解析、分析、优化和执行都在服务端完成",
+     "编译好的 Java 字节码"
+    ],
+    "answer": [
+     2
+    ],
+    "explain": "实验中客户端发出的过滤条件还只是字符串 id > 50，客户端根本不解析表达式。"
+   },
+   {
+    "q": "关于 AQE 和 DataSource V2，哪些说法正确？（多选）",
+    "options": [
+     "AQE 默认的代价评估就是数计划里 Shuffle 的个数",
+     "advisoryPartitionSizeInBytes 参与判断一个分区是否倾斜",
+     "4.2.0 中内置的 Parquet 等文件数据源默认仍走 V1",
+     "V2 的聚合下推可以直接用 Parquet 元数据里的最大值、最小值和行数得出结果"
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ],
+    "explain": "倾斜阈值是 max(256MB, 中位数×5)；advisoryPartitionSizeInBytes 只决定拆分后的块大小。"
    }
   ]
  },

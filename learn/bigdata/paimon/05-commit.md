@@ -2,10 +2,9 @@
 title: "05 提交：FileStoreCommitImpl 的冲突检测与重试"
 description: "FileStoreCommitImpl 的乐观并发提交：冲突检测、重试和幂等。"
 bigdata: "paimon"
+lesson: "g5"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/05-commit-cover.webp"}]]
 ---
-
-# 05 提交：FileStoreCommitImpl 的冲突检测与重试
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

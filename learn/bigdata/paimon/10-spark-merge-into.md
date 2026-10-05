@@ -2,10 +2,9 @@
 title: "10 Spark MERGE INTO 的实现"
 description: "Spark MERGE INTO 在 Paimon 中的三条实现路径。"
 bigdata: "paimon"
+lesson: "g10"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/10-spark-merge-into-cover.webp"}]]
 ---
-
-# 10 Spark MERGE INTO 的实现
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

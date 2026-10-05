@@ -29,7 +29,9 @@ export interface LearnTrack {
   letter: string
   title: string
   project: string
-  lessons: { id: string; title: string; minutes: number }[]
+  /** Page links (absolute, under /learn). */
+  href?: string
+  lessons: { id: string; title: string; minutes: number; href?: string }[]
 }
 
 export async function me(): Promise<LearnMe> {

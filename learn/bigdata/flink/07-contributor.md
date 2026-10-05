@@ -2,10 +2,9 @@
 title: "Flink 源码导读 07：从读者到贡献者 —— 规范、流程、真实案例与第一批候选任务"
 description: "从读源码到给 Flink 提 PR：社区数据、JIRA 与 PR 流程、适合新人的切入点。"
 bigdata: "flink"
+lesson: "f7"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/07-contributor-cover.webp"}]]
 ---
-
-# Flink 源码导读 07：从读者到贡献者 —— 规范、流程、真实案例与第一批候选任务
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

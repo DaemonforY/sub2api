@@ -2,10 +2,9 @@
 title: "06 读路径：MergeFileSplitRead 与删除向量如何跳过合并"
 description: "主键表的读路径 MergeFileSplitRead，以及删除向量怎样避免读时合并。"
 bigdata: "paimon"
+lesson: "g6"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/06-read-path-cover.webp"}]]
 ---
-
-# 06 读路径：MergeFileSplitRead 与删除向量如何跳过合并
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

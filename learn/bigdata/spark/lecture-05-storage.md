@@ -2,10 +2,9 @@
 title: "第 5 讲：存储体系"
 description: "BlockManager 存储体系：存储级别、cache 的实现、广播变量的分块传输。"
 bigdata: "spark"
+lesson: "e8"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-05-storage-cover.webp"}]]
 ---
-
-# 第 5 讲：存储体系
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

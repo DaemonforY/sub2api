@@ -2,10 +2,9 @@
 title: "Flink 源码导读 05：Table / SQL —— 一条 SQL 如何变成 Transformation"
 description: "Table/SQL 从 SQL 文本经 Calcite 解析优化，变成 ExecNode 和 Transformation 的过程。"
 bigdata: "flink"
+lesson: "f5"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/05-table-sql-cover.webp"}]]
 ---
-
-# Flink 源码导读 05：Table / SQL —— 一条 SQL 如何变成 Transformation
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

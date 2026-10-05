@@ -4,64 +4,64 @@
     "collapsed": true,
     "items": [
       {
-        "text": "目录",
+        "text": "路线介绍",
         "link": "/bigdata/spark/"
       },
       {
-        "text": "学习路线：从入门到 Committer",
-        "link": "/bigdata/spark/roadmap"
-      },
-      {
-        "text": "从零编译 Spark 4.2.0 源码",
+        "text": "1. 从零编译 Spark 4.2.0 源码",
         "link": "/bigdata/spark/01-build"
       },
       {
-        "text": "Job、Stage、Task 是什么关系",
+        "text": "2. Job、Stage、Task 是什么关系",
         "link": "/bigdata/spark/02-job-stage-task"
       },
       {
-        "text": "宽窄依赖：Stage 在哪里切开",
+        "text": "3. 宽窄依赖：Stage 在哪里切开",
         "link": "/bigdata/spark/03-dependency"
       },
       {
-        "text": "L1 练习：跟踪 SparkPi 一个 Job 的一生",
+        "text": "4. L1 练习：跟踪 SparkPi 一个 Job 的一生",
         "link": "/bigdata/spark/l1-sparkpi"
       },
       {
-        "text": "第 2 讲：调度体系",
+        "text": "5. 第 2 讲：调度体系",
         "link": "/bigdata/spark/lecture-02-scheduling"
       },
       {
-        "text": "第 3 讲：Shuffle",
+        "text": "6. 第 3 讲：Shuffle",
         "link": "/bigdata/spark/lecture-03-shuffle"
       },
       {
-        "text": "第 4 讲：内存管理",
+        "text": "7. 第 4 讲：内存管理",
         "link": "/bigdata/spark/lecture-04-memory"
       },
       {
-        "text": "第 5 讲：存储体系",
+        "text": "8. 第 5 讲：存储体系",
         "link": "/bigdata/spark/lecture-05-storage"
       },
       {
-        "text": "第 6 讲：RPC 与部署",
+        "text": "9. 第 6 讲：RPC 与部署",
         "link": "/bigdata/spark/lecture-06-rpc-deploy"
       },
       {
-        "text": "第 7 讲：容错机制",
+        "text": "10. 第 7 讲：容错机制",
         "link": "/bigdata/spark/lecture-07-fault-tolerance"
       },
       {
-        "text": "第 8 讲：Spark SQL 与 Catalyst",
+        "text": "11. 第 8 讲：Spark SQL 与 Catalyst",
         "link": "/bigdata/spark/lecture-08-catalyst"
       },
       {
-        "text": "第 9 讲：代码生成与 Tungsten",
+        "text": "12. 第 9 讲：代码生成与 Tungsten",
         "link": "/bigdata/spark/lecture-09-codegen"
       },
       {
-        "text": "第 10 讲：AQE、DSv2 与 Spark Connect",
+        "text": "13. 第 10 讲：AQE、DSv2 与 Spark Connect",
         "link": "/bigdata/spark/lecture-10-aqe-dsv2"
+      },
+      {
+        "text": "配套：学习路线：从入门到 Committer",
+        "link": "/bigdata/spark/roadmap"
       }
     ]
   },
@@ -70,43 +70,43 @@
     "collapsed": true,
     "items": [
       {
-        "text": "目录",
+        "text": "路线介绍",
         "link": "/bigdata/flink/"
       },
       {
-        "text": "作业执行全链路",
+        "text": "1. 作业执行全链路",
         "link": "/bigdata/flink/01-execution"
       },
       {
-        "text": "Checkpoint 全流程",
+        "text": "2. Checkpoint 全流程",
         "link": "/bigdata/flink/02-checkpoint"
       },
       {
-        "text": "State Backend：状态存储与扩缩容",
+        "text": "3. State Backend：状态存储与扩缩容",
         "link": "/bigdata/flink/03-state-backend"
       },
       {
-        "text": "网络栈与背压",
+        "text": "4. 网络栈与背压",
         "link": "/bigdata/flink/04-network"
       },
       {
-        "text": "Table/SQL：从 SQL 到 Transformation",
+        "text": "5. Table/SQL：从 SQL 到 Transformation",
         "link": "/bigdata/flink/05-table-sql"
       },
       {
-        "text": "调度与容错",
+        "text": "6. 调度与容错",
         "link": "/bigdata/flink/06-scheduling"
       },
       {
-        "text": "从读者到贡献者",
+        "text": "7. 从读者到贡献者",
         "link": "/bigdata/flink/07-contributor"
       },
       {
-        "text": "时间、Watermark 与窗口",
+        "text": "8. 时间、Watermark 与窗口",
         "link": "/bigdata/flink/08-watermark-window"
       },
       {
-        "text": "Source / Sink 新架构",
+        "text": "9. Source / Sink 新架构",
         "link": "/bigdata/flink/09-source-sink"
       }
     ]
@@ -116,63 +116,63 @@
     "collapsed": true,
     "items": [
       {
-        "text": "目录",
+        "text": "路线介绍",
         "link": "/bigdata/paimon/"
       },
       {
-        "text": "学习计划",
-        "link": "/bigdata/paimon/00-plan"
-      },
-      {
-        "text": "环境搭建与源码编译",
+        "text": "1. 环境搭建与源码编译",
         "link": "/bigdata/paimon/01-setup"
       },
       {
-        "text": "paimon-core 整体架构",
+        "text": "2. paimon-core 整体架构",
         "link": "/bigdata/paimon/02-architecture"
       },
       {
-        "text": "UniversalCompaction 选文件策略",
+        "text": "3. UniversalCompaction 选文件策略",
         "link": "/bigdata/paimon/03-universal-compaction"
       },
       {
-        "text": "MergeTreeCompactTask 合并执行",
+        "text": "4. MergeTreeCompactTask 合并执行",
         "link": "/bigdata/paimon/04-compact-task"
       },
       {
-        "text": "提交：冲突检测与重试",
+        "text": "5. 提交：冲突检测与重试",
         "link": "/bigdata/paimon/05-commit"
       },
       {
-        "text": "读路径与删除向量",
+        "text": "6. 读路径与删除向量",
         "link": "/bigdata/paimon/06-read-path"
       },
       {
-        "text": "Lookup Changelog",
+        "text": "7. Lookup Changelog",
         "link": "/bigdata/paimon/07-lookup-changelog"
       },
       {
-        "text": "FlinkSink 与 Checkpoint 提交",
+        "text": "8. FlinkSink 与 Checkpoint 提交",
         "link": "/bigdata/paimon/08-flink-sink"
       },
       {
-        "text": "FlinkSource 流式读取",
+        "text": "9. FlinkSource 流式读取",
         "link": "/bigdata/paimon/09-flink-source"
       },
       {
-        "text": "Spark MERGE INTO",
+        "text": "10. Spark MERGE INTO",
         "link": "/bigdata/paimon/10-spark-merge-into"
       },
       {
-        "text": "REST Catalog",
+        "text": "11. REST Catalog",
         "link": "/bigdata/paimon/11-rest-catalog"
       },
       {
-        "text": "附录：配置速查与调试技巧",
+        "text": "配套：学习计划",
+        "link": "/bigdata/paimon/00-plan"
+      },
+      {
+        "text": "配套：附录：配置速查与调试技巧",
         "link": "/bigdata/paimon/appendix"
       },
       {
-        "text": "勘误与版本说明",
+        "text": "配套：勘误与版本说明",
         "link": "/bigdata/paimon/errata"
       }
     ]

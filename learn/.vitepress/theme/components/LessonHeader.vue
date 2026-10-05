@@ -2,7 +2,7 @@
 // Above a lesson: track, position, time, and what you will be able to do.
 import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
-import { findLesson } from '../tracks'
+import { findLesson, trackHref } from '../tracks'
 import { progress } from '../api'
 
 const { frontmatter } = useData()
@@ -14,7 +14,7 @@ const done = computed(() => !!(found.value && progress.completed[found.value.les
 <template>
   <div v-if="found" class="lesson-head">
     <div class="lesson-crumb">
-      <a :href="withBase(`/${found.track.id}/`)">{{ found.track.letter }} · {{ found.track.title }}</a>
+      <a :href="withBase(trackHref(found.track))">{{ found.track.letter }} · {{ found.track.title }}</a>
       <span>第 {{ found.index + 1 }} 课</span>
       <span>⏱ {{ found.lesson.minutes }} 分钟</span>
       <span v-if="done" class="lesson-done">✓ 已完成</span>

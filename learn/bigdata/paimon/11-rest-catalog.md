@@ -2,10 +2,9 @@
 title: "11 REST Catalog 的实现"
 description: "REST Catalog：服务端 CAS 提交与临时凭证下发。"
 bigdata: "paimon"
+lesson: "g11"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/11-rest-catalog-cover.webp"}]]
 ---
-
-# 11 REST Catalog 的实现
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

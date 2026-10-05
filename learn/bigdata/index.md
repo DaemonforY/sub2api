@@ -9,6 +9,8 @@ description: Apache Spark、Flink、Paimon 源码学习：基于最新版本源�
 
 <BigdataHub />
 
+三条都是正式的学习路线：每课读完有 4 道小测验，读的时候可以随时问 AI 助教；学完全部课程、测验总正确率不低于 80%，再通过这条路线的模拟面试（60 分以上），就能领取结业证书。
+
 ## 怎么学
 
 - **有 Spark 使用经验**：从 [Spark 学习路线](/bigdata/spark/roadmap) 开始，先编译源码、跟一遍 SparkPi，再按讲次往下读。

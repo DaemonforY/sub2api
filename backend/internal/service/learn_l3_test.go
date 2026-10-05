@@ -77,7 +77,7 @@ func TestLearnInsights(t *testing.T) {
 	repo.certs = []LearnCertificate{{Code: "X", Track: "b"}}
 	in, err := svc.Insights(ctx)
 	require.NoError(t, err)
-	require.Len(t, in.Funnels, 4)
+	require.Len(t, in.Funnels, len(svc.catalog.Tracks))
 	a := in.Funnels[0]
 	require.Equal(t, 8, a.Lessons)
 	require.Equal(t, 1, a.Started)

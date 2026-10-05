@@ -1,0 +1,275 @@
+[
+  {
+    "id": "e",
+    "letter": "S",
+    "title": "Apache Spark 源码",
+    "tagline": "从编译源码、跟踪一个 Job 的一生，到调度、Shuffle、内存、Catalyst、Codegen 和 AQE，每个结论都给出源码位置和可复现的实验。",
+    "audience": "大数据开发、数据平台工程师，以及准备大数据岗位面试的同学",
+    "project": "Spark 模拟面试拿到 60 分以上",
+    "color": "linear-gradient(135deg,#fb923c,#ea580c)",
+    "ready": true,
+    "quizzes": true,
+    "link": "/bigdata/spark/",
+    "lessons": [
+      {
+        "id": "e1",
+        "title": "从零编译 Spark 4.2.0 源码",
+        "minutes": 25,
+        "ready": true,
+        "link": "/bigdata/spark/01-build"
+      },
+      {
+        "id": "e2",
+        "title": "Job、Stage、Task 是什么关系",
+        "minutes": 20,
+        "ready": true,
+        "link": "/bigdata/spark/02-job-stage-task"
+      },
+      {
+        "id": "e3",
+        "title": "宽窄依赖：Stage 在哪里切开",
+        "minutes": 20,
+        "ready": true,
+        "link": "/bigdata/spark/03-dependency"
+      },
+      {
+        "id": "e4",
+        "title": "L1 练习：跟踪 SparkPi 一个 Job 的一生",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/l1-sparkpi"
+      },
+      {
+        "id": "e5",
+        "title": "第 2 讲：调度体系",
+        "minutes": 35,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-02-scheduling"
+      },
+      {
+        "id": "e6",
+        "title": "第 3 讲：Shuffle",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-03-shuffle"
+      },
+      {
+        "id": "e7",
+        "title": "第 4 讲：内存管理",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-04-memory"
+      },
+      {
+        "id": "e8",
+        "title": "第 5 讲：存储体系",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-05-storage"
+      },
+      {
+        "id": "e9",
+        "title": "第 6 讲：RPC 与部署",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-06-rpc-deploy"
+      },
+      {
+        "id": "e10",
+        "title": "第 7 讲：容错机制",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-07-fault-tolerance"
+      },
+      {
+        "id": "e11",
+        "title": "第 8 讲：Spark SQL 与 Catalyst",
+        "minutes": 35,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-08-catalyst"
+      },
+      {
+        "id": "e12",
+        "title": "第 9 讲：代码生成与 Tungsten",
+        "minutes": 30,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-09-codegen"
+      },
+      {
+        "id": "e13",
+        "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+        "minutes": 35,
+        "ready": true,
+        "link": "/bigdata/spark/lecture-10-aqe-dsv2"
+      }
+    ]
+  },
+  {
+    "id": "f",
+    "letter": "F",
+    "title": "Apache Flink 源码",
+    "tagline": "从 env.execute() 到 processElement()，Checkpoint、状态后端、网络栈与背压、Table/SQL、调度容错、Watermark 与窗口、新版 Source/Sink。",
+    "audience": "实时计算、流处理方向的开发者",
+    "project": "Flink 模拟面试拿到 60 分以上",
+    "color": "linear-gradient(135deg,#a78bfa,#7c3aed)",
+    "ready": true,
+    "quizzes": true,
+    "link": "/bigdata/flink/",
+    "lessons": [
+      {
+        "id": "f1",
+        "title": "作业执行全链路",
+        "minutes": 50,
+        "ready": true,
+        "link": "/bigdata/flink/01-execution"
+      },
+      {
+        "id": "f2",
+        "title": "Checkpoint 全流程",
+        "minutes": 75,
+        "ready": true,
+        "link": "/bigdata/flink/02-checkpoint"
+      },
+      {
+        "id": "f3",
+        "title": "State Backend：状态存储与扩缩容",
+        "minutes": 65,
+        "ready": true,
+        "link": "/bigdata/flink/03-state-backend"
+      },
+      {
+        "id": "f4",
+        "title": "网络栈与背压",
+        "minutes": 55,
+        "ready": true,
+        "link": "/bigdata/flink/04-network"
+      },
+      {
+        "id": "f5",
+        "title": "Table/SQL：从 SQL 到 Transformation",
+        "minutes": 65,
+        "ready": true,
+        "link": "/bigdata/flink/05-table-sql"
+      },
+      {
+        "id": "f6",
+        "title": "调度与容错",
+        "minutes": 60,
+        "ready": true,
+        "link": "/bigdata/flink/06-scheduling"
+      },
+      {
+        "id": "f7",
+        "title": "从读者到贡献者",
+        "minutes": 40,
+        "ready": true,
+        "link": "/bigdata/flink/07-contributor"
+      },
+      {
+        "id": "f8",
+        "title": "时间、Watermark 与窗口",
+        "minutes": 75,
+        "ready": true,
+        "link": "/bigdata/flink/08-watermark-window"
+      },
+      {
+        "id": "f9",
+        "title": "Source / Sink 新架构",
+        "minutes": 80,
+        "ready": true,
+        "link": "/bigdata/flink/09-source-sink"
+      }
+    ]
+  },
+  {
+    "id": "g",
+    "letter": "P",
+    "title": "Apache Paimon 源码",
+    "tagline": "流式湖仓的存储内核：合并策略、提交与冲突检测、读路径与删除向量、Changelog、Flink / Spark 集成和 REST Catalog，每个结论都能用实验复现。",
+    "audience": "湖仓、数据集成方向的开发者",
+    "project": "Paimon 模拟面试拿到 60 分以上",
+    "color": "linear-gradient(135deg,#38bdf8,#0284c7)",
+    "ready": true,
+    "quizzes": true,
+    "link": "/bigdata/paimon/",
+    "lessons": [
+      {
+        "id": "g1",
+        "title": "环境搭建与源码编译",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/01-setup"
+      },
+      {
+        "id": "g2",
+        "title": "paimon-core 整体架构",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/02-architecture"
+      },
+      {
+        "id": "g3",
+        "title": "UniversalCompaction 选文件策略",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/03-universal-compaction"
+      },
+      {
+        "id": "g4",
+        "title": "MergeTreeCompactTask 合并执行",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/04-compact-task"
+      },
+      {
+        "id": "g5",
+        "title": "提交：冲突检测与重试",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/05-commit"
+      },
+      {
+        "id": "g6",
+        "title": "读路径与删除向量",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/06-read-path"
+      },
+      {
+        "id": "g7",
+        "title": "Lookup Changelog",
+        "minutes": 15,
+        "ready": true,
+        "link": "/bigdata/paimon/07-lookup-changelog"
+      },
+      {
+        "id": "g8",
+        "title": "FlinkSink 与 Checkpoint 提交",
+        "minutes": 20,
+        "ready": true,
+        "link": "/bigdata/paimon/08-flink-sink"
+      },
+      {
+        "id": "g9",
+        "title": "FlinkSource 流式读取",
+        "minutes": 20,
+        "ready": true,
+        "link": "/bigdata/paimon/09-flink-source"
+      },
+      {
+        "id": "g10",
+        "title": "Spark MERGE INTO",
+        "minutes": 20,
+        "ready": true,
+        "link": "/bigdata/paimon/10-spark-merge-into"
+      },
+      {
+        "id": "g11",
+        "title": "REST Catalog",
+        "minutes": 20,
+        "ready": true,
+        "link": "/bigdata/paimon/11-rest-catalog"
+      }
+    ]
+  }
+]

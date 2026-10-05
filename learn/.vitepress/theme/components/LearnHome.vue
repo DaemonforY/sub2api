@@ -2,7 +2,7 @@
 // /learn home: what this is, where you left off, the tracks, further reading.
 import { computed, onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
-import { tracks, type Track } from '../tracks'
+import { lessonHref, trackHref, tracks, type Track } from '../tracks'
 import { learnConfig, loadProgress, progress, token } from '../api'
 import Showcase from './Showcase.vue'
 
@@ -51,7 +51,7 @@ const totalMinutes = (t: Track) => t.lessons.reduce((n, l) => n + l.minutes, 0)
           <div class="home-resume-title">{{ resume.track.letter }}{{ resume.index + 1 }} · {{ resume.lesson.title }}</div>
           <div class="runbox-note">{{ resume.track.title }} · 已完成 {{ doneIn(resume.track) }} / {{ resume.track.lessons.length }} 课</div>
           <div class="home-bar"><b :style="{ width: (doneIn(resume.track) / resume.track.lessons.length) * 100 + '%' }"></b></div>
-          <a class="runbox-btn" :href="withBase(`/${resume.track.id}/${resume.lesson.id}`)">继续</a>
+          <a class="runbox-btn" :href="withBase(lessonHref(resume.track, resume.lesson))">继续</a>
         </template>
         <template v-else>
           <h4>从这里开始</h4>
@@ -69,7 +69,7 @@ const totalMinutes = (t: Track) => t.lessons.reduce((n, l) => n + l.minutes, 0)
         :is="t.ready ? 'a' : 'div'"
         v-for="t in tracks"
         :key="t.id"
-        :href="t.ready ? withBase(`/${t.id}/`) : undefined"
+        :href="t.ready ? withBase(trackHref(t)) : undefined"
         :class="['home-track', { soon: !t.ready }]"
         data-testid="home-track"
       >

@@ -2,10 +2,9 @@
 title: "Flink 源码导读 09：Source / Sink 新架构 —— FLIP-27 与 Sink V2"
 description: "FLIP-27 新 Source 架构（SplitEnumerator / SourceReader）与新版 Sink 的两阶段提交。"
 bigdata: "flink"
+lesson: "f9"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/09-source-sink-cover.webp"}]]
 ---
-
-# Flink 源码导读 09：Source / Sink 新架构 —— FLIP-27 与 Sink V2
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

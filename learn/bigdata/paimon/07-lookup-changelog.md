@@ -2,10 +2,9 @@
 title: "07 Lookup Changelog：-U/+U 是怎么产生的"
 description: "lookup changelog producer 怎样产生 -U/+U 变更记录。"
 bigdata: "paimon"
+lesson: "g7"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/07-lookup-changelog-cover.webp"}]]
 ---
-
-# 07 Lookup Changelog：-U/+U 是怎么产生的
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

@@ -2,10 +2,9 @@
 title: "08 FlinkSink 与 Checkpoint 两阶段提交"
 description: "Paimon 的 Flink Sink：写入、PrepareCommit 与 Checkpoint 配合的两阶段提交，保证 exactly-once。"
 bigdata: "paimon"
+lesson: "g8"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/08-flink-sink-cover.webp"}]]
 ---
-
-# 08 FlinkSink 与 Checkpoint 两阶段提交
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

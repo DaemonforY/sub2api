@@ -2,10 +2,9 @@
 title: "第 7 讲：容错机制"
 description: "容错机制：Task 重试、Executor 丢失、FetchFailed 与 Stage 重算、Checkpoint。"
 bigdata: "spark"
+lesson: "e10"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-07-fault-tolerance-cover.webp"}]]
 ---
-
-# 第 7 讲：容错机制
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

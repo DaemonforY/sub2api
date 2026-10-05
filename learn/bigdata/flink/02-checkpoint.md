@@ -2,10 +2,9 @@
 title: "Flink 源码导读 02：Checkpoint 全流程 —— 从触发、Barrier 对齐到完成通知"
 description: "Checkpoint 从触发、Barrier 对齐、快照到确认完成的全流程，以及非对齐 Checkpoint。"
 bigdata: "flink"
+lesson: "f2"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/02-checkpoint-cover.webp"}]]
 ---
-
-# Flink 源码导读 02：Checkpoint 全流程 —— 从触发、Barrier 对齐到完成通知
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

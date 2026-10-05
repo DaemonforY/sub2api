@@ -480,7 +480,7 @@ func (s *LearnService) projectItem(ctx context.Context, userID int64, track *Lea
 		}
 		passed := 0
 		var missing []string
-		topics := s.catalog.certTopics()
+		topics := track.Interviews
 		for _, topic := range topics {
 			if best[topic] >= learnInterviewPassScore {
 				passed++
@@ -492,8 +492,11 @@ func (s *LearnService) projectItem(ctx context.Context, userID int64, track *Lea
 		if len(missing) > 0 {
 			detail += "，还差：" + strings.Join(missing, "、")
 		}
-		return LearnCertItem{Kind: "project", Title: fmt.Sprintf("每组模拟面试都拿到 %d 分以上", learnInterviewPassScore),
-			Done: passed == len(topics), Detail: detail}, nil
+		title := fmt.Sprintf("每组模拟面试都拿到 %d 分以上", learnInterviewPassScore)
+		if len(topics) == 1 {
+			title = fmt.Sprintf("「%s」模拟面试拿到 %d 分以上", s.catalog.Interviews[topics[0]].Title, learnInterviewPassScore)
+		}
+		return LearnCertItem{Kind: "project", Title: title, Done: passed == len(topics), Detail: detail}, nil
 	}
 	return LearnCertItem{Kind: "project", Title: "结业项目"}, nil
 }

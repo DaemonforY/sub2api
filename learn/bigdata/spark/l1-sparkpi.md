@@ -2,10 +2,9 @@
 title: "L1 练习 1：跟踪 SparkPi —— 一个 Job 的一生"
 description: "在 IDEA 里断点跟踪 SparkPi，从 rdd.reduce() 一路跟到 Executor 执行 Task 再回到 Driver。"
 bigdata: "spark"
+lesson: "e4"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/l1-sparkpi-cover.webp"}]]
 ---
-
-# L1 练习 1：跟踪 SparkPi —— 一个 Job 的一生
 
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。

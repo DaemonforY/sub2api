@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { defineConfig, type DefaultTheme } from 'vitepress'
 import guideSidebar from './guide-sidebar.json'
 import bigdataSidebar from './bigdata-sidebar.json'
-import { tracks } from './theme/tracks'
+import { lessonHref, trackHref, tracks } from './theme/tracks'
 
 // AI 学习 at hivegpt.cn/learn. Pages carry the main site's CSP (script-src 'self' + nonce), so
 // nothing may be inlined: no appearance script, site data in a separate chunk (metaChunk).
@@ -51,7 +51,7 @@ export default defineConfig({
       {
         text: '学习路线',
         activeMatch: '^/[a-d]/',
-        items: tracks.map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
+        items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
       { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
       { text: '学员作品', link: '/showcase', activeMatch: '^/showcase' },
@@ -107,7 +107,14 @@ export default defineConfig({
   // The default theme inlines a tiny script for the ⌘ hint in search; the CSP would block it.
   // The main site's 「我的学习」 page reads the tracks from here.
   buildEnd(site) {
-    const data = tracks.map((t) => ({ id: t.id, letter: t.letter, title: t.title, project: t.project, lessons: t.lessons.filter((l) => l.ready).map((l) => ({ id: l.id, title: l.title, minutes: l.minutes })) }))
+    const data = tracks.map((t) => ({
+      id: t.id,
+      letter: t.letter,
+      title: t.title,
+      project: t.project,
+      href: `/learn${trackHref(t)}`,
+      lessons: t.lessons.filter((l) => l.ready).map((l) => ({ id: l.id, title: l.title, minutes: l.minutes, href: `/learn${lessonHref(t, l)}.html` })),
+    }))
     writeFileSync(join(site.outDir, 'tracks.json'), JSON.stringify(data))
   },
   transformHtml: (code) => code.replace(/<script id="check-mac-os">[\s\S]*?<\/script>/, ''),

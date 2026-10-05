@@ -2,10 +2,9 @@
 title: "Flink 源码导读 03：State Backend —— 状态怎么存、怎么快照、怎么扩缩容"
 description: "HashMap 与 RocksDB 状态后端的存储方式、增量 Checkpoint、KeyGroup 与扩缩容时的状态重分布。"
 bigdata: "flink"
+lesson: "f3"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/03-state-backend-cover.webp"}]]
 ---
-
-# Flink 源码导读 03：State Backend —— 状态怎么存、怎么快照、怎么扩缩容
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。

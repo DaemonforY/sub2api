@@ -2,10 +2,9 @@
 title: "09 FlinkSource 流式读取与 consumer-id"
 description: "Paimon 的 Flink 流式读取：增量 split 的生成、consumer-id 与过期保护。"
 bigdata: "paimon"
+lesson: "g9"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/09-flink-source-cover.webp"}]]
 ---
-
-# 09 FlinkSource 流式读取与 consumer-id
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

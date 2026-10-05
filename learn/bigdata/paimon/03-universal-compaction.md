@@ -2,10 +2,9 @@
 title: "03 LSM 合并策略：UniversalCompaction 怎么选文件"
 description: "UniversalCompaction 怎样根据 sorted run 的数量和大小选出要合并的文件。"
 bigdata: "paimon"
+lesson: "g3"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/03-universal-compaction-cover.webp"}]]
 ---
-
-# 03 LSM 合并策略：UniversalCompaction 怎么选文件
 
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。

@@ -9,8 +9,8 @@ const { frontmatter, page } = useData()
 // A lesson, or a 大数据 article (its page path, e.g. bigdata/spark/lecture-03-shuffle).
 const article = computed(() => !!frontmatter.value.bigdata)
 const lesson = computed(() => {
-  if (frontmatter.value.lesson) return String(frontmatter.value.lesson)
   if (article.value) return page.value.relativePath.replace(/\.md$/, '')
+  if (frontmatter.value.lesson) return String(frontmatter.value.lesson)
   return ''
 })
 const open = ref(false)

@@ -9,6 +9,7 @@ import LessonFooter from './components/LessonFooter.vue'
 import NavUser from './components/NavUser.vue'
 import Tutor from './components/Tutor.vue'
 import { loadProgress, progress } from './api'
+import { lessonByPath } from './tracks'
 
 const { Layout } = DefaultTheme
 const route = useRoute()
@@ -16,8 +17,8 @@ const route = useRoute()
 function markSidebar() {
   if (typeof document === 'undefined') return
   document.querySelectorAll<HTMLAnchorElement>('.VPSidebar a.VPLink').forEach((a) => {
-    const m = a.getAttribute('href')?.match(/\/([a-z]\d{1,2})(\.html)?$/)
-    a.classList.toggle('lesson-is-done', !!(m && progress.completed[m[1]]))
+    const id = lessonByPath(new URL(a.href, window.location.href).pathname)
+    a.classList.toggle('lesson-is-done', !!(id && progress.completed[id]))
   })
 }
 

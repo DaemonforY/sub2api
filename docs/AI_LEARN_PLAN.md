@@ -234,6 +234,8 @@ learn/                         主站仓库新目录
 
 **大数据模块（2026-10-04）**：`/learn/bigdata/`，Apache Spark（14 篇）、Flink（9 篇）、Paimon（14 篇）源码学习，内容来自 `~/Documents/work/opensource-codes` 下的 spark-source-notes / spark-content / spark-notes、flink-notes、paimon-learning（作者本人，CC BY-NC-SA 4.0）。用 `python3 learn/scripts/import_bigdata.py` 重新导入（文章清单和简介在脚本里）；发布说明注释去掉，文章互链改成站内地址，实验链接指向 GitHub。Spark「开篇」和「Committer 之路 01」还有待填写的【】占位，暂未收录。
 
+**大数据正式路线（2026-10-05）**：Spark（E，13 课）、Flink（F，9 课）、Paimon（G，11 课）成为正式路线，课时就是原来的文章页（地址不变），学习路线、学习计划、附录、勘误作为配套阅读。每课 4 道测验（服务端判分），每篇有 AI 助教和配图。结业条件：学完全部课程、测验总正确率 ≥ 80%、本路线的模拟面试 ≥ 60 分。路线清单由 `import_bigdata.py` 生成到 `.vitepress/bigdata-tracks.json`，后端题库在 `learn_catalog.json`。
+
 **上线前需要你做一件事**：在后台「AI 学习」里填学习专用 Key 和模型，再开启在线运行。没开启时，运行框显示示例输出，并提示用自己的 Key 运行。
 
 ## 7. 原「需要你决定」

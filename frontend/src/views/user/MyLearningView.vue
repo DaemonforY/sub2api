@@ -42,7 +42,7 @@
 
         <div v-for="track in trackList" :key="track.id" class="card p-5" data-testid="my-learning-track">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <a :href="`/learn/${track.id}/`" class="text-base font-semibold text-gray-900 hover:underline dark:text-white">{{ track.letter }} · {{ track.title }}</a>
+            <a :href="track.href || `/learn/${track.id}/`" class="text-base font-semibold text-gray-900 hover:underline dark:text-white">{{ track.letter }} · {{ track.title }}</a>
             <span class="text-sm text-gray-500 dark:text-dark-400">
               {{ t('learn.mine.progress', { done: doneCount(track), total: track.lessons.length }) }}
               <template v-if="hasCert(track.id)"> · <span class="font-semibold text-emerald-600">{{ t('learn.mine.certified') }}</span></template>
@@ -55,7 +55,7 @@
             <a
               v-for="l in track.lessons"
               :key="l.id"
-              :href="`/learn/${track.id}/${l.id}.html`"
+              :href="l.href || `/learn/${track.id}/${l.id}.html`"
               :title="l.title"
               :class="[
                 'rounded-lg px-2 py-1 text-xs',
@@ -66,7 +66,7 @@
               <template v-if="data.quizzes[l.id]"> · {{ data.quizzes[l.id].correct }}/{{ data.quizzes[l.id].total }}</template>
             </a>
           </div>
-          <a v-if="nextLesson(track)" :href="`/learn/${track.id}/${nextLesson(track)!.id}.html`" class="mt-3 inline-block text-sm text-primary-600 hover:underline">
+          <a v-if="nextLesson(track)" :href="nextLesson(track)!.href || `/learn/${track.id}/${nextLesson(track)!.id}.html`" class="mt-3 inline-block text-sm text-primary-600 hover:underline">
             {{ t('learn.mine.continue', { title: nextLesson(track)!.title }) }} →
           </a>
         </div>

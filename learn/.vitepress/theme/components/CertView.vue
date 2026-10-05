@@ -3,7 +3,7 @@
 import { onMounted, ref } from 'vue'
 import { withBase } from 'vitepress'
 import { ApiError, publicCert, type Certificate } from '../api'
-import { MAIN_SITE } from '../tracks'
+import { MAIN_SITE, findTrack, trackHref } from '../tracks'
 import CertPoster from './CertPoster.vue'
 
 const cert = ref<Certificate | null>(null)
@@ -57,7 +57,7 @@ function joinUrl(c: Certificate) {
       </div>
       <div class="cert-cta">
         <a class="runbox-btn" :href="joinUrl(cert)">我也来学（注册 HiveGPT）</a>
-        <a class="runbox-btn ghost" :href="withBase(`/${cert.track}/`)">看看这条路线</a>
+        <a class="runbox-btn ghost" :href="withBase(findTrack(cert.track) ? trackHref(findTrack(cert.track)!) : '/')">看看这条路线</a>
       </div>
       <CertPoster :cert="cert" />
     </template>

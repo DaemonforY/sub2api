@@ -2,10 +2,9 @@
 title: "Flink 源码导读 06：调度与容错 —— Failover、重启策略与自适应调度"
 description: "调度器、Slot 分配、故障恢复策略和自适应调度（Adaptive Scheduler）的扩缩容。"
 bigdata: "flink"
+lesson: "f6"
 head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/06-scheduling-cover.webp"}]]
 ---
-
-# Flink 源码导读 06：调度与容错 —— Failover、重启策略与自适应调度
 
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
