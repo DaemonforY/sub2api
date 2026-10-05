@@ -66,6 +66,17 @@
       </form>
 
       <section class="card p-6">
+        <form class="mb-6 rounded-xl border border-gray-200 p-4 dark:border-dark-700" data-testid="edu-grant-form" @submit.prevent="grant">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('growth.admin.settings.grantTitle') }}</h3>
+          <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.grantHint') }}</p>
+          <div class="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
+            <input v-model.trim="grantUser" type="text" class="input" data-testid="edu-grant-user" :placeholder="t('growth.admin.settings.grantUser')" />
+            <input v-model.trim="grantNote" type="text" maxlength="100" class="input" data-testid="edu-grant-note" :placeholder="t('growth.admin.settings.grantNote')" />
+            <button type="submit" class="btn btn-primary" :disabled="!grantUser || !grantNote || granting" data-testid="edu-grant-submit">
+              {{ t('growth.admin.settings.grant') }}
+            </button>
+          </div>
+        </form>
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('growth.admin.settings.verificationsTitle') }} ({{ total }})</h2>
           <input v-model="search" type="text" class="input w-full sm:w-72" :placeholder="t('growth.admin.settings.searchPlaceholder')" @input="debouncedLoad" />
@@ -89,7 +100,13 @@
                   <div class="text-gray-900 dark:text-white">{{ v.user_email }}</div>
                   <div class="text-xs text-gray-400">#{{ v.user_id }} {{ v.username }}</div>
                 </td>
-                <td class="px-3 py-2.5 font-mono text-gray-700 dark:text-gray-300">{{ v.email }}</td>
+                <td class="px-3 py-2.5">
+                  <template v-if="v.method === 'manual'">
+                    <span class="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">{{ t('growth.admin.settings.manual') }}</span>
+                    <div class="mt-1 text-xs text-gray-500 dark:text-dark-400">{{ v.note }}</div>
+                  </template>
+                  <span v-else class="font-mono text-gray-700 dark:text-gray-300">{{ v.email }}</span>
+                </td>
                 <td class="px-3 py-2.5 text-gray-500 dark:text-dark-400">{{ formatDateTime(v.verified_at) }}</td>
                 <td class="px-3 py-2.5 text-right">
                   <button type="button" class="btn btn-secondary btn-sm" @click="revokeTarget = v">{{ t('growth.admin.settings.revoke') }}</button>
@@ -143,6 +160,9 @@ const page = ref(1)
 const pages = ref(1)
 const search = ref('')
 const revokeTarget = ref<EduVerification | null>(null)
+const grantUser = ref('')
+const grantNote = ref('')
+const granting = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
 async function loadSettings() {
@@ -202,6 +222,23 @@ function debouncedLoad() {
 function goPage(p: number) {
   page.value = p
   void loadVerifications()
+}
+
+async function grant() {
+  if (!grantUser.value || !grantNote.value || granting.value) return
+  granting.value = true
+  try {
+    const v = await adminGrowthAPI.grantEduVerification(grantUser.value, grantNote.value)
+    appStore.showSuccess(t('growth.admin.settings.granted', { email: v.email }))
+    grantUser.value = ''
+    grantNote.value = ''
+    page.value = 1
+    await loadVerifications()
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    granting.value = false
+  }
 }
 
 async function revoke() {

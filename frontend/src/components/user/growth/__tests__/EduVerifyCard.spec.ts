@@ -40,6 +40,15 @@ describe('EduVerifyCard', () => {
     expect(wrapper.find('[data-testid="edu-verified"]').exists()).toBe(true)
   })
 
+  it('shows an admin-granted verification without the placeholder email', async () => {
+    getEduStatus.mockResolvedValue({ ...baseStatus, verification: { user_id: 1, email: 'teacher@gmail.com', method: 'manual', verified_at: '2026-10-05T00:00:00Z' } })
+    const wrapper = mount(EduVerifyCard)
+    await flushPromises()
+    const text = wrapper.find('[data-testid="edu-verified"]').text()
+    expect(text).toContain('growth.edu.verifiedManual')
+    expect(text).not.toContain('teacher@gmail.com')
+  })
+
   it('sends a code, verifies and emits verified', async () => {
     getEduStatus.mockResolvedValueOnce(baseStatus).mockResolvedValueOnce({ ...baseStatus, verification: { user_id: 1, email: 'a@pku.edu.cn', verified_at: '' } })
     verifyEdu.mockResolvedValue({ user_id: 1, email: 'a@pku.edu.cn', verified_at: '' })

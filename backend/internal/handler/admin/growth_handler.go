@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -62,6 +63,30 @@ func (h *GrowthHandler) ListEduVerifications(c *gin.Context) {
 		return
 	}
 	response.Paginated(c, items, total, page, pageSize)
+}
+
+type grantEduRequest struct {
+	User string `json:"user"`
+	Note string `json:"note"`
+}
+
+// GrantEduVerification POST /api/v1/admin/growth/edu-verifications {user: account email or ID, note}
+func (h *GrowthHandler) GrantEduVerification(c *gin.Context) {
+	var req grantEduRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	var adminID int64
+	if subject, ok := middleware2.GetAuthSubjectFromContext(c); ok {
+		adminID = subject.UserID
+	}
+	v, err := h.service.AdminGrantEduVerification(c.Request.Context(), adminID, req.User, req.Note)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, v)
 }
 
 // RevokeEduVerification DELETE /api/v1/admin/growth/edu-verifications/:user_id

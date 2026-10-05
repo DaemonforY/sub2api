@@ -5,6 +5,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -120,6 +121,44 @@ func TestGrowthEduVerification(t *testing.T) {
 	got, err = e.repo.GetEduVerification(e.ctx, alice.ID)
 	require.NoError(t, err)
 	require.Nil(t, got)
+}
+
+func TestGrowthEduManualGrant(t *testing.T) {
+	e := newGrowthTestEnv(t)
+	teacher, student := e.user(t, "teacher"), e.user(t, "student")
+
+	_, err := e.svc.AdminGrantEduVerification(e.ctx, 1, teacher.Email, "")
+	require.ErrorIs(t, err, service.ErrEduGrantNote, "a note is required")
+	_, err = e.svc.AdminGrantEduVerification(e.ctx, 1, "nobody-"+e.suffix+"@growth.test", "x")
+	require.ErrorIs(t, err, service.ErrEduGrantUserNotFound)
+
+	// By account email (case-insensitive): the account email stands in for the school email.
+	v, err := e.svc.AdminGrantEduVerification(e.ctx, 1, strings.ToUpper(teacher.Email), "某某小学 教师，已核验教师证")
+	require.NoError(t, err)
+	require.Equal(t, teacher.ID, v.UserID)
+	require.Equal(t, teacher.Email, v.Email)
+	require.Equal(t, service.EduMethodManual, v.Method)
+	got, err := e.repo.GetEduVerification(e.ctx, teacher.ID)
+	require.NoError(t, err)
+	require.Equal(t, "某某小学 教师，已核验教师证", got.Note)
+
+	// Granting again updates the note; searching finds it by note.
+	_, err = e.svc.AdminGrantEduVerification(e.ctx, 1, fmt.Sprintf("#%d", teacher.ID), "某某小学 教师 "+e.suffix)
+	require.NoError(t, err)
+	items, total, err := e.repo.ListEduVerifications(e.ctx, e.suffix, 1, 20)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Equal(t, service.EduMethodManual, items[0].Method)
+
+	// A user verified with a school email is not overwritten; verifying by email clears the manual note.
+	_, err = e.repo.UpsertEduVerification(e.ctx, student.ID, "s"+e.suffix+"@pku.edu.cn")
+	require.NoError(t, err)
+	_, err = e.svc.AdminGrantEduVerification(e.ctx, 1, student.Email, "x")
+	require.ErrorIs(t, err, service.ErrEduGrantEmailVerified)
+	v, err = e.repo.UpsertEduVerification(e.ctx, teacher.ID, "t"+e.suffix+"@pku.edu.cn")
+	require.NoError(t, err)
+	require.Equal(t, service.EduMethodEmail, v.Method)
+	require.Empty(t, v.Note)
 }
 
 func TestGrowthEduDiscountAppliesOnlyToVerifiedUsers(t *testing.T) {

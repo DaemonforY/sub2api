@@ -11,7 +11,9 @@
       <div v-if="status.verification" class="flex items-start gap-3" data-testid="edu-verified">
         <div class="rounded-full bg-emerald-100 p-2 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">✓</div>
         <div class="text-sm">
-          <p class="font-medium text-gray-900 dark:text-white">{{ t('growth.edu.verified', { email: status.verification.email }) }}</p>
+          <p class="font-medium text-gray-900 dark:text-white">
+            {{ status.verification.method === 'manual' ? t('growth.edu.verifiedManual') : t('growth.edu.verified', { email: status.verification.email }) }}
+          </p>
           <p v-if="status.discount_percent > 0" class="mt-1 text-emerald-600 dark:text-emerald-400">
             {{ t('growth.edu.verifiedPerk', { zhe: zheLabel }) }}
           </p>

@@ -27,8 +27,8 @@ func NewGrowthRepository(db *sql.DB) service.GrowthRepository {
 func (r *growthRepository) GetEduVerification(ctx context.Context, userID int64) (*service.EduVerification, error) {
 	var v service.EduVerification
 	err := r.db.QueryRowContext(ctx,
-		`SELECT user_id, email, verified_at FROM user_edu_verifications WHERE user_id = $1`, userID,
-	).Scan(&v.UserID, &v.Email, &v.VerifiedAt)
+		`SELECT user_id, email, method, note, verified_at FROM user_edu_verifications WHERE user_id = $1`, userID,
+	).Scan(&v.UserID, &v.Email, &v.Method, &v.Note, &v.VerifiedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -55,11 +55,11 @@ func (r *growthRepository) EduEmailOwner(ctx context.Context, email string) (int
 func (r *growthRepository) UpsertEduVerification(ctx context.Context, userID int64, email string) (*service.EduVerification, error) {
 	var v service.EduVerification
 	err := r.db.QueryRowContext(ctx, `
-INSERT INTO user_edu_verifications (user_id, email, verified_at, created_at)
-VALUES ($1, $2, NOW(), NOW())
-ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, verified_at = NOW()
-RETURNING user_id, email, verified_at`, userID, email,
-	).Scan(&v.UserID, &v.Email, &v.VerifiedAt)
+INSERT INTO user_edu_verifications (user_id, email, method, note, granted_by, verified_at, created_at)
+VALUES ($1, $2, 'email', '', NULL, NOW(), NOW())
+ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, method = 'email', note = '', granted_by = NULL, verified_at = NOW()
+RETURNING user_id, email, method, note, verified_at`, userID, email,
+	).Scan(&v.UserID, &v.Email, &v.Method, &v.Note, &v.VerifiedAt)
 	if isUniqueViolation(err) {
 		// The PK conflict is handled above, so this is the email index: another account holds it.
 		return nil, service.ErrEduEmailTaken
@@ -68,6 +68,42 @@ RETURNING user_id, email, verified_at`, userID, email,
 		return nil, fmt.Errorf("upsert edu verification: %w", err)
 	}
 	return &v, nil
+}
+
+func (r *growthRepository) GrantEduVerification(ctx context.Context, userID int64, email, note string, adminID int64) (*service.EduVerification, error) {
+	var v service.EduVerification
+	err := r.db.QueryRowContext(ctx, `
+INSERT INTO user_edu_verifications (user_id, email, method, note, granted_by, verified_at, created_at)
+VALUES ($1, $2, 'manual', $3, NULLIF($4, 0), NOW(), NOW())
+ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, method = 'manual', note = EXCLUDED.note, granted_by = EXCLUDED.granted_by, verified_at = NOW()
+RETURNING user_id, email, method, note, verified_at`, userID, email, note, adminID,
+	).Scan(&v.UserID, &v.Email, &v.Method, &v.Note, &v.VerifiedAt)
+	if isUniqueViolation(err) {
+		return nil, service.ErrEduEmailTaken
+	}
+	if err != nil {
+		return nil, fmt.Errorf("grant edu verification: %w", err)
+	}
+	return &v, nil
+}
+
+func (r *growthRepository) FindEduUser(ctx context.Context, query string) (int64, string, error) {
+	var (
+		id    int64
+		email string
+	)
+	err := r.db.QueryRowContext(ctx, `
+SELECT id, COALESCE(email, '') FROM users
+WHERE deleted_at IS NULL AND (LOWER(email) = LOWER($1) OR id::text = $1)
+ORDER BY id LIMIT 1`, query,
+	).Scan(&id, &email)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", nil
+	}
+	if err != nil {
+		return 0, "", fmt.Errorf("find edu user: %w", err)
+	}
+	return id, email, nil
 }
 
 func (r *growthRepository) DeleteEduVerification(ctx context.Context, userID int64) (bool, error) {
@@ -84,7 +120,7 @@ func (r *growthRepository) ListEduVerifications(ctx context.Context, search stri
 	args := []any{}
 	if search != "" {
 		args = append(args, "%"+escapeLike(search)+"%")
-		where = `WHERE v.email ILIKE $1 OR u.email ILIKE $1 OR u.username ILIKE $1`
+		where = `WHERE v.email ILIKE $1 OR u.email ILIKE $1 OR u.username ILIKE $1 OR v.note ILIKE $1`
 	}
 	var total int64
 	if err := r.db.QueryRowContext(ctx,
@@ -94,7 +130,7 @@ func (r *growthRepository) ListEduVerifications(ctx context.Context, search stri
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
-SELECT v.user_id, v.email, v.verified_at, u.email, COALESCE(u.username, '')
+SELECT v.user_id, v.email, v.method, v.note, v.verified_at, u.email, COALESCE(u.username, '')
 FROM user_edu_verifications v JOIN users u ON u.id = v.user_id
 %s
 ORDER BY v.verified_at DESC, v.user_id DESC
@@ -106,7 +142,7 @@ LIMIT $%d OFFSET $%d`, where, len(args)-1, len(args)), args...)
 	out := []service.EduVerification{}
 	for rows.Next() {
 		var v service.EduVerification
-		if err := rows.Scan(&v.UserID, &v.Email, &v.VerifiedAt, &v.UserEmail, &v.Username); err != nil {
+		if err := rows.Scan(&v.UserID, &v.Email, &v.Method, &v.Note, &v.VerifiedAt, &v.UserEmail, &v.Username); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, v)

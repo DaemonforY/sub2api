@@ -17,6 +17,9 @@ export interface GrowthPublicConfig {
 export interface EduVerification {
   user_id: number
   email: string
+  /** email: verified with a code sent to a school email; manual: verified by an admin */
+  method?: 'email' | 'manual'
+  note?: string
   verified_at: string
   user_email?: string
   username?: string
@@ -95,6 +98,11 @@ export const adminGrowthAPI = {
   },
   async listEduVerifications(params: { page?: number; page_size?: number; search?: string }): Promise<BasePaginationResponse<EduVerification>> {
     const { data } = await apiClient.get<BasePaginationResponse<EduVerification>>('/admin/growth/edu-verifications', { params })
+    return data
+  },
+  /** user: account email or ID; note: school and how it was checked */
+  async grantEduVerification(user: string, note: string): Promise<EduVerification> {
+    const { data } = await apiClient.post<EduVerification>('/admin/growth/edu-verifications', { user, note })
     return data
   },
   async revokeEduVerification(userId: number): Promise<void> {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 )
@@ -60,6 +61,8 @@ type GrowthSettings struct {
 type EduVerification struct {
 	UserID     int64     `json:"user_id"`
 	Email      string    `json:"email"`
+	Method     string    `json:"method"` // email | manual
+	Note       string    `json:"note,omitempty"`
 	VerifiedAt time.Time `json:"verified_at"`
 	UserEmail  string    `json:"user_email,omitempty"`
 	Username   string    `json:"username,omitempty"`
@@ -97,6 +100,10 @@ type GrowthRepository interface {
 	EduEmailOwner(ctx context.Context, email string) (int64, error)
 	// UpsertEduVerification stores userID's school email; returns ErrEduEmailTaken when another user holds it.
 	UpsertEduVerification(ctx context.Context, userID int64, email string) (*EduVerification, error)
+	// GrantEduVerification verifies userID by hand (method manual) with the admin's note.
+	GrantEduVerification(ctx context.Context, userID int64, email, note string, adminID int64) (*EduVerification, error)
+	// FindEduUser finds an active user by account email (case-insensitive) or ID; 0 when none.
+	FindEduUser(ctx context.Context, query string) (int64, string, error)
 	DeleteEduVerification(ctx context.Context, userID int64) (bool, error)
 	ListEduVerifications(ctx context.Context, search string, page, pageSize int) ([]EduVerification, int64, error)
 	// GrantInviteeBonus credits amount to the invitee's balance for orderID when the invitee has an
@@ -362,6 +369,50 @@ func (s *GrowthService) AdminListEduVerifications(ctx context.Context, search st
 		pageSize = 20
 	}
 	return s.repo.ListEduVerifications(ctx, strings.TrimSpace(search), page, pageSize)
+}
+
+const (
+	EduMethodEmail  = "email"
+	EduMethodManual = "manual"
+	eduNoteMax      = 100
+)
+
+var (
+	ErrEduGrantUserNotFound  = infraerrors.NotFound("EDU_GRANT_USER_NOT_FOUND", "找不到这个用户，请填写账号邮箱或用户 ID（User not found）")
+	ErrEduGrantNote          = infraerrors.BadRequest("EDU_GRANT_NOTE", "请填写认证说明（学校、身份、怎么核验的），最多 100 字（A note of 1–100 characters is required）")
+	ErrEduGrantEmailVerified = infraerrors.Conflict("EDU_GRANT_EMAIL_VERIFIED", "该用户已通过学校邮箱认证，无需手动认证（Already verified with a school email）")
+)
+
+// AdminGrantEduVerification verifies a user by hand — for teachers and students whose school has
+// no school email. user is the account email or ID; the note records the school and how it was checked.
+// The account email stands in for the school email (an account without one gets a placeholder).
+func (s *GrowthService) AdminGrantEduVerification(ctx context.Context, adminID int64, user, note string) (*EduVerification, error) {
+	user = strings.TrimPrefix(strings.TrimSpace(user), "#")
+	note = strings.TrimSpace(note)
+	if n := utf8.RuneCountInString(note); n == 0 || n > eduNoteMax {
+		return nil, ErrEduGrantNote
+	}
+	if user == "" {
+		return nil, ErrEduGrantUserNotFound
+	}
+	userID, email, err := s.repo.FindEduUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	if userID == 0 {
+		return nil, ErrEduGrantUserNotFound
+	}
+	existing, err := s.repo.GetEduVerification(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if existing != nil && existing.Method != EduMethodManual {
+		return nil, ErrEduGrantEmailVerified
+	}
+	if email == "" {
+		email = fmt.Sprintf("user-%d@manual", userID)
+	}
+	return s.repo.GrantEduVerification(ctx, userID, email, note, adminID)
 }
 
 // AdminRevokeEduVerification removes a user's verification.
