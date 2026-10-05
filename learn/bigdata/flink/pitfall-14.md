@@ -2,6 +2,7 @@
 title: "踩坑实验室 #14：开了非对齐 Checkpoint，3 秒变 20 毫秒，代价是什么？"
 description: "背压下对齐 Checkpoint 慢在 Barrier 排队；非对齐快了，但要把在途数据一起存下来。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-14-cover.webp"}]]
 ---
 
 # 踩坑实验室 #14：开了非对齐 Checkpoint，3 秒变 20 毫秒，代价是什么？
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-14-cover.webp" alt="Yui和Kai对比对齐与非对齐Checkpoint的速度和存储代价" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai对比对齐与非对齐Checkpoint的速度和存储代价<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-03）。对应课程：第二讲（上）《Checkpoint 全流程》、第二讲（下）《非对齐 Checkpoint》。配套示例：`flink-notes/demos/src/main/java/study/checkpoint/CheckpointDemo.java`
@@ -52,6 +55,8 @@ REST 接口统计的耗时、大小和 "Completed checkpoint" 日志的口径不
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-14-1.webp" alt="积压数据挡住Barrier，Checkpoint只能在队列后等待" width="960" height="640" loading="lazy" /><figcaption>积压数据挡住Barrier，Checkpoint只能在队列后等待<span>AI 生成配图</span></figcaption></figure>
+
 先看对齐模式慢在哪。子任务 1 的 `start_delay`（从 Checkpoint 触发到这个子任务收到第一个 Barrier）是 3276ms，而真正做快照的 `sync`、`async` 只有 0～1ms。也就是说，快照本身并不慢，时间全花在 Barrier 排队上：Barrier 和数据走同一条通道，下游处理不过来，通道里堆满了数据，Barrier 只能排在积压的数据后面，在路上等了 3 秒。
 
 非对齐 Checkpoint 的做法是让 Barrier 插到队首，越过积压的数据（`PipelinedSubpartition.java:219`、`:241`）。被越过的数据还没有处理，于是把这些在途数据（in-flight data）一起存进 Checkpoint，恢复时再回放。所以非对齐 Checkpoint 快，但大：变快的是 Barrier 不用排队了，而不是快照变快了。
@@ -61,6 +66,8 @@ REST 接口统计的耗时、大小和 "Completed checkpoint" 日志的口径不
 ![非对齐：Barrier 插到队首，被越过的数据一起存进 Checkpoint](/bigdata-img/src/content-plan/assets/png/ep14/xhs-P4.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-14-2.webp" alt="非对齐让Barrier插队，但会把被越过的在途数据一并保存" width="960" height="640" loading="lazy" /><figcaption>非对齐让Barrier插队，但会把被越过的在途数据一并保存<span>AI 生成配图</span></figcaption></figure>
 
 非对齐 Checkpoint 默认关闭（`execution.checkpointing.unaligned.enabled` 默认 false，`CheckpointingOptions.java:539`）。比起直接打开，更稳妥的折中是同时设置对齐超时：先按对齐的方式做，超过这个时间才切换成非对齐（`execution.checkpointing.aligned-checkpoint-timeout`，`CheckpointingOptions.java:565`，默认 0）。
 

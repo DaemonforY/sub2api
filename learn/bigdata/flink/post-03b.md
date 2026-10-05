@@ -55,6 +55,8 @@ c[0]++;                    // 直接修改拿到的数组，不调用 update()
 
 ## 一、一条状态在 RocksDB 里长什么样
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-03b-1.webp" alt="Yui和Kai观察RocksDB中按KeyGroup连续排列的状态记录" width="960" height="640" loading="lazy" /><figcaption>Yui和Kai观察RocksDB中按KeyGroup连续排列的状态记录<span>AI 生成配图</span></figcaption></figure>
+
 ### 1.1 结构
 
 - **每个子任务一个 RocksDB 实例**（`RDB/RocksDBKeyedStateBackend.java:268`）；
@@ -98,6 +100,8 @@ RocksDB 自己用的内存（读缓存、写缓冲区）默认从 Flink 的托�
 ---
 
 ## 二、增量 Checkpoint：每次到底上传了什么
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-03b-2.webp" alt="Yui和Kai只把新增SST文件送入远端检查点仓库" width="960" height="640" loading="lazy" /><figcaption>Yui和Kai只把新增SST文件送入远端检查点仓库<span>AI 生成配图</span></figcaption></figure>
 
 ### 2.1 先说一个容易忽略的默认值
 

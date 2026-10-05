@@ -2,6 +2,7 @@
 title: "踩坑实验室 #04：按天统计，为什么凌晨的订单算到了前一天？"
 description: "Flink 窗口按 UTC 纪元对齐，一天的窗口从北京时间 8 点开始，加 −8 小时 offset 才对。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-04-cover.webp"}]]
 ---
 
 # 踩坑实验室 #04：按天统计，为什么凌晨的订单算到了前一天？
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-04-cover.webp" alt="Yui和Kai将订单窗口从世界时间对齐到北京时间" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai将订单窗口从世界时间对齐到北京时间<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第七讲（下）《窗口，从分配到触发》。配套示例：`flink-notes/demos/src/main/java/study/time/DailyWindowDemo.java`（`nooffset`、`offset`、`sizes` 模式）
@@ -50,6 +53,8 @@ bigdata: "flink"
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-04-1.webp" alt="订单被按世界时间分进从北京时间早上开始的窗口" width="960" height="640" loading="lazy" /><figcaption>订单被按世界时间分进从北京时间早上开始的窗口<span>AI 生成配图</span></figcaption></figure>
+
 滚动窗口的起点 = 时间戳 − (时间戳 − offset) % 窗口大小（`TimeWindow.java:264-272` 的 `getWindowStartWithOffset`，由 `TumblingEventTimeWindows.java:78` 的 `assignWindows` 调用）。
 
 时间戳是从 1970-01-01 00:00:00 **UTC** 开始的毫秒数，所以不加 offset 时，窗口对齐到 UTC 的整天、整小时上。实测的窗口起点 1790726400000 正好是一天毫秒数（86400000）的 20726 倍。UTC 的零点就是北京时间早上 8 点，于是一天的窗口变成了北京时间“今天 8 点到明天 8 点”。
@@ -61,6 +66,8 @@ bigdata: "flink"
 ![窗口按 UTC 零点对齐：UTC 00:00 对应北京时间 08:00，凌晨的那一段被算到了前一天](/bigdata-img/src/content-plan/assets/png/ep04/xhs-P3.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-04-2.webp" alt="向后移动窗口锚点后订单按北京时间自然归档" width="960" height="640" loading="lazy" /><figcaption>向后移动窗口锚点后订单按北京时间自然归档<span>AI 生成配图</span></figcaption></figure>
 
 给窗口加一个 **−8 小时**的 offset：
 

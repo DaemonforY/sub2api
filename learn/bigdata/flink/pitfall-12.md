@@ -2,6 +2,7 @@
 title: "踩坑实验室 #12：并行度随便改，maxParallelism 却改不了"
 description: "并行度可以改，maxParallelism 一改状态就恢复不了；从没设置过的作业会锁定在首次推算的值上。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-12-cover.webp"}]]
 ---
 
 # 踩坑实验室 #12：并行度随便改，maxParallelism 却改不了
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-12-cover.webp" alt="Yui面对可调并行度与锁定的最大并行度装置" width="1200" height="800" loading="eager" /><figcaption>Yui面对可调并行度与锁定的最大并行度装置<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-03）。对应课程：第三讲（上）《State Backend 与扩缩容》第二节、第六节。配套示例：`flink-notes/demos/src/main/java/study/state/StateBackendDemo.java`
@@ -53,6 +56,8 @@ The state for task 5b61d6019ab04da71a4e62533c1a8c40 can not be restored. The max
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-12-1.webp" alt="KeyGroup固定分配让并行度可变而最大并行度不可变" width="960" height="640" loading="lazy" /><figcaption>KeyGroup固定分配让并行度可变而最大并行度不可变<span>AI 生成配图</span></figcaption></figure>
+
 keyed state 的分配分两步：key 先按 maxParallelism 哈希到 KeyGroup，KeyGroup 再按连续区间分给子任务（`KeyGroupRangeAssignment.java:76`）。**key 属于哪个 KeyGroup，只取决于 maxParallelism。**
 
 - 改并行度：KeyGroup 不变，只是重新分配给子任务，所以实验一能完整恢复；
@@ -67,6 +72,8 @@ keyed state 的分配分两步：key 先按 maxParallelism 哈希到 KeyGroup，
 ![实验四：从没设置过，并行度调到 130 时作业起不来](/bigdata-img/src/content-plan/assets/png/ep12/xhs-P6.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-12-2.webp" alt="上线前预留最大并行度，避免扩容时状态无法恢复" width="960" height="640" loading="lazy" /><figcaption>上线前预留最大并行度，避免扩容时状态无法恢复<span>AI 生成配图</span></figcaption></figure>
 
 作业上线第一天就显式设置 `pipeline.max-parallelism`（`PipelineOptions.java:190`），按未来可能的最大并行度留出余量。
 

@@ -2,6 +2,7 @@
 title: "踩坑实验室 #02：同一个窗口，为什么输出了两次？"
 description: "窗口触发后状态还在，allowedLateness 内的迟到数据会让窗口带着完整新结果再输出一次。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-02-cover.webp"}]]
 ---
 
 # 踩坑实验室 #02：同一个窗口，为什么输出了两次？
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-02-cover.webp" alt="迟到数据让同一窗口再次输出完整结果" width="1200" height="800" loading="eager" /><figcaption>迟到数据让同一窗口再次输出完整结果<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第七讲《时间、Watermark 与窗口》。配套示例：`flink-notes/demos/src/main/java/study/time/WindowDemo.java` 的 `late` 模式（`late 0` 表示 `allowedLateness = 0`）
@@ -52,6 +55,8 @@ FIRE window=[10s,15s) count=2 elements=[11s, 13s] watermark=MAX
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-02-1.webp" alt="窗口首次触发后状态保留，迟到数据使结果再次输出" width="960" height="640" loading="lazy" /><figcaption>窗口首次触发后状态保留，迟到数据使结果再次输出<span>AI 生成配图</span></figcaption></figure>
+
 事件时间滚动窗口的默认触发器是 `EventTimeTrigger`（`TumblingEventTimeWindows.java:89-90`）。Watermark 到达窗口的 `maxTimestamp`（结束时间 − 1 毫秒）时，它返回 `FIRE`（`EventTimeTrigger.java:50-51`）。
 
 关键在于返回的是 `FIRE`，不是 `FIRE_AND_PURGE`：**窗口触发之后，状态还留着**。状态要等 Watermark 到达 `maxTimestamp + allowedLateness` 才会清理（清理时间的计算在 `WindowOperator.java:670-673`，到点清空在 `:484-487`）。
@@ -72,6 +77,8 @@ FIRE window=[10s,15s) count=2 elements=[11s, 13s] watermark=MAX
 ![触发不等于清理：两条竖线之间，窗口已经输出过，但还能改结果
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-02-2.webp" alt="迟到结果覆盖旧结果，或通过侧输出单独处理" width="960" height="640" loading="lazy" /><figcaption>迟到结果覆盖旧结果，或通过侧输出单独处理<span>AI 生成配图</span></figcaption></figure>
 
 用了 `allowedLateness`，下游就要能处理“同一个窗口的多次结果”。会不会造成重复，取决于下游怎么写：
 

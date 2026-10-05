@@ -162,6 +162,8 @@ schedulingStrategy.restartTasks(verticesToRestart);  // ⑥ :436 重新部署
 
 ## 二、Pipelined Region：重启的最小单位
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-06-1.webp" alt="Pipelined边连接的Task组成region，故障后整体重启" width="960" height="640" loading="lazy" /><figcaption>Pipelined边连接的Task组成region，故障后整体重启<span>AI 生成配图</span></figcaption></figure>
+
 ### 2.1 什么是 region
 
 **用 pipelined 边连起来的 Task，组成一个 region。** pipelined 边的意思是：数据在内存里直接流给下游，不落盘。所以上下游必须同时运行，一个挂了，另一个也没法继续。
@@ -346,6 +348,8 @@ private long calculateActualBackoffTime() {                     // :183
 ---
 
 ## 五、AdaptiveScheduler：拿到多少资源就用多少
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-06-2.webp" alt="AdaptiveScheduler根据可用资源动态增加或减少并行Task" width="960" height="640" loading="lazy" /><figcaption>AdaptiveScheduler根据可用资源动态增加或减少并行Task<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 三种调度器
 

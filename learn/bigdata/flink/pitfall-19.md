@@ -2,6 +2,7 @@
 title: "踩坑实验室 #19：Flink 不用加锁，但这两件事千万别做"
 description: "Mailbox 单线程模型的两个坑：在回调里阻塞，以及在自己开的线程里改 keyed state。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-19-cover.webp"}]]
 ---
 
 # 踩坑实验室 #19：Flink 不用加锁，但这两件事千万别做
@@ -10,10 +11,14 @@ bigdata: "flink"
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-19-cover.webp" alt="Yui与Kai守护排队的Flink任务回调" width="1200" height="800" loading="eager" /><figcaption>Yui与Kai守护排队的Flink任务回调<span>AI 生成配图</span></figcaption></figure>
+
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-04）。对应课程：第一讲（下）第五节「Mailbox：为什么不需要加锁」。配套示例：`flink-notes/demos/src/main/java/study/exec/MailboxBlockDemo.java`
 
 ## 现象
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-19-1.webp" alt="单线程邮箱排队导致定时器和检查点延迟" width="960" height="640" loading="lazy" /><figcaption>单线程邮箱排队导致定时器和检查点延迟<span>AI 生成配图</span></figcaption></figure>
 
 一个 Task 里，`processElement`、定时器 `onTimer`、Checkpoint 快照、Checkpoint 完成通知，都在同一个 Task 线程里排队执行（Mailbox 模型），所以算子代码不需要加锁。这是 Flink 的便利之处，但它反过来也带来了两个坑：
 
@@ -72,6 +77,8 @@ bigdata: "flink"
 ![block 模式：sleep 5 秒期间定时器和 Checkpoint 都在排队（本机实测）](/bigdata-img/src/content-plan/assets/png/ep19/xhs-P3.webp)
 
 ## 原因
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-19-2.webp" alt="跨线程写 keyed state 导致状态写入错误的 key" width="960" height="640" loading="lazy" /><figcaption>跨线程写 keyed state 导致状态写入错误的 key<span>AI 生成配图</span></figcaption></figure>
 
 **坑一：阻塞。** 所有回调都在同一个线程里排队（`MailboxProcessor.java:214` 起），一个回调不返回，其他回调都得等。sleep 的 5 秒里，定时器和 Checkpoint 都在 Mailbox 里等着，`processElement` 一返回它们才轮到，于是定时器晚了 4 秒多，Checkpoint 从几毫秒变成了 5 秒。日志里 10～13 秒的定时器没有出现，是因为 sleep 期间没有处理任何数据，也就没有注册这几个定时器。之后 Checkpoint 5～9 连续完成：Checkpoint 的触发请求有一个队列（`CheckpointRequestDecider.java:58`、`:113-119`），这几次是排队的定时触发，这一点是按代码推断的。
 

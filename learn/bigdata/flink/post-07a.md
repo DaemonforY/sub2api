@@ -101,6 +101,8 @@ public void onPeriodicEmit(WatermarkOutput output) {
 
 ## 二、两条路径：Split 级别 vs Subtask 级别
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-07a-1.webp" alt="Yui对比多个Split水流与单一Subtask水流的水印差异" width="960" height="640" loading="lazy" /><figcaption>Yui对比多个Split水流与单一Subtask水流的水印差异<span>AI 生成配图</span></figcaption></figure>
+
 ### 2.1 写法一：生成器在 Source 里，每个 split 一个
 
 `fromSource(source, strategy, name)` 把策略交给 `SourceOperator`。`SourceOperator.open()`（`RT/streaming/api/operators/SourceOperator.java:417`）里创建事件时间逻辑（`:429`），并启动周期性的 Watermark 发送（`:461`，最终是 `ProgressiveTimestampsAndWatermarks.java:163` 的 `scheduleWithFixedDelay`）。
@@ -167,7 +169,7 @@ public void processElement(final StreamRecord<T> element) throws Exception {    
 那为什么是 197 条，不是 200 条？看写法二触发的窗口（本机实测，节选）：
 
 ```text
->>> FIRE window=[5s,6s) count=3 watermark=9.149s
+>>> FIRE window=5s,6s) count=3 watermark=9.149s
 >>> FIRE window=[10s,11s) count=20 watermark=11.049s
 >>> FIRE window=[11s,12s) count=20 watermark=12.049s
 ...
@@ -178,7 +180,7 @@ public void processElement(final StreamRecord<T> element) throws Exception {    
 
 > `watermark` 是窗口触发时的当前 Watermark，`MAX` 表示输入结束。多次运行中，触发的窗口和条数完全相同，Watermark 的具体值会相差几十毫秒，取决于周期定时器落在哪一刻。完整输出在 `assets/logs/split-watermark-operator.log`。
 
-
+![Split 级别与 Subtask 级别的 Watermark
 
 ### 2.3 写法二还有一个副作用：吞掉上游的 Watermark
 
@@ -211,7 +213,7 @@ public void processWatermarkStatus(WatermarkStatus watermarkStatus) throws Excep
 Split 级别的 Watermark 也有代价：**整个 Source 的 Watermark 被最慢的 split 拖住**。看写法一的输出（本机实测，节选，完整输出在 `assets/logs/split-watermark-split.log`）：
 
 ```text
->>> FIRE window=[9s,10s) count=20 watermark=10.149s
+>>> FIRE window=9s,10s) count=20 watermark=10.149s
 >>> FIRE window=[10s,11s) count=40 watermark=10.999s
 >>> FIRE window=[11s,12s) count=40 watermark=12.049s
 ```
@@ -287,13 +289,15 @@ private void findAndOutputNewMinWatermarkAcrossAlignedSubpartitions(DataOutput<?
 1. **"已对齐"的意思**：这个通道的 Watermark 已经追上了当前的输出值。一个空闲通道恢复活跃后，只有它的 Watermark 不小于当前输出值，才会被放回堆里（`:259-261`）。否则它会把输出的 Watermark 往回拉，而 Watermark 必须单调不减。
 2. **所有通道都空闲时**：输出所有通道里的**最大** Watermark（`findAndOutputMaxWatermarkAcrossAllSubpartitions`，`:325-338`），再向下游发 IDLE。
 
-
+![Watermark 在两层取最小值
 
 **Watermark 在两个地方取最小值**：Source 内部，多个 split 之间（第二节）；下游算子的输入端，多个上游通道之间（本节）。任何一个地方有一个"慢的"或"没有数据的"输入，都会拖住整体。
 
 ---
 
 ## 五、Watermark 到了算子：先触发 Timer，再往下传
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-07a-2.webp" alt="Watermark到达算子后先触发计时器再向下游传播" width="960" height="640" loading="lazy" /><figcaption>Watermark到达算子后先触发计时器再向下游传播<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 顺序不能反
 

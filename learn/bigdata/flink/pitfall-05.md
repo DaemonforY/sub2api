@@ -2,6 +2,7 @@
 title: "踩坑实验室 #05：1 秒的窗口，结果晚了 20 秒才出来"
 description: "Watermark 和数据走同一条通道，背压时被堵在旧数据后面；开启 Buffer Debloating 可缓解。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-05-cover.webp"}]]
 ---
 
 # 踩坑实验室 #05：1 秒的窗口，结果晚了 20 秒才出来
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-05-cover.webp" alt="水印被旧数据堵住导致窗口结果延迟" width="1200" height="800" loading="eager" /><figcaption>水印被旧数据堵住导致窗口结果延迟<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第七讲（上）第四节“Watermark 也是一条数据”、第四讲第八节“Buffer Debloating”。配套示例：`flink-notes/demos/src/main/java/study/time/BackpressureWindowDemo.java`
@@ -50,6 +53,8 @@ bigdata: "flink"
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-05-1.webp" alt="水印在背压通道中被旧数据挡住" width="960" height="640" loading="lazy" /><figcaption>水印在背压通道中被旧数据挡住<span>AI 生成配图</span></figcaption></figure>
+
 Watermark 和数据走**同一条通道**：同样序列化、同样进网络缓冲区，广播给所有下游（`RecordWriterOutput.java:148-159`，`emitWatermark` 调用 `recordWriter.broadcastEmit`）。
 
 所以在同一个通道里，Watermark 排在它前面的数据后面，前面的数据没处理完，下游就看不到这个 Watermark。背压时，缓冲区里积压着大量“旧”数据，Watermark 被堵在它们后面，窗口要等 Watermark，就只能干等。
@@ -61,6 +66,8 @@ Watermark 和数据走**同一条通道**：同样序列化、同样进网络缓
 ![Watermark 不能插队：缓冲区堆满旧数据，Watermark 排在最后](/bigdata-img/src/content-plan/assets/png/ep05/xhs-P4.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-05-2.webp" alt="缓冲区缩短后水印更快穿过背压通道" width="960" height="640" loading="lazy" /><figcaption>缓冲区缩短后水印更快穿过背压通道<span>AI 生成配图</span></figcaption></figure>
 
 **缓解：开启 Buffer Debloating。**
 

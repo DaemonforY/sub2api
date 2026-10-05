@@ -2,6 +2,7 @@
 title: "踩坑实验室 #21：照着网上的教程调网络缓冲区，配了不报错，也不生效"
 description: "Flink 2.0 删除的四个网络缓冲区配置项，在 2.3 里设成 abc 也能正常运行。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-21-cover.webp"}]]
 ---
 
 # 踩坑实验室 #21：照着网上的教程调网络缓冲区，配了不报错，也不生效
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-21-cover.webp" alt="Yui和Kai面对失效配置与自动调节的网络缓冲区" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai面对失效配置与自动调节的网络缓冲区<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-04）。对应课程：第四讲第三节、第九讲第五节（候选任务 1）。配套示例：`flink-notes/demos/src/main/java/study/network/RemovedOptionDemo.java`
@@ -50,6 +53,8 @@ Flink 1.x 有四个常用的网络缓冲区调优参数，很多调背压、调�
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-21-1.webp" alt="失效配置像断开的开关，网络数据仍沿管道正常流动" width="960" height="640" loading="lazy" /><figcaption>失效配置像断开的开关，网络数据仍沿管道正常流动<span>AI 生成配图</span></figcaption></figure>
+
 这四个配置项在 **Flink 2.0 已经删除**，release notes 的 "List of removed configuration options" 里有记录（`docs/content/release-notes/flink-2.0.md:1546`，四个 key 分别在 `:1622`、`:1624`、`:1627`、`:1628`）。在 2.3.0 的 `flink-core`、`flink-runtime` 源码里 grep 这四个 key，结果为 0。
 
 它们在 2.x 里变成了代码里的常量：独占 2、浮动 8、每个子分区最多 10、透支最多 20（`NettyShuffleEnvironmentConfiguration.java:325`、`:326`、`:332`、`:401`）。
@@ -61,6 +66,8 @@ Flink 1.x 有四个常用的网络缓冲区调优参数，很多调背压、调�
 ![2.0 release notes 中的删除记录，以及 2.x 里写死的常量](/bigdata-img/src/content-plan/assets/png/ep21/xhs-P4.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-21-2.webp" alt="自动缓冲区随数据流量伸缩，持续平稳承接网络数据" width="960" height="640" loading="lazy" /><figcaption>自动缓冲区随数据流量伸缩，持续平稳承接网络数据<span>AI 生成配图</span></figcaption></figure>
 
 - 升级到 2.x 时，检查配置里有没有这四个配置项，有的话可以删掉，它们不会起作用。
 - 2.x 的思路是不再手动调缓冲区的个数，而是开启 Buffer Debloating，自动调整每个缓冲区的大小。它默认关闭，需要设置 `taskmanager.network.memory.buffer-debloat.enabled: true`（`TaskManagerOptions.java:492`）。原理和实测见第四讲第八节和踩坑实验室 #05。

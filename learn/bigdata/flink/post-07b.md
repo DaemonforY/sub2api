@@ -164,7 +164,7 @@ for (long start = lastStart; start > timestamp - size; start -= slide) {
 | 值 | 含义 |
 |---|---|
 | `ALIGNED`（默认） | 所有分区的窗口同一时刻触发（`:29-34`） |
-| `RANDOM` | 每个算子实例收到第一条数据时，在 `[0, 窗口大小)` 里随机取一个偏移（`:36-46`） |
+| `RANDOM` | 每个算子实例收到第一条数据时，在 `0, 窗口大小)` 里随机取一个偏移（`:36-46`） |
 | `NATURAL` | 以收到第一条数据时的处理时间，相对于窗口起点的差作为偏移（`:48-59`） |
 
 默认的 `ALIGNED` 下，所有 key 的窗口都在同一个 Watermark 上触发，可能造成瞬时的输出高峰。`RANDOM`、`NATURAL` 可以把触发时间错开，但代价是**窗口的边界也跟着偏移了**，不同算子实例的窗口边界还不一样。所以按"自然日"、"整点"统计的场景，不能用它们。
@@ -244,7 +244,7 @@ if (windowAssigner.isEventTime() && isCleanupTime(triggerContext.window, timer.g
 }
 ```
 
-
+![每个窗口两个 Timer
 
 ---
 
@@ -265,7 +265,7 @@ protected boolean isElementLate(StreamRecord<IN> element) {                  // 
 }
 ```
 
-把一条事件时间为 `t`、所属窗口为 `[s, e)` 的数据，按它到达时的 Watermark `W` 分成四种情况（`L` 表示 `allowedLateness`）：
+把一条事件时间为 `t`、所属窗口为 `s, e)` 的数据，按它到达时的 Watermark `W` 分成四种情况（`L` 表示 `allowedLateness`）：
 
 | W 的范围 | 结局 | 源码路径 |
 |---|---|---|
@@ -274,7 +274,7 @@ protected boolean isElementLate(StreamRecord<IN> element) {                  // 
 | `W ≥ e-1+L`，配置了侧输出 | **进侧输出** | `:440-442` |
 | `W ≥ e-1+L`，没配置侧输出 | **丢弃**，`numLateRecordsDropped` 加 1 | `:444` |
 
-
+![迟到数据的四种结局
 
 ### 4.2 实测
 

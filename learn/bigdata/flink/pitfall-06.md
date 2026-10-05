@@ -2,6 +2,7 @@
 title: "踩坑实验室 #06：用了 exactly-once，数据还是重复了"
 description: "作业恢复后 Flink 会把已提交过的事务再提交一次，Committer 必须幂等，事务 ID 必须唯一。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-06-cover.webp"}]]
 ---
 
 # 踩坑实验室 #06：用了 exactly-once，数据还是重复了
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-06-cover.webp" alt="作业恢复后重复提交事务导致数据重复" width="1200" height="800" loading="eager" /><figcaption>作业恢复后重复提交事务导致数据重复<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第八讲《Source / Sink 新架构》。配套示例：`flink-notes/demos/src/main/java/study/connector/SourceSinkDemo.java` 的 `fail` 和 `fail-naive` 模式
@@ -52,6 +55,8 @@ bigdata: "flink"
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-06-1.webp" alt="Checkpoint完成后事务再次提交造成重复数据" width="960" height="640" loading="lazy" /><figcaption>Checkpoint完成后事务再次提交造成重复数据<span>AI 生成配图</span></figcaption></figure>
+
 Sink V2 的两阶段提交分两步：第一阶段 `prepareCommit` 在 Checkpoint Barrier 发给下游**之前**执行（`SinkWriterOperator.java:188-193`）；第二阶段 `commit` 在 Checkpoint **完成之后**才执行（`CommitterOperator.java:159-162`，`notifyCheckpointComplete`）。
 
 提交发生在 Checkpoint 之后，所以 Checkpoint N 完成后的那次提交，结果没有记录在任何 Checkpoint 里。如果提交完、下一个 Checkpoint 还没做，作业就挂了，恢复时用的还是 Checkpoint N，它的状态里这个事务仍是“待提交”。Flink 不知道刚才那次提交是否成功，只能再提交一次。源码 `CommitterOperator.java:135-140` 的注释写得很直白：“try to re-commit recovered transactions as quickly as possible”。这是设计如此。
@@ -59,6 +64,8 @@ Sink V2 的两阶段提交分两步：第一阶段 `prepareCommit` 在 Checkpoin
 ![提交在 Checkpoint 之后，Checkpoint 里记不下“已提交”，恢复后同一个事务会再提交一次](/bigdata-img/src/content-plan/assets/png/ep06/xhs-P4.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-06-2.webp" alt="幂等提交跳过旧事务并用唯一标识区分新数据" width="960" height="640" loading="lazy" /><figcaption>幂等提交跳过旧事务并用唯一标识区分新数据<span>AI 生成配图</span></figcaption></figure>
 
 **原则一：Committer 必须幂等。** 提交前先判断这个事务是不是已经提交过，提交过就跳过，并调用 `signalAlreadyCommitted()`（`Committer.java:100`，`CommitRequest.signalAlreadyCommitted`）：
 

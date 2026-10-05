@@ -2,6 +2,7 @@
 title: "踩坑实验室 #07：不开 Checkpoint，事务永远不提交"
 description: "两阶段提交的两步都挂在 Checkpoint 上，无界流作业不开 Checkpoint，事务型 Sink 永不提交。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-07-cover.webp"}]]
 ---
 
 # 踩坑实验室 #07：不开 Checkpoint，事务永远不提交
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-07-cover.webp" alt="无界数据流遇到未开启检查点，事务包裹堆积在提交闸门前" width="1200" height="800" loading="eager" /><figcaption>无界数据流遇到未开启检查点，事务包裹堆积在提交闸门前<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第八讲《Source / Sink 新架构》。配套示例：`flink-notes/demos/src/main/java/study/connector/SourceSinkDemo.java` 的 `unbounded`、`unbounded-nockpt` 和 `nockpt` 模式
@@ -48,6 +51,8 @@ bigdata: "flink"
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-07-1.webp" alt="检查点屏障先触发准备，再在完成后打开提交闸门" width="960" height="640" loading="lazy" /><figcaption>检查点屏障先触发准备，再在完成后打开提交闸门<span>AI 生成配图</span></figcaption></figure>
+
 两阶段提交的两步都挂在 Checkpoint 上：
 
 - 第一步 `prepareCommit` 只在 Checkpoint 时调用，位置在 Barrier 发出之前（`SinkWriterOperator.java:188-193`，`prepareSnapshotPreBarrier`）；
@@ -64,6 +69,8 @@ bigdata: "flink"
 ![CommitterOperator 只在两个时刻提交：Checkpoint 完成后，或没开 Checkpoint 时的输入结束](/bigdata-img/src/content-plan/assets/png/ep07/xhs-P4.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-07-2.webp" alt="开启并成功完成检查点后，事务数据持续通过最终提交闸门" width="960" height="640" loading="lazy" /><figcaption>开启并成功完成检查点后，事务数据持续通过最终提交闸门<span>AI 生成配图</span></figcaption></figure>
 
 用事务型 Sink 的流作业，一定要开 Checkpoint，并确认它真的在成功：
 

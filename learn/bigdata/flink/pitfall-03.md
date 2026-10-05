@@ -2,6 +2,7 @@
 title: "踩坑实验室 #03：Watermark 为什么总是差 1 毫秒？"
 description: "两个“减 1”：Watermark 是最大事件时间减乱序再减 1，窗口左闭右开，6999 不触发、7000 才触发。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-03-cover.webp"}]]
 ---
 
 # 踩坑实验室 #03：Watermark 为什么总是差 1 毫秒？
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-03-cover.webp" alt="Yui和Kai在时间河流旁观察水位线与窗口闸门" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai在时间河流旁观察水位线与窗口闸门<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第七讲《时间、Watermark 与窗口》。配套示例：`flink-notes/demos/src/main/java/study/time/WatermarkBoundaryDemo.java`
@@ -52,6 +55,8 @@ FIRE  window=[5s,10s) maxTimestamp=9.999s elements=[6s, 6.999s, 7s, 5s] watermar
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-03-1.webp" alt="Yui和Kai观察落后于最大事件时间的安全水位线" width="960" height="640" loading="lazy" /><figcaption>Yui和Kai观察落后于最大事件时间的安全水位线<span>AI 生成配图</span></figcaption></figure>
+
 **第一个“减 1”在 Watermark 上。** Watermark `T` 的含义是：时间戳**小于或等于** `T` 的数据不会再来了（`Watermark.java:27-28` 的类注释）。`forBoundedOutOfOrderness(d)` 发出的 Watermark = **目前见过的最大事件时间 − d − 1 毫秒**（`BoundedOutOfOrdernessWatermarks.java:69`）。见过的最大时间是 7000、乱序容忍 2000 时，时间戳 5000 的数据还可能到来，4999 不会再来，所以 Watermark 只能是 4999。注意这里是“见过的最大事件时间”，和机器的当前时间无关。
 
 `forMonotonousTimestamps()` 是乱序容忍为 0 的特例：`AscendingTimestampsWatermarks` 继承 `BoundedOutOfOrdernessWatermarks`，传入 `Duration.ofMillis(0)`，Watermark = 最大事件时间 − 1。
@@ -65,6 +70,8 @@ FIRE  window=[5s,10s) maxTimestamp=9.999s elements=[6s, 6.999s, 7s, 5s] watermar
 ![第一个“减 1”：见过 7000、乱序 2000，5000 还可能来，Watermark 只能是 4999
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-03-2.webp" alt="周期性水位推进让窗口闸门延迟开启并接收迟到数据" width="960" height="640" loading="lazy" /><figcaption>周期性水位推进让窗口闸门延迟开启并接收迟到数据<span>AI 生成配图</span></figcaption></figure>
 
 这不是需要“修”的问题，而是要在设计作业时把它算进去：
 

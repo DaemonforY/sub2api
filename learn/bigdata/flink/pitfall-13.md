@@ -2,6 +2,7 @@
 title: "踩坑实验室 #13：并行度从 2 改成 3，有一个子任务要读两份状态"
 description: "扩缩容时 keyed state 按 KeyGroup 区间求交集，非整数倍调整会让部分子任务读多份旧状态。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-13-cover.webp"}]]
 ---
 
 # 踩坑实验室 #13：并行度从 2 改成 3，有一个子任务要读两份状态
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-13-cover.webp" alt="扩缩容时三个新分区交接两份旧状态" width="1200" height="800" loading="eager" /><figcaption>扩缩容时三个新分区交接两份旧状态<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-03）。对应课程：第三讲（上）第五节“扩缩容：状态是怎么切开的”、第三讲（下）第四节“RocksDB 怎么切分状态”。配套示例：`flink-notes/demos/src/main/java/study/state/StateBackendDemo.java`、`flink-notes/demos/src/main/java/study/state/RescaleOverlapDemo.java`
@@ -58,6 +61,8 @@ subtask 4/4  keyGroups=[96,127] file=bd9cc665 (518588 bytes)
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-13-1.webp" alt="KeyGroup区间交集让中间子任务读取两份状态" width="960" height="640" loading="lazy" /><figcaption>KeyGroup区间交集让中间子任务读取两份状态<span>AI 生成配图</span></figcaption></figure>
+
 keyed state 按 KeyGroup 存储，KeyGroup 按连续区间分给子任务（`KeyGroupRangeAssignment.java:93`，`computeKeyGroupRangeForOperatorIndex`）。并行度 2 时，两个子任务分别管 [0,63] 和 [64,127]。
 
 扩缩容恢复时，JobManager 按新的并行度重新划分区间，再和每个旧子任务的区间求交集，相交的部分就要读（`StateAssignmentOperation.java:105` 的 `assignStates`、`:710` 的 `createKeyGroupPartitions`、`:679` 的 `extractIntersectingState`）。改成 3 之后，新的三段是 [0,42]、[43,85]、[86,127]，中间那段正好跨过了 63 和 64 的边界，所以要从两个旧文件里各读一段。改成 4 时每段 32 个 KeyGroup，正好把旧的两段各切成两半，每个新子任务只读一个文件。
@@ -70,6 +75,8 @@ keyed state 按 KeyGroup 存储，KeyGroup 按连续区间分给子任务（`Key
 - **RocksDB 状态后端**：只有一个来源时，打开后用 `deleteRange` 裁掉不属于自己的部分（`RocksDBIncrementalCheckpointUtils.java:134`，`clipDBWithKeyGroupRange`）；有多个来源时，打开一个并裁剪，再把其他来源的数据合并进来（`RocksDBIncrementalRestoreOperation.java:422`，`restoreFromMultipleStateHandles`）。
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-13-2.webp" alt="整数倍扩容可单独裁剪状态减少合并" width="960" height="640" loading="lazy" /><figcaption>整数倍扩容可单独裁剪状态减少合并<span>AI 生成配图</span></figcaption></figure>
 
 这不是一个会出错的坑：不管读几份，状态都能完整恢复，实测 1000 个 key 一个不少。它影响的是恢复时走哪条路径。
 

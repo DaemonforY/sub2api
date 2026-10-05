@@ -114,6 +114,8 @@ Enumerator 调用 `context.assignSplits(...)` 时（`SourceCoordinatorContext.ja
 
 ## 三、split 追踪：故障时怎么找回来
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-08a-1.webp" alt="故障后分片从阅读器回到枚举器并重新分配" width="960" height="640" loading="lazy" /><figcaption>故障后分片从阅读器回到枚举器并重新分配<span>AI 生成配图</span></figcaption></figure>
+
 ### 3.1 SplitAssignmentTracker
 
 `RT/runtime/source/coordinator/SplitAssignmentTracker.java` 只有两个数据结构：
@@ -186,6 +188,8 @@ Checkpoint 5 时，subtask 1 手上是 `split-1[76,80)`（下一条要读 76）�
 ---
 
 ## 四、Checkpoint 时：Coordinator 先做，并且"关门"
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-08a-2.webp" alt="检查点屏障先关闭分配通道再保存各方状态" width="960" height="640" loading="lazy" /><figcaption>检查点屏障先关闭分配通道再保存各方状态<span>AI 生成配图</span></figcaption></figure>
 
 ### 4.1 顺序
 

@@ -92,6 +92,8 @@ Source: range-source -> Map -> Sink: Writer -> Sink: Committer
 
 ## 二、两阶段提交
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-08b-1.webp" alt="两阶段提交中写入、交出与提交分离" width="960" height="640" loading="lazy" /><figcaption>两阶段提交中写入、交出与提交分离<span>AI 生成配图</span></figcaption></figure>
+
 ### 2.1 第一阶段：prepareCommit，在 Barrier 之前
 
 `RT/streaming/runtime/operators/sink/SinkWriterOperator.java`：
@@ -191,6 +193,8 @@ private void registerNextBucketInspectionTimer() {
 ---
 
 ## 三、端到端 exactly-once：Source 的进度与 Sink 的事务对上了
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/post-08b-2.webp" alt="Source进度与Sink事务在同一检查点对齐" width="960" height="640" loading="lazy" /><figcaption>Source进度与Sink事务在同一检查点对齐<span>AI 生成配图</span></figcaption></figure>
 
 ### 3.1 同一个 Checkpoint 里
 

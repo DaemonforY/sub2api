@@ -2,6 +2,7 @@
 title: "踩坑实验室 #01：数据一直在进，窗口却一个结果都不出"
 description: "一个上游没有数据，Watermark 就停在最小值，整个窗口算子被卡住；withIdleness 能解，但有副作用。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/pitfall-01-cover.webp"}]]
 ---
 
 # 踩坑实验室 #01：数据一直在进，窗口却一个结果都不出
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-01-cover.webp" alt="Yui和Kai面对被空闲上游卡住的窗口数据流" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai面对被空闲上游卡住的窗口数据流<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Flink 2.3.0 本机实测（核对日期 2026-10-02）。对应课程：第七讲《时间、Watermark 与窗口》。配套示例：`flink-notes/demos/src/main/java/study/time/NoSplitDemo.java`、`WindowDemo.java` 的 `idle` 模式
@@ -49,6 +52,8 @@ bigdata: "flink"
 
 ## 原因
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-01-1.webp" alt="多个上游取最小水位，空闲通道卡住窗口" width="960" height="640" loading="lazy" /><figcaption>多个上游取最小水位，空闲通道卡住窗口<span>AI 生成配图</span></figcaption></figure>
+
 一个算子有多个上游时，它的 Watermark 取所有上游 Watermark 的**最小值**。官方文档“Dealing With Idle Sources”一节说明了这条规则；源码在 `StatusWatermarkValve.java:273-285`，用一个小顶堆维护各个通道的 Watermark，输出的是堆顶的最小值。
 
 每个通道的 Watermark 初始值是 `Long.MIN_VALUE`（`StatusWatermarkValve.java:125`）。如果某个上游一直没有数据，它的 Watermark 就一直停在这个初始值，堆顶永远是它，整个算子的 Watermark 都不会前进，窗口永远等不到“结束”的信号。
@@ -60,6 +65,8 @@ Source 并行度大于分片数时，多出来的子任务分不到分片。Flin
 ![下游 Watermark 取所有上游的最小值，没有数据的子任务停在 MIN，把整个算子卡住](/bigdata-img/src/content-plan/assets/png/ep01/xhs-P4.webp)
 
 ## 怎么解决
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/pitfall-01-2.webp" alt="空闲分区被标记后窗口恢复，但旧数据可能迟到" width="960" height="640" loading="lazy" /><figcaption>空闲分区被标记后窗口恢复，但旧数据可能迟到<span>AI 生成配图</span></figcaption></figure>
 
 **办法一：在 `WatermarkStrategy` 上加 idleness。**
 
