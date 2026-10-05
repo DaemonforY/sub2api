@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -23,6 +24,7 @@ const (
 	learnTutorMaxQuestion  = 1000
 	learnTutorMaxReply     = 4000
 	learnTutorMaxLesson    = 8000
+	learnTutorMaxArticle   = 12000
 	learnTutorOutputTokens = 900
 )
 
@@ -42,8 +44,11 @@ type LearnTutorResult struct {
 	OwnKey           bool   `json:"own_key,omitempty"`
 }
 
+// learnArticleRe: 大数据 articles the tutor can answer on (their page path).
+var learnArticleRe = regexp.MustCompile(`^bigdata/(spark|flink|paimon)/[a-z0-9-]{1,40}$`)
+
 func validateTutor(in *LearnTutorInput) error {
-	if !learnLessonRe.MatchString(in.Lesson) {
+	if !learnLessonRe.MatchString(in.Lesson) && !learnArticleRe.MatchString(in.Lesson) {
 		return ErrLearnLessonID
 	}
 	if len(in.Messages) == 0 || len(in.Messages) > learnTutorMaxMessages {
@@ -74,8 +79,27 @@ func (s *LearnService) tutorSystemPrompt(lesson string) string {
 	if s.lessonText != nil {
 		title, text = s.lessonText(lesson)
 	}
-	if r := []rune(text); len(r) > learnTutorMaxLesson {
-		text = string(r[:learnTutorMaxLesson]) + "…"
+	article := learnArticleRe.MatchString(lesson)
+	limit := learnTutorMaxLesson
+	if article {
+		limit = learnTutorMaxArticle
+	}
+	if r := []rune(text); len(r) > limit {
+		text = string(r[:limit]) + "…"
+	}
+	if article {
+		prompt := "你是 HiveGPT「AI 学习」大数据专区的助教，熟悉 Spark、Flink、Paimon 的原理和源码。"
+		if title != "" {
+			prompt += fmt.Sprintf("学员正在读文章「%s」。", title)
+		}
+		if text != "" {
+			prompt += "下面是这篇文章的正文，回答时以它为准；文中标注的源码版本、类名和行号优先于你的记忆：\n<article>\n" + text + "\n</article>\n"
+		}
+		return prompt + `回答要求：
+- 用中文，先直接回答，再按需要补充；一般不超过 400 字，需要时给出简短的代码或源码位置。
+- 只回答和这篇文章、大数据组件的原理与源码、大数据开发和面试有关的问题；其他问题礼貌地说明你只能回答这些。
+- 文章没写到的细节，说明是你的补充，并提醒学员以对应版本的源码为准；不确定就说不确定。
+- 学员贴出报错或日志时，先说最可能的原因，再给出排查步骤。`
 	}
 	prompt := "你是 HiveGPT「AI 学习」的助教。"
 	if title != "" {

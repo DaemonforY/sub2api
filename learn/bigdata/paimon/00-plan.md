@@ -2,6 +2,7 @@
 title: "00 学习计划：从入门到 Paimon 专家"
 description: "14 周从入门到专家的 Paimon 学习路线，每周的目标、阅读材料和实验。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/00-plan-cover.webp"}]]
 ---
 
 # 00 学习计划：从入门到 Paimon 专家
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/00-plan-cover.webp" alt="Yui和Kai沿Paimon路线图进阶学习" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai沿Paimon路线图进阶学习<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 ## 总体安排
@@ -62,6 +65,8 @@ bigdata: "paimon"
 
 ## 阶段 1（第 2~3 周）：核心概念 + 写路径
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/00-plan-1.webp" alt="从快照到数据文件的写入链路" width="960" height="640" loading="lazy" /><figcaption>从快照到数据文件的写入链路<span>AI 生成配图</span></figcaption></figure>
+
 ### 任务
 - [ ] 精读 [02 章](/bigdata/paimon/02-architecture)。
 - [ ] 依次阅读核心数据结构并做笔记：`FileStore` → `KeyValue` → `io/DataFileMeta` → `manifest/ManifestEntry` → `manifest/ManifestFileMeta` → `Snapshot`（在 paimon-api）。
@@ -77,6 +82,8 @@ bigdata: "paimon"
 ---
 
 ## 阶段 2（第 4~6 周）：LSM 合并 + 提交
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/00-plan-2.webp" alt="LSM分层合并与提交流程" width="960" height="640" loading="lazy" /><figcaption>LSM分层合并与提交流程<span>AI 生成配图</span></figcaption></figure>
 
 ### 第 4 周：选文件
 - [ ] 精读 [03 章](/bigdata/paimon/03-universal-compaction)。

@@ -2,6 +2,7 @@
 title: "附录：配置速查、源码索引与调试技巧"
 description: "常用配置速查、源码索引、调试技巧和排障表。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/appendix-cover.webp"}]]
 ---
 
 # 附录：配置速查、源码索引与调试技巧
@@ -10,8 +11,12 @@ bigdata: "paimon"
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/appendix-cover.webp" alt="配置、源码与调试工具汇成排障地图" width="1200" height="800" loading="eager" /><figcaption>配置、源码与调试工具汇成排障地图<span>AI 生成配图</span></figcaption></figure>
+
 ::: v-pre
 ## A. 关键配置速查
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/appendix-1.webp" alt="旋钮控制文件大小与分桶合并策略" width="960" height="640" loading="lazy" /><figcaption>旋钮控制文件大小与分桶合并策略<span>AI 生成配图</span></figcaption></figure>
 
 ### 写入与合并
 | 配置 | 默认 | 说明 | 章节 |
@@ -111,6 +116,8 @@ bigdata: "paimon"
 | REST | `paimon-core/.../rest/RESTCatalogTest`（服务端 `RESTCatalogServer`） |
 
 ## D. 调试技巧
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/appendix-2.webp" alt="本地测试台用放大镜定位故障线索" width="960" height="640" loading="lazy" /><figcaption>本地测试台用放大镜定位故障线索<span>AI 生成配图</span></figcaption></figure>
 
 1. **单测优先**：core 的测试都用本地文件系统，无需 Flink/Spark 集群，断点最方便。
 2. **看目录**：测试里打印表路径（通常在 `@TempDir` 下），直接 `cat snapshot/snapshot-N` 看 JSON。

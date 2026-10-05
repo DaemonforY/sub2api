@@ -1076,3 +1076,28 @@ a.home-track:hover {
   justify-self: start;
   margin-top: 4px;
 }
+
+/* AI-generated illustrations on 大数据 articles */
+.ai-figure {
+  margin: 20px 0 24px;
+}
+.ai-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(76, 29, 149, 0.12);
+}
+.ai-figure figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--learn-muted);
+}
+.ai-figure figcaption span {
+  flex-shrink: 0;
+  color: #a1a1aa;
+}

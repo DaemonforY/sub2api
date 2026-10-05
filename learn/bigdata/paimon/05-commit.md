@@ -2,6 +2,7 @@
 title: "05 提交：FileStoreCommitImpl 的冲突检测与重试"
 description: "FileStoreCommitImpl 的乐观并发提交：冲突检测、重试和幂等。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/05-commit-cover.webp"}]]
 ---
 
 # 05 提交：FileStoreCommitImpl 的冲突检测与重试
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/05-commit-cover.webp" alt="原子抢快照、冲突检测与重试" width="1200" height="800" loading="eager" /><figcaption>原子抢快照、冲突检测与重试<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码：`operation/FileStoreCommitImpl.java`、`operation/commit/ConflictDetection.java`、`PrimaryKeyConflictDetection.java`、`CommitScanner.java`、`CommitRollback.java`、`catalog/RenamingSnapshotCommit.java`、`manifest/FileEntry.java`
@@ -50,6 +53,8 @@ tryCommitOnce()  单次尝试
 
 ## 2. 重试循环
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/05-commit-1.webp" alt="抢号失败会退避重试，不等于冲突" width="960" height="640" loading="lazy" /><figcaption>抢号失败会退避重试，不等于冲突<span>AI 生成配图</span></figcaption></figure>
+
 ```java
 if (System.currentTimeMillis() - startMillis > options.commitTimeout()
         || retryCount >= options.commitMaxRetries()) {
@@ -69,6 +74,8 @@ retryWaiter.retryWait(retryCount);
 会重试的结果只有：`CommitFailRetryResult`（抢号失败或原子提交异常）和 `RetryCommitResult.forRollback`（回滚了冲突的 compact 快照）。
 
 ## 3. tryCommitOnce 四步
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/05-commit-2.webp" alt="删除同一旧文件会触发真实冲突" width="960" height="640" loading="lazy" /><figcaption>删除同一旧文件会触发真实冲突<span>AI 生成配图</span></figcaption></figure>
 
 ### ① 幂等检查
 上一次原子提交抛异常（如网络超时）时，快照可能其实已写成功：

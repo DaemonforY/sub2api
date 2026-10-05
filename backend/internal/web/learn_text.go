@@ -18,14 +18,24 @@ var (
 	learnSpaceRe   = regexp.MustCompile(`[ \t\r\f\v]+`)
 	learnNewlineRe = regexp.MustCompile(`\n\s*\n+`)
 	learnLessonRe  = regexp.MustCompile(`^[a-z][0-9]{1,2}$`)
+	learnArticleRe = regexp.MustCompile(`^bigdata/(spark|flink|paimon)/[a-z0-9-]{1,40}$`)
 	learnTextCache sync.Map
 )
 
 type learnText struct{ title, text string }
 
-// lessonTextFrom reads learn/<track>/<id>.html from fsys.
+// lessonTextFrom reads learn/<track>/<id>.html (a lesson) or learn/<path>.html (a 大数据 article).
 func lessonTextFrom(fsys fs.FS, lessonID string) (string, string) {
-	if fsys == nil || !learnLessonRe.MatchString(lessonID) {
+	if fsys == nil {
+		return "", ""
+	}
+	file := ""
+	switch {
+	case learnLessonRe.MatchString(lessonID):
+		file = "learn/" + lessonID[:1] + "/" + lessonID + ".html"
+	case learnArticleRe.MatchString(lessonID):
+		file = "learn/" + lessonID + ".html"
+	default:
 		return "", ""
 	}
 	if v, ok := learnTextCache.Load(lessonID); ok {
@@ -33,7 +43,7 @@ func lessonTextFrom(fsys fs.FS, lessonID string) (string, string) {
 			return t.title, t.text
 		}
 	}
-	raw, err := fs.ReadFile(fsys, "learn/"+lessonID[:1]+"/"+lessonID+".html")
+	raw, err := fs.ReadFile(fsys, file)
 	if err != nil {
 		return "", ""
 	}

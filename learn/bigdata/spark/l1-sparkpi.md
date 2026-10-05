@@ -2,6 +2,7 @@
 title: "L1 练习 1：跟踪 SparkPi —— 一个 Job 的一生"
 description: "在 IDEA 里断点跟踪 SparkPi，从 rdd.reduce() 一路跟到 Executor 执行 Task 再回到 Driver。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/l1-sparkpi-cover.webp"}]]
 ---
 
 # L1 练习 1：跟踪 SparkPi —— 一个 Job 的一生
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/l1-sparkpi-cover.webp" alt="Yui 和 Kai 追踪一个 Spark Job 的全流程" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 追踪一个 Spark Job 的全流程<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 目标：在 IDEA 中断点跟踪 `SparkPi`，从 `rdd.reduce()` 一路跟到 Executor 执行 Task，再跟回结果返回 Driver，最后画出时序图。
@@ -18,6 +21,8 @@ bigdata: "spark"
 ---
 
 ## 第 0 步：先看"标准答案" —— 真实线程栈
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/l1-sparkpi-1.webp" alt="多线程通过队列和消息接力完成 Job" width="960" height="640" loading="lazy" /><figcaption>多线程通过队列和消息接力完成 Job<span>AI 生成配图</span></figcaption></figure>
 
 我在 Job 运行中途抓了一次线程栈（完整内容见 [expected-output.txt](https://github.com/DaemonforY/spark-source-notes/blob/main/experiments/01-thread-stacks/expected-output.txt)），精简后如下：
 
@@ -150,6 +155,8 @@ bigdata: "spark"
 ---
 
 ## 第 5 步：时序图（先自己画，再对照）
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/l1-sparkpi-2.webp" alt="Job 时序像接力赛一样跨线程推进" width="960" height="640" loading="lazy" /><figcaption>Job 时序像接力赛一样跨线程推进<span>AI 生成配图</span></figcaption></figure>
 :::
 
 <Mermaid code="c2VxdWVuY2VEaWFncmFtCiAgICBhdXRvbnVtYmVyCiAgICBwYXJ0aWNpcGFudCBNIGFzIG1haW4g57q/56iLPGJyLz4o55So5oi35Luj56CBKQogICAgcGFydGljaXBhbnQgRCBhcyBkYWctc2NoZWR1bGVyLWV2ZW50LWxvb3A8YnIvPihEQUdTY2hlZHVsZXIpCiAgICBwYXJ0aWNpcGFudCBUIGFzIFRhc2tTY2hlZHVsZXJJbXBsCiAgICBwYXJ0aWNpcGFudCBCIGFzIExvY2FsRW5kcG9pbnQ8YnIvPihSUEMgZGlzcGF0Y2hlcikKICAgIHBhcnRpY2lwYW50IEUgYXMgRXhlY3V0b3Ig57q/56iL5rGgPGJyLz4oVGFza1J1bm5lcikKICAgIHBhcnRpY2lwYW50IFIgYXMgdGFzay1yZXN1bHQtZ2V0dGVyCgogICAgTS0+Pk06IHJkZC5yZWR1Y2UoKSDihpIgc2MucnVuSm9iKCkKICAgIE0tPj5EOiBwb3N0KEpvYlN1Ym1pdHRlZCkg8J+UgAogICAgTm90ZSBvdmVyIE06IGF3YWl0UmVhZHkoKSDpmLvloZ4KICAgIEQtPj5EOiBoYW5kbGVKb2JTdWJtaXR0ZWQ8YnIvPmNyZWF0ZVJlc3VsdFN0YWdlIOKGkiBzdWJtaXRTdGFnZQogICAgRC0+PkQ6IHN1Ym1pdE1pc3NpbmdUYXNrczxici8+KOavj+S4quWIhuWMuuS4gOS4qiBSZXN1bHRUYXNrKQogICAgRC0+PlQ6IHN1Ym1pdFRhc2tzKFRhc2tTZXQpCiAgICBULT4+VDog5Yib5bu6IFRhc2tTZXRNYW5hZ2VyIOWKoOWFpeiwg+W6puaxoAogICAgVC0+PkI6IHJldml2ZU9mZmVycyDihpIgc2VuZChSZXZpdmVPZmZlcnMpIPCflIAKICAgIEItPj5UOiByZXNvdXJjZU9mZmVycyjnqbrpl7LmoLgpCiAgICBULS0+PkI6IOWIhumFjeWlveeahCBUYXNrRGVzY3JpcHRpb24KICAgIEItPj5FOiBleGVjdXRvci5sYXVuY2hUYXNrIPCflIAKICAgIEUtPj5FOiBUYXNrUnVubmVyLnJ1biDihpIgVGFzay5ydW48YnIvPuKGkiBSZXN1bHRUYXNrLnJ1blRhc2s8YnIvPuKGkiByZGQuaXRlcmF0b3Ig4oaSIGNvbXB1dGUgKHBpcGVsaW5lKQogICAgRS0+PkI6IHN0YXR1c1VwZGF0ZShGSU5JU0hFRCwg57uT5p6cKQogICAgQi0+PlQ6IHN0YXR1c1VwZGF0ZQogICAgVC0+PlI6IGVucXVldWVTdWNjZXNzZnVsVGFzayDwn5SACiAgICBSLT4+VDogaGFuZGxlU3VjY2Vzc2Z1bFRhc2sKICAgIFQtPj5EOiB0YXNrRW5kZWQg4oaSIHBvc3QoQ29tcGxldGlvbkV2ZW50KSDwn5SACiAgICBELT4+RDogaGFuZGxlVGFza0NvbXBsZXRpb248YnIvPuKGkiBKb2JXYWl0ZXIudGFza1N1Y2NlZWRlZDxici8+4oaSIG1lcmdlUmVzdWx0CiAgICBELS0+Pk06IGNvbXBsZXRpb25GdXR1cmUg5a6M5oiQ77yM5ZSk6YaSCiAgICBNLT4+TTog5omT5Y2wIFBpIGlzIHJvdWdobHkgMy4xNC4uLgo=" />

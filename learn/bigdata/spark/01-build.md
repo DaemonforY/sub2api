@@ -2,6 +2,7 @@
 title: "源码通关 01｜从零编译 Spark 4.2.0 源码，国内踩坑全记录"
 description: "在国内网络下从零编译 Spark 4.2.0 源码、导入 IDEA，以及编译中遇到的坑和解决办法。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/01-build-cover.webp"}]]
 ---
 
 # 源码通关 01｜从零编译 Spark 4.2.0 源码，国内踩坑全记录
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/01-build-cover.webp" alt="Yui 和 Kai 闯关编译 Spark 源码" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 闯关编译 Spark 源码<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > X老师读源码 · 《Spark 源码通关》第 1 期
@@ -68,6 +71,8 @@ java -version   # 确认输出是 17
 > Linux 用户直接把 `JAVA_HOME` 指向 JDK 17 的安装目录即可。
 
 ## 二、拉取源码
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/01-build-1.webp" alt="用部分克隆轻装拉取庞大源码" width="960" height="640" loading="lazy" /><figcaption>用部分克隆轻装拉取庞大源码<span>AI 生成配图</span></figcaption></figure>
 
 ### 1. 先看有哪些版本
 
@@ -194,6 +199,8 @@ export MAVEN_OPTS="-Xss64m -Xmx4g -XX:ReservedCodeCacheSize=1g"
 > 💡 **一个容易混淆的点**：`-DskipTests` 只跳过运行测试，`-Dmaven.test.skip=true` 才是连测试代码都不编译。但 Spark 的一些模块依赖其他模块的测试 jar（test-jar），用后者可能导致编译失败。**用 `-DskipTests` 就好**。
 
 ## 五、坑 2：编译进程被杀了三次
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/01-build-2.webp" alt="镜像加速与限内存解决编译卡点" width="960" height="640" loading="lazy" /><figcaption>镜像加速与限内存解决编译卡点<span>AI 生成配图</span></figcaption></figure>
 
 ### 现象
 

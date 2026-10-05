@@ -2,6 +2,7 @@
 title: "勘误与版本说明"
 description: "教程的勘误记录和源码 / 实验的版本说明。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/errata-cover.webp"}]]
 ---
 
 # 勘误与版本说明
@@ -10,10 +11,14 @@ bigdata: "paimon"
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/errata-cover.webp" alt="Yui和Kai整理版本与勘误档案" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai整理版本与勘误档案<span>AI 生成配图</span></figcaption></figure>
+
 ::: v-pre
 准确是本教程的底线。发现错误请提 Issue（注明章节、原文、你认为正确的说法和依据），确认后会在这里记录并致谢。
 
 ## 版本基线
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/errata-1.webp" alt="用基准尺对齐源码与实验版本" width="960" height="640" loading="lazy" /><figcaption>用基准尺对齐源码与实验版本<span>AI 生成配图</span></figcaption></figure>
 
 | 内容 | 基于 |
 |---|---|
@@ -30,10 +35,13 @@ bigdata: "paimon"
 
 ## 勘误记录
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/errata-2.webp" alt="在档案馆给错误记录贴修补标签" width="960" height="640" loading="lazy" /><figcaption>在档案馆给错误记录贴修补标签<span>AI 生成配图</span></figcaption></figure>
+
 | 日期 | 位置 | 原文 | 更正 | 致谢 |
 |---|---|---|---|---|
 | 2026-10-02 | `labs/README.md` 依赖说明、`labs/pom.xml` | 嵌入式运行需要 `flink-connector-base` 和 `flink-connector-files` | `flink-connector-files` 已 shade 了 `flink-connector-base` 的类，只需前者；单独加 `connector-base` 是多余的（实验 5 场景 3~5 验证） | 自查（实验 5） |
 | 2026-10-02 | `labs/README.md` 依赖说明 | 这些依赖“都是 Flink 发行版 `lib/` 里本来就有的” | Flink 发行版 `lib/` 自带 log4j2 和 `flink-connector-files`，**不带 Hadoop**（Flink 1.20.1 `flink-dist/.../bin.xml`），生产部署需自行提供 Hadoop | 自查（实验 5） |
 | 2026-10-02 | `02-paimon-core整体架构.md` 第 4 节写入流程 | 写缓冲“缓冲满 → flushWriteBuffer()”写出 L0 文件 | 默认 `write-buffer-spillable = true`，缓冲满时先溢写到本地磁盘、提交前统一归并成一个 L0 文件；只有关闭溢写才会提前刷盘（`labs/sql/lab04/compare-buffer-full.sql`：可溢写 1 个文件、关闭溢写 20 个文件）。正常情况下 L0 文件在 `prepareCommit` 时生成（`labs/jdb-stacks.sh` 抓到的调用栈） | 自查（S1 第 5 期、S2 第 1 讲） |
 | 2026-10-04 | `07-Lookup-Changelog.md` 第 1 节 `lookup-wait` | `compactNotCompleted()` 中 `needLookup && L0 非空` 视为未完成，`prepareCommit` 会等它 | `lookup-wait` 的生效位置是 Flink sink：`StoreSinkWrite.java:146` 把 `prepareCommitWaitCompaction()`（需要 lookup 且 `lookup-wait`）作为每次 `prepareCommit` 的 `waitCompaction`；`compactNotCompleted()` 用于判断写入器能否被清理 | 自查（S2 第 8 讲） |
+| 2026-10-05 | `08-FlinkSink与Checkpoint提交.md` 第 4 节故障恢复 | committer 恢复时用 `RestoreAndFailCommittableStateManager`，补提交后一律故意失败一次 | 只有 `FlinkWriteSink` 默认实现（主键表等）用 `RestoreAndFail…`；无桶 Append 表（`RowAppendTableSink`）和 postpone bucket 表用 `RestoreCommittableStateManager`，只补提交不故意失败（实验 11 实测） | 自查（S2 第 9 讲） |
 :::

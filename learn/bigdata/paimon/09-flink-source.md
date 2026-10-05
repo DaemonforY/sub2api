@@ -2,6 +2,7 @@
 title: "09 FlinkSource 流式读取与 consumer-id"
 description: "Paimon 的 Flink 流式读取：增量 split 的生成、consumer-id 与过期保护。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/09-flink-source-cover.webp"}]]
 ---
 
 # 09 FlinkSource 流式读取与 consumer-id
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/09-flink-source-cover.webp" alt="Yui 和 Kai 追踪快照河流读取分片" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 追踪快照河流读取分片<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码：flink 侧 `flink/source/`：`FlinkSourceBuilder`、`ContinuousFileStoreSource`、`ContinuousFileSplitEnumerator`、`FileStoreSourceReader`、`FileStoreSourceSplitReader`、`FileStoreSourceSplitState`、`ConsumerProgressCalculator`、`operator/MonitorSource`、`BaseDataTableSource`；core 侧 `table/source/DataTableStreamScan`、`snapshot/*FollowUpScanner`、`utils/NextSnapshotFetcher`、`table/ExpireSnapshotsImpl`
@@ -44,6 +47,8 @@ JobManager                                          TaskManager × N
 | **其它（默认）** | **`ContinuousFileStoreSource` + `ContinuousFileSplitEnumerator`** |
 
 ## 2. 核心：`DataTableStreamScan.plan()` 两阶段
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/09-flink-source-1.webp" alt="两阶段扫描：先定起点再逐个追快照" width="960" height="640" loading="lazy" /><figcaption>两阶段扫描：先定起点再逐个追快照<span>AI 生成配图</span></figcaption></figure>
 
 ```java
 if (nextSnapshotId == null) return tryFirstPlan();   // 阶段一：起点
@@ -94,6 +99,8 @@ while (true) {
 - changelog 独立生命周期时退回读 changelog。
 
 ## 3. Enumerator：发现、反压、分配
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/09-flink-source-2.webp" alt="枚举器按需发现分片并按桶分配" width="960" height="640" loading="lazy" /><figcaption>枚举器按需发现分片并按桶分配<span>AI 生成配图</span></figcaption></figure>
 
 ### 定时 + 按需发现
 ```java

@@ -2,6 +2,7 @@
 title: "04 合并执行：MergeTreeCompactTask"
 description: "MergeTreeCompactTask 的执行：哪些文件直接升级层级，哪些需要重写合并。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/04-compact-task-cover.webp"}]]
 ---
 
 # 04 合并执行：MergeTreeCompactTask
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/04-compact-task-cover.webp" alt="大文件升层，小文件归并重写" width="1200" height="800" loading="eager" /><figcaption>大文件升层，小文件归并重写<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码：`mergetree/compact/MergeTreeCompactTask.java`、`IntervalPartition.java`、`MergeTreeCompactRewriter.java`、`mergetree/MergeTreeReaders.java`、`mergetree/MergeSorter.java`
@@ -36,6 +39,8 @@ prepareCommit() → compactIncrement → 提交时 before 记 DELETE、after 记
 
 ## 2. 构造时先分区：`IntervalPartition`
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/04-compact-task-1.webp" alt="按区间切成独立段和有序车队" width="960" height="640" loading="lazy" /><figcaption>按区间切成独立段和有序车队<span>AI 生成配图</span></figcaption></figure>
+
 ```java
 this.partitioned = new IntervalPartition(unit.files(), keyComparator).partition();
 ```
@@ -46,6 +51,8 @@ this.partitioned = new IntervalPartition(unit.files(), keyComparator).partition(
 结果类型：`List<List<SortedRun>>`（外层 section，内层需要归并的 run）。
 
 ## 3. `doCompact()`：逐 section 决定升级还是重写
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/04-compact-task-2.webp" alt="重叠小文件重写，孤立文件升层" width="960" height="640" loading="lazy" /><figcaption>重叠小文件重写，孤立文件升层<span>AI 生成配图</span></figcaption></figure>
 
 ```java
 for (List<SortedRun> section : partitioned) {

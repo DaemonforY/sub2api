@@ -2,6 +2,7 @@
 title: "第 5 讲：存储体系"
 description: "BlockManager 存储体系：存储级别、cache 的实现、广播变量的分块传输。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-05-storage-cover.webp"}]]
 ---
 
 # 第 5 讲：存储体系
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-05-storage-cover.webp" alt="Yui和Kai在多层存储中管理缓存、广播与Shuffle数据块" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai在多层存储中管理缓存、广播与Shuffle数据块<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`core/…` = `core/src/main/scala/org/apache/spark/`
@@ -92,6 +95,8 @@ val subDirId = (hash / localDirs.length) % subDirsPerLocalDir    // 选哪个子
 ---
 
 ## 3. 一个缓存块的一生：从 cache() 到读取
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-05-storage-1.webp" alt="Yui追踪缓存分区从首次计算写入到本地命中的完整生命周期" width="960" height="640" loading="lazy" /><figcaption>Yui追踪缓存分区从首次计算写入到本地命中的完整生命周期<span>AI 生成配图</span></figcaption></figure>
 
 ### 3.1 读取路径
 
@@ -189,6 +194,8 @@ Dataset.cache() -> MEMORY_AND_DISK   （由 spark.sql.defaultCacheStorageLevel �
 ---
 
 ## 5. 广播变量：TorrentBroadcast
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-05-storage-2.webp" alt="广播变量被分块后由中心节点分发并在各Executor共享" width="960" height="640" loading="lazy" /><figcaption>广播变量被分块后由中心节点分发并在各Executor共享<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 为什么需要广播
 

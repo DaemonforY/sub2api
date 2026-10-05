@@ -2,6 +2,7 @@
 title: "第 8 讲：Spark SQL 与 Catalyst"
 description: "Spark SQL 与 Catalyst：解析、分析、优化、物理计划四个阶段，以及实际生效的优化规则。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-08-catalyst-cover.webp"}]]
 ---
 
 # 第 8 讲：Spark SQL 与 Catalyst
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-08-catalyst-cover.webp" alt="SQL 经四阶段变成可执行计划" width="1200" height="800" loading="eager" /><figcaption>SQL 经四阶段变成可执行计划<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`catalyst/…` = `sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/`，`execution/…` = `sql/core/src/main/scala/org/apache/spark/sql/execution/`
@@ -53,6 +56,8 @@ Spark 能看懂整个查询的结构：只需要两列（可以只读这两列�
 ---
 
 ## 2. 全景：一条 SQL 的旅程
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-08-catalyst-1.webp" alt="QueryExecution 串起 SQL 全流程" width="960" height="640" loading="lazy" /><figcaption>QueryExecution 串起 SQL 全流程<span>AI 生成配图</span></figcaption></figure>
 
 ```
 SQL 文本
@@ -104,6 +109,8 @@ logical → analyzed → commandExecuted → normalized → withCachedData → o
 ---
 
 ## 3. Catalyst 的地基：树和规则
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-08-catalyst-2.webp" alt="Catalyst 用树和规则改写计划" width="960" height="640" loading="lazy" /><figcaption>Catalyst 用树和规则改写计划<span>AI 生成配图</span></figcaption></figure>
 
 ### 3.1 一切皆树：TreeNode
 

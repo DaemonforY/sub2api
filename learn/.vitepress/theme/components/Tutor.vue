@@ -5,8 +5,14 @@ import { useData } from 'vitepress'
 import { ApiError, QUOTA_REASONS, askTutor, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, token, type RunMessage } from '../api'
 import OwnKeyPicker from './OwnKeyPicker.vue'
 
-const { frontmatter } = useData()
-const lesson = computed(() => (frontmatter.value.lesson ? String(frontmatter.value.lesson) : ''))
+const { frontmatter, page } = useData()
+// A lesson, or a 大数据 article (its page path, e.g. bigdata/spark/lecture-03-shuffle).
+const article = computed(() => !!frontmatter.value.bigdata)
+const lesson = computed(() => {
+  if (frontmatter.value.lesson) return String(frontmatter.value.lesson)
+  if (article.value) return page.value.relativePath.replace(/\.md$/, '')
+  return ''
+})
 const open = ref(false)
 const enabled = ref<boolean | null>(null)
 const signedIn = ref(false)
@@ -101,14 +107,15 @@ function restart() {
     <div v-if="open" class="tutor" data-testid="tutor">
       <div class="tutor-head">
         <strong>AI 助教</strong>
-        <span class="runbox-note">只回答和这节课相关的问题</span>
+        <span class="runbox-note">{{ article ? '只回答和这篇文章、大数据相关的问题' : '只回答和这节课相关的问题' }}</span>
         <span v-if="signedIn && enabled && progress.tutorLeft !== null" class="runbox-quota">
           {{ progress.tutorLeft === 0 && ownKey.id ? `用你的 Key「${ownKey.name}」（正常计费）` : `今日免费 ${progress.tutorLeft} 问` }}
         </span>
       </div>
       <div ref="box" class="tutor-body">
         <p v-if="!messages.length" class="runbox-note">
-          看不懂哪一段、代码报错、想知道怎么用到自己的项目里，都可以问。助教会结合这节课的内容回答。
+          <template v-if="article">哪段源码没看懂、某个机制在面试里怎么讲、线上遇到的问题和这篇有没有关系，都可以问。助教会结合这篇文章回答。</template>
+          <template v-else>看不懂哪一段、代码报错、想知道怎么用到自己的项目里，都可以问。助教会结合这节课的内容回答。</template>
         </p>
         <div v-for="(m, i) in messages" :key="i" :class="['runbox-msg', m.role]">{{ m.content || (busy ? '思考中…' : '') }}</div>
         <OwnKeyPicker v-if="quotaOut" what="提问" @chosen="send(true)" />

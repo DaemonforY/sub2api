@@ -2,6 +2,7 @@
 title: "第 4 讲：内存管理"
 description: "统一内存管理：执行内存与存储内存的划分、互相借用的规则，以及堆外内存。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-04-memory-cover.webp"}]]
 ---
 
 # 第 4 讲：内存管理
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-04-memory-cover.webp" alt="Yui和Kai管理Executor内存城堡" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai管理Executor内存城堡<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`core/…` = `core/src/main/scala/org/apache/spark/`
@@ -94,6 +97,8 @@ JVM 堆（Runtime.maxMemory，通常就是 spark.executor.memory）
 
 ## 3. Storage 和 Execution 怎么互相借：不对称的借用规则
 
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-04-memory-1.webp" alt="Storage与Execution软边界互相借用" width="960" height="640" loading="lazy" /><figcaption>Storage与Execution软边界互相借用<span>AI 生成配图</span></figcaption></figure>
+
 统一内存模型的核心是：**Storage 和 Execution 之间的边界是"软"的**，空闲时可以互相借用。但两个方向的规则**不对称**。
 
 ### 3.1 Storage 借 Execution：只能借空闲的
@@ -155,6 +160,8 @@ val memoryReclaimableFromStorage = math.max(
 ---
 
 ## 4. 多个 Task 怎么分 Execution 内存：1/2N 到 1/N
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-04-memory-2.webp" alt="多个Task按公平份额争用执行内存" width="960" height="640" loading="lazy" /><figcaption>多个Task按公平份额争用执行内存<span>AI 生成配图</span></figcaption></figure>
 
 一个 Executor 有多个核，就会同时跑多个 Task，它们共享同一个 Execution 池。
 

@@ -2,6 +2,7 @@
 title: "Apache Spark 源码学习路线：从入门到 Committer"
 description: "L0 预备到 L4 专家五个阶段：每阶段读哪些源码、做哪些练习、怎样参与社区。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/roadmap-cover.webp"}]]
 ---
 
 # Apache Spark 源码学习路线：从入门到 Committer
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/roadmap-cover.webp" alt="Yui 和 Kai 攀登 Spark 源码进阶塔" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 攀登 Spark 源码进阶塔<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于本地源码 `opensource-codes/spark`（分支 `learn-v4.2.0`），文中路径均已在该版本中核实。
@@ -45,6 +48,8 @@ bigdata: "spark"
 
 ## L1 入门（1–2 个月）
 
+<figure class="ai-figure"><img src="/bigdata-img/spark/roadmap-1.webp" alt="Yui调试任务列车，理解作业提交到执行" width="960" height="640" loading="lazy" /><figcaption>Yui调试任务列车，理解作业提交到执行<span>AI 生成配图</span></figcaption></figure>
+
 ### 目标
 会用 RDD / DataFrame / SQL API，看懂 Spark UI，能在 IDE 里调试源码。
 
@@ -73,6 +78,8 @@ bigdata: "spark"
 ---
 
 ## L2 中级（3–4 个月）：吃透 Spark Core
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/roadmap-2.webp" alt="调度器把作业拆成阶段并分派任务" width="960" height="640" loading="lazy" /><figcaption>调度器把作业拆成阶段并分派任务<span>AI 生成配图</span></figcaption></figure>
 
 ### 模块与源码
 

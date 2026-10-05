@@ -2,6 +2,7 @@
 title: "第 7 讲：容错机制"
 description: "容错机制：Task 重试、Executor 丢失、FetchFailed 与 Stage 重算、Checkpoint。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-07-fault-tolerance-cover.webp"}]]
 ---
 
 # 第 7 讲：容错机制
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-07-fault-tolerance-cover.webp" alt="Spark容错机制全景比喻" width="1200" height="800" loading="eager" /><figcaption>Spark容错机制全景比喻<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`core/…` = `core/src/main/scala/org/apache/spark/`
@@ -45,6 +48,8 @@ bigdata: "spark"
 ---
 
 ## 2. Task 级别：重试
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-07-fault-tolerance-1.webp" alt="失败任务被重新派发执行" width="960" height="640" loading="lazy" /><figcaption>失败任务被重新派发执行<span>AI 生成配图</span></figcaption></figure>
 
 ### 2.1 实验 A：重试几次
 
@@ -188,6 +193,8 @@ case resultStage: ResultStage if resultStage.activeJob.isDefined =>
 ---
 
 ## 5. Checkpoint：切断血缘
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-07-fault-tolerance-2.webp" alt="Checkpoint切断过长血缘" width="960" height="640" loading="lazy" /><figcaption>Checkpoint切断过长血缘<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 为什么需要
 

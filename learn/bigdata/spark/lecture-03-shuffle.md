@@ -2,6 +2,7 @@
 title: "第 3 讲：Shuffle 原理"
 description: "Shuffle 的写和读：三种 ShuffleWriter 的选择条件、溢写与合并、Shuffle 读取流程。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-03-shuffle-cover.webp"}]]
 ---
 
 # 第 3 讲：Shuffle 原理
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-03-shuffle-cover.webp" alt="Yui 和 Kai 在仓库中演示 Spark Shuffle 全流程" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 在仓库中演示 Spark Shuffle 全流程<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`core/…` = `core/src/main/scala/org/apache/spark/`
@@ -25,6 +28,8 @@ bigdata: "spark"
 ---
 
 ## 1. Shuffle 是什么，为什么贵
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-03-shuffle-1.webp" alt="按 key 打散并分发数据，展示 Shuffle 的昂贵开销" width="960" height="640" loading="lazy" /><figcaption>按 key 打散并分发数据，展示 Shuffle 的昂贵开销<span>AI 生成配图</span></figcaption></figure>
 
 第 1 讲说过：宽依赖意味着父分区的数据要**按 key 打散**，分发给多个子分区。这个"打散 + 分发"的过程就是 **Shuffle**。
 
@@ -95,6 +100,8 @@ Hash Shuffle 的做法很直接：**每个 Map Task 为每个 Reduce 分区各�
 ---
 
 ## 3. Map 端输出：数据文件 + 索引文件
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-03-shuffle-2.webp" alt="数据文件配索引文件，Reduce 按偏移读取对应片段" width="960" height="640" loading="lazy" /><figcaption>数据文件配索引文件，Reduce 按偏移读取对应片段<span>AI 生成配图</span></figcaption></figure>
 
 文件命名在 `BlockId.scala` 中定义：
 

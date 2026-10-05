@@ -2,6 +2,7 @@
 title: "第 10 讲：AQE、DataSource V2 与 Spark Connect"
 description: "AQE 自适应执行、DataSource V2 接口和 Spark Connect 的源码实现。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-10-aqe-dsv2-cover.webp"}]]
 ---
 
 # 第 10 讲：AQE、DataSource V2 与 Spark Connect
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-10-aqe-dsv2-cover.webp" alt="Yui 和 Kai 展示 Spark 三大现代化能力。" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 展示 Spark 三大现代化能力。<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`adaptive/…` = `sql/core/src/main/scala/org/apache/spark/sql/execution/adaptive/`，`connector/…` = `sql/catalyst/src/main/java/org/apache/spark/sql/connector/`
@@ -47,6 +50,8 @@ bigdata: "spark"
 | 2020-12，**Spark 3.2** | **AQE 默认开启** | `[SPARK-33679] Enable spark.sql.adaptive.enabled by default` |
 
 ## 3. 工作原理
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-10-aqe-dsv2-1.webp" alt="AQE 根据真实数据重规划查询路径。" width="960" height="640" loading="lazy" /><figcaption>AQE 根据真实数据重规划查询路径。<span>AI 生成配图</span></figcaption></figure>
 
 开启 AQE 时（`spark.sql.adaptive.enabled`，默认 `true`），第 8 讲的准备规则 `InsertAdaptiveSparkPlan` 会把整个物理计划包进一个 **`AdaptiveSparkPlanExec`**。它的执行过程：
 
@@ -183,6 +188,8 @@ Join 阶段的 Task 从 20 个变成 **23 个**：那个倾斜分区被拆成了
 | 🆕 **Spark 4.1** | **Join 下推**、Variant 字段提取下推 | `SupportsPushDownJoin`、`SupportsPushDownVariantExtractions` `@since 4.1.0` |
 
 ## 7. 接口全景
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-10-aqe-dsv2-2.webp" alt="V2 让外部数据源自己完成更多计算。" width="960" height="640" loading="lazy" /><figcaption>V2 让外部数据源自己完成更多计算。<span>AI 生成配图</span></figcaption></figure>
 
 接口都在 `connector/` 下，按职责分三块：
 

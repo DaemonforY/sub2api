@@ -2,6 +2,7 @@
 title: "Flink 源码导读 09：Source / Sink 新架构 —— FLIP-27 与 Sink V2"
 description: "FLIP-27 新 Source 架构（SplitEnumerator / SourceReader）与新版 Sink 的两阶段提交。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/09-source-sink-cover.webp"}]]
 ---
 
 # Flink 源码导读 09：Source / Sink 新架构 —— FLIP-27 与 Sink V2
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/09-source-sink-cover.webp" alt="Yui 和 Kai 展示 Source 与 Sink 新架构全景" width="1200" height="800" loading="eager" /><figcaption>Yui 和 Kai 展示 Source 与 Sink 新架构全景<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -65,6 +68,8 @@ bigdata: "flink"
 ---
 
 ## 2. JM 侧：SourceCoordinator
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/09-source-sink-1.webp" alt="Enumerator 在 JM 分配 split 并记录检查点" width="960" height="640" loading="lazy" /><figcaption>Enumerator 在 JM 分配 split 并记录检查点<span>AI 生成配图</span></figcaption></figure>
 
 ### 2.1 它从哪里来
 
@@ -223,6 +228,8 @@ split 状态存在一个名为 `"SourceReaderState"` 的 **operator state**（`L
 ---
 
 ## 4. Sink V2：Writer + Committer
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/09-source-sink-2.webp" alt="Sink Writer 预提交事务，Committer 幂等提交" width="960" height="640" loading="lazy" /><figcaption>Sink Writer 预提交事务，Committer 幂等提交<span>AI 生成配图</span></figcaption></figure>
 
 ### 4.1 API：按能力组合接口
 

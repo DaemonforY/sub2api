@@ -2,6 +2,7 @@
 title: "08 FlinkSink 与 Checkpoint 两阶段提交"
 description: "Paimon 的 Flink Sink：写入、PrepareCommit 与 Checkpoint 配合的两阶段提交，保证 exactly-once。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/08-flink-sink-cover.webp"}]]
 ---
 
 # 08 FlinkSink 与 Checkpoint 两阶段提交
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/08-flink-sink-cover.webp" alt="两阶段提交守护精确一次写入" width="1200" height="800" loading="eager" /><figcaption>两阶段提交守护精确一次写入<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码（`paimon-flink/paimon-flink-common/.../flink/sink/`）：`FlinkSink`、`PrepareCommitOperator`、`TableWriteOperator`、`StoreSinkWriteImpl`、`CommitterOperator`、`StoreCommitter`、`RestoreAndFailCommittableStateManager`、`StateUtils`；core 中 `table/sink/TableCommitImpl`
@@ -36,6 +39,8 @@ Source ──(按 partition/bucket shuffle)──► Writer × N ──► [Chan
 - **不支持 unaligned checkpoint**（coordinator commit 模式除外）：committable 在 barrier 之前发出，对齐 barrier 才能保证 committer 做快照前收齐 checkpoint N 的所有 committable。
 
 ## 2. 一次 checkpoint 的时序
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/08-flink-sink-1.webp" alt="屏障前发件，完成后统一提交" width="960" height="640" loading="lazy" /><figcaption>屏障前发件，完成后统一提交<span>AI 生成配图</span></figcaption></figure>
 
 ```
 Writer（每个 subtask）                     Committer（1 个 subtask）
@@ -106,7 +111,11 @@ commitUser = StateUtils.getSingleValueFromState(context, "commit_user_state", St
 
 ## 4. 故障恢复
 
-### committer：`RestoreAndFailCommittableStateManager`
+<figure class="ai-figure"><img src="/bigdata-img/paimon/08-flink-sink-2.webp" alt="补提交后故意重启刷新视图" width="960" height="640" loading="lazy" /><figcaption>补提交后故意重启刷新视图<span>AI 生成配图</span></figcaption></figure>
+
+### committer：`RestoreAndFailCommittableStateManager` / `RestoreCommittableStateManager`
+
+两种状态管理器的区别只在“补提交之后要不要故意失败”。`FlinkWriteSink` 默认用 `RestoreAndFail…`（`FlinkWriteSink.java:65-70`）；**无桶 Append 表（`RowAppendTableSink.java:81-82`）和 postpone bucket 表用 `RestoreCommittableStateManager`，只补提交、不故意失败**（`FlinkWriteSink.java:87-93`，`RestoreCommittableStateManager.java:76-79`）。实验 11（`labs` 的 `SinkLab`）在无桶 Append 表上实测：恢复时补提交了 1 个 committable，作业没有再重启。以下流程针对 `RestoreAndFail…`：
 ```
 从状态恢复未提交的 ManifestCommittable
   → committer.filterAndCommit(committables, checkAppendFiles = true)
@@ -124,7 +133,7 @@ writer 不在状态里存数据，重启后 `FileSystemWriteRestore.restoreFiles
 | 故障时刻 | 结果 |
 |---|---|
 | checkpoint N 完成前 | N 不在 checkpoint 中，source 从 N-1 重放，N 的文件成孤儿。**不重不丢** |
-| checkpoint N 完成后、提交前 | 状态里有 N，重启时 filterAndCommit 补提交，再故意失败一次刷新 writer |
+| checkpoint N 完成后、提交前 | 状态里有 N，重启时 filterAndCommit 补提交；`RestoreAndFail…` 再故意失败一次刷新 writer（无桶 Append 表不会） |
 | 提交过程中（不确定成败） | filterCommitted 按 identifier 判断：提交过就跳过，没提交就补 |
 | **从很旧的 savepoint 恢复** | 引用的文件可能已被合并、过期 → 冲突或文件缺失 |
 

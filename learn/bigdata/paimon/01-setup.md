@@ -2,6 +2,7 @@
 title: "01 环境搭建与源码编译"
 description: "编译 Paimon 源码、导入 IDEA、跑通第一个实验，以及编译中的常见问题。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/01-setup-cover.webp"}]]
 ---
 
 # 01 环境搭建与源码编译
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/01-setup-cover.webp" alt="Yui和Kai搭建Paimon源码实验室" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai搭建Paimon源码实验室<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 ## 学习目标
@@ -41,6 +44,8 @@ cd paimon && git checkout d15d250cf
 
 ## 2. 编译命令
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/01-setup-1.webp" alt="编译命令像流水线装配各模块" width="960" height="640" loading="lazy" /><figcaption>编译命令像流水线装配各模块<span>AI 生成配图</span></figcaption></figure>
+
 ```bash
 cd paimon && mvn -Pspark3,flink1 install -DskipTests -Dmaven.javadoc.skip=true -Dcheckstyle.skip -Dspotless.check.skip=true -Drat.skip=true -Denforcer.skip=true
 ```
@@ -55,6 +60,8 @@ cd paimon && mvn -Pspark3,flink1 install -DskipTests -Dmaven.javadoc.skip=true -
   ```
 
 ## 3. 踩过的坑（重要）
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/01-setup-2.webp" alt="Profile失效像默认轨道被岔路切走" width="960" height="640" loading="lazy" /><figcaption>Profile失效像默认轨道被岔路切走<span>AI 生成配图</span></figcaption></figure>
 
 ### 坑 1：必须显式加 `-Pspark3,flink1`
 根 `pom.xml` 里 `spark3`、`flink1` 两个 profile 是 `activeByDefault`。但 **Maven 的规则是：同一个 pom 里只要有任何其它 profile 被激活，activeByDefault 的 profile 就全部失效**。JDK ≥ 9 时 `javadoc-jdk9+` profile 会自动激活，于是 spark3/flink1 被关掉：

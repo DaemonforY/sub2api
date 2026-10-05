@@ -2,6 +2,7 @@
 title: "06 读路径：MergeFileSplitRead 与删除向量如何跳过合并"
 description: "主键表的读路径 MergeFileSplitRead，以及删除向量怎样避免读时合并。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/06-read-path-cover.webp"}]]
 ---
 
 # 06 读路径：MergeFileSplitRead 与删除向量如何跳过合并
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/06-read-path-cover.webp" alt="读路径在分岔口选择直读或归并" width="1200" height="800" loading="eager" /><figcaption>读路径在分岔口选择直读或归并<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码：`table/source/KeyValueTableRead.java`、`table/source/MergeTreeSplitGenerator.java`、`table/source/splitread/PrimaryKeyTableRawFileSplitReadProvider.java`、`operation/MergeFileSplitRead.java`、`operation/RawFileSplitRead.java`、`deletionvectors/*`、`table/source/AbstractBatchTableScan.java`
@@ -38,6 +41,8 @@ new IncrementalDiffReadProvider(...)
 ```
 
 ## 2. `rawConvertible` 从哪来：`MergeTreeSplitGenerator.splitForBatch`
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/06-read-path-2.webp" alt="扫描阶段决定能否直接读" width="960" height="640" loading="lazy" /><figcaption>扫描阶段决定能否直接读<span>AI 生成配图</span></figcaption></figure>
 
 ```java
 boolean rawConvertible = files.stream().allMatch(f -> f.level() != 0 && withoutDeleteRow(f));
@@ -82,6 +87,8 @@ run2: (seq=3, k1, 10),  (seq=4, k2, 20)
 merge-on-read 的代价：多路归并（CPU + 多 reader 内存）、value 过滤无法下推到格式层、并行度受 section 限制。
 
 ## 4. 删除向量如何做到免合并
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/06-read-path-1.webp" alt="删除向量用位图屏蔽旧行实现直读" width="960" height="640" loading="lazy" /><figcaption>删除向量用位图屏蔽旧行实现直读<span>AI 生成配图</span></figcaption></figure>
 
 ### 4.1 写入端维护的不变式
 > **在 level ≥ 1 的文件中，应用 DV 之后，每个 key 只有一条存活记录，且不存在 DELETE 记录。**

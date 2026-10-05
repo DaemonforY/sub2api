@@ -2,6 +2,7 @@
 title: "Flink 源码导读 05：Table / SQL —— 一条 SQL 如何变成 Transformation"
 description: "Table/SQL 从 SQL 文本经 Calcite 解析优化，变成 ExecNode 和 Transformation 的过程。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/05-table-sql-cover.webp"}]]
 ---
 
 # Flink 源码导读 05：Table / SQL —— 一条 SQL 如何变成 Transformation
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/05-table-sql-cover.webp" alt="SQL 变成 Flink 执行管线" width="1200" height="800" loading="eager" /><figcaption>SQL 变成 Flink 执行管线<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -25,6 +28,8 @@ bigdata: "flink"
 5. 代码生成生成了什么？为什么要做代码生成？
 
 ## 1. 全景图：四种树，四个阶段
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/05-table-sql-1.webp" alt="四种树串起 SQL 规划流程" width="960" height="640" loading="lazy" /><figcaption>四种树串起 SQL 规划流程<span>AI 生成配图</span></figcaption></figure>
 
 ```
 SQL 字符串
@@ -160,6 +165,8 @@ val transformations = translateToPlan(execGraph)                         // ⑥
 ---
 
 ## 5. ★ Changelog：流上的动态表
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/05-table-sql-2.webp" alt="动态表用行变更记录结果变化" width="960" height="640" loading="lazy" /><figcaption>动态表用行变更记录结果变化<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 概念
 

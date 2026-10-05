@@ -2,6 +2,7 @@
 title: "10 Spark MERGE INTO 的实现"
 description: "Spark MERGE INTO 在 Paimon 中的三条实现路径。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/10-spark-merge-into-cover.webp"}]]
 ---
 
 # 10 Spark MERGE INTO 的实现
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/10-spark-merge-into-cover.webp" alt="三条合并路径汇入同一引擎" width="1200" height="800" loading="eager" /><figcaption>三条合并路径汇入同一引擎<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码（`paimon-spark/paimon-spark-common/src/main/scala/org/apache/paimon/spark/`）：`catalyst/analysis/PaimonMergeInto.scala`、`RowLevelHelper.scala`、`SparkTable.scala`、`commands/MergeIntoPaimonTable.scala`、`commands/PaimonRowLevelCommand.scala`、`rowops/PaimonSparkCopyOnWriteOperation.scala`、`rowops/PaimonCopyOnWriteScan.scala`、`write/PaimonBatchWriteBase.scala`
@@ -50,6 +53,8 @@ else buildV1Command(...)              // → MergeIntoPaimonTable / MergeIntoPai
 | data evolution 表 | `MergeIntoPaimonDataEvolutionTable` | 基于 row tracking 只更新变化列 |
 
 ## 3. 共享引擎：`constructChangedRows`
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/10-spark-merge-into-1.webp" alt="外连接后逐行判定动作" width="960" height="640" loading="lazy" /><figcaption>外连接后逐行判定动作<span>AI 生成配图</span></figcaption></figure>
 
 ```scala
 targetProject = target.output :+ Alias(true, "_target_row_")
@@ -127,6 +132,8 @@ newWriteBuilder → PaimonV2WriteBuilder.overwriteFiles(copyOnWriteScan)
 - 提交时 `buildDeletedCommitMessage(scan.scannedFiles)` 删除扫过的文件，加上新写文件，完成替换。
 
 ## 8. 提交层面（呼应 05 章）
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/10-spark-merge-into-2.webp" alt="提交方式决定冲突与并发" width="960" height="640" loading="lazy" /><figcaption>提交方式决定冲突与并发<span>AI 生成配图</span></figcaption></figure>
 
 | 路径 | CommitMessage 内容 | 提交类型 | 冲突检测 |
 |---|---|---|---|

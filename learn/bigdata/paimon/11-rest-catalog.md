@@ -2,6 +2,7 @@
 title: "11 REST Catalog 的实现"
 description: "REST Catalog：服务端 CAS 提交与临时凭证下发。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/11-rest-catalog-cover.webp"}]]
 ---
 
 # 11 REST Catalog 的实现
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/11-rest-catalog-cover.webp" alt="REST 服务端裁决快照提交与凭证" width="1200" height="800" loading="eager" /><figcaption>REST 服务端裁决快照提交与凭证<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码：`paimon-api/.../rest/`（`RESTApi`、`HttpClient`、`ResourcePaths`、`auth/*`、`DefaultErrorHandler`）、`paimon-core/.../rest/`（`RESTCatalog`、`RESTCatalogFactory`）、`paimon-common/.../rest/RESTTokenFileIO`、`catalog/CatalogUtils`、`table/CatalogEnvironment`、`catalog/CatalogSnapshotCommit`；规范 `docs/static/rest-catalog-open-api.yaml`；参考服务端 `paimon-core/src/test/.../rest/RESTCatalogServer`
@@ -123,6 +126,8 @@ else                        snapshot = latestSnapshotFromFileSystem();       // 
 
 ## 5. 提交协议：服务端 CAS
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/11-rest-catalog-1.webp" alt="服务端用 CAS 决定提交是否成功" width="960" height="640" loading="lazy" /><figcaption>服务端用 CAS 决定提交是否成功<span>AI 生成配图</span></figcaption></figure>
+
 ```
 客户端（Flink committer / Spark driver）                   REST Server
 ① 自己把数据文件、manifest、manifest list 写到对象存储
@@ -153,6 +158,8 @@ if (!Objects.equals(currentSnapshotUuid, baseSnapshotUuid))
 - **分区统计随提交上报**：服务端维护分区级元数据，`listPartitions` 无需扫 manifest。
 
 ## 6. 数据凭证下发：`RESTTokenFileIO`
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/11-rest-catalog-2.webp" alt="服务端按表下发可刷新的临时凭证" width="960" height="640" loading="lazy" /><figcaption>服务端按表下发可刷新的临时凭证<span>AI 生成配图</span></figcaption></figure>
 
 开启 `data-token.enabled` 后：
 ```java

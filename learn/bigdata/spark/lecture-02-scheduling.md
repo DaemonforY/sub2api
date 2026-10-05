@@ -2,6 +2,7 @@
 title: "第 2 讲：调度体系"
 description: "DAGScheduler 与 TaskScheduler：Stage 何时提交、多 Job 调度、本地性、失败重试和推测执行。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-02-scheduling-cover.webp"}]]
 ---
 
 # 第 2 讲：调度体系
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-02-scheduling-cover.webp" alt="调度三层协作运行任务" width="1200" height="800" loading="eager" /><figcaption>调度三层协作运行任务<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`core/…` = `core/src/main/scala/org/apache/spark/`
@@ -55,6 +58,8 @@ bigdata: "spark"
 ---
 
 ## 2. DAGScheduler：逻辑调度
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-02-scheduling-1.webp" alt="事件队列决定Stage提交" width="960" height="640" loading="lazy" /><figcaption>事件队列决定Stage提交<span>AI 生成配图</span></figcaption></figure>
 
 ### 2.1 单线程事件循环（第 1 讲思考题的答案）
 
@@ -290,6 +295,8 @@ case LOCAL_N_REGEX(threads) => new TaskSchedulerImpl(sc, MAX_LOCAL_TASK_FAILURES
 ---
 
 ## 6. 推测执行（Speculation）
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-02-scheduling-2.webp" alt="慢任务被复制赛跑" width="960" height="640" loading="lazy" /><figcaption>慢任务被复制赛跑<span>AI 生成配图</span></figcaption></figure>
 
 ### 6.1 解决什么问题
 

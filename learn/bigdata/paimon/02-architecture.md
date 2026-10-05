@@ -2,6 +2,7 @@
 title: "02 paimon-core 整体架构"
 description: "paimon-core 的分层、snapshot 到 data file 的元数据树，写、提交、读三条主流程。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/02-architecture-cover.webp"}]]
 ---
 
 # 02 paimon-core 整体架构
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/02-architecture-cover.webp" alt="Yui和Kai总览Paimon核心架构" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai总览Paimon核心架构<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 ## 学习目标
@@ -70,6 +73,8 @@ Paimon = **按 bucket 组织的 LSM 树（数据）** + **snapshot/manifest 元�
 
 ## 3. 存储布局（元数据树）
 
+<figure class="ai-figure"><img src="/bigdata-img/paimon/02-architecture-1.webp" alt="快照到数据文件的元数据树" width="960" height="640" loading="lazy" /><figcaption>快照到数据文件的元数据树<span>AI 生成配图</span></figcaption></figure>
+
 ```
 table/
 ├── snapshot/snapshot-N            ← Snapshot（JSON，类定义在 paimon-api）
@@ -91,6 +96,8 @@ table/
 - `ManifestEntry` = `FileKind(ADD/DELETE)` + partition + bucket + `DataFileMeta`。
 
 ## 4. 三条主流程
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/02-architecture-2.webp" alt="写提交读三条主流程" width="960" height="640" loading="lazy" /><figcaption>写提交读三条主流程<span>AI 生成配图</span></figcaption></figure>
 
 ### ① 写入：`TableWrite` → `MergeTreeWriter`
 

@@ -2,6 +2,7 @@
 title: "03 LSM 合并策略：UniversalCompaction 怎么选文件"
 description: "UniversalCompaction 怎样根据 sorted run 的数量和大小选出要合并的文件。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/03-universal-compaction-cover.webp"}]]
 ---
 
 # 03 LSM 合并策略：UniversalCompaction 怎么选文件
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/03-universal-compaction-cover.webp" alt="连续前缀合并成更老层的新文件" width="1200" height="800" loading="eager" /><figcaption>连续前缀合并成更老层的新文件<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码：`mergetree/compact/UniversalCompaction.java`（约 190 行，值得逐行精读）
@@ -48,6 +51,8 @@ runs = [L0_最新, L0, L0, L1, L3, L5_最老]
 | `compaction.max-size-amplification-percent` | 200 |
 
 ## 2. `pick()` 的 4 级判断
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/03-universal-compaction-1.webp" alt="四道判断门决定合并哪些run" width="960" height="640" loading="lazy" /><figcaption>四道判断门决定合并哪些run<span>AI 生成配图</span></figcaption></figure>
 
 ```
 pick(numLevels, runs)
@@ -104,6 +109,8 @@ if (runs.size() > numRunCompactionTrigger) {
 合并 k 个 run 变 1 个，run 数减少 k-1，正好回到 trigger。
 
 ## 3. `createUnit`：输出到哪一层
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/03-universal-compaction-2.webp" alt="合并结果放到更老run的上一层" width="960" height="640" loading="lazy" /><figcaption>合并结果放到更老run的上一层<span>AI 生成配图</span></figcaption></figure>
 
 ```java
 if (runCount == runs.size())  outputLevel = maxLevel;                         // 全选 → 最高层

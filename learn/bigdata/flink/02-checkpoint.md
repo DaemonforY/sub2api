@@ -2,6 +2,7 @@
 title: "Flink 源码导读 02：Checkpoint 全流程 —— 从触发、Barrier 对齐到完成通知"
 description: "Checkpoint 从触发、Barrier 对齐、快照到确认完成的全流程，以及非对齐 Checkpoint。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/02-checkpoint-cover.webp"}]]
 ---
 
 # Flink 源码导读 02：Checkpoint 全流程 —— 从触发、Barrier 对齐到完成通知
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/02-checkpoint-cover.webp" alt="Yui和Kai引导Barrier完成Checkpoint全流程" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai引导Barrier完成Checkpoint全流程<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -254,6 +257,8 @@ Committable 要在 Barrier **之前**发出，才能保证下游 Committer 在�
 
 ## 5. 阶段三（下游 Task）：Barrier 对齐
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/02-checkpoint-1.webp" alt="下游等待所有输入Barrier后再快照" width="960" height="640" loading="lazy" /><figcaption>下游等待所有输入Barrier后再快照<span>AI 生成配图</span></figcaption></figure>
+
 ### 5.1 Barrier 在哪里被拦截？
 
 回忆 01 篇 6.4 节：`AbstractStreamTaskNetworkInput.emitNext()` 读完一个 buffer 后调用 `checkpointedInputGate.pollNext()`。**Barrier 在这里就被处理掉了**，不会进入算子。
@@ -342,6 +347,8 @@ protected WaitingForFirstBarrier triggerGlobalCheckpoint(...) {
 ---
 
 ## 6. 非对齐 Checkpoint（Unaligned Checkpoint，FLIP-76）
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/02-checkpoint-2.webp" alt="非对齐Checkpoint让Barrier超车并保存途中数据" width="960" height="640" loading="lazy" /><figcaption>非对齐Checkpoint让Barrier超车并保存途中数据<span>AI 生成配图</span></figcaption></figure>
 
 ### 6.1 思路
 

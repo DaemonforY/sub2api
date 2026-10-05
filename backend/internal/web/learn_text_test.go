@@ -29,6 +29,13 @@ func TestLessonTextFrom(t *testing.T) {
 		require.NotContains(t, text, out)
 	}
 
+	fsys["learn/bigdata/spark/lecture-03-shuffle.html"] = &fstest.MapFile{Data: []byte(strings.Replace(page, "做应用时", "Shuffle 的写和读", 1))}
+	title, text = lessonTextFrom(fsys, "bigdata/spark/lecture-03-shuffle")
+	require.NotEmpty(t, title)
+	require.Contains(t, text, "Shuffle 的写和读")
+	title, text = lessonTextFrom(fsys, "bigdata/spark/../../a/a3")
+	require.Empty(t, title+text)
+
 	title, text = lessonTextFrom(fsys, "../etc")
 	require.Empty(t, title+text)
 	title, text = lessonTextFrom(fsys, "b9")

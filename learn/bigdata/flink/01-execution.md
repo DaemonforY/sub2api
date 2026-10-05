@@ -2,6 +2,7 @@
 title: "Flink 源码导读 01：从 `env.execute()` 到 `processElement()` —— 作业执行全链路"
 description: "用户代码怎样变成 StreamGraph、JobGraph、ExecutionGraph，Task 怎样部署运行到 processElement()。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/01-execution-cover.webp"}]]
 ---
 
 # Flink 源码导读 01：从 `env.execute()` 到 `processElement()` —— 作业执行全链路
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/01-execution-cover.webp" alt="作业从代码一路跑到算子处理" width="1200" height="800" loading="eager" /><figcaption>作业从代码一路跑到算子处理<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过，其他版本行号会有偏移，按方法名搜索即可。
@@ -81,6 +84,8 @@ env.execute("WordCount");
 ---
 
 ## 3. 第一段（客户端）：Transformation → StreamGraph
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/01-execution-1.webp" alt="API 调用只是记录成图的蓝图" width="960" height="640" loading="lazy" /><figcaption>API 调用只是记录成图的蓝图<span>AI 生成配图</span></figcaption></figure>
 
 ### 3.1 API 调用只是在"记账"
 
@@ -319,6 +324,8 @@ afterInvoke();           // 数据结束：endInput、finish、等待最后一�
 ---
 
 ## 6. 第四段：Mailbox 线程模型与数据处理
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/01-execution-2.webp" alt="Mailbox 让数据与事件单线程排队处理" width="960" height="640" loading="lazy" /><figcaption>Mailbox 让数据与事件单线程排队处理<span>AI 生成配图</span></figcaption></figure>
 
 ### 6.1 为什么需要 Mailbox？
 

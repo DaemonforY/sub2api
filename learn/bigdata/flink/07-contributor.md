@@ -2,6 +2,7 @@
 title: "Flink 源码导读 07：从读者到贡献者 —— 规范、流程、真实案例与第一批候选任务"
 description: "从读源码到给 Flink 提 PR：社区数据、JIRA 与 PR 流程、适合新人的切入点。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/07-contributor-cover.webp"}]]
 ---
 
 # Flink 源码导读 07：从读者到贡献者 —— 规范、流程、真实案例与第一批候选任务
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/07-contributor-cover.webp" alt="Yui和Kai踏上Flink贡献之路" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai踏上Flink贡献之路<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`），部分统计基于 `origin/master`（截至 2026-09-24）。
@@ -50,6 +53,8 @@ cd /Users/miaoyongbin/Documents/work/opensource-codes/flink && git log origin/ma
 ```
 
 ## 2. 一个改动的完整生命周期
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/07-contributor-1.webp" alt="改动从想法到合入的旅程" width="960" height="640" loading="lazy" /><figcaption>改动从想法到合入的旅程<span>AI 生成配图</span></figcaption></figure>
 
 ```
 ① 发现问题 / 想法
@@ -120,6 +125,8 @@ cd /Users/miaoyongbin/Documents/work/opensource-codes/flink && git config blame.
 `.github/workflows/ci.yml` 是 GitHub Actions 的主流程，`template.pre-compile-checks.yml` 负责编译前的检查。PR 模板还建议在自己的 fork 上配置 Azure Pipelines（见模板中的链接）。
 
 ## 4. ★ 真实案例：FLINK-38932（红绿验证复现）
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/07-contributor-2.webp" alt="红绿验证复现一个小修复" width="960" height="640" loading="lazy" /><figcaption>红绿验证复现一个小修复<span>AI 生成配图</span></figcaption></figure>
 
 ### 4.1 选这个案例的原因
 

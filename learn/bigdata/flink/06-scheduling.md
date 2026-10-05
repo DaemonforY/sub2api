@@ -2,6 +2,7 @@
 title: "Flink 源码导读 06：调度与容错 —— Failover、重启策略与自适应调度"
 description: "调度器、Slot 分配、故障恢复策略和自适应调度（Adaptive Scheduler）的扩缩容。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/06-scheduling-cover.webp"}]]
 ---
 
 # Flink 源码导读 06：调度与容错 —— Failover、重启策略与自适应调度
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/06-scheduling-cover.webp" alt="调度、容错与弹性资源全景" width="1200" height="800" loading="eager" /><figcaption>调度、容错与弹性资源全景<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -157,6 +160,8 @@ if (isGlobalRecovery) {
 
 ## 3. ★ Pipelined Region：重启的最小单位
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/06-scheduling-1.webp" alt="流水区由内存通道连成故障单元" width="960" height="640" loading="lazy" /><figcaption>流水区由内存通道连成故障单元<span>AI 生成配图</span></figcaption></figure>
+
 ### 3.1 定义
 
 **用 pipelined 边相连的 Task 构成一个 region**。pipelined 边意味着上下游必须**同时运行**（数据在内存里流过去，不落盘），所以一个挂了，另一个也无法继续。blocking 边（批作业的 shuffle 数据会落盘）则把 region 切开。
@@ -260,6 +265,8 @@ public boolean canRestart() {                                    // :99
 ---
 
 ## 5. AdaptiveScheduler：拿到多少资源就用多少
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/06-scheduling-2.webp" alt="资源多少决定作业并行度伸缩" width="960" height="640" loading="lazy" /><figcaption>资源多少决定作业并行度伸缩<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 解决的问题
 

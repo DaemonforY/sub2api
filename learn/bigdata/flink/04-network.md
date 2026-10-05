@@ -2,6 +2,7 @@
 title: "Flink 源码导读 04：网络栈与背压 —— 从 RecordWriter 到 Netty，再到 Credit 流控"
 description: "网络栈：ResultPartition、InputGate、Credit-based 流控，以及背压是怎样产生和传递的。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/04-network-cover.webp"}]]
 ---
 
 # Flink 源码导读 04：网络栈与背压 —— 从 RecordWriter 到 Netty，再到 Credit 流控
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/04-network-cover.webp" alt="网络栈与背压全景图" width="1200" height="800" loading="eager" /><figcaption>网络栈与背压全景图<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -232,6 +235,8 @@ return !availableMemorySegments.isEmpty() && unavailableSubpartitionsCount == 0;
 
 ## 5. ★ Credit-based 流控
 
+<figure class="ai-figure"><img src="/bigdata-img/flink/04-network-1.webp" alt="信用令牌控制数据发送" width="960" height="640" loading="lazy" /><figcaption>信用令牌控制数据发送<span>AI 生成配图</span></figcaption></figure>
+
 ### 5.1 为什么需要 credit？
 
 Flink 1.5 之前用的是 **TCP 自身的流控**：下游处理不过来时 TCP 窗口被填满，上游写不进 socket。问题在于，**同一对 TM 之间的多个逻辑通道共用一条 TCP 连接**（4.3 节第 1 步）。一个慢通道占满 TCP 窗口，会把同一连接上的其他通道也一起堵住（队头阻塞），Checkpoint Barrier 也过不去。
@@ -312,6 +317,8 @@ if (isCreditAvailable) {
 ---
 
 ## 6. Buffer Debloating（FLIP-183）
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/04-network-2.webp" alt="缩小缓冲减少排队延迟" width="960" height="640" loading="lazy" /><figcaption>缩小缓冲减少排队延迟<span>AI 生成配图</span></figcaption></figure>
 
 ### 6.1 问题
 

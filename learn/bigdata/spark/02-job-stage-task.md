@@ -2,6 +2,7 @@
 title: "面试拆解 01｜Job、Stage、Task 到底是什么关系？"
 description: "用 7 个实验说清楚 Action、Job、Stage、Task 的对应关系，以及常见面试题怎么答。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/02-job-stage-task-cover.webp"}]]
 ---
 
 # 面试拆解 01｜Job、Stage、Task 到底是什么关系？
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/02-job-stage-task-cover.webp" alt="动作触发作业并拆成阶段任务" width="1200" height="800" loading="eager" /><figcaption>动作触发作业并拆成阶段任务<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > X老师读源码 · 《面试拆解》第 1 期
@@ -36,6 +39,8 @@ bigdata: "spark"
 这篇文章用 **7 个实验**，把这些问题一次讲透。
 
 ## 一、先把基本关系讲清楚
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/02-job-stage-task-1.webp" alt="宽依赖把作业切成不同阶段" width="960" height="640" loading="lazy" /><figcaption>宽依赖把作业切成不同阶段<span>AI 生成配图</span></figcaption></figure>
 
 ```
 Application（一次 spark-submit，对应一个 SparkContext）
@@ -200,6 +205,8 @@ Job6: Stage10(4 tasks) | Stage11(4 tasks) | Stage12(2 tasks, parents=10,11)
 > 补充：如果 `join` 的两个 RDD 已经用**同一个分区器**分好区了，就不需要 Shuffle，`join` 是窄依赖，Stage 数会变少。
 
 ## 三、追问：Stage 是从前往后切，还是从后往前切？
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/02-job-stage-task-2.webp" alt="阶段从结果端回溯切分再顺序执行" width="960" height="640" loading="lazy" /><figcaption>阶段从结果端回溯切分再顺序执行<span>AI 生成配图</span></figcaption></figure>
 
 **从后往前切，从前往后执行。**
 

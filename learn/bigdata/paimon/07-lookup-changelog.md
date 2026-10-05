@@ -2,6 +2,7 @@
 title: "07 Lookup Changelog：-U/+U 是怎么产生的"
 description: "lookup changelog producer 怎样产生 -U/+U 变更记录。"
 bigdata: "paimon"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/paimon/07-lookup-changelog-cover.webp"}]]
 ---
 
 # 07 Lookup Changelog：-U/+U 是怎么产生的
@@ -9,6 +10,8 @@ bigdata: "paimon"
 ::: info Apache Paimon 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Paimon 2.0 / master 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/paimon-learning)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/07-lookup-changelog-cover.webp" alt="L0上推触发查旧产生日志" width="1200" height="800" loading="eager" /><figcaption>L0上推触发查旧产生日志<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 源码（`mergetree/` 下）：`compact/ForceUpLevel0Compaction`、`compact/LookupMergeTreeCompactRewriter`、`compact/ChangelogMergeTreeRewriter`、`compact/LookupChangelogMergeFunctionWrapper`、`compact/LookupMergeFunction`、`LookupLevels`、`LookupUtils`
@@ -22,6 +25,9 @@ bigdata: "paimon"
 **每次 L0 数据被合并到更高层时，对每个 key 去更高层 lookup 出旧值（before），与新数据合并得到新值（after），比较二者产生 changelog。**
 
 ## 1. 为什么选“L0 → 高层”这个时机
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/07-lookup-changelog-1.webp" alt="L0离开时与高层旧值合并" width="960" height="640" loading="lazy" /><figcaption>L0离开时与高层旧值合并<span>AI 生成配图</span></figcaption></figure>
+
 - L0 = 上次合并以来**新写入**的数据；L1+ = 已合并过的数据。
 - **不变式**：lookup 模式下，数据离开 L0 时一定已和 lookup 到的旧值合并过，所以**每个 key 在 L1+ 的记录永远是完整最新状态**，而不是增量。
 - 因此：before = 该 key 在高层的最新状态，after = before 合并 L0 增量。
@@ -83,6 +89,8 @@ if (containLevel0 && lookupStrategy.produceChangelog) setChangelog(highLevel, re
 - **lookup 实现**（`LookupLevels` / `LookupUtils`）：逐层查找，第一个命中即返回；每层按 `minKey/maxKey` **二分**定位文件；为数据文件创建本地 **lookup file**（SST 类 KV 文件）缓存在 `lookupFileCache`，有远程预建 SST 则下载，否则从数据文件构建。首次慢，之后是本地点查——这是 lookup 模式主要开销。
 
 ## 4. 产生 -U/+U：`setChangelog(before, after)`
+
+<figure class="ai-figure"><img src="/bigdata-img/paimon/07-lookup-changelog-2.webp" alt="before与after比较生成-U/+U" width="960" height="640" loading="lazy" /><figcaption>before与after比较生成-U/+U<span>AI 生成配图</span></figcaption></figure>
 
 ```java
 if (before == null || !before.isAdd()) {

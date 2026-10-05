@@ -2,6 +2,7 @@
 title: "宽窄依赖：Stage 到底在哪里切开？"
 description: "窄依赖和宽依赖的区别、Stage 在哪里被切开，用 10 组实验纠正 3 个常见误区。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/03-dependency-cover.webp"}]]
 ---
 
 # 宽窄依赖：Stage 到底在哪里切开？
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/03-dependency-cover.webp" alt="窄依赖流水线，宽依赖分拣切分 Stage" width="1200" height="800" loading="eager" /><figcaption>窄依赖流水线，宽依赖分拣切分 Stage<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > X老师读源码 · 《Spark 源码通关》
@@ -116,6 +119,8 @@ Seq(new NarrowDependency(prev) {
 
 ## 三、Stage 到底在哪里切开？看源码
 
+<figure class="ai-figure"><img src="/bigdata-img/spark/03-dependency-1.webp" alt="沿依赖回溯，遇到 Shuffle 就切 Stage" width="960" height="640" loading="lazy" /><figcaption>沿依赖回溯，遇到 Shuffle 就切 Stage<span>AI 生成配图</span></figcaption></figure>
+
 DAGScheduler 切分 Stage 的核心逻辑在 `getShuffleDependenciesAndResourceProfiles` 方法里（`DAGScheduler.scala:801`），简化后就这几行：
 
 ```scala
@@ -158,6 +163,8 @@ rdd.toDebugString
 这个例子里有两个 `+-`，所以是 **3 个 Stage**。
 
 ## 四、误区 2：reduceByKey、join 一定是宽依赖？
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/03-dependency-2.webp" alt="保留分区器可本地聚合，丢失则触发 Shuffle" width="960" height="640" loading="lazy" /><figcaption>保留分区器可本地聚合，丢失则触发 Shuffle<span>AI 生成配图</span></figcaption></figure>
 
 **不一定。** 这是最容易被忽略的一点。
 

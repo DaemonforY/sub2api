@@ -2,6 +2,7 @@
 title: "第 9 讲：代码生成与 Tungsten"
 description: "全阶段代码生成与 Tungsten：看生成的代码、做性能对比、理解 UnsafeRow。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-09-codegen-cover.webp"}]]
 ---
 
 # 第 9 讲：代码生成与 Tungsten
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-09-codegen-cover.webp" alt="代码熔炉加速Spark执行" width="1200" height="800" loading="eager" /><figcaption>代码熔炉加速Spark执行<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`execution/…` = `sql/core/src/main/scala/org/apache/spark/sql/execution/`，`codegen/…` = `sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/expressions/codegen/`
@@ -58,6 +61,8 @@ Project.next()  → 调用 Filter.next()
 ---
 
 ## 3. 全阶段代码生成（Whole-Stage Codegen）
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-09-codegen-1.webp" alt="多算子融合成一个高速循环" width="960" height="640" loading="lazy" /><figcaption>多算子融合成一个高速循环<span>AI 生成配图</span></figcaption></figure>
 
 ### 3.1 思路
 
@@ -210,6 +215,8 @@ Found too long generated codes and JIT optimization might not work: the bytecode
 ---
 
 ## 5. UnsafeRow：行的二进制格式
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-09-codegen-2.webp" alt="UnsafeRow把行压成三段内存" width="960" height="640" loading="lazy" /><figcaption>UnsafeRow把行压成三段内存<span>AI 生成配图</span></figcaption></figure>
 
 ### 5.1 布局
 

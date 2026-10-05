@@ -297,6 +297,19 @@ func TestLearnTutorStreams(t *testing.T) {
 
 	_, err = svc.Tutor(ctx, 1, in, func(string) error { return nil })
 	require.Equal(t, "LEARN_TUTOR_QUOTA", infraerrors.Reason(err))
+
+	// 大数据 articles: the page path is the lesson, with a big-data tutor prompt.
+	article := LearnTutorInput{Lesson: "bigdata/flink/08-watermark-window", Messages: []LearnMessage{{Role: "user", Content: "空闲源怎么处理？"}}}
+	_, err = svc.Tutor(ctx, 3, article, func(string) error { return nil })
+	require.NoError(t, err)
+	system = got["messages"].([]any)[0].(map[string]any)["content"].(string)
+	require.Contains(t, system, "大数据专区的助教")
+	require.Contains(t, system, "<article>")
+	for _, bad := range []string{"bigdata/../x", "bigdata/hive/x", "guide/rag/x", "bigdata/spark/" + strings.Repeat("a", 41)} {
+		article.Lesson = bad
+		_, err = svc.Tutor(ctx, 3, article, func(string) error { return nil })
+		require.Equal(t, "LEARN_LESSON_INVALID", infraerrors.Reason(err), bad)
+	}
 	// Turns must alternate and end with a question.
 	in.Messages = append(in.Messages, LearnMessage{Role: "user", Content: "again"})
 	_, err = svc.Tutor(ctx, 2, in, func(string) error { return nil })

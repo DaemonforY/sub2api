@@ -2,6 +2,7 @@
 title: "第 6 讲：RPC 与部署"
 description: "RPC 框架与部署模式：RpcEndpoint、Driver 与 Executor 的通信、动态资源分配。"
 bigdata: "spark"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/spark/lecture-06-rpc-deploy-cover.webp"}]]
 ---
 
 # 第 6 讲：RPC 与部署
@@ -9,6 +10,8 @@ bigdata: "spark"
 ::: info Apache Spark 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Spark 4.2.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。配套实验和代码在 [GitHub](https://github.com/DaemonforY/spark-source-notes)。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-06-rpc-deploy-cover.webp" alt="驾驶员与执行者的通信部署全景" width="1200" height="800" loading="eager" /><figcaption>驾驶员与执行者的通信部署全景<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 基于 Spark 4.2.0 源码。路径缩写：`core/…` = `core/src/main/scala/org/apache/spark/`
@@ -25,6 +28,8 @@ bigdata: "spark"
 ---
 
 ## 1. Spark 的 RPC 框架
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-06-rpc-deploy-1.webp" alt="消息胶囊连接端点收发请求" width="960" height="640" loading="lazy" /><figcaption>消息胶囊连接端点收发请求<span>AI 生成配图</span></figcaption></figure>
 
 ### 1.1 演进：从 Akka 到自研
 
@@ -148,6 +153,8 @@ RpcEnv 实现：NettyRpcEnv
 ---
 
 ## 3. Executor 的一生
+
+<figure class="ai-figure"><img src="/bigdata-img/spark/lecture-06-rpc-deploy-2.webp" alt="执行者启动注册后才接任务" width="960" height="640" loading="lazy" /><figcaption>执行者启动注册后才接任务<span>AI 生成配图</span></figcaption></figure>
 
 ### 3.1 启动与注册
 

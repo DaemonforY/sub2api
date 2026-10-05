@@ -2,6 +2,7 @@
 title: "Flink 源码导读 03：State Backend —— 状态怎么存、怎么快照、怎么扩缩容"
 description: "HashMap 与 RocksDB 状态后端的存储方式、增量 Checkpoint、KeyGroup 与扩缩容时的状态重分布。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/03-state-backend-cover.webp"}]]
 ---
 
 # Flink 源码导读 03：State Backend —— 状态怎么存、怎么快照、怎么扩缩容
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/03-state-backend-cover.webp" alt="Yui和Kai展示状态后端全景" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai展示状态后端全景<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -54,6 +57,8 @@ Task 初始化时调用 `StateBackendLoader.fromApplicationOrConfigOrDefault()`�
 `loadStateBackendFromConfig()`（`:106`）按名字分派：`"hashmap"`（`:119`）直接 new；`"rocksdb"`（`:127`）和 `"forst"`（`:134`）通过**反射加载 Factory 类**（`:61`、`:65`）。因为它们在独立的 jar 里，`flink-runtime` 不直接依赖它们，这样 RocksDB/ForSt 的 native 库也不会被强制打进核心包。
 
 ## 2. KeyGroup：Keyed State 的最小分配单位
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/03-state-backend-1.webp" alt="KeyGroup像分段轨道承接不同key" width="960" height="640" loading="lazy" /><figcaption>KeyGroup像分段轨道承接不同key<span>AI 生成配图</span></figcaption></figure>
 
 ### 2.1 为什么需要 KeyGroup？
 
@@ -321,6 +326,8 @@ if (fileName.endsWith(SST_FILE_SUFFIX)) {
 ---
 
 ## 6. 扩缩容：状态怎么重新分配？
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/03-state-backend-2.webp" alt="扩缩容时按KeyGroup区间搬迁状态" width="960" height="640" loading="lazy" /><figcaption>扩缩容时按KeyGroup区间搬迁状态<span>AI 生成配图</span></figcaption></figure>
 
 ### 6.1 JM 侧：按 KeyGroup 区间求交集
 

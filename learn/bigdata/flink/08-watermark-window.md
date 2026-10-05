@@ -2,6 +2,7 @@
 title: "Flink 源码导读 08：时间、Watermark 与窗口"
 description: "事件时间与 Watermark 的生成和传播、窗口的分配、触发与清理。"
 bigdata: "flink"
+head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bigdata-img/flink/08-watermark-window-cover.webp"}]]
 ---
 
 # Flink 源码导读 08：时间、Watermark 与窗口
@@ -9,6 +10,8 @@ bigdata: "flink"
 ::: info Apache Flink 源码学习
 作者 X老师（[DaemonforY](https://github.com/DaemonforY)），Flink 2.3.0 源码，按 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans) 发布。
 :::
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/08-watermark-window-cover.webp" alt="Yui和Kai在时间河流中管理水位线与窗口" width="1200" height="800" loading="eager" /><figcaption>Yui和Kai在时间河流中管理水位线与窗口<span>AI 生成配图</span></figcaption></figure>
 
 ::: v-pre
 > 版本：Flink **2.3.0**（本地分支 `study-2.3.0`）。文中 `文件:行号` 均按该版本核对过。
@@ -43,6 +46,8 @@ bigdata: "flink"
 ---
 
 ## 1. Watermark 的生成
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/08-watermark-window-1.webp" alt="水位线由事件时间最大值减去乱序容忍生成" width="960" height="640" loading="lazy" /><figcaption>水位线由事件时间最大值减去乱序容忍生成<span>AI 生成配图</span></figcaption></figure>
 
 ### 1.1 两个接口，一个策略
 
@@ -165,6 +170,8 @@ public boolean checkIfIdle() {                                        // :127
 ---
 
 ## 2. Watermark 的传播
+
+<figure class="ai-figure"><img src="/bigdata-img/flink/08-watermark-window-2.webp" alt="多上游取最小活跃水位线，空闲通道会阻塞窗口" width="960" height="640" loading="lazy" /><figcaption>多上游取最小活跃水位线，空闲通道会阻塞窗口<span>AI 生成配图</span></figcaption></figure>
 
 ### 2.1 在网络中：Watermark 也是一条"记录"
 
