@@ -255,7 +255,6 @@ Job6: Stage10(4 tasks) | Stage11(4 tasks) | Stage12(2 tasks, parents=10,11)
 
 在 Spark SQL 里执行一条带 `JOIN` 和 `GROUP BY` 的 SQL，在 Spark UI 上经常能看到**多个 Job**，比你预想的要多。这是为什么？（提示：和 AQE 自适应查询执行、广播 Join 有关）
 
-欢迎在评论区留言，后面讲到 Spark SQL 时会专门解答。
 
 > 本文实验代码已放在 GitHub：https://github.com/DaemonforY/spark-source-notes，复制到 `spark-shell` 里就能复现。
 

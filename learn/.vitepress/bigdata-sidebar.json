@@ -112,6 +112,166 @@
     ]
   },
   {
+    "text": "Flink · 图文版：Flink 2.x 源码精读",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "零：从哪里开始读",
+        "link": "/bigdata/flink/post-00"
+      },
+      {
+        "text": "一·上：作业图怎么生成",
+        "link": "/bigdata/flink/post-01a"
+      },
+      {
+        "text": "一·下：算子为什么不用加锁",
+        "link": "/bigdata/flink/post-01b"
+      },
+      {
+        "text": "二·上：背压下的 Checkpoint",
+        "link": "/bigdata/flink/post-02a"
+      },
+      {
+        "text": "二·下：非对齐 Checkpoint",
+        "link": "/bigdata/flink/post-02b"
+      },
+      {
+        "text": "三·上：读懂 KeyGroup",
+        "link": "/bigdata/flink/post-03a"
+      },
+      {
+        "text": "三·下：换成 RocksDB 之后",
+        "link": "/bigdata/flink/post-03b"
+      },
+      {
+        "text": "四：一个下游慢，另一个也停",
+        "link": "/bigdata/flink/post-04"
+      },
+      {
+        "text": "五·上：SQL 到 Transformation",
+        "link": "/bigdata/flink/post-05a"
+      },
+      {
+        "text": "五·下：Changelog 为什么输出两条",
+        "link": "/bigdata/flink/post-05b"
+      },
+      {
+        "text": "六：Task 失败之后",
+        "link": "/bigdata/flink/post-06"
+      },
+      {
+        "text": "七·上：Watermark 从哪来",
+        "link": "/bigdata/flink/post-07a"
+      },
+      {
+        "text": "七·下：窗口从分配到触发",
+        "link": "/bigdata/flink/post-07b"
+      },
+      {
+        "text": "八·上：Source 分片",
+        "link": "/bigdata/flink/post-08a"
+      },
+      {
+        "text": "八·下：Sink 与 exactly-once",
+        "link": "/bigdata/flink/post-08b"
+      },
+      {
+        "text": "九：从读者到贡献者",
+        "link": "/bigdata/flink/post-09"
+      }
+    ]
+  },
+  {
+    "text": "Flink · 踩坑实验室",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "#01 窗口不出结果",
+        "link": "/bigdata/flink/pitfall-01"
+      },
+      {
+        "text": "#02 窗口输出两次",
+        "link": "/bigdata/flink/pitfall-02"
+      },
+      {
+        "text": "#03 Watermark 差 1 毫秒",
+        "link": "/bigdata/flink/pitfall-03"
+      },
+      {
+        "text": "#04 一天的窗口早上 8 点才关",
+        "link": "/bigdata/flink/pitfall-04"
+      },
+      {
+        "text": "#05 背压时窗口迟迟不出结果",
+        "link": "/bigdata/flink/pitfall-05"
+      },
+      {
+        "text": "#06 exactly-once 还重复",
+        "link": "/bigdata/flink/pitfall-06"
+      },
+      {
+        "text": "#07 不开 Checkpoint 不提交",
+        "link": "/bigdata/flink/pitfall-07"
+      },
+      {
+        "text": "#08 retryLater 不会稍后",
+        "link": "/bigdata/flink/pitfall-08"
+      },
+      {
+        "text": "#09 只重启了一部分",
+        "link": "/bigdata/flink/pitfall-09"
+      },
+      {
+        "text": "#10 不开 Checkpoint 不重启",
+        "link": "/bigdata/flink/pitfall-10"
+      },
+      {
+        "text": "#11 FileSink 数据等了 120 秒",
+        "link": "/bigdata/flink/pitfall-11"
+      },
+      {
+        "text": "#12 最大并行度改了恢复不了",
+        "link": "/bigdata/flink/pitfall-12"
+      },
+      {
+        "text": "#13 扩缩容时状态怎么切",
+        "link": "/bigdata/flink/pitfall-13"
+      },
+      {
+        "text": "#14 非对齐 Checkpoint 快在哪",
+        "link": "/bigdata/flink/pitfall-14"
+      },
+      {
+        "text": "#15 背压一级一级传上去",
+        "link": "/bigdata/flink/pitfall-15"
+      },
+      {
+        "text": "#16 两阶段聚合没生效",
+        "link": "/bigdata/flink/pitfall-16"
+      },
+      {
+        "text": "#17 print 出来的 -U 和 +U",
+        "link": "/bigdata/flink/pitfall-17"
+      },
+      {
+        "text": "#18 算子为什么没链在一起",
+        "link": "/bigdata/flink/pitfall-18"
+      },
+      {
+        "text": "#19 单线程的两个坑",
+        "link": "/bigdata/flink/pitfall-19"
+      },
+      {
+        "text": "#20 分区会不会读两次",
+        "link": "/bigdata/flink/pitfall-20"
+      },
+      {
+        "text": "#21 配置项已删除不报错",
+        "link": "/bigdata/flink/pitfall-21"
+      }
+    ]
+  },
+  {
     "text": "Apache Paimon",
     "collapsed": true,
     "items": [
@@ -174,6 +334,94 @@
       {
         "text": "配套：勘误与版本说明",
         "link": "/bigdata/paimon/errata"
+      }
+    ]
+  },
+  {
+    "text": "Paimon · S1 · 30 分钟玩转 Paimon",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "第 1 期：一个 Java 程序跑通 Paimon",
+        "link": "/bigdata/paimon/s1-01"
+      },
+      {
+        "text": "第 2 期：表目录里都是什么",
+        "link": "/bigdata/paimon/s1-02"
+      },
+      {
+        "text": "第 3 期：主键表 vs Append 表",
+        "link": "/bigdata/paimon/s1-03"
+      },
+      {
+        "text": "第 4 期：删一行为什么多了文件",
+        "link": "/bigdata/paimon/s1-04"
+      },
+      {
+        "text": "第 5 期：3 行变 2 行",
+        "link": "/bigdata/paimon/s1-05"
+      },
+      {
+        "text": "第 6 期：时间旅行",
+        "link": "/bigdata/paimon/s1-06"
+      },
+      {
+        "text": "第 7 期：快照删了文件还在",
+        "link": "/bigdata/paimon/s1-07"
+      },
+      {
+        "text": "第 8 期：Tag",
+        "link": "/bigdata/paimon/s1-08"
+      }
+    ]
+  },
+  {
+    "text": "Paimon · S2 · 源码精读图文版",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "第 1 讲：全景图",
+        "link": "/bigdata/paimon/s2-01"
+      },
+      {
+        "text": "第 2 讲：一条数据的写入之旅",
+        "link": "/bigdata/paimon/s2-02"
+      },
+      {
+        "text": "第 3 讲：合并怎么选文件",
+        "link": "/bigdata/paimon/s2-03"
+      },
+      {
+        "text": "第 4 讲：合并怎么执行",
+        "link": "/bigdata/paimon/s2-04"
+      },
+      {
+        "text": "第 5 讲：并发提交",
+        "link": "/bigdata/paimon/s2-05"
+      },
+      {
+        "text": "第 6 讲：读路径",
+        "link": "/bigdata/paimon/s2-06"
+      },
+      {
+        "text": "第 7 讲：删除向量",
+        "link": "/bigdata/paimon/s2-07"
+      },
+      {
+        "text": "第 8 讲：Lookup Changelog",
+        "link": "/bigdata/paimon/s2-08"
+      },
+      {
+        "text": "第 9 讲：Flink 写入两阶段提交",
+        "link": "/bigdata/paimon/s2-09"
+      },
+      {
+        "text": "第 10 讲：Flink 流读与 consumer-id",
+        "link": "/bigdata/paimon/s2-10"
+      },
+      {
+        "text": "第 11 讲：Spark MERGE INTO",
+        "link": "/bigdata/paimon/s2-11"
       }
     ]
   }
