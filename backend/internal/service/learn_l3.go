@@ -67,7 +67,7 @@ func (c *learnShowcaseCache) clear() {
 	c.at, c.items = nil, nil
 }
 
-// showcaseWorks: the holder's public works for the card (site works first for the coding tracks).
+// showcaseWorks: the holder's public works for the card (site works first for tracks whose project is a site).
 func (s *LearnService) showcaseWorks(ctx context.Context, userID int64, track string) []LearnShowcaseWork {
 	if s.sources.Works == nil || track == "d" {
 		return []LearnShowcaseWork{}
@@ -97,7 +97,7 @@ func (s *LearnService) showcaseWorks(ctx context.Context, userID int64, track st
 		}
 	}
 	list := others
-	if track == "a" || track == "c" {
+	if t := s.catalog.track(track); t != nil && t.Project == "site" {
 		list = append(sites, others...)
 	}
 	if len(list) > learnShowcaseImages {

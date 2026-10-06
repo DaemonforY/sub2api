@@ -1101,3 +1101,23 @@ a.home-track:hover {
   flex-shrink: 0;
   color: #a1a1aa;
 }
+.agent-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  font-size: 14px;
+}
+.agent-confirm p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+.dark .agent-confirm {
+  background: rgba(251, 191, 36, .1);
+  border-color: rgba(251, 191, 36, .4);
+}

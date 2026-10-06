@@ -50,7 +50,7 @@ export default defineConfig({
       { text: '学习首页', link: '/' },
       {
         text: '学习路线',
-        activeMatch: '^/[a-d]/',
+        activeMatch: '^/[a-dh]/',
         items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
       { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
@@ -65,6 +65,7 @@ export default defineConfig({
       '/b/': trackSidebar('b'),
       '/c/': trackSidebar('c'),
       '/d/': trackSidebar('d'),
+      '/h/': trackSidebar('h'),
       '/bigdata/': [
         { text: '大数据', items: [{ text: '概览', link: '/bigdata/' }] },
         ...bigdataSidebar,
