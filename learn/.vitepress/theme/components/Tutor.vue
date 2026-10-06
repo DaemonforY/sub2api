@@ -2,7 +2,7 @@
 // The AI tutor on lesson pages: a floating button opening a chat that knows this lesson.
 import { computed, nextTick, ref, watch } from 'vue'
 import { useData } from 'vitepress'
-import { ApiError, QUOTA_REASONS, askTutor, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, token, type RunMessage } from '../api'
+import { ApiError, QUOTA_REASONS, askTutor, chooseOwnKey, keyFor, learnConfig, loginUrl, ownKey, progress, runMode, token, type RunMessage } from '../api'
 import OwnKeyPicker from './OwnKeyPicker.vue'
 
 const { frontmatter, page } = useData()
@@ -59,7 +59,7 @@ async function send(retry = false) {
   messages.value = [...messages.value, reply]
   scroll()
   try {
-    const keyId = progress.tutorLeft === 0 ? ownKey.id : 0
+    const keyId = keyFor(progress.tutorLeft)
     await askTutor(lesson.value, history, keyId, (d) => {
       reply.content += d
       messages.value = [...messages.value]
@@ -109,7 +109,7 @@ function restart() {
         <strong>AI 助教</strong>
         <span class="runbox-note">{{ article ? '只回答和这篇文章、大数据相关的问题' : '只回答和这节课相关的问题' }}</span>
         <span v-if="signedIn && enabled && progress.tutorLeft !== null" class="runbox-quota">
-          {{ progress.tutorLeft === 0 && ownKey.id ? `用你的 Key「${ownKey.name}」（正常计费）` : `今日免费 ${progress.tutorLeft} 问` }}
+          {{ (runMode.ownKeyOnly || progress.tutorLeft === 0) && ownKey.id ? `用你的 Key「${ownKey.name}」（正常计费）` : runMode.ownKeyOnly ? '用你自己的 Key 提问，按用量计费' : `今日免费 ${progress.tutorLeft} 问` }}
         </span>
       </div>
       <div ref="box" class="tutor-body">

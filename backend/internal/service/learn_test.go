@@ -68,14 +68,25 @@ func TestLearnRun(t *testing.T) {
 	_, err := svc.Run(ctx, 1, in)
 	require.Equal(t, "LEARN_RUN_DISABLED", reason(err))
 	require.False(t, svc.Config(ctx).RunEnabled)
+	// On without a site key: own-key-only — nothing free, every run needs one of the learner's keys.
 	_, err = svc.SaveSettings(ctx, LearnSettings{RunEnabled: true, Model: "gpt-5.5", FreeRunsPerDay: 2, DailyCap: 3})
-	require.Equal(t, "LEARN_RUN_INVALID", reason(err)) // no key yet
+	require.NoError(t, err)
+	cfg := svc.Config(ctx)
+	require.True(t, cfg.RunEnabled)
+	require.True(t, cfg.OwnKeyOnly)
+	require.Zero(t, cfg.FreeRunsPerDay)
+	_, err = svc.Run(ctx, 1, in)
+	require.Equal(t, "LEARN_OWN_KEY_REQUIRED", reason(err))
+	me, err := svc.Me(ctx, 1)
+	require.NoError(t, err)
+	require.Zero(t, me.RunsLeft)
 	st, err := svc.SaveSettings(ctx, LearnSettings{RunEnabled: true, Model: "gpt-5.5", FreeRunsPerDay: 2, DailyCap: 3, APIKey: "sk-learn"})
 	require.NoError(t, err)
 	require.True(t, st.APIKeySet)
 	require.Empty(t, st.APIKey) // never echoed
 	require.Equal(t, "enc:sk-learn", settings[settingLearnAPIKey])
 	require.True(t, svc.Config(ctx).RunEnabled)
+	require.False(t, svc.Config(ctx).OwnKeyOnly)
 
 	// Bad requests are refused before any call.
 	bad := in

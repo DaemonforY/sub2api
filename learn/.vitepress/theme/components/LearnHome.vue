@@ -12,7 +12,7 @@ onMounted(async () => {
   signedIn.value = !!token()
   void loadProgress()
   const cfg = await learnConfig()
-  if (cfg.free_runs_per_day) freeRuns.value = cfg.free_runs_per_day
+  freeRuns.value = cfg.free_runs_per_day || 0
 })
 
 function doneIn(track: Track) {
@@ -41,7 +41,7 @@ const totalMinutes = (t: Track) => t.lessons.reduce((n, l) => n + l.minutes, 0)
         <p>每节课的代码和提示词都能在页面里直接运行，看到真实结果。学完一条路线，做一个能发布出去的结业项目。</p>
         <div class="home-chips">
           <span>页面内直接运行</span>
-          <span>登录后每天 {{ freeRuns }} 次免费运行</span>
+          <span>{{ freeRuns > 0 ? `登录后每天 ${freeRuns} 次免费运行` : '登录后用自己的 Key 在线运行' }}</span>
           <span>进度跟着账号走</span>
         </div>
       </div>

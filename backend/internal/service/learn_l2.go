@@ -35,6 +35,7 @@ var (
 	ErrLearnCertProject    = infraerrors.BadRequest("LEARN_CERT_PROJECT", "请选择你发布的网站，或填写结业项目的 https 公开链接（Choose a site or enter a project link）")
 	ErrLearnCertNotFound   = infraerrors.NotFound("LEARN_CERT_NOT_FOUND", "证书不存在或已撤销（Certificate not found）")
 	ErrLearnCertRestore    = infraerrors.Conflict("LEARN_CERT_RESTORE", "这位学员已经领了新证书，旧证书不能恢复（A newer certificate exists）")
+	ErrLearnKeyPlatform    = infraerrors.BadRequest("LEARN_KEY_PLATFORM", "课程用的是 GPT 模型，这个 Key 的分组不支持，请换一个「GPT-按量」等 GPT 分组的 Key（Key group has no GPT models）")
 	ErrLearnKeyInvalid     = infraerrors.BadRequest("LEARN_KEY_INVALID", "这个 Key 不可用，请换一个启用中的 Key（Key unavailable）")
 	ErrLearnSourcesMissing = infraerrors.ServiceUnavailable("LEARN_CHECK_UNAVAILABLE", "暂时无法核对，请稍后再试（Check unavailable）")
 )
@@ -647,10 +648,18 @@ func (s *LearnService) ownKey(ctx context.Context, userID, keyID int64) (*APIKey
 	if err != nil || k == nil || k.UserID != userID || !k.IsActive() || k.Key == "" {
 		return nil, ErrLearnKeyInvalid
 	}
+	if !learnKeyUsable(k) {
+		return nil, ErrLearnKeyPlatform
+	}
 	return k, nil
 }
 
-// LearnKeyOption is one of the learner's keys offered for runs past the free ones.
+// learnKeyUsable: the lessons call GPT models, so only keys in an OpenAI-platform group can run them.
+func learnKeyUsable(k *APIKey) bool {
+	return k.Group == nil || k.Group.Platform == "" || k.Group.Platform == PlatformOpenAI
+}
+
+// LearnKeyOption is one of the learner's keys offered for runs (own-key-only mode, or past the free ones).
 type LearnKeyOption struct {
 	ID    int64  `json:"id"`
 	Name  string `json:"name"`
@@ -668,7 +677,7 @@ func (s *LearnService) OwnKeys(ctx context.Context, userID int64) ([]LearnKeyOpt
 		return nil, err
 	}
 	for _, k := range keys {
-		if !k.IsActive() {
+		if !k.IsActive() || !learnKeyUsable(&k) {
 			continue
 		}
 		opt := LearnKeyOption{ID: k.ID, Name: k.Name}

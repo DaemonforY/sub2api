@@ -222,16 +222,26 @@ export interface LearnConfig {
   tutor_free_per_day: number
   interviews_per_day: number
   model: string
+  /** No site learning key: every run, tutor question and interview uses the learner's own key. */
+  own_key_only?: boolean
 }
+
+/** Set from /learn/config: runs need one of the learner's own keys (nothing is free). */
+export const runMode = reactive({ ownKeyOnly: false })
 
 let configPromise: Promise<LearnConfig> | null = null
 export function learnConfig(): Promise<LearnConfig> {
-  configPromise ||= api<LearnConfig>('/learn/config').catch(() => ({ run_enabled: false, free_runs_per_day: 0, tutor_free_per_day: 0, interviews_per_day: 0, model: '' }))
+  configPromise ||= api<LearnConfig>('/learn/config')
+    .then((c) => {
+      runMode.ownKeyOnly = !!c.own_key_only
+      return c
+    })
+    .catch(() => ({ run_enabled: false, free_runs_per_day: 0, tutor_free_per_day: 0, interviews_per_day: 0, model: '' }))
   return configPromise
 }
 
 export async function runExample(input: { lesson: string; messages: RunMessage[]; response_format?: unknown; tools?: unknown }): Promise<RunResult> {
-  const keyId = progress.runsLeft === 0 ? ownKey.id : 0
+  const keyId = keyFor(progress.runsLeft)
   const result = await api<RunResult>('/learn/run', { method: 'POST', body: JSON.stringify({ ...input, key_id: keyId || undefined }) })
   progress.runsLeft = result.runs_left
   return result
@@ -261,6 +271,11 @@ if (inBrowser) {
   }
 }
 
+/** The learner's key to send: always in own-key-only mode, otherwise once the free calls are used up. */
+export function keyFor(freeLeft: number | null): number {
+  return runMode.ownKeyOnly || freeLeft === 0 ? ownKey.id : 0
+}
+
 export function chooseOwnKey(key: KeyOption | null) {
   ownKey.id = key?.id || 0
   ownKey.name = key?.name || ''
@@ -277,7 +292,7 @@ export function listOwnKeys(): Promise<KeyOption[]> {
 }
 
 /** Reasons meaning the free calls are used up (the learner may go on with their own key). */
-export const QUOTA_REASONS = ['LEARN_RUN_QUOTA', 'LEARN_TUTOR_QUOTA', 'LEARN_INTERVIEW_QUOTA']
+export const QUOTA_REASONS = ['LEARN_RUN_QUOTA', 'LEARN_TUTOR_QUOTA', 'LEARN_INTERVIEW_QUOTA', 'LEARN_OWN_KEY_REQUIRED']
 
 // --- Quizzes, checkpoints, certificates -------------------------------------------------------
 

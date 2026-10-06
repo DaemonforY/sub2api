@@ -23,10 +23,13 @@ function zhe(percent: number) {
     <div class="campus-perk">
       <span class="campus-perk-icon">🧪</span>
       <strong>课程免费学，代码在线跑</strong>
-      <p v-if="learn && learn.run_enabled">
+      <p v-if="learn && learn.run_enabled && learn.own_key_only">
+        全部课程免费阅读；登录后用自己的 HiveGPT Key 在页面里运行代码、问 AI 助教、做模拟面试，按实际用量计费。
+      </p>
+      <p v-else-if="learn && learn.run_enabled">
         登录后每天 {{ learn.free_runs_per_day }} 次免费运行、{{ learn.tutor_free_per_day }} 次问 AI 助教、{{ learn.interviews_per_day }} 场模拟面试，不用先充值。
       </p>
-      <p v-else>全部课程免费阅读；页面里的「动手试试」、AI 助教和模拟面试登录后每天有免费次数。</p>
+      <p v-else>全部课程免费阅读，代码都可以复制到本地用自己的 Key 运行。</p>
     </div>
     <div v-if="growth && growth.edu_verify_enabled" class="campus-perk">
       <span class="campus-perk-icon">🎓</span>

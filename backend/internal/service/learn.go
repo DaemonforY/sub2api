@@ -46,10 +46,11 @@ const (
 )
 
 var (
-	ErrLearnRunDisabled = infraerrors.ServiceUnavailable("LEARN_RUN_DISABLED", "在线运行暂未开放，可以复制代码用自己的 Key 运行（Running examples is not available yet）")
-	ErrLearnRunQuota    = infraerrors.TooManyRequests("LEARN_RUN_QUOTA", "今天的免费运行次数用完了，明天再来，或者复制代码用自己的 Key 运行（Daily free runs used up）")
-	ErrLearnRunBusy     = infraerrors.TooManyRequests("LEARN_RUN_BUSY", "今天的在线运行名额已用完，可以复制代码用自己的 Key 运行（Daily run capacity reached）")
-	ErrLearnLessonID    = infraerrors.BadRequest("LEARN_LESSON_INVALID", "课时编号不正确（Invalid lesson）")
+	ErrLearnRunDisabled    = infraerrors.ServiceUnavailable("LEARN_RUN_DISABLED", "在线运行暂未开放，可以复制代码用自己的 Key 运行（Running examples is not available yet）")
+	ErrLearnOwnKeyRequired = infraerrors.BadRequest("LEARN_OWN_KEY_REQUIRED", "在线运行使用你自己的 HiveGPT Key，按实际用量计费，请先选择一个 Key（Choose one of your API keys to run）")
+	ErrLearnRunQuota       = infraerrors.TooManyRequests("LEARN_RUN_QUOTA", "今天的免费运行次数用完了，明天再来，或者复制代码用自己的 Key 运行（Daily free runs used up）")
+	ErrLearnRunBusy        = infraerrors.TooManyRequests("LEARN_RUN_BUSY", "今天的在线运行名额已用完，可以复制代码用自己的 Key 运行（Daily run capacity reached）")
+	ErrLearnLessonID       = infraerrors.BadRequest("LEARN_LESSON_INVALID", "课时编号不正确（Invalid lesson）")
 )
 
 func errLearnRunInvalid(what string) error {
@@ -136,6 +137,8 @@ type LearnConfig struct {
 	TutorFree      int    `json:"tutor_free_per_day"`
 	InterviewsFree int    `json:"interviews_per_day"`
 	Model          string `json:"model"`
+	// OwnKeyOnly: no site learning key, so every run uses one of the learner's own keys.
+	OwnKeyOnly bool `json:"own_key_only"`
 }
 
 // LearnMe is the signed-in learner's state.
@@ -267,6 +270,15 @@ func (s *LearnService) loadSettings(ctx context.Context) (LearnSettings, string)
 	return out, key
 }
 
+// freeOnSiteKey: free runs, tutor questions and interviews are paid with the site's learning key.
+// Without one, every call runs on the learner's own key (own-key-only mode), so nothing is free.
+func freeOnSiteKey(st LearnSettings, siteKey string) LearnSettings {
+	if siteKey == "" {
+		st.FreeRunsPerDay, st.TutorFree, st.InterviewsFree = 0, 0, 0
+	}
+	return st
+}
+
 // Settings (admin; the key itself is never returned).
 func (s *LearnService) Settings(ctx context.Context) LearnSettings {
 	out, _ := s.loadSettings(ctx)
@@ -309,18 +321,16 @@ func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (Lear
 			return LearnSettings{}, err
 		}
 	}
-	out, key := s.loadSettings(ctx)
-	if out.RunEnabled && key == "" {
-		return out, errLearnRunInvalid("请填写学习专用 Key")
-	}
+	out, _ := s.loadSettings(ctx)
 	return out, nil
 }
 
 // Config is public.
 func (s *LearnService) Config(ctx context.Context) LearnConfig {
 	st, key := s.loadSettings(ctx)
-	return LearnConfig{RunEnabled: st.RunEnabled && key != "" && st.Model != "", FreeRunsPerDay: st.FreeRunsPerDay,
-		TutorFree: st.TutorFree, InterviewsFree: st.InterviewsFree, Model: st.Model}
+	st = freeOnSiteKey(st, key)
+	return LearnConfig{RunEnabled: st.RunEnabled && st.Model != "", FreeRunsPerDay: st.FreeRunsPerDay,
+		TutorFree: st.TutorFree, InterviewsFree: st.InterviewsFree, Model: st.Model, OwnKeyOnly: key == ""}
 }
 
 // Me: progress, quiz results, checkpoints, certificates and what is left free today.
@@ -349,7 +359,7 @@ func (s *LearnService) Me(ctx context.Context, userID int64) (*LearnMe, error) {
 		}
 	}
 	out.Certificates = live
-	st, _ := s.loadSettings(ctx)
+	st := freeOnSiteKey(s.loadSettings(ctx))
 	since := learnDayStart(s.now())
 	if out.RunsToday, err = s.repo.CountRuns(ctx, userID, learnKindRun, since); err != nil {
 		return nil, err
@@ -481,9 +491,13 @@ type learnCall struct {
 // the learner's daily allowance (free; err) and the site-wide cap. It records the call as pending.
 func (s *LearnService) acquire(ctx context.Context, userID int64, lesson, kind string, keyID int64, free int, quota error) (*learnCall, LearnSettings, error) {
 	st, learnKey := s.loadSettings(ctx)
-	if !st.RunEnabled || learnKey == "" || st.Model == "" {
+	if !st.RunEnabled || st.Model == "" {
 		return nil, st, ErrLearnRunDisabled
 	}
+	if keyID == 0 && learnKey == "" {
+		return nil, st, ErrLearnOwnKeyRequired
+	}
+	st = freeOnSiteKey(st, learnKey)
 	call := &learnCall{key: learnKey}
 	since := learnDayStart(s.now())
 	if free < 0 {
@@ -545,7 +559,7 @@ func (s *LearnService) finish(ctx context.Context, call *learnCall, started time
 // Run runs a lesson example for userID.
 func (s *LearnService) Run(ctx context.Context, userID int64, in LearnRunInput) (*LearnRunResult, error) {
 	if err := validateLearnRun(&in); err != nil {
-		if st, key := s.loadSettings(ctx); !st.RunEnabled || key == "" || st.Model == "" {
+		if st, _ := s.loadSettings(ctx); !st.RunEnabled || st.Model == "" {
 			return nil, ErrLearnRunDisabled
 		}
 		return nil, err

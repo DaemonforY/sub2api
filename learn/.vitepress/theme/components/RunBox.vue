@@ -3,7 +3,7 @@
 // The request can only carry messages plus an optional JSON schema / tools; the server picks
 // the model. Signed out or when runs are off, a recorded sample output is shown instead.
 import { computed, onMounted, ref } from 'vue'
-import { ApiError, QUOTA_REASONS, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, runExample, token, type RunMessage, type RunResult } from '../api'
+import { ApiError, QUOTA_REASONS, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, runExample, runMode, token, type RunMessage, type RunResult } from '../api'
 import OwnKeyPicker from './OwnKeyPicker.vue'
 
 const props = withDefaults(
@@ -129,9 +129,10 @@ function restart() {
   <div class="runbox" data-testid="runbox">
     <div class="runbox-head">
       <span class="runbox-title">▶ {{ title }}</span>
-      <span v-if="signedIn && enabled && progress.runsLeft === 0 && ownKey.id" class="runbox-quota">
-        用你的 Key「{{ ownKey.name }}」运行（正常计费）<a href="javascript:void 0" @click="chooseOwnKey(null)">不用了</a>
+      <span v-if="signedIn && enabled && (runMode.ownKeyOnly || progress.runsLeft === 0) && ownKey.id" class="runbox-quota">
+        用你的 Key「{{ ownKey.name }}」运行（正常计费）<a href="javascript:void 0" @click="chooseOwnKey(null)">{{ runMode.ownKeyOnly ? '换一个' : '不用了' }}</a>
       </span>
+      <span v-else-if="signedIn && enabled && runMode.ownKeyOnly" class="runbox-quota">用你自己的 Key 运行，按用量计费</span>
       <span v-else-if="signedIn && enabled && progress.runsLeft !== null" class="runbox-quota">今日免费运行剩余 {{ progress.runsLeft }} 次</span>
     </div>
 
@@ -160,7 +161,7 @@ function restart() {
       </template>
       <template v-else-if="!signedIn">
         <a class="runbox-btn" :href="loginUrl()">登录后运行</a>
-        <span class="runbox-note">登录 HiveGPT 后每天有免费运行次数</span>
+        <span class="runbox-note">{{ runMode.ownKeyOnly ? '登录 HiveGPT 后用自己的 Key 运行' : '登录 HiveGPT 后每天有免费运行次数' }}</span>
       </template>
       <template v-else>
         <button class="runbox-btn" :disabled="running || !input.trim() || (chat && turns >= MAX_TURNS)" data-testid="runbox-run" @click="run">

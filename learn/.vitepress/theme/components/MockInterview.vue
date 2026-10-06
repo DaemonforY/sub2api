@@ -8,11 +8,13 @@ import {
   answerInterview,
   chooseOwnKey,
   getInterview,
+  keyFor,
   learnConfig,
   listInterviews,
   loginUrl,
   ownKey,
   progress,
+  runMode,
   startInterview,
   token,
   type Interview,
@@ -52,7 +54,7 @@ async function start() {
   error.value = ''
   quotaOut.value = false
   try {
-    const keyId = progress.interviewsLeft === 0 ? ownKey.id : 0
+    const keyId = keyFor(progress.interviewsLeft)
     iv.value = await startInterview(props.topic, keyId)
     answer.value = ''
   } catch (e) {
@@ -130,7 +132,7 @@ async function submit() {
           {{ busy ? '准备题目…' : iv ? '再来一场' : '开始模拟面试' }}
         </button>
         <span v-if="progress.interviewsLeft !== null" class="runbox-note">
-          {{ progress.interviewsLeft === 0 && ownKey.id ? `免费场次已用完，将用你的 Key「${ownKey.name}」（正常计费）` : `今天还能免费面试 ${progress.interviewsLeft} 场` }}
+          {{ runMode.ownKeyOnly ? (ownKey.id ? `用你的 Key「${ownKey.name}」面试（按用量计费）` : '用你自己的 Key 面试，按用量计费') : progress.interviewsLeft === 0 && ownKey.id ? `免费场次已用完，将用你的 Key「${ownKey.name}」（正常计费）` : `今天还能免费面试 ${progress.interviewsLeft} 场` }}
         </span>
       </div>
       <OwnKeyPicker v-if="quotaOut" what="模拟面试" @chosen="start" />

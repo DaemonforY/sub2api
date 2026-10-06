@@ -108,9 +108,13 @@ func (s *LearnService) StartInterview(ctx context.Context, userID int64, topic s
 		return nil, ErrLearnInterviewTopic
 	}
 	st, learnKey := s.loadSettings(ctx)
-	if !st.RunEnabled || learnKey == "" || st.Model == "" {
+	if !st.RunEnabled || st.Model == "" {
 		return nil, ErrLearnRunDisabled
 	}
+	if keyID == 0 && learnKey == "" {
+		return nil, ErrLearnOwnKeyRequired
+	}
+	st = freeOnSiteKey(st, learnKey)
 	left := 0
 	used, err := s.repo.CountInterviews(ctx, userID, s.learnSince())
 	if err != nil {

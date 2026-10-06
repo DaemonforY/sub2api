@@ -258,6 +258,8 @@ func TestLearnOwnKeyRun(t *testing.T) {
 		{ID: 7, UserID: 1, Key: "sk-mine", Status: StatusActive},
 		{ID: 8, UserID: 2, Key: "sk-other", Status: StatusActive},
 		{ID: 9, UserID: 1, Key: "sk-off", Status: "disabled"},
+		{ID: 10, UserID: 1, Key: "sk-claude", Status: StatusActive, Group: &Group{Name: "Claude", Platform: PlatformAnthropic}},
+		{ID: 11, UserID: 1, Key: "sk-gpt", Status: StatusActive, Group: &Group{Name: "GPT-按量", Platform: PlatformOpenAI}},
 	}}
 	svc, repo := newL2Service(t, gw.URL, LearnSources{Keys: keys})
 	in := LearnRunInput{Lesson: "a1", Messages: []LearnMessage{{Role: "user", Content: "hi"}}}
@@ -273,6 +275,18 @@ func TestLearnOwnKeyRun(t *testing.T) {
 		_, err = svc.Run(ctx, 1, in)
 		require.Equal(t, "LEARN_KEY_INVALID", infraerrors.Reason(err), "key %d", id)
 	}
+	// The lessons call GPT models: keys of other platforms are not offered and are refused.
+	in.KeyID = 10
+	_, err = svc.Run(ctx, 1, in)
+	require.Equal(t, "LEARN_KEY_PLATFORM", infraerrors.Reason(err))
+	opts, err := svc.OwnKeys(ctx, 1)
+	require.NoError(t, err)
+	ids := []int64{}
+	for _, o := range opts {
+		ids = append(ids, o.ID)
+	}
+	require.Equal(t, []int64{7, 11}, ids)
+
 	in.KeyID = 7
 	res, err := svc.Run(ctx, 1, in)
 	require.NoError(t, err)

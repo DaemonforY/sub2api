@@ -3,7 +3,7 @@
 // a calculator and, with `confirm`, a pretend order) run here in the browser; each step is one run on
 // HiveGPT. `confirm` adds human-in-the-loop: an order waits for the learner to approve or reject it.
 import { onMounted, reactive, ref } from 'vue'
-import { ApiError, QUOTA_REASONS, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, runExample, token, type RunMessage } from '../api'
+import { ApiError, QUOTA_REASONS, chooseOwnKey, learnConfig, loginUrl, ownKey, progress, runExample, runMode, token, type RunMessage } from '../api'
 import OwnKeyPicker from './OwnKeyPicker.vue'
 
 const props = withDefaults(
@@ -235,7 +235,8 @@ async function run() {
   <div class="runbox agentloop" data-testid="agent-loop">
     <div class="runbox-head">
       <span class="runbox-title">▶ 运行 Agent 循环</span>
-      <span v-if="signedIn && enabled && progress.runsLeft !== null" class="runbox-quota">今日免费运行剩余 {{ progress.runsLeft }} 次（每一步算一次）</span>
+      <span v-if="signedIn && enabled && runMode.ownKeyOnly" class="runbox-quota">{{ ownKey.id ? `用你的 Key「${ownKey.name}」运行（每一步按用量计费）` : '用你自己的 Key 运行，每一步按用量计费' }}</span>
+      <span v-else-if="signedIn && enabled && progress.runsLeft !== null" class="runbox-quota">今日免费运行剩余 {{ progress.runsLeft }} 次（每一步算一次）</span>
     </div>
     <textarea v-model="input" class="runbox-input" rows="2"></textarea>
     <div class="runbox-actions">
