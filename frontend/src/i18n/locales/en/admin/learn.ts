@@ -7,6 +7,8 @@ export default {
     runHint: "Lessons' “Try it” boxes, the AI tutor and mock interviews call models through this site's gateway. By default learners use their own key: they pick one of their GPT-group keys on the page and are billed on it as usual. If you set a learning key below, signed-in learners first get free calls a day (billed on the learning key), then go on with their own key.",
     enabled: 'Enable running examples',
     apiKey: 'Learning key (optional)',
+    clearKey: 'Remove — learners use their own keys',
+    keyCleared: 'Learning key removed; learners run on their own keys',
     apiKeySet: 'Set; leave empty to keep it',
     apiKeyPlaceholder: 'Paste a key starting with sk-',
     apiKeyHint: 'Leave empty: no free calls, learners always run on their own key. Set it: learners get free calls a day billed on this key — create it under API Keys with an admin account, in the GPT pay-as-you-go group, with a usage limit. Stored encrypted and never shown again.',

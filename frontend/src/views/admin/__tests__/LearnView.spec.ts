@@ -51,6 +51,16 @@ describe('admin LearnView', () => {
     expect((wrapper.get('[data-testid="learn-key"]').element as HTMLInputElement).value).toBe('')
   })
 
+  it('removes the stored learning key so learners use their own keys', async () => {
+    api.saveSettings.mockImplementation(async (s) => ({ ...s, clear_api_key: undefined, api_key_set: !s.clear_api_key }))
+    const wrapper = mount(LearnView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.get('[data-testid="learn-key-clear"]').trigger('click')
+    await flushPromises()
+    expect(api.saveSettings.mock.calls[0][0]).toMatchObject({ clear_api_key: true })
+    expect(wrapper.find('[data-testid="learn-key-clear"]').exists()).toBe(false)
+  })
+
   it('lists certificates and revokes one after confirming', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     const wrapper = mount(LearnView, { global: { stubs } })

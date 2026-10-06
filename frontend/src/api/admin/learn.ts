@@ -11,6 +11,8 @@ export interface LearnSettings {
   api_key_set: boolean
   /** Write-only: send to replace the learning key; empty keeps it. */
   api_key?: string
+  /** Remove the stored learning key: learners then always use their own keys. */
+  clear_api_key?: boolean
 }
 
 export interface LearnStats {

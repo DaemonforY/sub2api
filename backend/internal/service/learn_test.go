@@ -152,3 +152,25 @@ func TestLearnDayStartIsBeijingMidnight(t *testing.T) {
 	start := learnDayStart(time.Date(2026, 10, 4, 17, 30, 0, 0, time.UTC))
 	require.True(t, start.Equal(time.Date(2026, 10, 4, 16, 0, 0, 0, time.UTC)))
 }
+
+func TestLearnClearKey(t *testing.T) {
+	ctx := context.Background()
+	settings := mapSettings{}
+	svc := NewLearnService(newLearnRepoStub(), settings, prefixEncryptor{}, "http://127.0.0.1:1", LearnSources{})
+	_, err := svc.SaveSettings(ctx, LearnSettings{RunEnabled: true, Model: "gpt-5.5", FreeRunsPerDay: 5, APIKey: "sk-site"})
+	require.NoError(t, err)
+	require.False(t, svc.Config(ctx).OwnKeyOnly)
+
+	// Saving without a key keeps the stored one; clear_api_key removes it (learners then use their own keys).
+	st, err := svc.SaveSettings(ctx, LearnSettings{RunEnabled: true, Model: "gpt-5.5", FreeRunsPerDay: 5})
+	require.NoError(t, err)
+	require.True(t, st.APIKeySet)
+	st, err = svc.SaveSettings(ctx, LearnSettings{RunEnabled: true, Model: "gpt-5.5", FreeRunsPerDay: 5, ClearAPIKey: true})
+	require.NoError(t, err)
+	require.False(t, st.APIKeySet)
+	require.Empty(t, settings[settingLearnAPIKey])
+	cfg := svc.Config(ctx)
+	require.True(t, cfg.RunEnabled)
+	require.True(t, cfg.OwnKeyOnly)
+	require.Zero(t, cfg.FreeRunsPerDay)
+}

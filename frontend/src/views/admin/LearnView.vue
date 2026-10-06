@@ -16,6 +16,9 @@
             <span class="input-label">{{ t('admin.learn.apiKey') }}</span>
             <input v-model="apiKey" type="password" autocomplete="new-password" class="input" :placeholder="form.api_key_set ? t('admin.learn.apiKeySet') : t('admin.learn.apiKeyPlaceholder')" data-testid="learn-key" />
             <span class="input-hint">{{ t('admin.learn.apiKeyHint') }}</span>
+            <button v-if="form.api_key_set" type="button" class="btn btn-secondary btn-sm mt-2" :disabled="saving" data-testid="learn-key-clear" @click.prevent="clearKey">
+              {{ t('admin.learn.clearKey') }}
+            </button>
           </label>
           <label class="text-sm">
             <span class="input-label">{{ t('admin.learn.model') }}</span>
@@ -228,6 +231,19 @@ const statItems = computed(() => {
     { key: 'certificates', value: s?.certificates ?? 0 },
   ]
 })
+
+async function clearKey() {
+  saving.value = true
+  try {
+    Object.assign(form, await adminAPI.learn.saveSettings({ ...form, clear_api_key: true }))
+    apiKey.value = ''
+    appStore.showSuccess(t('admin.learn.keyCleared'))
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    saving.value = false
+  }
+}
 
 async function save() {
   saving.value = true

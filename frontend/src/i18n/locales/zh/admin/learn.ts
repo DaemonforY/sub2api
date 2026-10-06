@@ -7,6 +7,8 @@ export default {
     runHint: '课时里的「动手试试」、AI 助教和模拟面试都通过本站网关调用模型。默认用学员自己的 Key：学员在页面里选一个自己的 GPT 分组 Key，按正常价格从学员的 Key 计费。如果下面填了学习专用 Key，登录用户每天先有免费次数（费用记在学习专用 Key 上），用完后再用自己的 Key。',
     enabled: '开启在线运行',
     apiKey: '学习专用 Key（选填）',
+    clearKey: '清除，改为学员用自己的 Key',
+    keyCleared: '已清除学习专用 Key，学员会用自己的 Key 运行',
     apiKeySet: '已设置，留空表示不修改',
     apiKeyPlaceholder: '粘贴一个 sk- 开头的 Key',
     apiKeyHint: '不填：没有免费次数，学员全部用自己的 Key 运行。填了：学员每天有免费次数，费用记在这个 Key 上——用管理员账号在「API 密钥」页新建一个 Key，分组选「GPT-按量」，并设使用额度上限。Key 加密保存，保存后不再显示。',

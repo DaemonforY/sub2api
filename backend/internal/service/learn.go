@@ -128,6 +128,8 @@ type LearnSettings struct {
 	InterviewsFree int    `json:"interviews_per_day"`
 	APIKeySet      bool   `json:"api_key_set"`
 	APIKey         string `json:"api_key,omitempty"`
+	// ClearAPIKey removes the stored learning key (own-key-only mode: learners always use their own keys).
+	ClearAPIKey bool `json:"clear_api_key,omitempty"`
 }
 
 // LearnConfig is public: whether runs work and how many are free.
@@ -306,7 +308,9 @@ func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (Lear
 		settingLearnTutorFree:  strconv.Itoa(in.TutorFree),
 		settingLearnInterviews: strconv.Itoa(in.InterviewsFree),
 	}
-	if key := strings.TrimSpace(in.APIKey); key != "" {
+	if in.ClearAPIKey {
+		values[settingLearnAPIKey] = ""
+	} else if key := strings.TrimSpace(in.APIKey); key != "" {
 		if s.encryptor == nil {
 			return LearnSettings{}, errLearnRunInvalid("服务端未配置加密")
 		}
