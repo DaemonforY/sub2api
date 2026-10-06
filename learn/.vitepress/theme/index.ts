@@ -15,6 +15,7 @@ import Showcase from './components/Showcase.vue'
 import CampusPerks from './components/CampusPerks.vue'
 import BigdataHub from './components/BigdataHub.vue'
 import './style.css'
+import './heroui.css'
 
 // Remember ?aff= (poster and invite links) the way the main site does: same origin, same
 // localStorage key and 30-day lifetime, so signing up from a lesson still binds the inviter.
