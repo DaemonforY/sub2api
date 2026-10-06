@@ -1,0 +1,41 @@
+[
+  { "text": "开始", "items": [
+    { "text": "Codex 是什么", "link": "/codex/intro" },
+    { "text": "核心概念", "link": "/codex/concepts" },
+    { "text": "安装与登录", "link": "/codex/install" },
+    { "text": "接入 HiveGPT", "link": "/codex/hivegpt" },
+    { "text": "接入 DeepSeek 等其他模型", "link": "/codex/providers" },
+    { "text": "第一个任务", "link": "/codex/first-task" }
+  ]},
+  { "text": "使用形态", "items": [
+    { "text": "桌面应用与界面", "link": "/codex/app" },
+    { "text": "IDE 扩展", "link": "/codex/ide" },
+    { "text": "云端任务与 GitHub", "link": "/codex/cloud" },
+    { "text": "Windows 上使用", "link": "/codex/windows" }
+  ]},
+  { "text": "CLI 详解", "items": [
+    { "text": "斜杠命令", "link": "/codex/slash-commands" },
+    { "text": "命令行参数", "link": "/codex/cli-reference" },
+    { "text": "config.toml 基础", "link": "/codex/config" },
+    { "text": "高级配置", "link": "/codex/config-advanced" },
+    { "text": "沙箱与审批", "link": "/codex/sandbox" },
+    { "text": "模型与推理强度", "link": "/codex/models" }
+  ]},
+  { "text": "进阶", "items": [
+    { "text": "提示词最佳实践", "link": "/codex/prompting" },
+    { "text": "AGENTS.md", "link": "/codex/agents-md" },
+    { "text": "Skills", "link": "/codex/skills" },
+    { "text": "MCP", "link": "/codex/mcp" },
+    { "text": "子代理", "link": "/codex/subagents" },
+    { "text": "规则与钩子", "link": "/codex/hooks" },
+    { "text": "电脑操控", "link": "/codex/computer-use" }
+  ]},
+  { "text": "实战", "items": [
+    { "text": "非交互模式与 CI/CD", "link": "/codex/exec" },
+    { "text": "Worktree 与并行任务", "link": "/codex/worktrees" },
+    { "text": "工作流与实战示例", "link": "/codex/workflows" },
+    { "text": "安全与团队管理", "link": "/codex/security" },
+    { "text": "速查表", "link": "/codex/cheatsheet" },
+    { "text": "常见问题排查", "link": "/codex/troubleshooting" }
+  ]}
+]

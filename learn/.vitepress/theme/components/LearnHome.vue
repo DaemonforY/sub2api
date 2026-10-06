@@ -98,6 +98,11 @@ const totalMinutes = (t: Track) => t.lessons.reduce((n, l) => n + l.minutes, 0)
     </Showcase>
 
     <div class="home-two">
+      <a class="home-card" :href="withBase('/codex/')">
+        <h3>Codex 教程</h3>
+        <p>OpenAI Codex 从入门到进阶：CLI、桌面应用、IDE 扩展、云端任务，配置、沙箱、AGENTS.md、Skills、MCP、子代理、CI/CD，接入 HiveGPT 就能用。</p>
+        <span class="lesson-next">去学 →</span>
+      </a>
       <a class="home-card" :href="withBase('/bigdata/')">
         <h3>大数据</h3>
         <p>Apache Spark、Flink、Paimon 源码学习：调度、Shuffle、Checkpoint、状态、LSM 合并和提交，每个结论都有源码位置和实验。</p>

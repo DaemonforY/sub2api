@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { defineConfig, type DefaultTheme } from 'vitepress'
 import guideSidebar from './guide-sidebar.json'
 import bigdataSidebar from './bigdata-sidebar.json'
+import codexSidebar from './codex-sidebar.json'
 import { lessonHref, trackHref, tracks } from './theme/tracks'
 
 // AI 学习 at hivegpt.cn/learn. Pages carry the main site's CSP (script-src 'self' + nonce), so
@@ -53,6 +54,7 @@ export default defineConfig({
         activeMatch: '^/[a-dh]/',
         items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
+      { text: 'Codex 教程', link: '/codex/', activeMatch: '^/codex/' },
       { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
       { text: '学员作品', link: '/showcase', activeMatch: '^/showcase' },
       { text: '校园', link: '/campus', activeMatch: '^/campus' },
@@ -78,6 +80,7 @@ export default defineConfig({
           ],
         },
       ],
+      '/codex/': [{ text: 'Codex 教程', items: [{ text: '教程首页', link: '/codex/' }] }, ...codexSidebar],
       '/guide/': [{ text: '延伸阅读（JavaGuide）', items: [{ text: '目录与来源', link: '/guide/' }] }, ...guideSidebar],
     },
     outline: { level: [2, 3], label: '本页目录' },
