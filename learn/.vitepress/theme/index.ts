@@ -16,10 +16,26 @@ import CampusPerks from './components/CampusPerks.vue'
 import BigdataHub from './components/BigdataHub.vue'
 import './style.css'
 
+// Remember ?aff= (poster and invite links) the way the main site does: same origin, same
+// localStorage key and 30-day lifetime, so signing up from a lesson still binds the inviter.
+function rememberAffiliate() {
+  try {
+    const q = new URLSearchParams(window.location.search)
+    const code = (q.get('aff') || q.get('aff_code') || '').trim()
+    if (code && /^[A-Za-z0-9_-]{1,64}$/.test(code)) {
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000
+      window.localStorage.setItem('affiliate_referral_code', JSON.stringify({ code, expiresAt }))
+    }
+  } catch {
+    // storage unavailable
+  }
+}
+
 export default {
   extends: DefaultTheme,
   Layout,
   enhanceApp({ app }) {
+    if (typeof window !== 'undefined') rememberAffiliate()
     app.component('RunBox', RunBox)
     app.component('TryInCanvas', TryInCanvas)
     app.component('Mermaid', Mermaid)
