@@ -223,6 +223,7 @@ func ProvideHandlers(
 	communityHandler *CommunityHandler,
 	courseHandler *CourseHandler,
 	learnHandler *LearnHandler,
+	editorHandler *EditorHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -260,6 +261,7 @@ func ProvideHandlers(
 		Community:        communityHandler,
 		Course:           courseHandler,
 		Learn:            learnHandler,
+		Editor:           editorHandler,
 	}
 }
 
@@ -297,6 +299,7 @@ var ProviderSet = wire.NewSet(
 	NewCommunityHandler,
 	NewCourseHandler,
 	NewLearnHandler,
+	NewEditorHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

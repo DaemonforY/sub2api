@@ -105,6 +105,11 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			s.serveLearn(c, cleanPath)
 			return
 		}
+		// /editor is the 公众号 editor (its own Vite app).
+		if cleanPath == "editor" || strings.HasPrefix(cleanPath, "editor/") {
+			s.serveEditor(c, cleanPath)
+			return
+		}
 
 		// For index.html or SPA routes, serve with injected settings
 		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
@@ -159,6 +164,32 @@ func (s *FrontendServer) serveLearn(c *gin.Context, cleanPath string) {
 	} else {
 		c.Data(http.StatusNotFound, "text/html; charset=utf-8", body)
 	}
+	c.Abort()
+}
+
+// serveEditor serves the /editor single-page app: its files (hashed assets cached for good) and
+// index.html for everything else.
+func (s *FrontendServer) serveEditor(c *gin.Context, cleanPath string) {
+	if cleanPath == "editor" {
+		c.Redirect(http.StatusMovedPermanently, "/editor/")
+		c.Abort()
+		return
+	}
+	name := cleanPath
+	if strings.HasSuffix(name, "/") || !s.isFile(name) {
+		name = "editor/index.html"
+	}
+	if !s.isFile(name) {
+		c.String(http.StatusNotFound, "Not found")
+		c.Abort()
+		return
+	}
+	if strings.HasPrefix(name, "editor/assets/") {
+		c.Header("Cache-Control", staticAssetsCacheControl)
+	} else if strings.HasSuffix(name, ".html") {
+		c.Header("Cache-Control", "no-cache")
+	}
+	http.ServeFileFS(c.Writer, c.Request, s.distFS, name)
 	c.Abort()
 }
 

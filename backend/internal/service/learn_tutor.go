@@ -140,6 +140,12 @@ func (s *LearnService) Tutor(ctx context.Context, userID int64, in LearnTutorInp
 
 // streamGateway makes a streamed chat completion through this site's gateway.
 func (s *LearnService) streamGateway(ctx context.Context, key, model string, messages []LearnMessage, maxTokens int, onDelta func(string) error) (*LearnTutorResult, error) {
+	return streamChatCompletion(ctx, s.client, s.gatewayURL, "hivegpt-learn/1", key, model, messages, maxTokens, onDelta)
+}
+
+// streamChatCompletion streams a chat completion from this server's own gateway, calling onDelta for
+// each piece of text (shared by the learning site's tutor and the 公众号 editor).
+func streamChatCompletion(ctx context.Context, client *http.Client, gatewayURL, userAgent, key, model string, messages []LearnMessage, maxTokens int, onDelta func(string) error) (*LearnTutorResult, error) {
 	payload, err := json.Marshal(map[string]any{
 		"model":                 model,
 		"messages":              messages,
@@ -150,15 +156,15 @@ func (s *LearnService) streamGateway(ctx context.Context, key, model string, mes
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.gatewayURL+"/v1/chat/completions", bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, gatewayURL+"/v1/chat/completions", bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+key)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("User-Agent", "hivegpt-learn/1")
-	resp, err := s.client.Do(req)
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, errLearnRunFailed("连接模型服务超时")
 	}

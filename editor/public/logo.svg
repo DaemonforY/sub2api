@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">HiveGPT</title>
+  <!-- A honeycomb cell (Hive) with an AI sparkle (GPT). Violet → teal, the HiveGPT colours. -->
+  <defs>
+    <linearGradient id="hive-fill" x1="90" y1="70" x2="430" y2="450" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A78BFA"/>
+      <stop offset=".5" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+    <radialGradient id="hive-shine" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(176 120) rotate(55) scale(300)">
+      <stop stop-color="#fff" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <polygon points="256.0,43.6 439.9,149.8 439.9,362.2 256.0,468.4 72.1,362.2 72.1,149.8" fill="url(#hive-fill)" stroke="url(#hive-fill)" stroke-width="47.2" stroke-linejoin="round"/>
+  <polygon points="256.0,43.6 439.9,149.8 439.9,362.2 256.0,468.4 72.1,362.2 72.1,149.8" fill="url(#hive-shine)" stroke="url(#hive-shine)" stroke-width="47.2" stroke-linejoin="round"/>
+  <path d="M256 136C266 214 298 246 376 256C298 266 266 298 256 376C246 298 214 266 136 256C214 246 246 214 256 136Z" fill="#fff" transform="translate(20.5 26.5) scale(.92)"/>
+  <path d="M256 136C266 214 298 246 376 256C298 266 266 298 256 376C246 298 214 266 136 256C214 246 246 214 256 136Z" fill="#fff" transform="translate(295.7 109.7) scale(.22)"/>
+</svg>

@@ -954,3 +954,37 @@ func TestFrontendServer_ServesLearnSite(t *testing.T) {
 	w = get("/learn/a/")
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+func TestFrontendServer_ServesEditor(t *testing.T) {
+	editorFS := fstest.MapFS{
+		"index.html":                 {Data: []byte("<html>spa</html>")},
+		"editor/index.html":          {Data: []byte("<html>editor app</html>")},
+		"editor/logo.svg":            {Data: []byte("<svg/>")},
+		"editor/assets/index.Ab1.js": {Data: []byte("console.log(1)")},
+	}
+	server := &FrontendServer{distFS: editorFS, fileServer: http.FileServer(http.FS(editorFS)), baseHTML: []byte("<html>spa</html>"), cache: NewHTMLCache(), settings: &mockSettingsProvider{settings: map[string]string{}}}
+	router := gin.New()
+	router.Use(server.Middleware())
+	get := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		return w
+	}
+
+	w := get("/editor")
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+	assert.Equal(t, "/editor/", w.Header().Get("Location"))
+
+	for _, p := range []string{"/editor/", "/editor/some/route"} {
+		w = get(p)
+		assert.Equal(t, http.StatusOK, w.Code, p)
+		assert.Contains(t, w.Body.String(), "editor app", p)
+		assert.Equal(t, "no-cache", w.Header().Get("Cache-Control"), p)
+	}
+	w = get("/editor/assets/index.Ab1.js")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, staticAssetsCacheControl, w.Header().Get("Cache-Control"))
+	w = get("/editor/logo.svg")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "<svg/>")
+}
