@@ -250,7 +250,7 @@ import type {
   TotpLoginResponse
 } from '@/types'
 import { extractI18nErrorMessage } from '@/utils/apiError'
-import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
+import { clearAllAffiliateReferralCodes, pickOAuthAffiliateCode } from '@/utils/oauthAffiliate'
 
 const { t } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
@@ -260,11 +260,14 @@ const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
 const router = useRouter()
 // Keep the post-auth destination when a visitor switches from login to registration
 // (e.g. the canvas connect popup sends them to /login?redirect=/canvas-connect?...).
+// The invite code (?aff=) is carried over too, so a visitor who came through a poster still gets the invite.
 const registerLink = computed(() => {
-  const redirect = router.currentRoute.value.query.redirect
-  return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
-    ? { path: '/register', query: { redirect } }
-    : '/register'
+  const { redirect, aff, aff_code } = router.currentRoute.value.query
+  const query: Record<string, string> = {}
+  if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) query.redirect = redirect
+  const code = pickOAuthAffiliateCode(aff, aff_code)
+  if (code) query.aff = code
+  return Object.keys(query).length ? { path: '/register', query } : '/register'
 })
 const authStore = useAuthStore()
 const appStore = useAppStore()

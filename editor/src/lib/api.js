@@ -29,9 +29,22 @@ export function currentUser() {
   }
 }
 
-/** The main site's sign-in page, coming back to the editor afterwards. */
+// An invite code from the link that opened the editor (?aff=, e.g. a poster QR), kept for the sign-up.
+const AFF_KEY = 'editor_aff';
+function affCode() {
+  try {
+    const code = (new URLSearchParams(window.location.search).get('aff') || '').trim();
+    if (/^[A-Za-z0-9_-]{4,64}$/.test(code)) sessionStorage.setItem(AFF_KEY, code);
+    return sessionStorage.getItem(AFF_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+/** The main site's sign-in page, coming back to the editor afterwards (and passing on an invite code). */
 export function loginUrl() {
-  return `/login?redirect=${encodeURIComponent('/editor/')}`;
+  const aff = affCode();
+  return `/login?redirect=${encodeURIComponent('/editor/')}${aff ? `&aff=${encodeURIComponent(aff)}` : ''}`;
 }
 
 function authHeaders(extra = {}) {
