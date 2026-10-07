@@ -115,8 +115,8 @@
     </div>
 
     <!-- Header -->
-    <header class="sticky top-0 z-30 border-b border-gray-200/50 bg-white/70 px-6 py-3 backdrop-blur-xl dark:border-dark-800/60 dark:bg-dark-950/70">
-      <nav class="mx-auto flex max-w-6xl items-center justify-between">
+    <header class="sticky top-0 z-30 border-b border-gray-200/50 bg-white/70 px-4 py-3 backdrop-blur-xl sm:px-6 dark:border-dark-800/60 dark:bg-dark-950/70">
+      <nav class="mx-auto flex max-w-6xl items-center justify-between gap-2">
         <!-- Logo -->
         <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
           <div class="h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl shadow-md">
@@ -125,8 +125,10 @@
           <span class="hidden truncate text-base font-semibold text-gray-900 sm:inline dark:text-white">{{ siteName }}</span>
         </router-link>
 
-        <!-- Nav Actions -->
-        <div class="flex items-center gap-1.5 sm:gap-2">
+        <!-- Nav Actions (phones keep the language, canvas, learn, theme and login; explore,
+             contests, courses and the model plaza come back from sm; on phones the community wall
+             and the footer link to them) -->
+        <div class="flex shrink-0 items-center gap-1 sm:gap-2">
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
@@ -135,7 +137,7 @@
             :href="canvasLink('nav-explore', '/explore')"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
             :title="t('home.v2.nav.explore')"
           >
             <Icon name="globe" size="sm" />
@@ -144,7 +146,7 @@
           <!-- Contests -->
           <RouterLink
             to="/contests"
-            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
             :title="t('contests.title')"
           >
             <Icon name="trophy" size="sm" />
@@ -195,7 +197,7 @@
           <router-link
             v-if="hasCourses"
             to="/courses"
-            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
             data-testid="home-courses-link"
           >
             <Icon name="book" size="sm" />
@@ -217,7 +219,7 @@
           <router-link
             v-if="showModelPlazaEntry"
             to="/model-plaza"
-            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
             :title="t('nav.modelPlaza')"
           >
             <Icon name="grid" size="md" />
@@ -248,7 +250,7 @@
           <router-link
             v-if="isAuthenticated"
             :to="dashboardPath"
-            class="inline-flex items-center gap-1.5 rounded-full bg-gray-900 py-1 pl-1 pr-2.5 transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gray-900 py-1 pl-1 pr-2.5 transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
           >
             <span
               class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-[10px] font-semibold text-white"
@@ -273,7 +275,7 @@
           <router-link
             v-else
             to="/login"
-            class="inline-flex items-center rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
+            class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
           >
             {{ t('home.login') }}
           </router-link>
@@ -567,6 +569,7 @@
           <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
             <li><a :href="canvasLink('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.canvas') }}</a></li>
             <li><router-link to="/contests" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.contests') }}</router-link></li>
+            <li v-if="hasCourses"><router-link to="/courses" class="hover:text-gray-900 dark:hover:text-white">{{ t('courses.navLabel') }}</router-link></li>
             <li v-if="showModelPlazaEntry"><router-link to="/model-plaza" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.plaza') }}</router-link></li>
             <li><router-link to="/batch-image" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.batch') }}</router-link></li>
           </ul>
