@@ -73,6 +73,10 @@ export default {
     canvas: {
       name: 'Infinite Canvas',
       description: 'Generate and edit images, crop and retouch, submit to contests in one click'
+    },
+    editor: {
+      name: 'WeChat Article Editor',
+      description: 'Style Markdown or an article link, polish and illustrate with AI, send to your WeChat drafts'
     }
   },
   canvasConnect: {

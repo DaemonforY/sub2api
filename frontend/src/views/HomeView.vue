@@ -181,6 +181,16 @@
             <Icon name="book" size="sm" />
             <span class="hidden sm:inline">{{ t('home.learn.navLabel') }}</span>
           </a>
+          <!-- 公众号排版 (/editor/, a static app served beside the SPA) -->
+          <a
+            href="/editor/?utm_source=home&utm_medium=nav"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 md:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            :title="t('appModules.editor.description')"
+            data-testid="home-editor-link"
+          >
+            <Icon name="document" size="sm" />
+            <span>{{ t('appModules.editor.name') }}</span>
+          </a>
           <!-- Paid courses (shown once a course is on sale) -->
           <router-link
             v-if="hasCourses"

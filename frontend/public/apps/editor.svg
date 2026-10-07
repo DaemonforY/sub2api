@@ -1,0 +1,14 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ed-g" x1="8" y1="56" x2="56" y2="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#16A34A"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <!-- An article page: title bar and body lines -->
+  <rect x="8" y="8" width="40" height="48" rx="8" stroke="url(#ed-g)" stroke-width="6"/>
+  <path d="M17 21H39" stroke="url(#ed-g)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M17 32H33M17 42H29" stroke="url(#ed-g)" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- AI sparkle -->
+  <path d="M50 28L52.6 35.4L60 38L52.6 40.6L50 48L47.4 40.6L40 38L47.4 35.4L50 28Z" fill="#7C3AED"/>
+</svg>

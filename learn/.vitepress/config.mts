@@ -59,6 +59,7 @@ export default defineConfig({
       { text: '学员作品', link: '/showcase', activeMatch: '^/showcase' },
       { text: '校园', link: '/campus', activeMatch: '^/campus' },
       { text: '延伸阅读', link: '/guide/', activeMatch: '^/guide/' },
+      { text: '公众号排版', link: 'https://hivegpt.cn/editor/?utm_source=learn&utm_medium=nav', target: '_self' },
       { text: '付费课程', link: 'https://hivegpt.cn/courses', target: '_self' },
       { text: '回到 HiveGPT', link: 'https://hivegpt.cn/', target: '_self' },
     ],

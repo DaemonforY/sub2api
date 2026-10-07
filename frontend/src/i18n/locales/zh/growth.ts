@@ -73,6 +73,10 @@ export default {
     canvas: {
       name: '无限画布',
       description: '文生图、改图、裁剪美化，作品可一键投稿站内活动'
+    },
+    editor: {
+      name: '公众号排版',
+      description: 'Markdown 或文章链接一键排版，AI 润色配图，直接发到公众号草稿箱'
     }
   },
   canvasConnect: {

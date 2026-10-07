@@ -18,6 +18,11 @@ describe('app modules', () => {
     expect(url.searchParams.has('apiKey')).toBe(false)
   })
 
+  it('links the 公众号 editor on this origin', () => {
+    const editor = APP_MODULES.find((m) => m.key === 'editor')!
+    expect(appModuleLink(editor, 'sidebar').href).toBe('/editor/?utm_source=hivegpt&utm_medium=sidebar')
+  })
+
   it('renders external modules on the dashboard as new-tab links', () => {
     const wrapper = mount(UserDashboardApps, { global: { stubs: { RouterLink: true } } })
     const link = wrapper.get('[data-testid="dashboard-app-canvas"]')

@@ -29,6 +29,15 @@ export const APP_MODULES: AppModule[] = [
     // 带上本站网关地址：画布会预建指向本站的渠道，再引导用户一键授权 Key。
     href: (medium) => canvasUrl({ medium, baseUrl: typeof window !== 'undefined' ? window.location.origin : '' }),
     badgeKey: 'appModules.badgeNew'
+  },
+  {
+    key: 'editor',
+    labelKey: 'appModules.editor.name',
+    descriptionKey: 'appModules.editor.description',
+    iconUrl: '/apps/editor.svg',
+    // 公众号排版是同域的独立页面（/editor/，不是 SPA 路由），所以走 href。
+    href: (medium) => `/editor/?utm_source=hivegpt&utm_medium=${encodeURIComponent(medium)}`,
+    badgeKey: 'appModules.badgeNew'
   }
 ]
 
