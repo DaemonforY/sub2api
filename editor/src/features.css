@@ -705,3 +705,101 @@ button.header-link {
     padding: 12px 14px;
   }
 }
+
+/* 公众号接入指引（设置、发送草稿） */
+.ed-guide {
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-light-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--color-secondary);
+  text-align: left;
+}
+
+.ed-guide summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.ed-guide ol {
+  margin: 8px 0 6px;
+  padding-left: 20px;
+}
+
+.ed-guide li + li {
+  margin-top: 4px;
+}
+
+.ed-guide b {
+  color: var(--color-primary);
+}
+
+.ed-guide code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-size: 12.5px;
+  color: var(--color-primary);
+}
+
+.ed-guide a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.ed-guide a:hover {
+  text-decoration: underline;
+}
+
+.ed-guide-warn {
+  display: block;
+  color: #b45309;
+}
+
+.ed-guide-foot {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-tertiary);
+}
+
+/* 首次访问的上手引导 */
+.ed-welcome {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 900;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  padding: 16px 18px 14px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-secondary);
+}
+
+.ed-welcome h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--color-primary);
+}
+
+.ed-welcome ol {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+
+.ed-welcome b {
+  color: var(--color-primary);
+}
+
+a.ed-btn {
+  text-decoration: none;
+}

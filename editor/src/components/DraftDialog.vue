@@ -17,9 +17,9 @@
       <!-- 没有公众号账号 -->
       <div v-else-if="!accounts.length" class="ed-dialog-body">
         <div class="ed-login-box">
-          还没有添加公众号账号。<br>
-          先在「设置」里填写 AppID / AppSecret，并把服务器 IP 加入公众号后台的 IP 白名单。<br>
-          <button class="ed-btn primary" @click="$emit('open-settings')">打开设置</button>
+          还没有添加公众号账号。先准备好 AppID、AppSecret，并把服务器 IP 加入白名单：
+          <WechatSetupGuide open />
+          <button class="ed-btn primary" @click="$emit('open-settings')">去设置里添加公众号</button>
         </div>
       </div>
 
@@ -181,12 +181,14 @@
 </template>
 
 <script>
+import WechatSetupGuide from './WechatSetupGuide.vue';
 import { loadAccounts, saveDraftMeta } from '../lib/settings.js';
 import { wechatUpload, wechatDraft, streamAiText, aiImage } from '../lib/api.js';
 import { compressUnder, cropToCover, b64ToBlob, extensionFor } from '../lib/imageTools.js';
 
 export default {
   name: 'DraftDialog',
+  components: { WechatSetupGuide },
   inject: ['editor'],
   emits: ['close', 'open-settings'],
   data() {

@@ -11,6 +11,7 @@
         <button class="header-link" type="button" @click="openImport">导入文章</button>
         <button class="header-link" type="button" @click="toggleAiPanel">AI 助手</button>
         <button class="header-link" type="button" @click="showSettings = true">设置</button>
+        <a class="header-link" :href="tutorialUrl" target="_blank" rel="noopener">使用教程</a>
         <a class="header-link" href="/">HiveGPT 首页</a>
         <a v-if="!auth.loggedIn" class="header-link primary" :href="loginHref">登录</a>
         <span v-else class="header-account" :title="accountTitle">{{ accountLabel }}</span>
@@ -328,6 +329,21 @@
 
   <!-- 弹窗 -->
   <SettingsDialog v-if="showSettings" @close="showSettings = false" />
+  <!-- 首次访问的上手引导 -->
+  <aside v-if="showWelcome" class="ed-welcome" aria-label="上手引导">
+    <h4>第一次用公众号排版？</h4>
+    <ol>
+      <li>左边写 Markdown，或点「导入文章」贴公众号文章链接</li>
+      <li>上方选一个风格，右边就是公众号里的效果</li>
+      <li>点「复制到公众号」粘贴到后台；或在「设置」里添加公众号后，点「发送到草稿箱」</li>
+    </ol>
+    <p class="ed-hint">排版不用登录；导入、发草稿箱和 AI 润色配图需要登录 HiveGPT。</p>
+    <div class="ed-row end">
+      <a class="ed-btn small" :href="tutorialUrl" target="_blank" rel="noopener">看教程</a>
+      <button class="ed-btn small" type="button" @click="openSettingsFromWelcome">添加公众号</button>
+      <button class="ed-btn small primary" type="button" @click="dismissWelcome">知道了</button>
+    </div>
+  </aside>
   <ImportDialog v-if="showImport" @close="showImport = false" />
   <DraftDialog v-if="showDraft" @close="showDraft = false" @open-settings="showSettings = true" />
 
@@ -348,11 +364,14 @@ import { ImageHostManager } from './lib/imageHostManager.js';
 import { EMPHASIS_MARKERS, isCjkLetter, isCjkPunctuation, withTimeout } from './lib/helpers.js';
 import { token, currentUser, loginUrl, isWechatImageUrl, fetchProxiedImage } from './lib/api.js';
 import { loadAiKey, loadDraftMeta, saveDraftMeta } from './lib/settings.js';
+import { TUTORIAL_URL } from './lib/guide.js';
 import { dataUrlToBlob, loadImageCrossOrigin, imageElementToBlob } from './lib/imageTools.js';
 import SettingsDialog from './components/SettingsDialog.vue';
 import ImportDialog from './components/ImportDialog.vue';
 import DraftDialog from './components/DraftDialog.vue';
 import AiPanel from './components/AiPanel.vue';
+
+const WELCOME_KEY = 'editor_welcome_done';
 
 export default {
   components: { SettingsDialog, ImportDialog, DraftDialog, AiPanel },
@@ -374,6 +393,8 @@ export default {
       showImport: false,
       showDraft: false,
       showAiPanel: false,
+      showWelcome: !localStorage.getItem(WELCOME_KEY),
+      tutorialUrl: TUTORIAL_URL,
 
       markdownInput: '',
       renderedContent: '',
@@ -410,6 +431,11 @@ export default {
   async mounted() {
     // 登录状态（主站登录后 token 在同域 localStorage）
     this.refreshAuth();
+
+    // 教程里的直达链接：/editor/#settings 打开设置，/editor/#import 打开导入
+    this.openFromHash();
+    this._onHash = () => this.openFromHash();
+    window.addEventListener('hashchange', this._onHash);
     this._onAuthChange = () => this.refreshAuth();
     window.addEventListener('storage', this._onAuthChange);
     window.addEventListener('focus', this._onAuthChange);
@@ -482,6 +508,7 @@ export default {
   },
 
   beforeUnmount() {
+    window.removeEventListener('hashchange', this._onHash);
     window.removeEventListener('storage', this._onAuthChange);
     window.removeEventListener('focus', this._onAuthChange);
   },
@@ -534,6 +561,15 @@ export default {
   },
 
   methods: {
+    dismissWelcome() {
+      this.showWelcome = false;
+      try { localStorage.setItem(WELCOME_KEY, '1'); } catch { /* 存储不可用时下次再提示 */ }
+    },
+    openSettingsFromWelcome() {
+      this.dismissWelcome();
+      this.showSettings = true;
+    },
+
     // ==================== HiveGPT 新功能 ====================
 
     refreshAuth() {
@@ -556,6 +592,15 @@ export default {
 
     openImport() {
       this.showImport = true;
+    },
+
+    openFromHash() {
+      const target = window.location.hash.slice(1);
+      if (target !== 'settings' && target !== 'import') return;
+      this.showWelcome = false;  // 从教程来的，不再弹上手引导（下次直接打开时仍会提示）
+      if (target === 'settings') this.showSettings = true;
+      else this.showImport = true;
+      history.replaceState(null, '', window.location.pathname + window.location.search);
     },
 
     openDraft() {

@@ -107,6 +107,10 @@ type wechatReply struct {
 	URL         string `json:"url"`
 }
 
+// editorDevKeyPath is where a 公众号's AppID, AppSecret and API IP whitelist live since WeChat moved 「开发接口管理」 out
+// of the 公众平台 (the old 「设置与开发 → 基本配置」 entry is gone for many accounts).
+const editorDevKeyPath = "微信开发者平台（developers.weixin.qq.com/platform）「我的业务 → 公众号 → 基础信息 → 开发密钥」"
+
 // wechatError turns a WeChat error code into an actionable Chinese message.
 func wechatError(code int, msg string) error {
 	switch code {
@@ -115,13 +119,15 @@ func wechatError(code int, msg string) error {
 		if m := editorInvalidIPRe.FindStringSubmatch(msg); m != nil {
 			ip = m[1]
 		}
-		return editorErr("EDITOR_WECHAT_IP", fmt.Sprintf("服务器 IP %s 不在公众号的 IP 白名单里：到公众号后台「设置与开发 → 基本配置 → IP 白名单」添加这个 IP 后再试（IP %s not whitelisted）", ip, ip))
+		return editorErr("EDITOR_WECHAT_IP", fmt.Sprintf("服务器 IP %s 不在公众号的 API IP 白名单里：到%s的「API IP 白名单」添加这个 IP，保存后等几分钟再试（IP %s not whitelisted）", ip, editorDevKeyPath, ip))
 	case 40001, 40125, 41004:
-		return editorErr("EDITOR_WECHAT_SECRET", "AppSecret 不正确，或已在公众号后台重置过，请重新填写（Invalid AppSecret）")
+		return editorErr("EDITOR_WECHAT_SECRET", "AppSecret 不正确，或已经重置过：到"+editorDevKeyPath+"重新获取后填写（Invalid AppSecret）")
+	case 40243:
+		return editorErr("EDITOR_WECHAT_SECRET", "AppSecret 已被冻结：到"+editorDevKeyPath+"解冻，约 10 分钟后生效（AppSecret frozen）")
 	case 40013, 41002:
-		return editorErr("EDITOR_WECHAT_APPID", "AppID 不正确，请到公众号后台「设置与开发 → 基本配置」复制（Invalid AppID）")
+		return editorErr("EDITOR_WECHAT_APPID", "AppID 不正确：到微信开发者平台「我的业务 → 公众号 → 基础信息」复制 wx 开头的 18 位 AppID（Invalid AppID）")
 	case 48001:
-		return editorErr("EDITOR_WECHAT_UNAUTHORIZED", "这个公众号没有该接口权限（未认证的公众号可能不能用草稿箱或素材接口）（API unauthorized）")
+		return editorErr("EDITOR_WECHAT_UNAUTHORIZED", "这个公众号没有该接口权限：个人或未认证的公众号可能用不了草稿箱或素材接口，可在微信开发者平台「我的业务 → 公众号 → 接口管理 → 接口权限与额度」查看（API unauthorized）")
 	case 45009, 45011, 45047:
 		return editorErr("EDITOR_WECHAT_LIMIT", "调用微信接口太频繁或已到今日上限，请稍后再试（Rate limited）")
 	case 40007:

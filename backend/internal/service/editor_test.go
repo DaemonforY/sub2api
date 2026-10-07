@@ -56,6 +56,8 @@ func TestEditorWechatTokenCachedAndErrors(t *testing.T) {
 	err := svc.WechatCheck(ctx, EditorCredentials{AppID: editorCreds.AppID, Secret: "ffffffffffffffffffffffffffffffff"})
 	require.Equal(t, "EDITOR_WECHAT_IP", infraerrors.Reason(err))
 	require.Contains(t, infraerrors.Message(err), "1.2.3.4", "tells which IP to whitelist")
+	require.Contains(t, infraerrors.Message(err), "开发密钥", "points to where the whitelist lives now")
+	require.Equal(t, "EDITOR_WECHAT_SECRET", infraerrors.Reason(wechatError(40243, "appsecret frozen")))
 
 	require.ErrorIs(t, svc.WechatCheck(ctx, EditorCredentials{AppID: "nope", Secret: "x"}), ErrEditorCredentials)
 }

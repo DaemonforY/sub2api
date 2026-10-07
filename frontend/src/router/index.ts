@@ -189,6 +189,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    // 公众号排版 is another static app at /editor (its sign-in link comes back via /login?redirect=/editor/).
+    path: '/editor/:pathMatch(.*)*',
+    name: 'EditorSite',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { requiresAuth: false, title: '公众号排版' },
+    beforeEnter: (to) => {
+      window.location.assign(to.fullPath)
+      return false
+    }
+  },
+  {
     path: '/courses',
     name: 'Courses',
     component: () => import('@/views/CoursesView.vue'),

@@ -11,8 +11,9 @@
         <section class="ed-section">
           <h4>公众号账号</h4>
           <p class="ed-hint">
-            AppSecret 只保存在本浏览器；在公众号后台「设置与开发 → 基本配置」获取 AppID / AppSecret，并把本站服务器 IP <b>43.133.80.169</b> 加入「IP 白名单」（以「测试连接」的提示为准）。
+            填好公众号的 AppID / AppSecret 后，就能一键发到草稿箱。AppSecret 只保存在本浏览器，服务器只用它向微信换取调用凭证，不保存；在公用电脑上用完记得删除。
           </p>
+          <WechatSetupGuide :open="!state.accounts.length" />
 
           <div v-if="!state.accounts.length && !form" class="ed-empty">还没有添加公众号账号</div>
 
@@ -117,9 +118,11 @@
 <script>
 import { loadAccounts, saveAccounts, newAccountId, saveAiKey } from '../lib/settings.js';
 import { wechatCheck, listKeys } from '../lib/api.js';
+import WechatSetupGuide from './WechatSetupGuide.vue';
 
 export default {
   name: 'SettingsDialog',
+  components: { WechatSetupGuide },
   inject: ['editor'],
   emits: ['close'],
   data() {
