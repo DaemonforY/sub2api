@@ -721,6 +721,21 @@ const SparklesIcon = {
     )
 }
 
+const ChatIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM2.25 12c0 4.556 4.03 8.25 9 8.25a9.764 9.764 0 002.555-.337A5.972 5.972 0 0018 21a5.969 5.969 0 01-1.508-3.984C19.212 15.668 20.25 13.94 20.25 12c0-4.556-4.03-8.25-9-8.25s-9 3.694-9 8.25z'
+        })
+      ]
+    )
+}
+
 const DocumentIcon = {
   render: () =>
     h(
@@ -941,6 +956,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/community', label: t('nav.communityAdmin'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/courses', label: t('nav.coursesAdmin'), icon: BookIcon, hideInSimpleMode: true },
     { path: '/admin/learn', label: t('nav.learnAdmin'), icon: SparklesIcon, hideInSimpleMode: true },
+    { path: '/admin/assistant', label: t('nav.assistantAdmin'), icon: ChatIcon, hideInSimpleMode: true },
     { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon, hideInSimpleMode: true }
   ]
 

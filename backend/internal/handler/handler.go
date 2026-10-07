@@ -89,6 +89,7 @@ type Handlers struct {
 	Course           *CourseHandler
 	Learn            *LearnHandler
 	Editor           *EditorHandler
+	Assistant        *AssistantHandler
 }
 
 // BuildInfo contains build-time information

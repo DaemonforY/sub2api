@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	htmlpkg "html"
 	"io/fs"
 	"regexp"
@@ -47,11 +48,21 @@ func lessonTextFrom(fsys fs.FS, lessonID string) (string, string) {
 	if err != nil {
 		return "", ""
 	}
+	title, text := pageText(raw)
+	learnTextCache.Store(lessonID, learnText{title, text})
+	return title, text
+}
+
+// pageText is a built VitePress page's title (without the " · site" suffix) and its article text.
+func pageText(raw []byte) (string, string) {
 	page := string(raw)
 	title := ""
 	if m := learnTitleRe.FindStringSubmatch(page); m != nil {
 		title = htmlpkg.UnescapeString(m[1])
 		if i := strings.Index(title, " · "); i > 0 {
+			title = title[:i]
+		}
+		if i := strings.Index(title, " | "); i > 0 {
 			title = title[:i]
 		}
 	}
@@ -72,6 +83,41 @@ func lessonTextFrom(fsys fs.FS, lessonID string) (string, string) {
 	if i := strings.Index(text, ">"); i >= 0 && i < 200 && !strings.Contains(text[:i], "\n") {
 		text = strings.TrimSpace(text[i+1:])
 	}
-	learnTextCache.Store(lessonID, learnText{title, text})
 	return title, text
+}
+
+// LearnPage is one built page of the learning site as plain text (the support assistant's knowledge).
+type LearnPage struct {
+	URL   string // e.g. /learn/codex/hivegpt
+	Title string
+	Text  string
+}
+
+// learnPagesFrom lists every page under learn/ (except the 404 page), skipping pages without text.
+func learnPagesFrom(fsys fs.FS) []LearnPage {
+	if fsys == nil {
+		return nil
+	}
+	var out []LearnPage
+	_ = fs.WalkDir(fsys, "learn", func(name string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(name, ".html") || name == "learn/404.html" ||
+			strings.HasPrefix(name, "learn/assets/") {
+			return nil
+		}
+		raw, err := fs.ReadFile(fsys, name)
+		if err != nil || !bytes.Contains(raw, []byte(`class="vp-doc`)) {
+			return nil
+		}
+		title, text := pageText(raw)
+		if strings.TrimSpace(text) == "" {
+			return nil
+		}
+		url := "/" + strings.TrimSuffix(name, ".html")
+		if strings.HasSuffix(url, "/index") {
+			url = strings.TrimSuffix(url, "index")
+		}
+		out = append(out, LearnPage{URL: url, Title: title, Text: text})
+		return nil
+	})
+	return out
 }

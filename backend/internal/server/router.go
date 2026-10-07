@@ -94,6 +94,15 @@ func SetupRouter(
 	if handlers != nil && handlers.Learn != nil {
 		handlers.Learn.SetLessonText(web.LearnLessonText)
 	}
+	if handlers != nil && handlers.Assistant != nil {
+		handlers.Assistant.SetPages(func() []service.AssistantPage {
+			var out []service.AssistantPage
+			for _, p := range web.LearnPages() {
+				out = append(out, service.AssistantPage{URL: p.URL, Title: p.Title, Text: p.Text})
+			}
+			return out
+		})
+	}
 
 	// 注册路由
 	registerRoutes(r, handlers, jwtAuth, optionalJWTAuth, adminAuth, apiKeyAuth, auditLog, stepUpAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg, redisClient)
@@ -137,6 +146,7 @@ func registerRoutes(
 	routes.RegisterCourseRoutes(v1, h, jwtAuth, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterLearnRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterEditorRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
+	routes.RegisterAssistantRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterGrowthRoutes(v1, h, settingService, panelRateLimiter)
 	routes.RegisterAppStateRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
 	routes.RegisterPromptLibraryRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)

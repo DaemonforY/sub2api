@@ -590,6 +590,9 @@
         <a :href="githubUrl" target="_blank" rel="noopener noreferrer" class="hover:text-gray-600 dark:hover:text-dark-200">Powered by Sub2API</a>
       </div>
     </footer>
+
+    <!-- 智能客服（后台「智能客服」开启后显示） -->
+    <HomeAssistant :site-name="siteName" />
   </div>
 </template>
 
@@ -610,6 +613,7 @@ import HomeCommunityWall from '@/components/home/HomeCommunityWall.vue'
 import HomeHeroCollage from '@/components/home/HomeHeroCollage.vue'
 import HomeSteps from '@/components/home/HomeSteps.vue'
 import HomeSupport from '@/components/home/HomeSupport.vue'
+import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import HomeFaq from '@/components/home/HomeFaq.vue'
 
 const { t } = useI18n()

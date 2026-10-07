@@ -224,6 +224,7 @@ func ProvideHandlers(
 	courseHandler *CourseHandler,
 	learnHandler *LearnHandler,
 	editorHandler *EditorHandler,
+	assistantHandler *AssistantHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -262,6 +263,7 @@ func ProvideHandlers(
 		Course:           courseHandler,
 		Learn:            learnHandler,
 		Editor:           editorHandler,
+		Assistant:        assistantHandler,
 	}
 }
 
@@ -300,6 +302,7 @@ var ProviderSet = wire.NewSet(
 	NewCourseHandler,
 	NewLearnHandler,
 	NewEditorHandler,
+	NewAssistantHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

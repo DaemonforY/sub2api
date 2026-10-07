@@ -219,6 +219,7 @@ export default {
     myLearning: '我的学习',
     coursesAdmin: '课程管理',
     learnAdmin: 'AI 学习',
+    assistantAdmin: '智能客服',
   },
 
   // Auth

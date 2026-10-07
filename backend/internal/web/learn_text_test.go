@@ -61,3 +61,29 @@ func TestLessonTextFromBuiltSite(t *testing.T) {
 	t.Logf("%d chars: %.300s", len([]rune(text)), text)
 	learnTextCache.Delete("a6")
 }
+
+func TestLearnPagesFrom(t *testing.T) {
+	page := func(title, body string) *fstest.MapFile {
+		return &fstest.MapFile{Data: []byte(`<html><head><title>` + title + ` · HiveGPT AI 学习</title></head><body><main><div class="vp-doc"><p>` + body + `</p></div></main></body></html>`)}
+	}
+	fsys := fstest.MapFS{
+		"learn/index.html":         page("AI 学习", "首页"),
+		"learn/editor/index.html":  page("公众号排版使用教程", "AppID 在开发者平台"),
+		"learn/codex/hivegpt.html": page("接入 HiveGPT", "配置 config.toml"),
+		"learn/404.html":           page("404", "找不到"),
+		"learn/assets/app.html":    page("x", "y"),
+		"learn/empty.html":         {Data: []byte(`<html><head><title>空</title></head><body></body></html>`)},
+		"index.html":               page("主站", "不是学习站"),
+	}
+	pages := learnPagesFrom(fsys)
+	byURL := map[string]LearnPage{}
+	for _, p := range pages {
+		byURL[p.URL] = p
+	}
+	require.Len(t, pages, 3)
+	require.Equal(t, "公众号排版使用教程", byURL["/learn/editor/"].Title)
+	require.Contains(t, byURL["/learn/editor/"].Text, "AppID 在开发者平台")
+	require.Contains(t, byURL, "/learn/")
+	require.Contains(t, byURL, "/learn/codex/hivegpt")
+	require.Nil(t, learnPagesFrom(nil))
+}

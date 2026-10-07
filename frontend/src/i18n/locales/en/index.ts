@@ -11,6 +11,7 @@ import imageToolUses from './imageToolUses'
 import sites from './sites'
 import courses from './courses'
 import learn from './learn'
+import assistant from './assistant'
 
 export default {
   ...landing,
@@ -26,4 +27,5 @@ export default {
   ...sites,
   ...courses,
   ...learn,
+  ...assistant,
 }

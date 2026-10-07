@@ -15,6 +15,7 @@ import sites from './sites'
 import community from './community'
 import courses from './courses'
 import learn from './learn'
+import assistant from './assistant'
 
 export default {
   ...overview,
@@ -34,4 +35,5 @@ export default {
   ...community,
   ...courses,
   ...learn,
+  ...assistant,
 }

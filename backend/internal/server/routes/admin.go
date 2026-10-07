@@ -138,6 +138,7 @@ func RegisterAdminRoutes(
 		registerCommunityAdminRoutes(admin, h)
 		registerCourseAdminRoutes(admin, h)
 		registerLearnAdminRoutes(admin, h)
+		registerAssistantAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -244,6 +245,19 @@ func registerCourseAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/:id/enrollments", h.Admin.Course.Enrollments)
 		g.POST("/:id/enrollments", h.Admin.Course.Grant)
 		g.DELETE("/:id/enrollments/:user_id", h.Admin.Course.Revoke)
+	}
+}
+
+// registerAssistantAdminRoutes 智能客服：开关、所用 Key（管理员自己的）、模型和每日次数。
+func registerAssistantAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Assistant == nil {
+		return
+	}
+	g := admin.Group("/assistant")
+	{
+		g.GET("/settings", h.Assistant.AdminSettings)
+		g.PUT("/settings", h.Assistant.AdminSaveSettings)
+		g.GET("/keys", h.Assistant.AdminKeys)
 	}
 }
 

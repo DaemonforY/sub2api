@@ -483,3 +483,12 @@ func LearnLessonText(lessonID string) (string, string) {
 	}
 	return lessonTextFrom(sub, lessonID)
 }
+
+// LearnPages is every built page of the learning site as text (for the support assistant).
+func LearnPages() []LearnPage {
+	sub, err := fs.Sub(frontendFS, "dist")
+	if err != nil {
+		return nil
+	}
+	return learnPagesFrom(sub)
+}

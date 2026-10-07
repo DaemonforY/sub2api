@@ -219,6 +219,7 @@ export default {
     myLearning: 'My learning',
     coursesAdmin: 'Courses',
     learnAdmin: 'AI Learning',
+    assistantAdmin: 'Support assistant',
   },
 
   // Auth

@@ -49,3 +49,6 @@ func HasEmbeddedFrontend() bool {
 
 // LearnLessonText: no built site without the embedded frontend.
 func LearnLessonText(lessonID string) (string, string) { return lessonTextFrom(nil, lessonID) }
+
+// LearnPages: no built site without the embedded frontend.
+func LearnPages() []LearnPage { return learnPagesFrom(nil) }
