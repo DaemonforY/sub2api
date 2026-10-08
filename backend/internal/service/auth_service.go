@@ -24,10 +24,10 @@ import (
 )
 
 var (
-	ErrInvalidCredentials           = infraerrors.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
-	ErrUserNotActive                = infraerrors.Forbidden("USER_NOT_ACTIVE", "user is not active")
-	ErrEmailExists                  = infraerrors.Conflict("EMAIL_EXISTS", "email already exists")
-	ErrEmailReserved                = infraerrors.BadRequest("EMAIL_RESERVED", "email is reserved")
+	ErrInvalidCredentials           = infraerrors.Unauthorized("INVALID_CREDENTIALS", "邮箱或密码错误（Invalid email or password）")
+	ErrUserNotActive                = infraerrors.Forbidden("USER_NOT_ACTIVE", "账号已被停用，请联系客服（Account is not active）")
+	ErrEmailExists                  = infraerrors.Conflict("EMAIL_EXISTS", "该邮箱已注册，请直接登录或找回密码（Email already registered）")
+	ErrEmailReserved                = infraerrors.BadRequest("EMAIL_RESERVED", "该邮箱不能用于注册（Email is reserved）")
 	ErrInvalidToken                 = infraerrors.Unauthorized("INVALID_TOKEN", "invalid token")
 	ErrTokenExpired                 = infraerrors.Unauthorized("TOKEN_EXPIRED", "token has expired")
 	ErrAccessTokenExpired           = infraerrors.Unauthorized("ACCESS_TOKEN_EXPIRED", "access token has expired")
@@ -36,16 +36,16 @@ var (
 	ErrRefreshTokenInvalid          = infraerrors.Unauthorized("REFRESH_TOKEN_INVALID", "invalid refresh token")
 	ErrRefreshTokenExpired          = infraerrors.Unauthorized("REFRESH_TOKEN_EXPIRED", "refresh token has expired")
 	ErrRefreshTokenReused           = infraerrors.Unauthorized("REFRESH_TOKEN_REUSED", "refresh token has been reused")
-	ErrEmailVerifyRequired          = infraerrors.BadRequest("EMAIL_VERIFY_REQUIRED", "email verification is required")
-	ErrEmailSuffixNotAllowed        = infraerrors.BadRequest("EMAIL_SUFFIX_NOT_ALLOWED", "email suffix is not allowed")
+	ErrEmailVerifyRequired          = infraerrors.BadRequest("EMAIL_VERIFY_REQUIRED", "请先获取并填写邮箱验证码（Email verification is required）")
+	ErrEmailSuffixNotAllowed        = infraerrors.BadRequest("EMAIL_SUFFIX_NOT_ALLOWED", "不支持该邮箱后缀注册（Email suffix is not allowed）")
 	ErrEmailDomainRegistrationLimit = infraerrors.BadRequest(
 		"EMAIL_DOMAIN_REGISTRATION_LIMIT",
-		"this email domain cannot register another account; use a mainstream email or contact support to add the enterprise domain",
+		"该邮箱域名的注册数量已达上限，请换用常用邮箱（如 QQ、163、Gmail），或联系客服添加企业域名（This email domain cannot register another account; use a mainstream email or contact support）",
 	)
-	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "registration is currently disabled")
-	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "service temporarily unavailable")
-	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "invitation code is required")
-	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "invalid or used invitation code")
+	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "暂未开放注册（Registration is currently disabled）")
+	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "服务暂时不可用，请稍后再试（Service temporarily unavailable）")
+	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "请填写邀请码（Invitation code is required）")
+	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "邀请码无效或已被使用（Invalid or used invitation code）")
 	ErrOAuthInvitationRequired = infraerrors.Forbidden("OAUTH_INVITATION_REQUIRED", "invitation code required to complete oauth registration")
 	ErrCaptchaProviderConflict = infraerrors.ServiceUnavailable("CAPTCHA_PROVIDER_CONFLICT", "multiple captcha providers are enabled")
 )
@@ -572,10 +572,10 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username string) (string, *User, error) {
 	email = strings.TrimSpace(email)
 	if email == "" || len(email) > 255 {
-		return "", nil, infraerrors.BadRequest("INVALID_EMAIL", "invalid email")
+		return "", nil, infraerrors.BadRequest("INVALID_EMAIL", "邮箱格式不正确（Invalid email）")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		return "", nil, infraerrors.BadRequest("INVALID_EMAIL", "invalid email")
+		return "", nil, infraerrors.BadRequest("INVALID_EMAIL", "邮箱格式不正确（Invalid email）")
 	}
 
 	username = strings.TrimSpace(username)
@@ -700,10 +700,10 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 
 	email = strings.TrimSpace(email)
 	if email == "" || len(email) > 255 {
-		return nil, nil, infraerrors.BadRequest("INVALID_EMAIL", "invalid email")
+		return nil, nil, infraerrors.BadRequest("INVALID_EMAIL", "邮箱格式不正确（Invalid email）")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		return nil, nil, infraerrors.BadRequest("INVALID_EMAIL", "invalid email")
+		return nil, nil, infraerrors.BadRequest("INVALID_EMAIL", "邮箱格式不正确（Invalid email）")
 	}
 
 	username = strings.TrimSpace(username)
@@ -1337,7 +1337,7 @@ func buildEmailSuffixNotAllowedError(whitelist []string) error {
 	allowed := strings.Join(whitelist, ", ")
 	return infraerrors.BadRequest(
 		"EMAIL_SUFFIX_NOT_ALLOWED",
-		fmt.Sprintf("email suffix is not allowed, allowed suffixes: %s", allowed),
+		fmt.Sprintf("不支持该邮箱后缀，可用的后缀：%s（Email suffix is not allowed）", allowed),
 	).WithMetadata(map[string]string{
 		"allowed_suffixes":     strings.Join(whitelist, ","),
 		"allowed_suffix_count": strconv.Itoa(len(whitelist)),
@@ -1566,7 +1566,7 @@ func (s *AuthService) preparePasswordReset(ctx context.Context, email, frontendB
 // Security: Returns the same response regardless of whether the email exists (prevent user enumeration)
 func (s *AuthService) RequestPasswordReset(ctx context.Context, email, frontendBaseURL string, locale ...string) error {
 	if !s.IsPasswordResetEnabled(ctx) {
-		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "password reset is not enabled")
+		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "暂未开放找回密码，请联系客服（Password reset is not enabled）")
 	}
 	if s.emailService == nil {
 		return ErrServiceUnavailable
@@ -1590,7 +1590,7 @@ func (s *AuthService) RequestPasswordReset(ctx context.Context, email, frontendB
 // Security: Returns the same response regardless of whether the email exists (prevent user enumeration)
 func (s *AuthService) RequestPasswordResetAsync(ctx context.Context, email, frontendBaseURL string, locale ...string) error {
 	if !s.IsPasswordResetEnabled(ctx) {
-		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "password reset is not enabled")
+		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "暂未开放找回密码，请联系客服（Password reset is not enabled）")
 	}
 	if s.emailQueueService == nil {
 		return ErrServiceUnavailable
@@ -1615,7 +1615,7 @@ func (s *AuthService) RequestPasswordResetAsync(ctx context.Context, email, fron
 func (s *AuthService) ResetPassword(ctx context.Context, email, token, newPassword string) error {
 	// Check if password reset is enabled
 	if !s.IsPasswordResetEnabled(ctx) {
-		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "password reset is not enabled")
+		return infraerrors.Forbidden("PASSWORD_RESET_DISABLED", "暂未开放找回密码，请联系客服（Password reset is not enabled）")
 	}
 
 	if s.emailService == nil {

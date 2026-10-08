@@ -23,13 +23,13 @@ import (
 )
 
 var (
-	ErrEmailNotConfigured    = infraerrors.ServiceUnavailable("EMAIL_NOT_CONFIGURED", "email service not configured")
-	ErrInvalidVerifyCode     = infraerrors.BadRequest("INVALID_VERIFY_CODE", "invalid or expired verification code")
-	ErrVerifyCodeTooFrequent = infraerrors.TooManyRequests("VERIFY_CODE_TOO_FREQUENT", "please wait before requesting a new code")
-	ErrVerifyCodeMaxAttempts = infraerrors.TooManyRequests("VERIFY_CODE_MAX_ATTEMPTS", "too many failed attempts, please request a new code")
+	ErrEmailNotConfigured    = infraerrors.ServiceUnavailable("EMAIL_NOT_CONFIGURED", "邮件服务暂未配置，请联系管理员（Email service not configured）")
+	ErrInvalidVerifyCode     = infraerrors.BadRequest("INVALID_VERIFY_CODE", "验证码错误或已过期，请检查邮件里的 6 位数字，或重新获取（Invalid or expired verification code）")
+	ErrVerifyCodeTooFrequent = infraerrors.TooManyRequests("VERIFY_CODE_TOO_FREQUENT", "获取验证码太频繁，请稍等一分钟再试（Please wait before requesting a new code）")
+	ErrVerifyCodeMaxAttempts = infraerrors.TooManyRequests("VERIFY_CODE_MAX_ATTEMPTS", "验证码错误次数过多，请重新获取验证码（Too many failed attempts, please request a new code）")
 
 	// Password reset errors
-	ErrInvalidResetToken = infraerrors.BadRequest("INVALID_RESET_TOKEN", "invalid or expired password reset token")
+	ErrInvalidResetToken = infraerrors.BadRequest("INVALID_RESET_TOKEN", "重置密码链接无效或已过期，请重新申请（Invalid or expired password reset link）")
 )
 
 // EmailCache defines cache operations for email service
