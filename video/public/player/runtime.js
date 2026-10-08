@@ -88,17 +88,12 @@
     append(el, rest);
     return el;
   }
+  // The HTML parser puts <svg> and its children in the SVG namespace even when the markup has no
+  // xmlns (a strict XML parse would make them plain Elements without .style or getTotalLength) and
+  // forgives small mistakes, like a browser rendering inline SVG.
   function parseSVG(markup) {
-    var text = String(markup).trim();
-    var doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-    var root = doc.documentElement;
-    if (root && root.nodeName.toLowerCase() === 'svg' && !doc.getElementsByTagName('parsererror').length) {
-      return document.importNode(root, true);
-    }
-    // Not well-formed XML (an unescaped & or a quote inside an attribute): let the forgiving HTML
-    // parser build it, as a browser would for inline <svg>.
     var tpl = document.createElement('template');
-    tpl.innerHTML = text;
+    tpl.innerHTML = String(markup).trim();
     var svg = tpl.content.querySelector('svg');
     if (!svg) throw new Error('S.svg: the markup must be one <svg> element');
     return document.importNode(svg, true);
@@ -227,7 +222,10 @@
         ctx.scale(dpr, dpr);
         root.appendChild(el);
         canvases.push(ctx);
-        return { el: el, ctx: ctx };
+        // Usable both as { el, ctx } and as the canvas element itself.
+        el.el = el;
+        el.ctx = ctx;
+        return el;
       }
     };
     var scene = { id: sc.id, start: 0, duration: sc.duration, root: root, update: null, failed: false };
