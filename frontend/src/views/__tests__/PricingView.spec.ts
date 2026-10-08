@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
 import PricingView from '@/views/PricingView.vue'
-import { planDays, planMonthlyCapUSD, planMonthlyPrice, type PricingPlan } from '@/api/pricing'
+import { planDays, planPeriodCapUSD, planMonthlyPrice, type PricingPlan } from '@/api/pricing'
 
 const getPublicPricing = vi.fn()
 vi.mock('@/api/pricing', async () => {
@@ -37,9 +37,10 @@ describe('pricing helpers', () => {
     expect(planDays({ validity_days: 1, validity_unit: 'months' })).toBe(30)
     expect(planDays({ validity_days: 2, validity_unit: 'Week' })).toBe(14)
     expect(planDays({ validity_days: 7, validity_unit: 'days' })).toBe(7)
-    expect(planMonthlyCapUSD(plan({}))).toBe(1200)
-    expect(planMonthlyCapUSD(plan({ daily_limit_usd: 10 }))).toBe(300)
-    expect(planMonthlyCapUSD(plan({ daily_limit_usd: null, weekly_limit_usd: null, monthly_limit_usd: null }))).toBeNull()
+    expect(planPeriodCapUSD(plan({}))).toBe(1200)
+    expect(planPeriodCapUSD(plan({ daily_limit_usd: 10 }))).toBe(300)
+    expect(planPeriodCapUSD(plan({ price: 40, validity_days: 7 }))).toBe(350) // a week plan: one week's allowance
+    expect(planPeriodCapUSD(plan({ daily_limit_usd: null, weekly_limit_usd: null, monthly_limit_usd: null }))).toBeNull()
     expect(planMonthlyPrice(plan({ price: 40, validity_days: 7 }))).toBeCloseTo(171.43, 1)
   })
 })
@@ -50,7 +51,8 @@ describe('PricingView', () => {
     const w = mountView()
     await flushPromises()
     expect(w.get('[data-testid="pricing-plans"]').text()).toContain('月度订阅')
-    expect(w.get('[data-testid="pricing-plan-1"]').text()).toContain('"usd":"1,200"')
+    expect(w.get('[data-testid="pricing-plan-1"]').text()).toContain('"days":30,"usd":"1,200"')
+    expect(w.get('[data-testid="pricing-plan-3"]').text()).toContain('"days":7,"usd":"350"')
 
     // 80 requests × $0.12 × 22 days ≈ ¥211 pay as you go; the ¥60 plan fits ($9.6/day < $35).
     expect(w.get('[data-testid="pricing-estimate-payg"]').text()).toContain('¥211')

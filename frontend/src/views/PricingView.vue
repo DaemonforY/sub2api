@@ -75,13 +75,13 @@
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap">¥{{ fmt(p.price / Math.max(1, planDays(p))) }}</td>
                   <td class="px-4 py-3 text-xs leading-5 text-gray-600 dark:text-dark-300">
-                    <div v-if="p.daily_limit_usd">{{ t('pricing.plans.daily', { v: fmt(p.daily_limit_usd) }) }}</div>
-                    <div v-if="p.weekly_limit_usd">{{ t('pricing.plans.weekly', { v: fmt(p.weekly_limit_usd) }) }}</div>
-                    <div v-if="p.monthly_limit_usd">{{ t('pricing.plans.monthly', { v: fmt(p.monthly_limit_usd) }) }}</div>
+                    <div v-if="p.daily_limit_usd">{{ t('pricing.plans.daily', { v: fmt0(p.daily_limit_usd) }) }}</div>
+                    <div v-if="p.weekly_limit_usd">{{ t('pricing.plans.weekly', { v: fmt0(p.weekly_limit_usd) }) }}</div>
+                    <div v-if="p.monthly_limit_usd">{{ t('pricing.plans.monthly', { v: fmt0(p.monthly_limit_usd) }) }}</div>
                     <div v-if="!p.daily_limit_usd && !p.weekly_limit_usd && !p.monthly_limit_usd">{{ t('pricing.plans.noLimit') }}</div>
                   </td>
                   <td class="px-4 py-3 text-xs leading-5 text-gray-600 dark:text-dark-300">
-                    <template v-if="planMonthlyCapUSD(p)">{{ t('pricing.plans.valueText', { usd: fmt0(planMonthlyCapUSD(p)!), cny: fmt0(planMonthlyCapUSD(p)! / data.recharge_multiplier) }) }}</template>
+                    <template v-if="planPeriodCapUSD(p)">{{ t('pricing.plans.valueText', { days: planDays(p), usd: fmt0(planPeriodCapUSD(p)!), cny: fmt0(planPeriodCapUSD(p)! / data.recharge_multiplier) }) }}</template>
                     <template v-else>–</template>
                   </td>
                 </tr>
@@ -148,7 +148,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
-import { getPublicPricing, planDays, planMonthlyCapUSD, planMonthlyPrice, type PricingPlan, type PublicPricing } from '@/api/pricing'
+import { getPublicPricing, planDays, planPeriodCapUSD, planMonthlyPrice, type PricingPlan, type PublicPricing } from '@/api/pricing'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 const { t } = useI18n()

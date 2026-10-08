@@ -52,14 +52,15 @@ export function planDays(p: Pick<PricingPlan, 'validity_days' | 'validity_unit'>
 }
 
 /**
- * Most usage (USD, standard prices) a plan allows in 30 days: the tightest of its daily, weekly
- * and monthly limits, or null when it has none.
+ * Most usage (USD, standard prices) a plan allows over its own length: the tightest of its daily,
+ * weekly and monthly limits (a 7-day plan gets at most one week's allowance), or null without limits.
  */
-export function planMonthlyCapUSD(p: PricingPlan): number | null {
+export function planPeriodCapUSD(p: PricingPlan): number | null {
+  const days = Math.max(1, planDays(p))
   const caps: number[] = []
-  if (p.daily_limit_usd) caps.push(p.daily_limit_usd * 30)
-  if (p.weekly_limit_usd) caps.push((p.weekly_limit_usd * 30) / 7)
-  if (p.monthly_limit_usd) caps.push(p.monthly_limit_usd)
+  if (p.daily_limit_usd) caps.push(p.daily_limit_usd * days)
+  if (p.weekly_limit_usd) caps.push(p.weekly_limit_usd * Math.max(1, days / 7))
+  if (p.monthly_limit_usd) caps.push(p.monthly_limit_usd * Math.max(1, days / 30))
   return caps.length ? Math.min(...caps) : null
 }
 

@@ -39,7 +39,7 @@ export default {
       weekly: '${v} a week',
       monthly: '${v} a month',
       noLimit: 'No limit',
-      valueText: 'Up to ${usd} of usage a month — about ¥{cny} pay as you go',
+      valueText: 'Up to ${usd} of usage in {days} days — about ¥{cny} pay as you go',
       note: 'Allowances are in standard USD model prices; daily, weekly and monthly limits all apply, whichever runs out first. Prices on the purchase page are final.'
     },
     estimate: {

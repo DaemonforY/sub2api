@@ -39,7 +39,7 @@ export default {
       weekly: '每周 ${v}',
       monthly: '每月 ${v}',
       noLimit: '不限额度',
-      valueText: '每月最多可用 ${usd} 标准价额度，按量约需 ¥{cny}',
+      valueText: '{days} 天内最多可用 ${usd} 标准价额度，按量约需 ¥{cny}',
       note: '额度按模型的美元标准价折算；每日、每周、每月额度同时生效，以先用完的为准。价格以购买页为准。'
     },
     estimate: {
