@@ -14,6 +14,7 @@ import imageTools from './imageTools'
 import sites from './sites'
 import community from './community'
 import courses from './courses'
+import creators from './creators'
 import learn from './learn'
 import assistant from './assistant'
 import analytics from './analytics'
@@ -35,6 +36,7 @@ export default {
   ...sites,
   ...community,
   ...courses,
+  ...creators,
   ...learn,
   ...assistant,
   ...analytics,

@@ -24,6 +24,66 @@ export interface CourseInput {
 export interface CourseSettings {
   /** Percent of a course order credited to the buyer's inviter (0 = none). */
   affiliate_rate_percent: number
+  /** Creators: applications open, default commission, days before a sale can be withdrawn, minimum withdrawal. */
+  creator_enabled: boolean
+  creator_commission_percent: number
+  creator_settle_days: number
+  creator_withdraw_min_cny: number
+}
+
+export type CreatorStatus = 'pending' | 'approved' | 'rejected' | 'suspended'
+
+export interface CreatorBalance {
+  orders: number
+  gross: number
+  net: number
+  frozen: number
+  paid: number
+  pending: number
+  /** Can be negative after a refund of a sale already paid out. */
+  available: number
+}
+
+export interface CourseCreator {
+  user_id: number
+  status: CreatorStatus
+  display_name: string
+  bio: string
+  contact: string
+  plan: string
+  admin_note: string
+  reviewed_at?: string
+  created_at: string
+  user_email?: string
+  username?: string
+  course_count: number
+  on_sale_count: number
+  pending_count: number
+  /** The creator's own rate; null = the site default. */
+  commission_percent: number | null
+  balance?: CreatorBalance
+}
+
+export interface CreatorUpdate {
+  status: CreatorStatus
+  commission_percent: number | null
+  admin_note: string
+}
+
+export interface CreatorWithdrawal {
+  id: number
+  user_id: number
+  user_email?: string
+  display_name?: string
+  cny_amount: number
+  method: 'alipay' | 'wechat'
+  account: string
+  real_name: string
+  user_note: string
+  status: 'pending' | 'paid' | 'rejected' | 'cancelled'
+  admin_note: string
+  reviewed_at?: string
+  created_at: string
 }
 
 export interface DeliveryInput {
@@ -96,4 +156,42 @@ export async function saveSettings(settings: CourseSettings): Promise<CourseSett
   return data
 }
 
-export default { getSettings, saveSettings, list, get, create, update, remove, uploadCover, uploadImage, deliveries, saveDelivery, enrollments, grant, revoke }
+export async function creators(status = ''): Promise<CourseCreator[]> {
+  const { data } = await apiClient.get('/admin/courses/creators', { params: status ? { status } : {} })
+  return data
+}
+export async function updateCreator(userId: number, input: CreatorUpdate): Promise<CourseCreator> {
+  const { data } = await apiClient.put(`/admin/courses/creators/${userId}`, input)
+  return data
+}
+/** Creator courses waiting for review, with their drafts. */
+export async function reviews(): Promise<Course[]> {
+  const { data } = await apiClient.get('/admin/courses/reviews')
+  return data
+}
+export async function review(id: number, approve: boolean, note: string): Promise<Course> {
+  const { data } = await apiClient.post(`/admin/courses/${id}/review`, { approve, note })
+  return data
+}
+export async function creatorWithdrawals(status: string, page = 1): Promise<{ items: CreatorWithdrawal[]; total: number }> {
+  const { data } = await apiClient.get('/admin/courses/creator-withdrawals', { params: { status, page } })
+  return data
+}
+export async function payCreatorWithdrawal(id: number, note: string): Promise<CreatorWithdrawal> {
+  const { data } = await apiClient.post(`/admin/courses/creator-withdrawals/${id}/paid`, { note })
+  return data
+}
+export async function rejectCreatorWithdrawal(id: number, note: string): Promise<CreatorWithdrawal> {
+  const { data } = await apiClient.post(`/admin/courses/creator-withdrawals/${id}/reject`, { note })
+  return data
+}
+
+export default {
+  creators,
+  updateCreator,
+  reviews,
+  review,
+  creatorWithdrawals,
+  payCreatorWithdrawal,
+  rejectCreatorWithdrawal,
+  getSettings, saveSettings, list, get, create, update, remove, uploadCover, uploadImage, deliveries, saveDelivery, enrollments, grant, revoke }

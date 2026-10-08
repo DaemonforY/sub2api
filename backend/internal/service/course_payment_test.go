@@ -15,6 +15,12 @@ import (
 type courseEnrollRepoStub struct {
 	CourseRepository
 	enrolled []CourseEnrollment
+	sales    []int64
+}
+
+func (r *courseEnrollRepoStub) RecordCreatorSale(_ context.Context, orderID int64, _ float64, _ int) error {
+	r.sales = append(r.sales, orderID)
+	return nil
 }
 
 func (r *courseEnrollRepoStub) UpsertEnrollment(_ context.Context, e *CourseEnrollment) error {
@@ -81,6 +87,7 @@ func TestExecuteCourseFulfillmentEnrollsAndPaysCourseRebate(t *testing.T) {
 			require.Len(t, repo.enrolled, 1)
 			require.Equal(t, CourseSourcePurchase, repo.enrolled[0].Source)
 			require.Equal(t, order.ID, repo.enrolled[0].OrderID)
+			require.Equal(t, []int64{order.ID}, repo.sales, "the creator's share is recorded with the enrollment")
 			require.Len(t, affiliateRepo.accrueCalls, tc.wantCalls)
 			if tc.wantCalls > 0 {
 				require.InDelta(t, tc.want, affiliateRepo.accrueCalls[0].amount, 1e-9)

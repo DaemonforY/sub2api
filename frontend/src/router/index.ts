@@ -243,6 +243,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/creator',
+    name: 'CreatorCenter',
+    component: () => import('@/views/user/CreatorView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Creator center',
+      titleKey: 'creator.title',
+      descriptionKey: 'creator.description'
+    }
+  },
+  {
     path: '/contests',
     name: 'Contests',
     component: () => import('@/views/ContestsView.vue'),
@@ -665,6 +677,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Courses',
       titleKey: 'admin.courses.title',
       descriptionKey: 'admin.courses.description'
+    }
+  },
+  {
+    path: '/admin/course-creators',
+    name: 'AdminCourseCreators',
+    component: () => import('@/views/admin/CourseCreatorsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Course creators',
+      titleKey: 'admin.creators.title',
+      descriptionKey: 'admin.creators.description'
     }
   },
   {

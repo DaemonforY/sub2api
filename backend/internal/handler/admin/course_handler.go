@@ -271,3 +271,104 @@ func (h *CourseHandler) Revoke(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"ok": true})
 }
+
+// --- Creators --------------------------------------------------------------------------------------
+
+// Creators GET /api/v1/admin/courses/creators?status=
+func (h *CourseHandler) Creators(c *gin.Context) {
+	list, err := h.svc.AdminCreators(c.Request.Context(), c.Query("status"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, list)
+}
+
+// UpdateCreator PUT /api/v1/admin/courses/creators/:user_id {status, commission_percent, admin_note}
+func (h *CourseHandler) UpdateCreator(c *gin.Context) {
+	userID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil || userID <= 0 {
+		response.BadRequest(c, "Invalid user id")
+		return
+	}
+	var in service.CreatorUpdate
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request")
+		return
+	}
+	creator, err := h.svc.UpdateCreator(c.Request.Context(), userID, in)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, creator)
+}
+
+// Reviews GET /api/v1/admin/courses/reviews — creator courses waiting for review, with drafts.
+func (h *CourseHandler) Reviews(c *gin.Context) {
+	list, err := h.svc.ReviewCourses(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, list)
+}
+
+// Review POST /api/v1/admin/courses/:id/review {approve, note}
+func (h *CourseHandler) Review(c *gin.Context) {
+	id, ok := courseID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Approve bool   `json:"approve"`
+		Note    string `json:"note"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request")
+		return
+	}
+	course, err := h.svc.ReviewCourse(c.Request.Context(), id, in.Approve, in.Note)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, course)
+}
+
+// CreatorWithdrawals GET /api/v1/admin/courses/creator-withdrawals?status=&page=
+func (h *CourseHandler) CreatorWithdrawals(c *gin.Context) {
+	page, _ := strconv.Atoi(c.Query("page"))
+	list, total, err := h.svc.AdminCreatorWithdrawals(c.Request.Context(), service.CreatorWithdrawFilter{Status: c.Query("status"), Page: page, PageSize: 20})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	response.Success(c, gin.H{"items": list, "total": total})
+}
+
+// ResolveCreatorWithdrawal POST /api/v1/admin/courses/creator-withdrawals/:id/(paid|reject) {note}
+func (h *CourseHandler) resolveCreatorWithdrawal(c *gin.Context, paid bool) {
+	id, ok := courseID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Note string `json:"note"`
+	}
+	_ = c.ShouldBindJSON(&in)
+	var adminID int64
+	if subject, ok := middleware.GetAuthSubjectFromContext(c); ok {
+		adminID = subject.UserID
+	}
+	w, err := h.svc.ResolveCreatorWithdrawal(c.Request.Context(), id, adminID, paid, in.Note)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, w)
+}
+
+func (h *CourseHandler) PayCreatorWithdrawal(c *gin.Context)    { h.resolveCreatorWithdrawal(c, true) }
+func (h *CourseHandler) RejectCreatorWithdrawal(c *gin.Context) { h.resolveCreatorWithdrawal(c, false) }

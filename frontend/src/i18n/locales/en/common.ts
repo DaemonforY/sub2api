@@ -218,6 +218,8 @@ export default {
     myCourses: 'My courses',
     myLearning: 'My learning',
     coursesAdmin: 'Courses',
+    creatorCenter: 'Creator center',
+    courseCreatorsAdmin: 'Course creators',
     learnAdmin: 'AI Learning',
     assistantAdmin: 'Support assistant',
     canvasMembershipAdmin: 'Creator membership',

@@ -25,7 +25,7 @@ vi.mock('@/api/admin', () => ({ adminAPI: { courses: api } }))
 vi.mock('@/stores', () => ({ useAppStore: () => ({ showSuccess, showError }) }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))
 
-const stubs = { AppLayout: { template: '<div><slot /></div>' }, ConfirmDialog: true }
+const stubs = { AppLayout: { template: '<div><slot /></div>' }, ConfirmDialog: true, RouterLink: { template: '<a><slot /></a>' } }
 const saved = {
   id: 9, slug: 'ai-agent', title: 'AI Agent 实战', subtitle: '', category: '', cover_url: '', price: 199, original_price: 0, intro_md: '', trial_md: '', faq_md: '',
   outline: [], status: 'draft', sort_order: 0, lesson_count: 0, student_count: 0, owned: false, created_at: '', updated_at: '', revenue: 0, delivery_version: 0,
@@ -35,7 +35,7 @@ const saved = {
 describe('admin CoursesView', () => {
   beforeEach(() => {
     for (const fn of Object.values(api)) fn.mockReset()
-    api.getSettings.mockResolvedValue({ affiliate_rate_percent: 0 })
+    api.getSettings.mockResolvedValue({ affiliate_rate_percent: 0, creator_enabled: true, creator_commission_percent: 15, creator_settle_days: 7, creator_withdraw_min_cny: 50 })
     showSuccess.mockReset()
     showError.mockReset()
   })
@@ -121,7 +121,8 @@ describe('admin CoursesView', () => {
     await wrapper.get('[data-testid="course-rebate-rate"]').setValue(20)
     await wrapper.get('[data-testid="course-settings-save"]').trigger('click')
     await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith({ affiliate_rate_percent: 20 })
+    // The creator rules on the same settings travel along unchanged.
+    expect(api.saveSettings).toHaveBeenCalledWith({ affiliate_rate_percent: 20, creator_enabled: true, creator_commission_percent: 15, creator_settle_days: 7, creator_withdraw_min_cny: 50 })
 
     await wrapper.get('[data-testid="course-new"]').trigger('click')
     await wrapper.get('[data-testid="course-title"]').setValue('课')

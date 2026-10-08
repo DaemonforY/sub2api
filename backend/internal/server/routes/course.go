@@ -40,4 +40,29 @@ func RegisterCourseRoutes(
 		mine.GET("", h.Course.Mine)
 		mine.GET("/:id/delivery", h.Course.Delivery)
 	}
+
+	// Creator center: courses reviewed by an admin before they go live; sales and withdrawals.
+	creator := v1.Group("/user/creator")
+	creator.Use(gin.HandlerFunc(jwtAuth))
+	creator.Use(middleware.BackendModeUserGuard(settingService))
+	creator.Use(panelRateLimiter.Global())
+	{
+		creator.GET("", h.Course.CreatorHome)
+		creator.POST("/apply", h.Course.CreatorApply)
+		creator.POST("/images", h.Course.CreatorImage)
+		creator.GET("/courses", h.Course.CreatorCourses)
+		creator.POST("/courses", h.Course.CreatorCreate)
+		creator.GET("/courses/:id", h.Course.CreatorGet)
+		creator.PUT("/courses/:id", h.Course.CreatorUpdate)
+		creator.DELETE("/courses/:id", h.Course.CreatorDelete)
+		creator.POST("/courses/:id/cover", h.Course.CreatorCover)
+		creator.POST("/courses/:id/submit", h.Course.CreatorSubmit)
+		creator.POST("/courses/:id/sale", h.Course.CreatorSale)
+		creator.GET("/courses/:id/deliveries", h.Course.CreatorDeliveries)
+		creator.POST("/courses/:id/deliveries", h.Course.CreatorSaveDelivery)
+		creator.GET("/courses/:id/students", h.Course.CreatorStudents)
+		creator.GET("/sales", h.Course.CreatorSales)
+		creator.POST("/withdrawals", h.Course.CreatorWithdraw)
+		creator.POST("/withdrawals/:id/cancel", h.Course.CreatorCancelWithdraw)
+	}
 }

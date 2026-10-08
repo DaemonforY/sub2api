@@ -1,0 +1,63 @@
+export default {
+  creators: {
+    title: 'Course creators',
+    description: 'Review creator applications and their courses, set commissions and pay withdrawals.',
+    settings: {
+      enabled: 'Accept creator applications',
+      commission: 'Default fee %',
+      settleDays: 'Settlement (days)',
+      withdrawMin: 'Min. withdrawal (CNY)',
+      hint: 'The fee is taken from what buyers paid (payment fees excluded); the rate is fixed on each order at the time of sale. Sales can be withdrawn after the settlement period — keep it at least as long as your refund window. Invite rebates on creator courses (the course rebate rate) are paid by the platform.'
+    },
+    tabs: { creators: 'Creators', reviews: 'Course reviews', withdrawals: 'Withdrawals' },
+    empty: 'No applications yet',
+    appliedAt: 'applied {time}',
+    courseCount: '{onSale} on sale / {total} courses',
+    money: 'earned ¥{net} · withdrawable ¥{available} · paid ¥{paid}',
+    rate: 'fee {percent}%',
+    rateDefault: ' (default)',
+    handle: 'Handle',
+    inspect: 'Inspect',
+    close: 'Close',
+    status: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', suspended: 'Suspended' },
+    fields: { status: 'Status', commission: 'Own fee %', note: 'Note' },
+    notePlaceholder: 'Required to reject or suspend; the creator sees it',
+    statusHint: 'Leave the own fee empty for the default; it applies to later orders only. Rejecting or suspending takes all their courses off sale; buyers keep access.',
+    noReviews: 'Nothing to review',
+    submittedAt: 'submitted {time}',
+    firstListing: 'first listing',
+    changeOfLive: 'change to a course on sale',
+    line: {
+      price: 'Price ¥{price}, original {original}',
+      sale: 'Limited-time ¥{price} until {until}',
+      subtitle: 'Subtitle: {text}',
+      video: 'Trial video: {url}',
+      changed: 'Changed from the live version: {fields}'
+    },
+    field: {
+      title: 'title',
+      subtitle: 'subtitle',
+      price: 'price',
+      original_price: 'original price',
+      sale_price: 'limited-time price',
+      intro_md: 'description',
+      trial_md: 'preview',
+      faq_md: 'FAQ',
+      trial_video_url: 'trial video',
+      outline: 'outline',
+      cover: 'cover'
+    },
+    deliveryCheck: 'Current netdisk materials (worth a look before approving)',
+    reviewNote: 'Review note',
+    reviewNotePlaceholder: 'Required to reject; the creator sees it',
+    approve: 'Approve and list',
+    reject: 'Reject',
+    approved: 'Approved; the course is on sale',
+    rejected: 'Rejected',
+    noWithdrawals: 'No withdrawals',
+    withdrawStatus: { pending: 'To pay', paid: 'Paid', rejected: 'Rejected', cancelled: 'Cancelled', all: 'All' },
+    userNote: 'Creator note: ',
+    payNotePlaceholder: 'Transfer reference (optional); the reason when rejecting',
+    markPaid: 'Mark paid'
+  }
+}

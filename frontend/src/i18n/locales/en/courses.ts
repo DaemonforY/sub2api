@@ -1,6 +1,7 @@
 export default {
   courses: {
     navLabel: 'Courses',
+    byCreator: 'Instructor: {name}',
     title: 'Courses',
     subtitle: 'Learn AI app development and AI creation. After buying, get the Baidu Netdisk link under My courses.',
     allCategories: 'All',

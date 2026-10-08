@@ -20,7 +20,7 @@ func TestCourseAdminRoutesRegister(t *testing.T) {
 	for _, rt := range r.Routes() {
 		paths[rt.Method+" "+rt.Path] = true
 	}
-	for _, want := range []string{"GET /api/v1/admin/courses/settings", "PUT /api/v1/admin/courses/settings", "GET /api/v1/admin/courses/:id", "PUT /api/v1/admin/courses/:id"} {
+	for _, want := range []string{"GET /api/v1/admin/courses/settings", "GET /api/v1/admin/courses/creators", "PUT /api/v1/admin/courses/creators/:user_id", "GET /api/v1/admin/courses/reviews", "POST /api/v1/admin/courses/creator-withdrawals/:id/paid", "POST /api/v1/admin/courses/:id/review", "PUT /api/v1/admin/courses/settings", "GET /api/v1/admin/courses/:id", "PUT /api/v1/admin/courses/:id"} {
 		require.True(t, paths[want], want)
 	}
 }

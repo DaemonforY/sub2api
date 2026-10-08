@@ -218,6 +218,8 @@ export default {
     myCourses: '我的课程',
     myLearning: '我的学习',
     coursesAdmin: '课程管理',
+    creatorCenter: '创作者中心',
+    courseCreatorsAdmin: '课程创作者',
     learnAdmin: 'AI 学习',
     assistantAdmin: '智能客服',
     canvasMembershipAdmin: '创作会员',

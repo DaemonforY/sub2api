@@ -116,6 +116,15 @@ type Course struct {
 	Orders30d int `json:"orders_30d,omitempty"`
 	Paid30d   int `json:"paid_30d,omitempty"`
 	Refunds   int `json:"refunds,omitempty"`
+	// Creator courses (course_creator.go): OwnerID is the creator (0 = the platform's own course).
+	OwnerID     int64  `json:"owner_id,omitempty"`
+	CreatorName string `json:"creator_name,omitempty"`
+	// Creator and admin only: the creator's unpublished edit and where its review stands.
+	Draft        *CourseDraft `json:"draft,omitempty"`
+	ReviewStatus string       `json:"review_status,omitempty"`
+	ReviewNote   string       `json:"review_note,omitempty"`
+	SubmittedAt  *time.Time   `json:"submitted_at,omitempty"`
+	ApprovedAt   *time.Time   `json:"approved_at,omitempty"`
 }
 
 // CourseDeliveryRecord is a stored delivery version (fields encrypted).
@@ -176,7 +185,7 @@ type MyCourse struct {
 }
 
 type CourseRepository interface {
-	ListCourses(ctx context.Context, statuses []string) ([]Course, error)
+	ListCourses(ctx context.Context, filter CourseFilter) ([]Course, error)
 	GetCourse(ctx context.Context, id int64) (*Course, error)
 	GetCourseBySlug(ctx context.Context, slug string) (*Course, error)
 	CreateCourse(ctx context.Context, c *Course) error
@@ -199,6 +208,15 @@ type CourseRepository interface {
 	FindUserID(ctx context.Context, idOrEmail string) (int64, error)
 	AddView(ctx context.Context, courseID int64) error
 	ActiveStudents(ctx context.Context, courseID int64) ([]CourseStudent, error)
+
+	CourseCreatorRepository
+}
+
+// CourseFilter selects courses: by status, by creator, or those waiting for review.
+type CourseFilter struct {
+	Statuses      []string
+	OwnerID       int64
+	ReviewPending bool
 }
 
 // CourseStudent is a buyer to notify.
@@ -267,6 +285,9 @@ func (s *CourseService) decorate(c *Course, owned bool, full bool) {
 	}
 	c.LessonCount = lessonCount(c.Outline)
 	c.Owned = owned
+	if c.Draft != nil {
+		c.Draft.CoverURL = CourseMediaURL(c.Draft.CoverFile)
+	}
 	if !full {
 		c.IntroMD, c.TrialMD, c.FaqMD = "", "", ""
 	}
@@ -308,11 +329,12 @@ func (s *CourseService) eduSettings(ctx context.Context) *GrowthSettings {
 
 func hideAdminFields(c *Course) {
 	c.Revenue, c.DeliveryVersion, c.Views30d, c.Orders30d, c.Paid30d, c.Refunds = 0, 0, 0, 0, 0, 0
+	c.OwnerID, c.Draft, c.ReviewStatus, c.ReviewNote, c.SubmittedAt, c.ApprovedAt = 0, nil, "", "", nil, nil
 }
 
 // Courses on sale, with the viewer's purchases marked.
 func (s *CourseService) Courses(ctx context.Context, viewerID int64) ([]Course, error) {
-	list, err := s.repo.ListCourses(ctx, []string{CourseStatusPublished})
+	list, err := s.repo.ListCourses(ctx, CourseFilter{Statuses: []string{CourseStatusPublished}})
 	if err != nil {
 		return nil, err
 	}
@@ -559,7 +581,7 @@ func (in CourseInput) apply(c *Course) error {
 
 // AdminCourses lists every course with students, revenue and the delivery version.
 func (s *CourseService) AdminCourses(ctx context.Context) ([]Course, error) {
-	list, err := s.repo.ListCourses(ctx, nil)
+	list, err := s.repo.ListCourses(ctx, CourseFilter{})
 	if err != nil {
 		return nil, err
 	}
@@ -864,6 +886,12 @@ func (s *CourseService) EnrollRedeem(ctx context.Context, userID, courseID int64
 // CourseSettings: the share of a course order credited to the buyer's inviter.
 type CourseSettings struct {
 	AffiliateRatePercent float64 `json:"affiliate_rate_percent"`
+	// Creators (course_creator.go): applications open, the default commission, the settlement
+	// period before a sale can be withdrawn, and the minimum withdrawal.
+	CreatorEnabled           bool    `json:"creator_enabled"`
+	CreatorCommissionPercent float64 `json:"creator_commission_percent"`
+	CreatorSettleDays        int     `json:"creator_settle_days"`
+	CreatorWithdrawMinCNY    float64 `json:"creator_withdraw_min_cny"`
 }
 
 // AffiliateRate is the course rebate rate in percent (0 = course orders earn no rebate).
@@ -883,18 +911,25 @@ func (s *CourseService) AffiliateRate(ctx context.Context) float64 {
 }
 
 func (s *CourseService) Settings(ctx context.Context) CourseSettings {
-	return CourseSettings{AffiliateRatePercent: s.AffiliateRate(ctx)}
+	out := CourseSettings{AffiliateRatePercent: s.AffiliateRate(ctx)}
+	s.creatorSettings(ctx, &out)
+	return out
 }
 
 func (s *CourseService) SaveSettings(ctx context.Context, in CourseSettings) (CourseSettings, error) {
 	if in.AffiliateRatePercent < 0 || in.AffiliateRatePercent > 50 || math.IsNaN(in.AffiliateRatePercent) {
 		return CourseSettings{}, errCourseInvalid("返利比例须在 0–50% 之间")
 	}
+	if err := validateCreatorSettings(in); err != nil {
+		return CourseSettings{}, err
+	}
 	if s.settings == nil {
 		return CourseSettings{}, nil
 	}
 	rate := strconv.FormatFloat(roundCents(in.AffiliateRatePercent), 'f', -1, 64)
-	if err := s.settings.SetMultiple(ctx, map[string]string{settingCourseAffiliateRate: rate}); err != nil {
+	values := creatorSettingValues(in)
+	values[settingCourseAffiliateRate] = rate
+	if err := s.settings.SetMultiple(ctx, values); err != nil {
 		return CourseSettings{}, err
 	}
 	return s.Settings(ctx), nil

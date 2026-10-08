@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -37,35 +39,65 @@ SELECT c.id, c.slug, c.title, c.subtitle, c.category, c.cover_file, c.price::flo
        COALESCE((SELECT SUM(s.views) FROM course_daily_stats s WHERE s.course_id = c.id AND s.day > CURRENT_DATE - 30), 0) AS views_30d,
        (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.created_at > NOW() - INTERVAL '30 days') AS orders_30d,
        (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.paid_at > NOW() - INTERVAL '30 days') AS paid_30d,
-       (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.status = 'REFUNDED') AS refunds
+       (SELECT COUNT(*) FROM payment_orders po WHERE po.order_type = 'course' AND po.course_id = c.id AND po.status = 'REFUNDED') AS refunds,
+       COALESCE(c.owner_id, 0), COALESCE((SELECT cc.display_name FROM course_creators cc WHERE cc.user_id = c.owner_id), ''),
+       c.draft, c.review_status, c.review_note, c.submitted_at, c.approved_at
 FROM courses c`
 
 // scanCourse reads courseSelect's columns, then any extra destinations.
 func scanCourse(row rowScanner, extra ...any) (*service.Course, error) {
 	var c service.Course
 	var outline []byte
-	var saleEnds sql.NullTime
+	var draft []byte
+	var saleEnds, submitted, approved sql.NullTime
 	dest := []any{&c.ID, &c.Slug, &c.Title, &c.Subtitle, &c.Category, &c.CoverFile, &c.Price, &c.OriginalPrice,
 		&c.IntroMD, &outline, &c.TrialMD, &c.FaqMD, &c.Status, &c.SortOrder, &c.CreatedAt, &c.UpdatedAt,
 		&c.StudentCount, &c.Revenue, &c.DeliveryVersion,
-		&c.SalePrice, &saleEnds, &c.EduDiscount, &c.TrialVideoURL, &c.Views30d, &c.Orders30d, &c.Paid30d, &c.Refunds}
+		&c.SalePrice, &saleEnds, &c.EduDiscount, &c.TrialVideoURL, &c.Views30d, &c.Orders30d, &c.Paid30d, &c.Refunds,
+		&c.OwnerID, &c.CreatorName, &draft, &c.ReviewStatus, &c.ReviewNote, &submitted, &approved}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		return nil, err
 	}
 	if saleEnds.Valid {
 		c.SaleEndsAt = &saleEnds.Time
 	}
+	if submitted.Valid {
+		c.SubmittedAt = &submitted.Time
+	}
+	if approved.Valid {
+		c.ApprovedAt = &approved.Time
+	}
+	if len(draft) > 0 {
+		var d service.CourseDraft
+		if err := json.Unmarshal(draft, &d); err == nil {
+			c.Draft = &d
+		}
+	}
 	c.Outline = service.UnmarshalOutline(outline)
 	return &c, nil
 }
 
-func (r *courseRepository) ListCourses(ctx context.Context, statuses []string) ([]service.Course, error) {
-	query, args := courseSelect, []any{}
-	if len(statuses) > 0 {
-		query += ` WHERE c.status = ANY($1)`
-		args = append(args, pq.Array(statuses))
+func (r *courseRepository) ListCourses(ctx context.Context, f service.CourseFilter) ([]service.Course, error) {
+	var where []string
+	var args []any
+	if len(f.Statuses) > 0 {
+		args = append(args, pq.Array(f.Statuses))
+		where = append(where, fmt.Sprintf("c.status = ANY($%d)", len(args)))
 	}
-	rows, err := r.db.QueryContext(ctx, query+` ORDER BY c.sort_order DESC, c.id DESC`, args...)
+	if f.OwnerID > 0 {
+		args = append(args, f.OwnerID)
+		where = append(where, fmt.Sprintf("c.owner_id = $%d", len(args)))
+	}
+	order := ` ORDER BY c.sort_order DESC, c.id DESC`
+	if f.ReviewPending {
+		where = append(where, "c.review_status = 'pending'")
+		order = ` ORDER BY c.submitted_at, c.id`
+	}
+	query := courseSelect
+	if len(where) > 0 {
+		query += ` WHERE ` + strings.Join(where, " AND ")
+	}
+	rows, err := r.db.QueryContext(ctx, query+order, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,10 +132,11 @@ func (r *courseRepository) GetCourseBySlug(ctx context.Context, slug string) (*s
 func (r *courseRepository) CreateCourse(ctx context.Context, c *service.Course) error {
 	err := r.db.QueryRowContext(ctx, `
 INSERT INTO courses (slug, title, subtitle, category, cover_file, price, original_price, intro_md, outline, trial_md, faq_md, status, sort_order,
-                     sale_price, sale_ends_at, edu_discount, trial_video_url)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id, created_at, updated_at`,
+                     sale_price, sale_ends_at, edu_discount, trial_video_url, owner_id, draft, review_status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id, created_at, updated_at`,
 		c.Slug, c.Title, c.Subtitle, c.Category, c.CoverFile, c.Price, c.OriginalPrice, c.IntroMD, service.MarshalOutline(c.Outline),
-		c.TrialMD, c.FaqMD, c.Status, c.SortOrder, c.SalePrice, c.SaleEndsAt, c.EduDiscount, c.TrialVideoURL).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
+		c.TrialMD, c.FaqMD, c.Status, c.SortOrder, c.SalePrice, c.SaleEndsAt, c.EduDiscount, c.TrialVideoURL,
+		nullableID(c.OwnerID), marshalDraft(c.Draft), c.ReviewStatus).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
 	if isUniqueViolation(err) {
 		return service.ErrCourseSlugTaken
 	}
@@ -114,10 +147,12 @@ func (r *courseRepository) UpdateCourse(ctx context.Context, c *service.Course) 
 	_, err := r.db.ExecContext(ctx, `
 UPDATE courses SET slug = $2, title = $3, subtitle = $4, category = $5, cover_file = $6, price = $7, original_price = $8,
        intro_md = $9, outline = $10, trial_md = $11, faq_md = $12, status = $13, sort_order = $14,
-       sale_price = $15, sale_ends_at = $16, edu_discount = $17, trial_video_url = $18, updated_at = NOW()
+       sale_price = $15, sale_ends_at = $16, edu_discount = $17, trial_video_url = $18,
+       draft = $19, review_status = $20, review_note = $21, submitted_at = $22, approved_at = $23, updated_at = NOW()
 WHERE id = $1`,
 		c.ID, c.Slug, c.Title, c.Subtitle, c.Category, c.CoverFile, c.Price, c.OriginalPrice, c.IntroMD, service.MarshalOutline(c.Outline),
-		c.TrialMD, c.FaqMD, c.Status, c.SortOrder, c.SalePrice, c.SaleEndsAt, c.EduDiscount, c.TrialVideoURL)
+		c.TrialMD, c.FaqMD, c.Status, c.SortOrder, c.SalePrice, c.SaleEndsAt, c.EduDiscount, c.TrialVideoURL,
+		marshalDraft(c.Draft), c.ReviewStatus, c.ReviewNote, c.SubmittedAt, c.ApprovedAt)
 	if isUniqueViolation(err) {
 		return service.ErrCourseSlugTaken
 	}
@@ -390,4 +425,25 @@ WHERE e.course_id = $1 AND u.deleted_at IS NULL AND `+activeEnrollment, courseID
 		out = append(out, st)
 	}
 	return out, rows.Err()
+}
+
+func nullableID(id int64) any {
+	if id > 0 {
+		return id
+	}
+	return nil
+}
+
+// marshalDraft stores a creator's draft (NULL when there is none); the cover URL is derived.
+func marshalDraft(d *service.CourseDraft) any {
+	if d == nil {
+		return nil
+	}
+	stored := *d
+	stored.CoverURL = ""
+	b, err := json.Marshal(stored)
+	if err != nil {
+		return nil
+	}
+	return b
 }

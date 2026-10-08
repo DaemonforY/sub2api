@@ -552,6 +552,11 @@ func (s *PaymentService) ExecuteCourseFulfillment(ctx context.Context, oid int64
 		s.markFailed(ctx, oid, lease, err)
 		return err
 	}
+	// A creator's course: record their share (idempotent, so a retried fulfilment adds nothing).
+	if err := s.courses.RecordCreatorSale(ctx, o.ID); err != nil {
+		s.markFailed(ctx, oid, lease, err)
+		return err
+	}
 	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
 		s.markFailed(ctx, oid, lease, err)
 		return err

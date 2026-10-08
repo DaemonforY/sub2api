@@ -5,7 +5,10 @@
       <template v-if="!editing">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('admin.courses.hint') }}</p>
-          <button class="btn btn-primary" data-testid="course-new" @click="startNew">{{ t('admin.courses.new') }}</button>
+          <div class="flex gap-2">
+            <RouterLink to="/admin/course-creators" class="btn btn-secondary">{{ t('admin.courses.creatorsLink') }}</RouterLink>
+            <button class="btn btn-primary" data-testid="course-new" @click="startNew">{{ t('admin.courses.new') }}</button>
+          </div>
         </div>
         <div class="card flex flex-wrap items-end gap-3 p-4" data-testid="course-settings">
           <label class="text-sm">
@@ -36,6 +39,7 @@
                 <td class="min-w-[12rem] whitespace-normal px-4 py-3">
                   <div class="font-medium text-gray-900 dark:text-white">{{ c.title }}</div>
                   <div class="text-xs text-gray-400">/courses/{{ c.slug }}</div>
+                  <div v-if="c.owner_id" class="text-xs text-primary-600">{{ t('admin.courses.byCreator', { name: c.creator_name || `#${c.owner_id}` }) }}<template v-if="c.review_status === 'pending'"> · {{ t('admin.courses.reviewPending') }}</template></div>
                 </td>
                 <td class="px-4 py-3"><span :class="['badge', statusBadge(c.status)]">{{ t(`admin.courses.status.${c.status}`) }}</span></td>
                 <td class="px-4 py-3">
@@ -367,7 +371,7 @@ const emptyForm = (): CourseInput => ({
 })
 const form = reactive<CourseInput>(emptyForm())
 const delivery = reactive<DeliveryInput>({ link: '', code: '', password: '', note: '', notify: true })
-const settings = reactive<CourseSettings>({ affiliate_rate_percent: 0 })
+const settings = reactive<CourseSettings>({ affiliate_rate_percent: 0, creator_enabled: false, creator_commission_percent: 20, creator_settle_days: 7, creator_withdraw_min_cny: 50 })
 
 // <input type="datetime-local"> works in local time without a zone; the API takes ISO times.
 const saleEndsLocal = computed({

@@ -22,6 +22,7 @@
               <span v-if="course.category" class="badge badge-gray">{{ course.category }}</span>
               <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ course.title }}</h1>
               <p v-if="course.subtitle" class="mt-2 text-gray-600 dark:text-dark-300">{{ course.subtitle }}</p>
+              <p v-if="course.creator_name" class="mt-2 text-sm text-gray-500 dark:text-dark-400" data-testid="course-creator">{{ t('courses.byCreator', { name: course.creator_name }) }}</p>
             </div>
           </div>
 

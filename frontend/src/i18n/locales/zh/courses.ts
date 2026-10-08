@@ -1,6 +1,7 @@
 export default {
   courses: {
     navLabel: '课程',
+    byCreator: '讲师：{name}',
     title: '付费课程',
     subtitle: '系统学习 AI 应用开发和 AI 创作，购买后在「我的课程」获取百度网盘链接。',
     allCategories: '全部',

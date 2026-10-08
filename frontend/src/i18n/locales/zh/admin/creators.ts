@@ -1,0 +1,63 @@
+export default {
+  creators: {
+    title: '课程创作者',
+    description: '审核创作者申请和他们的课程，设置手续费，处理提现。',
+    settings: {
+      enabled: '开放创作者申请',
+      commission: '默认手续费 %',
+      settleDays: '结算期（天）',
+      withdrawMin: '最低提现（元）',
+      hint: '手续费按学员实付金额（不含支付手续费）计算，成交时的比例固定在那一单上；付款后过了结算期才能提现，结算期最好不短于你接受退款的期限。创作者课程的邀请返利（课程返利比例）由平台承担。'
+    },
+    tabs: { creators: '创作者', reviews: '课程审核', withdrawals: '提现审核' },
+    empty: '还没有人申请',
+    appliedAt: '{time} 申请',
+    courseCount: '在售 {onSale} / 共 {total} 门',
+    money: '累计收入 ¥{net} · 可提现 ¥{available} · 已打款 ¥{paid}',
+    rate: '手续费 {percent}%',
+    rateDefault: '（默认）',
+    handle: '处理',
+    inspect: '查看',
+    close: '收起',
+    status: { pending: '待审核', approved: '已通过', rejected: '已拒绝', suspended: '已暂停' },
+    fields: { status: '状态', commission: '单独手续费 %', note: '备注' },
+    notePlaceholder: '拒绝或暂停时必填，创作者会看到',
+    statusHint: '单独手续费留空表示用默认比例，只影响之后的订单。拒绝或暂停会下架他的全部课程，已购学员不受影响。',
+    noReviews: '没有待审核的课程',
+    submittedAt: '{time} 提交',
+    firstListing: '首次上架',
+    changeOfLive: '修改在售课程',
+    line: {
+      price: '价格 ¥{price}，划线价 {original}',
+      sale: '限时价 ¥{price}，截止 {until}',
+      subtitle: '副标题：{text}',
+      video: '试看视频：{url}',
+      changed: '相对线上版本改动：{fields}'
+    },
+    field: {
+      title: '标题',
+      subtitle: '副标题',
+      price: '价格',
+      original_price: '划线价',
+      sale_price: '限时价',
+      intro_md: '介绍',
+      trial_md: '试看内容',
+      faq_md: '常见问题',
+      trial_video_url: '试看视频',
+      outline: '大纲',
+      cover: '封面'
+    },
+    deliveryCheck: '当前网盘资料（审核时建议打开看一眼）',
+    reviewNote: '审核意见',
+    reviewNotePlaceholder: '驳回时必填，创作者会看到',
+    approve: '通过并上架',
+    reject: '驳回',
+    approved: '已通过，课程已上架',
+    rejected: '已驳回',
+    noWithdrawals: '没有提现申请',
+    withdrawStatus: { pending: '待打款', paid: '已打款', rejected: '已驳回', cancelled: '已撤销', all: '全部' },
+    userNote: '创作者备注：',
+    payNotePlaceholder: '打款流水号等（选填）；驳回时填写原因',
+    markPaid: '已打款'
+  }
+}

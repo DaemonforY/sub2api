@@ -60,6 +60,35 @@ export interface Course {
   orders_30d?: number
   paid_30d?: number
   refunds?: number
+  /** Creator courses: the creator's display name (public) and id. */
+  creator_name?: string
+  owner_id?: number
+  /** Creator / admin only: the unpublished edit and its review. */
+  draft?: CourseDraft
+  review_status?: CourseReviewStatus
+  review_note?: string
+  submitted_at?: string
+  approved_at?: string
+}
+
+export type CourseReviewStatus = '' | 'draft' | 'pending' | 'approved' | 'rejected'
+
+/** A creator's edit waiting for review (same fields as the course input). */
+export interface CourseDraft {
+  title: string
+  subtitle: string
+  category: string
+  price: number
+  original_price: number
+  intro_md: string
+  outline: CourseSection[]
+  trial_md: string
+  faq_md: string
+  sale_price: number
+  sale_ends_at: string | null
+  edu_discount: boolean
+  trial_video_url: string
+  cover_url?: string
 }
 
 export interface CourseDelivery {
