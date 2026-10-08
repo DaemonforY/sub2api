@@ -156,7 +156,13 @@ export function track(name: string, props?: AnalyticsProps, path = window.locati
   else if (!timer) timer = setTimeout(flush, FLUSH_MS)
 }
 
+let lastView = { path: '', at: 0 }
+
+/** Counts a page view; the same path again within 2 s (a router firing twice on load) is ignored. */
 export function trackPageView(path = window.location.pathname): void {
+  const now = Date.now()
+  if (path === lastView.path && now - lastView.at < 2000) return
+  lastView = { path, at: now }
   track('page_view', undefined, path)
 }
 
@@ -186,6 +192,7 @@ export function initAnalytics(name: AnalyticsApp = 'main'): void {
 /** For tests. */
 export function _resetAnalytics(): void {
   queue = []
+  lastView = { path: '', at: 0 }
   started = false
   if (timer) clearTimeout(timer)
   timer = null

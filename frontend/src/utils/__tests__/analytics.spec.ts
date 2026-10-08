@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { _resetAnalytics, captureAttribution, flush, initAnalytics, signupAttribution, track } from '@/utils/analytics'
+import { _resetAnalytics, captureAttribution, flush, initAnalytics, signupAttribution, track, trackPageView } from '@/utils/analytics'
 
 describe('analytics', () => {
   const fetchMock = vi.fn()
@@ -72,5 +72,14 @@ describe('analytics', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const body = JSON.parse(fetchMock.mock.calls[0][1].body)
     expect(body.events[0]).toMatchObject({ name: 'canvas_click', props: { to: '/image' } })
+  })
+
+  it('ignores the same page view fired twice on load', () => {
+    trackPageView('/learn/')
+    trackPageView('/learn/')
+    trackPageView('/learn/a/')
+    flush()
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.events.map((e: { path: string }) => e.path)).toEqual(['/learn/', '/learn/a/'])
   })
 })

@@ -138,7 +138,13 @@ export function track(name, props, path = window.location.pathname) {
   else if (!timer) timer = setTimeout(flush, FLUSH_MS)
 }
 
+let lastView = { path: '', at: 0 }
+
+/** Counts a page view; the same path again within 2 s (a router firing twice on load) is ignored. */
 export function trackPageView(path = window.location.pathname) {
+  const now = Date.now()
+  if (path === lastView.path && now - lastView.at < 2000) return
+  lastView = { path, at: now }
   track('page_view', undefined, path)
 }
 
