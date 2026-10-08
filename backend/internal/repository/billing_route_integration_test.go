@@ -17,7 +17,11 @@ func TestBillingRoute(t *testing.T) {
 	ctx := context.Background()
 	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
 	settings := NewSettingRepository(integrationEntClient)
+	previous, _ := settings.GetValue(ctx, service.SettingKeySmartBillingEnabled)
 	require.NoError(t, settings.Set(ctx, service.SettingKeySmartBillingEnabled, "true"))
+	t.Cleanup(func() { _ = settings.Set(ctx, service.SettingKeySmartBillingEnabled, previous) })
+	// The groups are committed; GroupRepoSuite's filters would see them if left behind.
+	committed := trackCommitted(t)
 	groupRepo := NewGroupRepository(integrationEntClient, integrationDB)
 	subs := service.NewSubscriptionService(groupRepo, NewUserSubscriptionRepository(integrationEntClient), nil, integrationEntClient, &config.Config{})
 	router := service.NewBillingRouteService(subs, groupRepo, settings)
@@ -29,6 +33,7 @@ func TestBillingRoute(t *testing.T) {
 		_, err := integrationDB.ExecContext(ctx, `UPDATE groups SET sort_order = $1 WHERE id = $2`, sortOrder, g.ID)
 		require.NoError(t, err)
 		g.SortOrder = sortOrder
+		committed.groups = append(committed.groups, g.ID)
 		return g
 	}
 	// Lowest sort orders so other tests' groups in the shared database don't get picked.
@@ -39,6 +44,7 @@ func TestBillingRoute(t *testing.T) {
 
 	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "route-" + sfx + "@test.local", Username: "route" + sfx[len(sfx)-6:]})
 	other := mustCreateUser(t, integrationEntClient, &service.User{Email: "route2-" + sfx + "@test.local", Username: "route2" + sfx[len(sfx)-6:]})
+	committed.users = append(committed.users, user.ID, other.ID)
 	start := time.Now().Add(-time.Hour)
 	sa := mustCreateSubscription(t, integrationEntClient, &service.UserSubscription{UserID: user.ID, GroupID: subA.ID, StartsAt: start, ExpiresAt: time.Now().AddDate(0, 0, 10)})
 	useUp := func(subID int64, used float64) {
@@ -83,5 +89,4 @@ func TestBillingRoute(t *testing.T) {
 	off := service.NewBillingRouteService(subs, groupRepo, settings)
 	require.False(t, off.Enabled(ctx))
 	require.Nil(t, off.Route(ctx, keyOn(subA, other), true, true))
-	require.NoError(t, settings.Set(ctx, service.SettingKeySmartBillingEnabled, "true"))
 }
