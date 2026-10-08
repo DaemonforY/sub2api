@@ -227,6 +227,7 @@ func ProvideHandlers(
 	editorHandler *EditorHandler,
 	assistantHandler *AssistantHandler,
 	analyticsHandler *AnalyticsHandler,
+	canvasMembershipHandler *CanvasMembershipHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -268,6 +269,7 @@ func ProvideHandlers(
 		Editor:           editorHandler,
 		Assistant:        assistantHandler,
 		Analytics:        analyticsHandler,
+		CanvasMembership: canvasMembershipHandler,
 	}
 }
 
@@ -310,6 +312,7 @@ var ProviderSet = wire.NewSet(
 	NewAnimationJobHandler,
 	NewSiteHostingHandler,
 	NewCanvasSessionHandler,
+	NewCanvasMembershipHandler,
 	NewCanvasCloudHandler,
 	NewCommunityHandler,
 	NewCourseHandler,

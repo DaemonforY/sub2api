@@ -13,8 +13,9 @@ export interface CanvasSession {
   expires_at: string
 }
 
-export async function createCanvasSession(): Promise<CanvasSession> {
-  const { data } = await apiClient.post('/user/canvas-sessions')
+/** apiKeyId: the key handed to the canvas once (full-page sign-in from WeChat). */
+export async function createCanvasSession(apiKeyId?: number): Promise<CanvasSession> {
+  const { data } = await apiClient.post('/user/canvas-sessions', apiKeyId ? { api_key_id: apiKeyId } : undefined)
   return data
 }
 export async function listCanvasSessions(): Promise<CanvasSession[]> {

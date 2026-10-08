@@ -51,6 +51,9 @@ type CanvasSessionRepository interface {
 	ListCanvasSessions(ctx context.Context, userID int64, now time.Time) ([]CanvasSession, error)
 	// TrimCanvasSessions revokes all but the newest `keep` live sessions of a user.
 	TrimCanvasSessions(ctx context.Context, userID int64, keep int, at time.Time) error
+	SetCanvasSessionHandoff(ctx context.Context, sessionID, apiKeyID int64) error
+	// TakeCanvasSessionHandoff returns the handed-off key id (0 when none) and clears it.
+	TakeCanvasSessionHandoff(ctx context.Context, sessionID int64) (int64, error)
 }
 
 type canvasUserReader interface {
@@ -144,6 +147,10 @@ type CanvasMe struct {
 	Subscriptions []CanvasSubscription `json:"subscriptions"`
 	// AffCode: the user's invite code, when invites are enabled (set by the handler).
 	AffCode string `json:"aff_code,omitempty"`
+	// NoWatermarkUntil: 创作会员 end, when the user is a member (set by the handler).
+	NoWatermarkUntil *time.Time `json:"no_watermark_until,omitempty"`
+	// MembershipOnSale: 创作会员 can be bought now (the canvas offers 去水印 only then).
+	MembershipOnSale bool `json:"membership_on_sale"`
 }
 
 type CanvasSubscription struct {
@@ -181,4 +188,14 @@ func maskCanvasEmail(email string) string {
 		runes = runes[:2]
 	}
 	return string(runes) + "***@" + domain
+}
+
+// SetHandoffKey remembers the key the user picked for the canvas on its new session.
+func (s *CanvasSessionService) SetHandoffKey(ctx context.Context, sessionID, apiKeyID int64) error {
+	return s.repo.SetCanvasSessionHandoff(ctx, sessionID, apiKeyID)
+}
+
+// TakeHandoffKey returns the key id handed to this session once (0 when none).
+func (s *CanvasSessionService) TakeHandoffKey(ctx context.Context, sessionID int64) (int64, error) {
+	return s.repo.TakeCanvasSessionHandoff(ctx, sessionID)
 }

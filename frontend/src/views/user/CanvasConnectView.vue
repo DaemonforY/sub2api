@@ -18,7 +18,7 @@
       <div v-else-if="done" class="mt-6 py-6 text-center" data-testid="canvas-connect-done">
         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600 dark:bg-emerald-900/30">✓</div>
         <p class="mt-3 font-medium text-gray-900 dark:text-white">{{ t('canvasConnect.done') }}</p>
-        <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ t('canvasConnect.doneHint') }}</p>
+        <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ redirectMode ? t('canvasConnect.returning') : t('canvasConnect.doneHint') }}</p>
       </div>
 
       <template v-else>
@@ -62,6 +62,7 @@
               </select>
               <button type="button" class="btn btn-secondary shrink-0" :disabled="creating || !createGroupId" @click="createKey">{{ t('canvasConnect.create') }}</button>
             </div>
+            <p v-if="redirectMode && !hasUsableKey" class="mt-2 text-xs text-gray-500 dark:text-dark-400" data-testid="canvas-connect-autocreate">{{ t('canvasConnect.autoCreateHint') }}</p>
             <p v-if="selectedCreateGroup?.subscription_type !== 'subscription'" class="mt-2 text-xs text-gray-500 dark:text-dark-400">
               {{ t('canvasConnect.balanceHint', { balance: balanceText }) }}
               <a href="/purchase" target="_blank" rel="noopener" class="ml-1 text-primary-600 underline">{{ t('canvasConnect.topUp') }}</a>
@@ -78,10 +79,10 @@
           <div class="mt-6 flex gap-2">
             <button type="button" class="btn btn-secondary flex-1" @click="cancel">{{ t('common.cancel') }}</button>
             <button type="button" class="btn btn-primary flex-1" :disabled="authorizing" data-testid="canvas-connect-authorize" @click="authorize">
-              {{ selectedKey ? t('canvasConnect.authorize') : t('canvasConnect.signInOnly') }}
+              {{ redirectMode ? (selectedKey || autoCreate ? t('canvasConnect.authorizeAndReturn') : t('canvasConnect.signInOnlyAndReturn')) : selectedKey ? t('canvasConnect.authorize') : t('canvasConnect.signInOnly') }}
             </button>
           </div>
-          <p v-if="!selectedKey" class="mt-3 text-xs leading-5 text-gray-500 dark:text-dark-400">{{ t('canvasConnect.signInOnlyHint') }}</p>
+          <p v-if="!selectedKey && !autoCreate" class="mt-3 text-xs leading-5 text-gray-500 dark:text-dark-400">{{ t('canvasConnect.signInOnlyHint') }}</p>
           <p class="mt-3 text-center text-[11px] leading-5 text-gray-400">{{ t('canvasConnect.privacy', { canvas: canvasOrigin }) }}</p>
         </template>
       </template>
@@ -123,7 +124,18 @@ const canvasHome = canvasUrl({ medium: 'canvas-connect' })
 
 const state = typeof route.query.state === 'string' ? route.query.state : ''
 const hasOpener = typeof window !== 'undefined' && Boolean(window.opener) && !window.opener.closed
-const canHandOff = /^[A-Za-z0-9_-]{16,128}$/.test(state) && hasOpener
+// Full-page mode (?return=/image): the WeChat in-app browser cannot use the popup. The canvas gets
+// the session cookie as usual and takes the picked key once from GET /api/v1/canvas/connect-key.
+const returnPath = safeReturnPath(route.query.return)
+const redirectMode = !hasOpener && Boolean(returnPath)
+const canHandOff = /^[A-Za-z0-9_-]{16,128}$/.test(state) && (hasOpener || redirectMode)
+
+function safeReturnPath(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const path = value.trim()
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://') || /[\r\n\\]/.test(path) || path.length > 512) return ''
+  return path
+}
 
 const loading = ref(true)
 const creating = ref(false)
@@ -142,6 +154,8 @@ const selectedKey = computed(() => keys.value.find((k) => k.id === selectedId.va
 const drawableGroups = computed(() => groups.value.filter((g) => g.allow_image_generation && g.status === 'active'))
 const selectedCreateGroup = computed(() => drawableGroups.value.find((g) => g.id === createGroupId.value))
 const balanceText = computed(() => (authStore.user?.balance ?? 0).toFixed(2))
+// Redirect mode creates the key itself when the user has none that can draw (one tap from WeChat).
+const autoCreate = computed(() => redirectMode && !selectedKey.value && !hasUsableKey.value && Boolean(createGroupId.value))
 
 function maskKey(key: string): string {
   if (!key) return ''
@@ -181,6 +195,7 @@ async function createKey() {
 }
 
 async function authorize() {
+  if (redirectMode) return authorizeAndReturn()
   const key = selectedKey.value
   if (authorizing.value || !canHandOff || !window.opener || window.opener.closed) return
   authorizing.value = true
@@ -197,8 +212,24 @@ async function authorize() {
   setTimeout(() => window.close(), 1500)
 }
 
+async function authorizeAndReturn() {
+  if (authorizing.value || !canHandOff) return
+  authorizing.value = true
+  try {
+    if (autoCreate.value) await createKey()
+    await createCanvasSession(selectedKey.value?.id)
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+    authorizing.value = false
+    return
+  }
+  done.value = true
+  window.location.href = `${canvasOrigin}${returnPath}#hivegpt_connect=${state}`
+}
+
 function cancel() {
-  window.close()
+  if (redirectMode) window.location.href = `${canvasOrigin}${returnPath}`
+  else window.close()
 }
 
 onMounted(() => {

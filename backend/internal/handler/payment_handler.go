@@ -269,6 +269,8 @@ type CreateOrderRequest struct {
 	OrderType         string  `json:"order_type"`
 	PlanID            int64   `json:"plan_id"`
 	CourseID          int64   `json:"course_id"`
+	// MembershipTerms: the buyer of 创作会员 agreed to label published unwatermarked images.
+	MembershipTerms bool `json:"membership_terms"`
 	// IsMobile lets the frontend declare its mobile status directly. When
 	// nil we fall back to User-Agent heuristics (which miss iPadOS / some
 	// embedded browsers that strip the "Mobile" keyword).
@@ -319,6 +321,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		OrderType:       req.OrderType,
 		PlanID:          req.PlanID,
 		CourseID:        req.CourseID,
+		MembershipTerms: req.MembershipTerms,
 		Locale:          c.GetHeader("Accept-Language"),
 	})
 	if err != nil {

@@ -59,7 +59,7 @@ func TestCanvasCloudRoutes(t *testing.T) {
 	r.POST("/api/v1/user/canvas-sessions", func(c *gin.Context) {
 		c.Set(string(middleware.ContextKeyUser), middleware.AuthSubject{UserID: 7})
 		c.Next()
-	}, NewCanvasSessionHandler(sessions, nil).Create)
+	}, NewCanvasSessionHandler(sessions, nil, nil, nil).Create)
 	cloud := NewCanvasCloudHandler(service.NewCanvasCloudService(&memCloudFiles{files: map[string]service.CanvasCloudFile{}}, t.TempDir(), nil, nil))
 	group := r.Group("/api/v1/canvas/cloud", middleware.CanvasOriginGuard([]string{canvasOrigin}), middleware.CanvasSessionAuth(sessions))
 	group.GET("/usage", cloud.Usage)

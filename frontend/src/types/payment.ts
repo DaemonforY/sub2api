@@ -21,7 +21,7 @@ export type OrderStatus =
 
 export type PaymentType = 'alipay' | 'wxpay' | 'alipay_direct' | 'wxpay_direct' | 'stripe' | 'easypay' | 'airwallex'
 
-export type OrderType = 'balance' | 'subscription' | 'course'
+export type OrderType = 'balance' | 'subscription' | 'course' | 'membership'
 
 // ==================== Configuration ====================
 
@@ -194,6 +194,8 @@ export interface CreateOrderRequest {
   plan_id?: number
   /** order_type = course */
   course_id?: number
+  /** order_type = membership: the buyer agreed to label published unwatermarked images */
+  membership_terms?: boolean
   return_url?: string
   payment_source?: string
   openid?: string

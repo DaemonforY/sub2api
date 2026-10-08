@@ -87,7 +87,14 @@
           </div>
         </div>
         <!-- Actions -->
-        <div v-if="isCourseOrder" class="flex gap-3">
+        <div v-if="isMembershipOrder" class="space-y-3">
+          <p v-if="isSuccess" class="text-center text-sm text-gray-600 dark:text-gray-300" data-testid="result-membership-done">{{ t('canvasMembership.result.done') }}</p>
+          <div class="flex gap-3">
+            <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
+            <a class="btn btn-primary flex-1" :href="canvasBackUrl" data-testid="result-back-canvas">{{ t('canvasMembership.result.backToCanvas') }}</a>
+          </div>
+        </div>
+        <div v-else-if="isCourseOrder" class="flex gap-3">
           <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
           <button class="btn btn-primary flex-1" data-testid="result-my-courses" @click="router.push('/my-courses')">{{ t('courses.mine.go') }}</button>
         </div>
@@ -103,6 +110,7 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { canvasUrl } from '@/constants/crossSites'
 import { useRoute, useRouter } from 'vue-router'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
 import {
@@ -201,6 +209,9 @@ function formatGatewayAmount(value: number): string {
 
 // Course orders lead to 我的课程 instead of back to top-up.
 const isCourseOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'course')
+// 创作会员 orders lead back to the canvas image studio.
+const isMembershipOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'membership')
+const canvasBackUrl = canvasUrl({ path: '/image', medium: 'membership-paid' })
 
 function setResolvedOrder(nextOrder: ResolvedOrder | null): void {
   order.value = nextOrder

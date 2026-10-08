@@ -6,11 +6,11 @@
       </div>
       <template v-else>
         <!-- Not sure which to pick: the public comparison page -->
-        <p v-if="paymentPhase === 'select' && !selectedPlan && !course" class="text-right text-sm">
+        <p v-if="paymentPhase === 'select' && !selectedPlan && !course && !membership" class="text-right text-sm">
           <router-link to="/pricing" class="text-primary-600 hover:underline dark:text-primary-400" data-testid="payment-compare-link">{{ t('pricing.compareLink') }}</router-link>
         </p>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course && !membership" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
             class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
@@ -37,8 +37,81 @@
         </template>
         <!-- Tab content (select phase) -->
         <template v-else>
+          <!-- 创作会员 checkout (/purchase?tab=membership) -->
+          <template v-if="membership">
+            <div class="card p-5" data-testid="membership-checkout">
+              <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('canvasMembership.checkout.label') }}</p>
+              <h3 class="mt-1 text-lg font-bold text-gray-900 dark:text-white">{{ t('canvasMembership.checkout.title') }}</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('canvasMembership.checkout.lead') }}</p>
+              <p v-if="membership.until" class="mt-2 text-sm text-emerald-600 dark:text-emerald-400" data-testid="membership-until">{{ t('canvasMembership.checkout.until', { date: formatDateOnly(membership.until) }) }}</p>
+            </div>
+            <div v-if="!membership.on_sale" class="card py-12 text-center text-gray-500 dark:text-gray-400" data-testid="membership-off">{{ t('canvasMembership.checkout.notOnSale') }}</div>
+            <template v-else>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <button
+                  v-for="plan in membership.plans"
+                  :key="plan.id"
+                  type="button"
+                  :class="['card p-5 text-left transition', membershipPlan?.id === plan.id ? 'ring-2 ring-primary-500' : 'hover:ring-1 hover:ring-gray-300 dark:hover:ring-dark-500']"
+                  :data-testid="`membership-plan-${plan.id}`"
+                  @click="membershipPlan = plan"
+                >
+                  <p class="font-semibold text-gray-900 dark:text-white">{{ plan.name }}</p>
+                  <div class="mt-2 flex items-baseline gap-2">
+                    <span class="text-2xl font-bold text-primary-600 dark:text-primary-400">{{ formatCny(plan.price) }}</span>
+                    <span v-if="plan.original_price && plan.original_price > plan.price" class="text-sm text-gray-400 line-through">{{ formatCny(plan.original_price) }}</span>
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('canvasMembership.checkout.perDay', { days: plan.days, price: formatCny(plan.price / plan.days) }) }}</p>
+                </button>
+              </div>
+              <div class="card p-5 text-sm text-gray-600 dark:text-gray-300">
+                <p class="font-medium text-gray-900 dark:text-white">{{ t('canvasMembership.checkout.benefitsTitle') }}</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                  <li>{{ t('canvasMembership.checkout.benefit1') }}</li>
+                  <li>{{ t('canvasMembership.checkout.benefit2') }}</li>
+                  <li>{{ t('canvasMembership.checkout.benefit3') }}</li>
+                </ul>
+              </div>
+              <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
+                <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
+              </div>
+              <template v-else>
+                <div class="card p-6">
+                  <PaymentMethodSelector :methods="membershipMethodOptions" :selected="selectedMethod" @select="selectedMethod = $event" />
+                </div>
+                <div v-if="feeRate > 0 && membershipPlan" class="card p-6">
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
+                      <span class="text-gray-900 dark:text-white">{{ formatCny(membershipPlan.price) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                      <span class="text-gray-900 dark:text-white">{{ formatCny(membershipFeeAmount) }}</span>
+                    </div>
+                    <div class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                      <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
+                      <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatCny(membershipTotalAmount) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  <input v-model="membershipAgree" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0" data-testid="membership-agree" />
+                  <span>{{ t('canvasMembership.checkout.agree') }}</span>
+                </label>
+                <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitMembership || submitting" data-testid="membership-pay" @click="confirmMembership">
+                  <span v-if="submitting" class="flex items-center justify-center gap-2">
+                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    {{ t('common.processing') }}
+                  </span>
+                  <span v-else>{{ t('payment.createOrder') }} {{ formatCny(membershipTotalAmount) }}</span>
+                </button>
+              </template>
+            </template>
+            <button class="btn btn-secondary w-full" @click="leaveMembership">{{ t('common.cancel') }}</button>
+          </template>
           <!-- Course checkout (/purchase?course=<slug>) -->
-          <template v-if="course">
+          <template v-else-if="course">
             <div class="card flex gap-4 p-5" data-testid="course-checkout">
               <img v-if="course.cover_url" :src="course.cover_url" alt="" class="h-20 w-32 shrink-0 rounded-lg object-cover" />
               <div class="min-w-0 flex-1">
@@ -403,6 +476,7 @@ import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSele
 import { buildPaymentErrorToastMessage, describePaymentScenarioError } from './paymentUx'
 import { hasWechatResumeQuery, parseWechatResumeRoute, stripWechatResumeQuery } from './paymentWechatResume'
 import { getCourse, strikePrice, type Course } from '@/api/courses'
+import { getCanvasMembership, type CanvasMembershipPlan, type CanvasMembershipStatus } from '@/api/canvasMembership'
 
 const i18n = useI18n()
 const { t } = i18n
@@ -443,6 +517,7 @@ const paymentPhase = ref<'select' | 'paying'>('select')
 
 interface CreateOrderOptions {
   courseId?: number
+  membershipTerms?: boolean
   openid?: string
   wechatResumeToken?: string
   paymentType?: string
@@ -933,6 +1008,71 @@ async function loadCourseFromQuery(): Promise<void> {
   }
 }
 
+// --- 创作会员 checkout (/purchase?tab=membership) ---
+const membership = ref<CanvasMembershipStatus | null>(null)
+const membershipPlan = ref<CanvasMembershipPlan | null>(null)
+const membershipAgree = ref(false)
+
+const membershipFeeAmount = computed(() => {
+  const price = membershipPlan.value?.price ?? 0
+  if (feeRate.value <= 0 || price <= 0) return 0
+  return ceilPaymentAmount((price * feeRate.value) / 100, DEFAULT_PAYMENT_CURRENCY)
+})
+const membershipTotalAmount = computed(() => roundPaymentAmount((membershipPlan.value?.price ?? 0) + membershipFeeAmount.value, DEFAULT_PAYMENT_CURRENCY))
+
+const membershipMethodOptions = computed<PaymentMethodOption[]>(() =>
+  enabledMethods.value.map((type) => {
+    const ml = visibleMethods.value[type]
+    return {
+      type,
+      display_name: ml?.display_name,
+      fee_rate: ml?.fee_rate ?? 0,
+      available: ml?.available !== false
+        && normalizePaymentCurrency(ml?.currency) === DEFAULT_PAYMENT_CURRENCY
+        && amountFitsMethod(membershipTotalAmount.value, type),
+    }
+  })
+)
+
+const canSubmitMembership = computed(() =>
+  membershipPlan.value !== null
+    && membershipAgree.value
+    && membershipMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)
+)
+
+function formatDateOnly(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(localeCode.value)
+}
+
+async function confirmMembership() {
+  const plan = membershipPlan.value
+  if (!plan || !canSubmitMembership.value || submitting.value) return
+  await createOrder(plan.price, 'membership', plan.id, { membershipTerms: true })
+}
+
+function leaveMembership() {
+  membership.value = null
+  router.push('/purchase')
+}
+
+// Opens the 创作会员 checkout for ?tab=membership, and for a WeChat payment resuming a membership order.
+async function loadMembershipFromQuery(): Promise<void> {
+  if (route.query.tab !== 'membership' && route.query.order_type !== 'membership') return
+  try {
+    const status = await getCanvasMembership()
+    membership.value = status
+    const wanted = Number(route.query.plan_id)
+    membershipPlan.value = status.plans.find(p => p.id === wanted) ?? status.plans[0] ?? null
+    const usable = membershipMethodOptions.value.find(m => m.available)
+    if (usable && !membershipMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)) {
+      selectedMethod.value = usable.type
+    }
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  }
+}
+
 // --- Pay with balance ---
 const showBalanceConfirm = ref(false)
 const balanceCost = computed(() => selectedPlan.value?.balance_price ?? 0)
@@ -1017,6 +1157,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       orderType,
       planId,
       courseId: options.courseId,
+      membershipTerms: options.membershipTerms,
       origin: typeof window !== 'undefined' ? window.location.origin : '',
       isMobile: isMobileDevice(),
       isWechatBrowser: typeof window !== 'undefined' && /MicroMessenger/i.test(window.navigator.userAgent),
@@ -1394,6 +1535,7 @@ onMounted(async () => {
       }
     }
     await loadCourseFromQuery()
+    await loadMembershipFromQuery()
     await resumeWechatPaymentFromQuery()
     if (checkout.value.balance_disabled) {
       activeTab.value = 'subscription'

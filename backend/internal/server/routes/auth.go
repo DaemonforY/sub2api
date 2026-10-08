@@ -178,6 +178,12 @@ func RegisterAuthRoutes(
 			}),
 			h.Auth.CompleteWeChatOAuthRegistration,
 		)
+		auth.POST("/oauth/wechat/quick-register",
+			rateLimiter.LimitWithOptions("oauth-wechat-quick", 10, time.Minute, middleware.RateLimitOptions{
+				FailureMode: middleware.RateLimitFailClose,
+			}),
+			h.Auth.QuickWeChatOAuthRegistration,
+		)
 		auth.POST("/oauth/wechat/bind-login",
 			rateLimiter.LimitWithOptions("oauth-wechat-bind-login", 20, time.Minute, middleware.RateLimitOptions{
 				FailureMode: middleware.RateLimitFailClose,

@@ -224,6 +224,9 @@ func (s *PaymentService) executeFulfillment(ctx context.Context, oid int64) erro
 	if o.OrderType == payment.OrderTypeCourse {
 		return s.ExecuteCourseFulfillment(ctx, oid)
 	}
+	if o.OrderType == payment.OrderTypeMembership {
+		return s.ExecuteMembershipFulfillment(ctx, oid)
+	}
 	return s.ExecuteBalanceFulfillment(ctx, oid)
 }
 
@@ -478,6 +481,46 @@ func (s *PaymentService) courseRebateRate(ctx context.Context) float64 {
 		return 0
 	}
 	return s.courses.AffiliateRate(ctx)
+}
+
+// ExecuteMembershipFulfillment adds the days of a 创作会员 order to the buyer's membership.
+// The grant is recorded in the audit log first-come, so a retried fulfilment never adds the days twice.
+func (s *PaymentService) ExecuteMembershipFulfillment(ctx context.Context, oid int64) error {
+	o, err := s.entClient.PaymentOrder.Get(ctx, oid)
+	if err != nil {
+		return infraerrors.NotFound("NOT_FOUND", "order not found")
+	}
+	if o.Status == OrderStatusCompleted {
+		return nil
+	}
+	if psIsRefundStatus(o.Status) {
+		return infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
+	}
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed && o.Status != OrderStatusRecharging {
+		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
+	}
+	if o.SubscriptionDays == nil || *o.SubscriptionDays <= 0 || s.membership == nil {
+		return infraerrors.BadRequest("INVALID_STATUS", "missing membership info")
+	}
+	lease, err := s.acquirePaymentFulfillmentLease(ctx, o)
+	if err != nil {
+		return err
+	}
+	if lease == nil {
+		return nil
+	}
+	if !s.hasAuditLog(ctx, o.ID, "MEMBERSHIP_GRANTED") {
+		if err := s.membership.FulfillOrder(ctx, o.UserID, *o.SubscriptionDays); err != nil {
+			s.markFailed(ctx, oid, lease, err)
+			return err
+		}
+		s.writeAuditLog(ctx, o.ID, "MEMBERSHIP_GRANTED", "system", map[string]any{"days": *o.SubscriptionDays})
+	}
+	if err := s.applyAffiliateRebateForOrder(ctx, o); err != nil {
+		s.markFailed(ctx, oid, lease, err)
+		return err
+	}
+	return s.markCompleted(ctx, o, lease, "MEMBERSHIP_SUCCESS")
 }
 
 // ExecuteCourseFulfillment opens the bought course for the buyer.
@@ -780,7 +823,7 @@ func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {
 		return 0
 	}
 	switch o.OrderType {
-	case payment.OrderTypeBalance, payment.OrderTypeSubscription, payment.OrderTypeCourse:
+	case payment.OrderTypeBalance, payment.OrderTypeSubscription, payment.OrderTypeCourse, payment.OrderTypeMembership:
 		return o.Amount
 	default:
 		return 0

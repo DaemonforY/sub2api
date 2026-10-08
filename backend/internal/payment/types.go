@@ -46,6 +46,9 @@ const (
 	OrderTypeSubscription = "subscription"
 	// OrderTypeCourse buys a paid course (course_id); fulfilment opens it for the buyer.
 	OrderTypeCourse = "course"
+	// OrderTypeMembership buys 创作会员 days (plan_id names the plan in the request only;
+	// the order keeps the days in subscription_days).
+	OrderTypeMembership = "membership"
 )
 
 // Entity statuses shared across users, groups, etc.
@@ -58,6 +61,7 @@ const (
 	DeductionTypeBalance      = "balance"
 	DeductionTypeSubscription = "subscription"
 	DeductionTypeNone         = "none"
+	DeductionTypeMembership   = "membership"
 )
 
 // Payment notification status values.

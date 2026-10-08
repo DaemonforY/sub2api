@@ -157,10 +157,22 @@
                   </p>
                 </div>
 
+                <!-- One tap: an account under the WeChat identity, no email or password. -->
+                <button
+                  data-testid="wechat-choice-quick-register"
+                  type="button"
+                  class="btn btn-primary w-full"
+                  :disabled="isSubmitting"
+                  @click="handleQuickRegister"
+                >
+                  {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.wechatQuickRegister') }}
+                </button>
+                <p v-if="accountActionError" class="text-xs text-red-600 dark:text-red-400">{{ accountActionError }}</p>
+
                 <button
                   data-testid="wechat-choice-bind-existing"
                   type="button"
-                  class="btn btn-primary w-full"
+                  class="btn btn-secondary w-full"
                   :disabled="isSubmitting"
                   @click="switchToBindLoginMode()"
                 >
@@ -327,6 +339,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
   completeWeChatOAuthRegistration,
+  quickRegisterWeChatOAuth,
   exchangePendingOAuthCompletion,
   getAuthToken,
   hasExplicitWeChatOAuthCapabilities,
@@ -887,6 +900,29 @@ async function handleSubmitInvitation() {
     const err = e as { message?: string; response?: { data?: { message?: string } } }
     invitationError.value =
       err.response?.data?.message || err.message || t('auth.oidc.completeRegistrationFailed')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// 用微信直接注册: completes the pending WeChat sign-up with the WeChat identity alone.
+async function handleQuickRegister() {
+  accountActionError.value = ''
+  isSubmitting.value = true
+  try {
+    const affCode = loadOAuthAffiliateCode()
+    const decision = currentAdoptionDecision()
+    const completion = await quickRegisterWeChatOAuth(decision, affCode || undefined)
+    await finalizePendingAccountResponse(completion as PendingWeChatCompletion)
+  } catch (e: unknown) {
+    const err = e as { message?: string; reason?: string; response?: { data?: { message?: string; reason?: string; error?: string } } }
+    const reason = err.reason || err.response?.data?.reason || err.response?.data?.error || ''
+    if (/INVITATION/i.test(reason)) {
+      pendingAccountAction.value = 'none'
+      needsInvitation.value = true
+      return
+    }
+    accountActionError.value = err.response?.data?.message || err.message || t('auth.oidc.completeRegistrationFailed')
   } finally {
     isSubmitting.value = false
   }

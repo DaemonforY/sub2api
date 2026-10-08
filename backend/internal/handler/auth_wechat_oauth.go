@@ -503,6 +503,30 @@ func (h *AuthHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_REQUEST", "message": err.Error()})
 		return
 	}
+	h.completeWeChatRegistration(c, req, false)
+}
+
+type quickWeChatOAuthRequest struct {
+	InvitationCode   string `json:"invitation_code,omitempty"`
+	AffCode          string `json:"aff_code,omitempty"`
+	AdoptDisplayName *bool  `json:"adopt_display_name,omitempty"`
+	AdoptAvatar      *bool  `json:"adopt_avatar,omitempty"`
+}
+
+// QuickWeChatOAuthRegistration creates the account of a new WeChat user from the WeChat identity
+// alone (「用微信直接注册」): no email or password. WeChat has verified the person, so the email
+// verification and force-email choice that apply to other sign-ups are skipped; invitation codes
+// still apply. POST /api/v1/auth/oauth/wechat/quick-register
+func (h *AuthHandler) QuickWeChatOAuthRegistration(c *gin.Context) {
+	var req quickWeChatOAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "INVALID_REQUEST", "message": err.Error()})
+		return
+	}
+	h.completeWeChatRegistration(c, completeWeChatOAuthRequest(req), true)
+}
+
+func (h *AuthHandler) completeWeChatRegistration(c *gin.Context, req completeWeChatOAuthRequest, quick bool) {
 
 	secureCookie := isRequestHTTPS(c)
 	sessionToken, err := readOAuthPendingSessionCookie(c)
@@ -535,7 +559,12 @@ func (h *AuthHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	if updatedSession, handled, err := h.legacyCompleteRegistrationSessionStatus(c, session); err != nil {
+	if quick {
+		if !strings.EqualFold(strings.TrimSpace(session.ProviderType), "wechat") {
+			response.ErrorFrom(c, infraerrors.BadRequest("PENDING_AUTH_SESSION_INVALID", "pending auth registration context is invalid"))
+			return
+		}
+	} else if updatedSession, handled, err := h.legacyCompleteRegistrationSessionStatus(c, session); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	} else if handled {

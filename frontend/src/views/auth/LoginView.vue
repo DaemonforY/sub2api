@@ -252,6 +252,7 @@ import {
   getPublicSettings,
   isTotp2FARequired,
   isWeChatWebOAuthEnabled,
+  resolveWeChatOAuthStart,
   startOAuthLogin,
   type OAuthLoginStart
 } from '@/api/auth'
@@ -261,7 +262,7 @@ import type {
   TotpLoginResponse
 } from '@/types'
 import { extractApiErrorMetadata, extractI18nErrorMessage } from '@/utils/apiError'
-import { clearAllAffiliateReferralCodes, pickOAuthAffiliateCode } from '@/utils/oauthAffiliate'
+import { clearAllAffiliateReferralCodes, pickOAuthAffiliateCode, resolveAffiliateReferralCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
 
 const { t } = useI18n()
 const LOGIN_AGREEMENT_STORAGE_KEY = 'sub2api_login_agreement_consent'
@@ -408,8 +409,10 @@ onMounted(async () => {
     appStore.showWarning(message)
   }
 
+  let loadedSettings: Awaited<ReturnType<typeof getPublicSettings>> | null = null
   try {
     const settings = await getPublicSettings()
+    loadedSettings = settings
     turnstileEnabled.value = settings.turnstile_enabled
     turnstileSiteKey.value = settings.turnstile_site_key || ''
     tencentCaptchaEnabled.value = settings.tencent_captcha_enabled === true
@@ -438,6 +441,7 @@ onMounted(async () => {
   } finally {
     publicSettingsLoaded.value = true
   }
+  maybeAutoStartWeChat(loadedSettings)
 })
 
 // ==================== Login Agreement ====================
@@ -702,6 +706,18 @@ async function handlePasskeyLogin(): Promise<void> {
     }
     passkeyLoading.value = false
   }
+}
+
+// ?auto_wechat=1 (the canvas signing in from the WeChat app): go straight to WeChat's authorization
+// page instead of showing the form — only inside WeChat, and only when no agreement checkbox or
+// captcha has to be answered first.
+function maybeAutoStartWeChat(settings: Parameters<typeof resolveWeChatOAuthStart>[0] | null): void {
+  const query = router.currentRoute.value.query
+  if (query.auto_wechat !== '1' || !settings || !wechatOAuthEnabled.value) return
+  if (authActionDisabled.value || actionCaptchaEnabled.value) return
+  if (resolveWeChatOAuthStart(settings).mode !== 'mp') return
+  storeOAuthAffiliateCode(resolveAffiliateReferralCode(undefined, query.aff, query.aff_code))
+  void handleOAuthStart({ provider: 'wechat', params: { mode: 'mp', redirect: (query.redirect as string) || '/dashboard' } })
 }
 
 async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {

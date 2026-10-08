@@ -37,6 +37,14 @@ describe('parseWechatResumeRoute', () => {
   })
 })
 
+describe('parseWechatResumeRoute membership', () => {
+  it('keeps a 创作会员 order a membership order through the WeChat sign-in', () => {
+    const parsed = parseWechatResumeRoute({ wechat_resume_token: 'tok', order_type: 'membership', plan_id: '2', payment_type: 'wxpay' }, [], 10)
+    expect(parsed?.orderType).toBe('membership')
+    expect(parsed?.planId).toBe(2)
+  })
+})
+
 describe('stripWechatResumeQuery', () => {
   it('removes both opaque-token and legacy resume params from the route query', () => {
     expect(stripWechatResumeQuery({

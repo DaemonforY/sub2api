@@ -2,6 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WechatCallbackView from '@/views/auth/WechatCallbackView.vue'
 
+const quickRegisterMock = vi.hoisted(() => vi.fn())
+
 const {
   exchangePendingOAuthCompletionMock,
   completeWeChatOAuthRegistrationMock,
@@ -141,6 +143,7 @@ vi.mock('@/api/auth', async () => {
     ...actual,
     exchangePendingOAuthCompletion: (...args: any[]) => exchangePendingOAuthCompletionMock(...args),
     completeWeChatOAuthRegistration: (...args: any[]) => completeWeChatOAuthRegistrationMock(...args),
+    quickRegisterWeChatOAuth: (...args: any[]) => quickRegisterMock(...args),
     login2FA: (...args: any[]) => login2FAMock(...args),
     sendVerifyCode: (...args: any[]) => sendVerifyCodeMock(...args),
     sendPendingOAuthVerifyCode: (...args: any[]) => sendPendingOAuthVerifyCodeMock(...args),
@@ -1087,5 +1090,28 @@ describe('WechatCallbackView', () => {
     expect(replaceMock.mock.calls[0]?.[0]).toContain('wechat_bind_existing%3D1')
     expect(replaceMock.mock.calls[0]?.[0]).toContain('mode%3Dmp')
     expect(replaceMock.mock.calls[0]?.[0]).toContain('email=resume%40example.com')
+  })
+
+  it('registers a new WeChat user in one tap from the choice step and returns to the target', async () => {
+    exchangePendingOAuthCompletionMock.mockResolvedValue({
+      auth_result: 'pending_session',
+      step: 'choose_account_action_required',
+      redirect: '/canvas-connect?state=abc&return=/image',
+      email: 'wx@wechat-connect.invalid',
+      resolved_email: 'wx@wechat-connect.invalid',
+      create_account_allowed: true,
+    })
+    quickRegisterMock.mockResolvedValue({ access_token: 'wechat-quick-token', refresh_token: 'r', expires_in: 600, token_type: 'Bearer' })
+
+    const wrapper = mount(WechatCallbackView, {
+      global: { stubs: { AuthLayout: { template: '<div><slot /></div>' }, Icon: true, RouterLink: { template: '<a><slot /></a>' }, transition: false } },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="wechat-choice-quick-register"]').trigger('click')
+    await flushPromises()
+
+    expect(quickRegisterMock).toHaveBeenCalledTimes(1)
+    expect(setTokenMock).toHaveBeenCalledWith('wechat-quick-token')
+    expect(replaceMock).toHaveBeenCalledWith('/canvas-connect?state=abc&return=/image')
   })
 })

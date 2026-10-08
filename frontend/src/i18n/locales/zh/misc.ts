@@ -550,6 +550,7 @@ export default {
       balanceOrder: '余额充值',
       subscriptionOrder: '订阅',
       courseOrder: '课程',
+      membershipOrder: '创作会员',
       paidAt: '支付时间',
       completedAt: '完成时间',
       expiresAt: '过期时间',

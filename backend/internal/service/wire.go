@@ -645,6 +645,11 @@ func ProvideCanvasCloudService(repo CanvasCloudRepository, settings SettingRepos
 	return NewCanvasCloudService(repo, dir, store, subs)
 }
 
+// ProvideCanvasMembershipService wires 创作会员 (no watermark on canvas saves).
+func ProvideCanvasMembershipService(repo CanvasMembershipRepository, settings SettingRepository) *CanvasMembershipService {
+	return NewCanvasMembershipService(repo, settings)
+}
+
 // ProvideCanvasSessionService wires the canvas sign-in sessions.
 func ProvideCanvasSessionService(repo CanvasSessionRepository, users *UserService, subs UserSubscriptionRepository) *CanvasSessionService {
 	return NewCanvasSessionService(repo, users, subs)
@@ -1156,6 +1161,7 @@ var ProviderSet = wire.NewSet(
 	ProvideAnimationJobService,
 	ProvideSiteHostingService,
 	ProvideCanvasSessionService,
+	ProvideCanvasMembershipService,
 	ProvideCanvasCloudService,
 	ProvideCommunityService,
 	ProvideCourseService,
@@ -1203,11 +1209,12 @@ func ProvideBalanceNotifyService(emailService *EmailService, settingRepo Setting
 }
 
 // ProvidePaymentService creates PaymentService and attaches notification email delivery.
-func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService, notificationEmailService *NotificationEmailService, growthService *GrowthService, courses *CourseService) *PaymentService {
+func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService, notificationEmailService *NotificationEmailService, growthService *GrowthService, courses *CourseService, membership *CanvasMembershipService) *PaymentService {
 	svc := NewPaymentService(entClient, registry, loadBalancer, redeemService, subscriptionSvc, configService, userRepo, groupRepo, affiliateService)
 	svc.SetNotificationEmailService(notificationEmailService)
 	svc.SetGrowthService(growthService)
 	svc.SetCourseService(courses)
+	svc.SetCanvasMembershipService(membership)
 	return svc
 }
 

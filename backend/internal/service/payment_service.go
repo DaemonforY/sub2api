@@ -89,6 +89,10 @@ type CreateOrderRequest struct {
 	Locale   string
 	// courseTitle names the payment of a course order (set while validating).
 	courseTitle string
+	// MembershipTerms: the buyer ticked "I will label published unwatermarked images" (membership orders).
+	MembershipTerms bool
+	// membershipPlan is the 创作会员 plan of a membership order (PlanID; set while validating).
+	membershipPlan *CanvasMembershipPlan
 }
 
 type CreateOrderResponse struct {
@@ -204,12 +208,18 @@ type PaymentService struct {
 	notificationEmailService *NotificationEmailService
 	growthService            *GrowthService
 	courses                  *CourseService
+	membership               *CanvasMembershipService
 }
 
 func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService) *PaymentService {
 	svc := &PaymentService{entClient: entClient, registry: registry, loadBalancer: newVisibleMethodLoadBalancer(loadBalancer, configService), redeemService: redeemService, subscriptionSvc: subscriptionSvc, configService: configService, userRepo: userRepo, groupRepo: groupRepo, affiliateService: affiliateService}
 	svc.resumeService = psNewPaymentResumeService(configService)
 	return svc
+}
+
+// SetCanvasMembershipService enables 创作会员 orders.
+func (s *PaymentService) SetCanvasMembershipService(m *CanvasMembershipService) {
+	s.membership = m
 }
 
 // SetCourseService enables course orders.

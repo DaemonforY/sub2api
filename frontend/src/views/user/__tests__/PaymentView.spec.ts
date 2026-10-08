@@ -31,6 +31,7 @@ const authUser = vi.hoisted(() => ({ username: 'demo-user', balance: 0 }))
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
 const getCourse = vi.hoisted(() => vi.fn())
+const getCanvasMembership = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -90,6 +91,8 @@ vi.mock('@/api/payment', () => ({
     purchaseSubscriptionWithBalance,
   },
 }))
+
+vi.mock('@/api/canvasMembership', () => ({ getCanvasMembership }))
 
 vi.mock('@/api/courses', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/courses')>()),
@@ -860,3 +863,47 @@ describe('PaymentView course checkout', () => {
     Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
   })
 })
+
+describe('PaymentView 创作会员 checkout', () => {
+  async function mountMembership(query: Record<string, unknown>, onSale = true) {
+    vi.useRealTimers()
+    routeState.path = '/purchase'
+    routeState.query = query
+    routerReplace.mockReset().mockResolvedValue(undefined)
+    routerPush.mockReset().mockResolvedValue(undefined)
+    createOrder.mockReset()
+    showError.mockReset()
+    getCanvasMembership.mockReset().mockResolvedValue({
+      on_sale: onSale,
+      plans: onSale ? [{ id: 1, name: '月卡', days: 30, price: 19.9 }, { id: 3, name: '年卡', days: 365, price: 168, original_price: 238 }] : [],
+    })
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
+    window.localStorage.clear()
+    const wrapper = shallowMount(PaymentView, {
+      global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Teleport: true, Transition: false } },
+    })
+    await flushPromises()
+    await flushPromises()
+    return wrapper
+  }
+
+  it('orders the chosen plan only after the AI-label terms are accepted', async () => {
+    createOrder.mockResolvedValue(oauthOrderFixture())
+    const wrapper = await mountMembership({ tab: 'membership' })
+    expect(wrapper.find('[data-testid="membership-checkout"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="membership-pay"]').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('[data-testid="membership-plan-3"]').trigger('click')
+    await wrapper.get('[data-testid="membership-agree"]').setValue(true)
+    await wrapper.get('[data-testid="membership-pay"]').trigger('click')
+    await flushPromises()
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({ order_type: 'membership', plan_id: 3, amount: 168, membership_terms: true }))
+  })
+
+  it('says so when membership is not on sale', async () => {
+    const wrapper = await mountMembership({ tab: 'membership' }, false)
+    expect(wrapper.find('[data-testid="membership-off"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="membership-pay"]').exists()).toBe(false)
+  })
+})
+

@@ -114,4 +114,36 @@ describe('CanvasConnectView', () => {
     await flushPromises()
     expect(postMessage).toHaveBeenCalledWith({ type: 'hivegpt:canvas-key', state: STATE, signedIn: true }, 'https://canvas.hivegpt.cn')
   })
+
+  describe('full-page mode (WeChat)', () => {
+    let assigned = ''
+    beforeEach(() => {
+      assigned = ''
+      Object.defineProperty(window, 'location', { configurable: true, value: { ...window.location, set href(v: string) { assigned = v }, get href() { return assigned } } })
+    })
+
+    it('creates a drawing key when there is none, signs in with it and returns to the canvas', async () => {
+      routeState.query = { state: STATE, return: '/image' }
+      list.mockResolvedValueOnce({ items: [{ id: 1, name: 'claude-key', key: 'sk-claude-000000001111', status: 'active', group: chatGroup }] })
+      list.mockResolvedValueOnce({ items: [{ id: 9, name: 'canvasConnect.keyName', key: 'sk-new-00000000099999', status: 'active', group: drawGroup }] })
+      create.mockResolvedValue({ id: 9 })
+      const wrapper = mount(CanvasConnectView)
+      await flushPromises()
+      expect(wrapper.find('[data-testid="canvas-connect-autocreate"]').exists()).toBe(true)
+      expect(wrapper.get('[data-testid="canvas-connect-authorize"]').text()).toBe('canvasConnect.authorizeAndReturn')
+
+      await wrapper.get('[data-testid="canvas-connect-authorize"]').trigger('click')
+      await flushPromises()
+      expect(create).toHaveBeenCalledWith('canvasConnect.keyName', 2)
+      expect(createCanvasSession).toHaveBeenCalledWith(9)
+      expect(assigned).toBe(`https://canvas.hivegpt.cn/image#hivegpt_connect=${STATE}`)
+    })
+
+    it('ignores a return target that leaves the canvas', async () => {
+      routeState.query = { state: STATE, return: '//evil.example/x' }
+      const wrapper = mount(CanvasConnectView)
+      await flushPromises()
+      expect(wrapper.find('[data-testid="canvas-connect-invalid"]').exists()).toBe(true)
+    })
+  })
 })

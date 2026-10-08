@@ -632,6 +632,21 @@ export async function completeWeChatOAuthRegistration(
   return createPendingWeChatOAuthAccount(invitationCode, decision, affiliateCode)
 }
 
+/** 用微信直接注册: a new WeChat user's account from the WeChat identity alone (no email / password). */
+export async function quickRegisterWeChatOAuth(
+  decision?: OAuthAdoptionDecision,
+  affiliateCode?: string,
+  invitationCode?: string
+): Promise<PendingOAuthCreateAccountResponse> {
+  const normalizedAffiliateCode = affiliateCode?.trim()
+  const { data } = await apiClient.post<PendingOAuthCreateAccountResponse>('/auth/oauth/wechat/quick-register', {
+    ...(invitationCode?.trim() ? { invitation_code: invitationCode.trim() } : {}),
+    ...(normalizedAffiliateCode ? { aff_code: normalizedAffiliateCode } : {}),
+    ...serializeOAuthAdoptionDecision(decision)
+  })
+  return data
+}
+
 async function createPendingOAuthAccount(
   provider: 'linuxdo' | 'oidc' | 'wechat' | 'dingtalk',
   invitationCode: string,

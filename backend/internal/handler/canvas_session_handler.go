@@ -16,10 +16,17 @@ import (
 type CanvasSessionHandler struct {
 	sessions   *service.CanvasSessionService
 	affiliates *service.AffiliateService
+	apiKeys    *service.APIKeyService
+	membership *service.CanvasMembershipService
 }
 
-func NewCanvasSessionHandler(sessions *service.CanvasSessionService, affiliates *service.AffiliateService) *CanvasSessionHandler {
-	return &CanvasSessionHandler{sessions: sessions, affiliates: affiliates}
+func NewCanvasSessionHandler(sessions *service.CanvasSessionService, affiliates *service.AffiliateService, apiKeys *service.APIKeyService, membership *service.CanvasMembershipService) *CanvasSessionHandler {
+	return &CanvasSessionHandler{sessions: sessions, affiliates: affiliates, apiKeys: apiKeys, membership: membership}
+}
+
+type createCanvasSessionRequest struct {
+	// APIKeyID: the key picked on the connect page, handed to the canvas once (redirect sign-in).
+	APIKeyID int64 `json:"api_key_id"`
 }
 
 // Sessions is the service behind the handler (the routes build the cookie middleware from it).
@@ -48,10 +55,35 @@ func (h *CanvasSessionHandler) Create(c *gin.Context) {
 		response.Unauthorized(c, "请先登录")
 		return
 	}
-	token, session, err := h.sessions.Create(c.Request.Context(), subject.UserID, c.Request.UserAgent(), c.ClientIP())
+	var req createCanvasSessionRequest
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "Invalid request: "+err.Error())
+			return
+		}
+	}
+	ctx := c.Request.Context()
+	if req.APIKeyID > 0 {
+		if h.apiKeys == nil {
+			response.ErrorFrom(c, errCanvasKeyNotYours)
+			return
+		}
+		key, err := h.apiKeys.GetByID(ctx, req.APIKeyID)
+		if err != nil || key == nil || key.UserID != subject.UserID {
+			response.ErrorFrom(c, errCanvasKeyNotYours)
+			return
+		}
+	}
+	token, session, err := h.sessions.Create(ctx, subject.UserID, c.Request.UserAgent(), c.ClientIP())
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
+	}
+	if req.APIKeyID > 0 {
+		if err := h.sessions.SetHandoffKey(ctx, session.ID, req.APIKeyID); err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
 	}
 	h.setCookie(c, token, int(service.CanvasSessionTTL.Seconds()))
 	response.Success(c, session)
@@ -109,7 +141,68 @@ func (h *CanvasSessionHandler) Me(c *gin.Context) {
 			me.AffCode = summary.AffCode
 		}
 	}
+	if h.membership != nil {
+		me.MembershipOnSale = h.membership.OnSale(c.Request.Context())
+		if until, err := h.membership.Until(c.Request.Context(), user.ID); err == nil {
+			me.NoWatermarkUntil = until
+		}
+	}
 	response.Success(c, me)
+}
+
+var errCanvasKeyNotYours = infraerrors.BadRequest("CANVAS_KEY_INVALID", "这个 API Key 不属于当前账号，请重新选择（The API key does not belong to you）")
+
+// ConnectKey GET /api/v1/canvas/connect-key — the key picked on the connect page, once (session
+// cookie). Empty when no key was picked, it was already taken, or it was deleted / disabled since.
+func (h *CanvasSessionHandler) ConnectKey(c *gin.Context) {
+	session, user, ok := middleware.CanvasSessionFromContext(c)
+	if !ok {
+		response.ErrorFrom(c, service.ErrCanvasSessionInvalid)
+		return
+	}
+	ctx := c.Request.Context()
+	keyID, err := h.sessions.TakeHandoffKey(ctx, session.ID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if keyID == 0 || h.apiKeys == nil {
+		response.Success(c, gin.H{})
+		return
+	}
+	key, err := h.apiKeys.GetByID(ctx, keyID)
+	if err != nil || key == nil || key.UserID != user.ID || key.Status != service.StatusActive {
+		response.Success(c, gin.H{})
+		return
+	}
+	response.Success(c, gin.H{"api_key": key.Key, "name": key.Name})
+}
+
+type unmarkedSaveRequest struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
+}
+
+// UnmarkedSave POST /api/v1/canvas/unmarked-saves — a member saved an image without the watermark
+// (logged for 《人工智能生成合成内容标识办法》第九条). 403 when the membership has ended.
+func (h *CanvasSessionHandler) UnmarkedSave(c *gin.Context) {
+	_, user, ok := middleware.CanvasSessionFromContext(c)
+	if !ok {
+		response.ErrorFrom(c, service.ErrCanvasSessionInvalid)
+		return
+	}
+	if h.membership == nil {
+		response.ErrorFrom(c, service.ErrCanvasMembershipUnavailable)
+		return
+	}
+	var req unmarkedSaveRequest
+	_ = c.ShouldBindJSON(&req)
+	err := h.membership.RecordUnmarkedSave(c.Request.Context(), service.CanvasUnmarkedSave{UserID: user.ID, Width: req.Width, Height: req.Height, ClientIP: c.ClientIP(), UserAgent: c.Request.UserAgent()})
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"ok": true})
 }
 
 // Logout POST /api/v1/canvas/logout — ends this canvas session and clears the cookie.

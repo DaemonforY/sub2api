@@ -88,3 +88,21 @@ WHERE user_id = $1 AND revoked_at IS NULL AND id NOT IN (
 )`, userID, keep, at)
 	return err
 }
+
+func (r *canvasSessionRepository) SetCanvasSessionHandoff(ctx context.Context, sessionID, apiKeyID int64) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE canvas_sessions SET handoff_api_key_id = $2 WHERE id = $1`, sessionID, apiKeyID)
+	return err
+}
+
+func (r *canvasSessionRepository) TakeCanvasSessionHandoff(ctx context.Context, sessionID int64) (int64, error) {
+	var keyID sql.NullInt64
+	err := r.db.QueryRowContext(ctx, `
+UPDATE canvas_sessions AS s SET handoff_api_key_id = NULL
+FROM (SELECT id, handoff_api_key_id FROM canvas_sessions WHERE id = $1 FOR UPDATE) AS old
+WHERE s.id = old.id
+RETURNING old.handoff_api_key_id`, sessionID).Scan(&keyID)
+	if errors.Is(err, sql.ErrNoRows) || !keyID.Valid {
+		return 0, nil
+	}
+	return keyID.Int64, err
+}

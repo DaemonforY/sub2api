@@ -1497,3 +1497,89 @@ func (s *wechatOAuthRefreshTokenCacheStub) GetFamilyTokenHashes(context.Context,
 func (s *wechatOAuthRefreshTokenCacheStub) IsTokenInFamily(context.Context, string, string) (bool, error) {
 	return false, nil
 }
+
+func TestQuickWeChatOAuthRegistrationCreatesAccountFromChoiceStep(t *testing.T) {
+	handler, client := newOAuthPendingFlowTestHandler(t, false)
+	ctx := context.Background()
+
+	// A new WeChat user on the 「绑定已有账号 / 创建新账号」 step, as left by the callback when
+	// email verification is on: quick-register skips the email form.
+	session, err := client.PendingAuthSession.Create().
+		SetSessionToken("wechat-quick-session").
+		SetIntent("login").
+		SetProviderType("wechat").
+		SetProviderKey(wechatOAuthProviderKey).
+		SetProviderSubject("wechat-quick-subject").
+		SetResolvedEmail("wechat-quick-subject@wechat-connect.invalid").
+		SetBrowserSessionKey("wechat-quick-browser").
+		SetUpstreamIdentityClaims(map[string]any{"username": "wechat_quick"}).
+		SetLocalFlowState(map[string]any{
+			oauthCompletionResponseKey: map[string]any{
+				"step":                  oauthPendingChoiceStep,
+				"redirect":              "/canvas-connect?state=abc&return=/image",
+				"force_email_on_signup": false,
+			},
+		}).
+		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	recorder := httptest.NewRecorder()
+	quickCtx, _ := gin.CreateTestContext(recorder)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth/wechat/quick-register", bytes.NewBufferString(`{"adopt_display_name":true,"adopt_avatar":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: oauthPendingSessionCookieName, Value: encodeCookieValue(session.SessionToken)})
+	req.AddCookie(&http.Cookie{Name: oauthPendingBrowserCookieName, Value: encodeCookieValue("wechat-quick-browser")})
+	quickCtx.Request = req
+
+	handler.QuickWeChatOAuthRegistration(quickCtx)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	responseData := decodeJSONBody(t, recorder)
+	require.NotEmpty(t, responseData["access_token"])
+
+	userEntity, err := client.User.Query().Where(dbuser.EmailEQ(session.ResolvedEmail)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "wechat_quick", userEntity.Username)
+	identity, err := client.AuthIdentity.Query().
+		Where(authidentity.ProviderTypeEQ("wechat"), authidentity.ProviderSubjectEQ("wechat-quick-subject")).
+		Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, userEntity.ID, identity.UserID)
+
+	stored, err := client.PendingAuthSession.Get(ctx, session.ID)
+	require.NoError(t, err)
+	require.NotNil(t, stored.ConsumedAt, "the pending session is used up")
+}
+
+func TestQuickWeChatOAuthRegistrationRejectsOtherProviders(t *testing.T) {
+	handler, client := newOAuthPendingFlowTestHandler(t, false)
+	ctx := context.Background()
+	session, err := client.PendingAuthSession.Create().
+		SetSessionToken("linuxdo-quick-session").
+		SetIntent("login").
+		SetProviderType("linuxdo").
+		SetProviderKey("linuxdo").
+		SetProviderSubject("linuxdo-subject").
+		SetResolvedEmail("linuxdo-subject@linuxdo-connect.invalid").
+		SetBrowserSessionKey("linuxdo-quick-browser").
+		SetUpstreamIdentityClaims(map[string]any{"username": "ld"}).
+		SetExpiresAt(time.Now().UTC().Add(10 * time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	recorder := httptest.NewRecorder()
+	quickCtx, _ := gin.CreateTestContext(recorder)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/oauth/wechat/quick-register", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(&http.Cookie{Name: oauthPendingSessionCookieName, Value: encodeCookieValue(session.SessionToken)})
+	req.AddCookie(&http.Cookie{Name: oauthPendingBrowserCookieName, Value: encodeCookieValue("linuxdo-quick-browser")})
+	quickCtx.Request = req
+
+	handler.QuickWeChatOAuthRegistration(quickCtx)
+
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+	count, err := client.User.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, count)
+}

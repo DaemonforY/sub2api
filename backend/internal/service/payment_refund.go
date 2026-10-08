@@ -258,6 +258,14 @@ func (s *PaymentService) PrepareRefund(ctx context.Context, oid int64, amt float
 }
 
 func (s *PaymentService) prepDeduct(ctx context.Context, o *dbent.PaymentOrder, p *RefundPlan, force bool) *RefundResult {
+	if o.OrderType == payment.OrderTypeMembership {
+		// The days bought come off the membership (never below now).
+		p.DeductionType = payment.DeductionTypeMembership
+		if o.SubscriptionDays != nil {
+			p.SubDaysToDeduct = *o.SubscriptionDays
+		}
+		return nil
+	}
 	if o.OrderType == payment.OrderTypeCourse {
 		// Nothing to take back from the balance: a full refund ends the course access by itself.
 		p.DeductionType = payment.DeductionTypeNone
@@ -345,6 +353,17 @@ func (s *PaymentService) ExecuteRefund(ctx context.Context, p *RefundPlan) (*Ref
 			}
 		} else {
 			slog.Warn("skipping subscription deduction on retry (previous rollback failed)", "orderID", p.OrderID)
+			p.SubDaysToDeduct = 0
+		}
+	}
+	if p.DeductionType == payment.DeductionTypeMembership && p.SubDaysToDeduct > 0 && s.membership != nil {
+		if !s.hasAuditLog(ctx, p.OrderID, "REFUND_ROLLBACK_FAILED") {
+			if err := s.membership.RefundOrder(ctx, p.Order.UserID, p.SubDaysToDeduct); err != nil {
+				s.restoreStatus(ctx, p)
+				return nil, fmt.Errorf("deduct membership days: %w", err)
+			}
+		} else {
+			slog.Warn("skipping membership deduction on retry (previous rollback failed)", "orderID", p.OrderID)
 			p.SubDaysToDeduct = 0
 		}
 	}
@@ -713,6 +732,13 @@ func (s *PaymentService) RollbackRefund(ctx context.Context, p *RefundPlan, gErr
 		if _, err := s.subscriptionSvc.ExtendSubscription(ctx, p.SubscriptionID, p.SubDaysToDeduct); err != nil {
 			slog.Error("[CRITICAL] subscription rollback failed", "orderID", p.OrderID, "subID", p.SubscriptionID, "days", p.SubDaysToDeduct, "error", err)
 			s.writeAuditLog(ctx, p.OrderID, "REFUND_ROLLBACK_FAILED", "admin", map[string]any{"gatewayError": psErrMsg(gErr), "rollbackError": psErrMsg(err), "subDaysDeducted": p.SubDaysToDeduct})
+			return false
+		}
+	}
+	if p.DeductionType == payment.DeductionTypeMembership && p.SubDaysToDeduct > 0 && s.membership != nil {
+		if err := s.membership.FulfillOrder(ctx, p.Order.UserID, p.SubDaysToDeduct); err != nil {
+			slog.Error("[CRITICAL] membership rollback failed", "orderID", p.OrderID, "days", p.SubDaysToDeduct, "error", err)
+			s.writeAuditLog(ctx, p.OrderID, "REFUND_ROLLBACK_FAILED", "admin", map[string]any{"gatewayError": psErrMsg(gErr), "rollbackError": psErrMsg(err), "membershipDaysDeducted": p.SubDaysToDeduct})
 			return false
 		}
 	}

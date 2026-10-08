@@ -82,6 +82,7 @@ export interface BuildCreateOrderPayloadInput {
   orderType: OrderType
   planId?: number
   courseId?: number
+  membershipTerms?: boolean
   origin?: string
   isMobile: boolean
   isWechatBrowser: boolean
@@ -142,6 +143,9 @@ export function buildCreateOrderPayload(input: BuildCreateOrderPayloadInput): Cr
   }
   if (input.courseId) {
     payload.course_id = input.courseId
+  }
+  if (input.membershipTerms) {
+    payload.membership_terms = true
   }
   if (normalizedOrigin) {
     payload.return_url = `${normalizedOrigin}/payment/result`

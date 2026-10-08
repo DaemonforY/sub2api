@@ -610,6 +610,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/canvas-membership',
+    name: 'AdminCanvasMembership',
+    component: () => import('@/views/admin/CanvasMembershipView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Creator membership',
+      titleKey: 'canvasMembership.admin.title'
+    }
+  },
+  {
     path: '/admin/margin',
     name: 'AdminMargin',
     component: () => import('@/views/admin/MarginView.vue'),
@@ -1136,6 +1147,12 @@ router.beforeEach(async (to, _from, next) => {
       // (they are blocked from all protected routes, so redirecting would cause a loop)
       if (appStore.backendModeEnabled && !authStore.isAdmin) {
         next()
+        return
+      }
+      // A signed-in user sent to /login with a target (e.g. the canvas sign-in) goes straight there.
+      const target = typeof to.query.redirect === 'string' ? to.query.redirect : ''
+      if (to.path === '/login' && target.startsWith('/') && !target.startsWith('//') && !target.includes('://') && !target.startsWith('/login')) {
+        next(target)
         return
       }
       // Admin users go to admin dashboard, regular users go to user dashboard

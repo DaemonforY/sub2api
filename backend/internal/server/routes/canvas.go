@@ -34,6 +34,15 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 		v1.GET("/community/works", panelRateLimiter.PublicIP(), h.Community.PublicWorks)
 	}
 
+	// 创作会员 for the purchase page (panel JWT).
+	if h.CanvasMembership != nil {
+		membership := v1.Group("/canvas-membership")
+		membership.Use(gin.HandlerFunc(jwtAuth))
+		membership.Use(middleware.BackendModeUserGuard(settingService))
+		membership.Use(panelRateLimiter.Global())
+		membership.GET("", h.CanvasMembership.Status)
+	}
+
 	canvas := v1.Group("/canvas")
 	canvas.Use(middleware.CanvasOriginGuard(canvasOrigins))
 	// Logout works with an expired or revoked cookie too (it still clears it).
@@ -44,6 +53,8 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 	signedIn.Use(panelRateLimiter.Global())
 	{
 		signedIn.GET("/me", h.CanvasSession.Me)
+		signedIn.GET("/connect-key", h.CanvasSession.ConnectKey)
+		signedIn.POST("/unmarked-saves", h.CanvasSession.UnmarkedSave)
 	}
 
 	// Cloud sync of canvas projects, assets and workbench records (per-user files, quota).

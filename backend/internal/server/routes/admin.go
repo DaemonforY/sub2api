@@ -139,6 +139,7 @@ func RegisterAdminRoutes(
 		registerCourseAdminRoutes(admin, h)
 		registerLearnAdminRoutes(admin, h)
 		registerAssistantAdminRoutes(admin, h)
+		registerCanvasMembershipAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
@@ -1081,6 +1082,16 @@ func channelMonitorModeV2Guard(settingService *service.SettingService) gin.Handl
 		}
 		c.Next()
 	}
+}
+
+// registerCanvasMembershipAdminRoutes 创作会员：套餐设置、会员列表、手动开通。
+func registerCanvasMembershipAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.CanvasMembership == nil {
+		return
+	}
+	admin.GET("/canvas-membership", h.CanvasMembership.AdminGet)
+	admin.PUT("/canvas-membership", h.CanvasMembership.AdminSave)
+	admin.POST("/canvas-membership/grant", h.CanvasMembership.AdminGrant)
 }
 
 // registerAnalyticsAdminRoutes 数据看板：访客、日活、注册转化、渠道、页面、功能使用和留存。

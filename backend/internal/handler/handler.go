@@ -92,6 +92,7 @@ type Handlers struct {
 	Editor           *EditorHandler
 	Assistant        *AssistantHandler
 	Analytics        *AnalyticsHandler
+	CanvasMembership *CanvasMembershipHandler
 }
 
 // BuildInfo contains build-time information

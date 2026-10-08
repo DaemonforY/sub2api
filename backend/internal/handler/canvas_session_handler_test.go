@@ -22,9 +22,10 @@ import (
 )
 
 type memCanvasSessions struct {
-	mu     sync.Mutex
-	next   int64
-	byHash map[string]*service.CanvasSession
+	mu      sync.Mutex
+	next    int64
+	byHash  map[string]*service.CanvasSession
+	handoff map[int64]int64
 }
 
 func (m *memCanvasSessions) CreateCanvasSession(_ context.Context, s *service.CanvasSession, hash string) error {
@@ -91,6 +92,24 @@ func (m *memCanvasSessions) TrimCanvasSessions(context.Context, int64, int, time
 	return nil
 }
 
+func (m *memCanvasSessions) SetCanvasSessionHandoff(_ context.Context, sessionID, apiKeyID int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.handoff == nil {
+		m.handoff = map[int64]int64{}
+	}
+	m.handoff[sessionID] = apiKeyID
+	return nil
+}
+
+func (m *memCanvasSessions) TakeCanvasSessionHandoff(_ context.Context, sessionID int64) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id := m.handoff[sessionID]
+	delete(m.handoff, sessionID)
+	return id, nil
+}
+
 type canvasUsers struct{ users map[int64]*service.User }
 
 func (u canvasUsers) GetByID(_ context.Context, id int64) (*service.User, error) {
@@ -133,7 +152,7 @@ func newCanvasTestRouter(t *testing.T) (*gin.Engine, *memCanvasSessions, *servic
 	repo := &memCanvasSessions{byHash: map[string]*service.CanvasSession{}}
 	settings := service.NewSettingService(canvasSettings{values: map[string]string{service.SettingKeyAffiliateEnabled: "true"}}, &config.Config{})
 	affiliates := service.NewAffiliateService(canvasAffiliates{}, settings, nil, nil)
-	h := NewCanvasSessionHandler(service.NewCanvasSessionService(repo, canvasUsers{users: map[int64]*service.User{7: user}}, canvasSubs{}), affiliates)
+	h := NewCanvasSessionHandler(service.NewCanvasSessionService(repo, canvasUsers{users: map[int64]*service.User{7: user}}, canvasSubs{}), affiliates, nil, nil)
 	r := gin.New()
 	r.Use(middleware.CORS(config.CORSConfig{AllowedOrigins: []string{canvasOrigin}}))
 	// Stand-in for the panel JWT: the connect popup is signed in as user 7.

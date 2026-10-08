@@ -526,6 +526,7 @@ export default {
       balanceOrder: 'Balance Top-Up',
       subscriptionOrder: 'Subscription',
       courseOrder: 'Course',
+      membershipOrder: 'Creator membership',
       paidAt: 'Paid At',
       completedAt: 'Completed At',
       expiresAt: 'Expires At',
