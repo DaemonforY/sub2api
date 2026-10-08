@@ -105,7 +105,8 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are the director and scriptwriter of short narrated explainer videos rendered as HTML animation.\n")
 	fmt.Fprintf(&b, "Write the script for the user's request: %d–%d scenes, about %d seconds in total.\n", minScenes, maxScenes, seconds)
-	_, _ = b.WriteString("- narration: what the narrator says in this scene, spoken language, in the user's language, about 4–5 Chinese characters per second of scene. No stage directions inside narration.\n")
+	_, _ = b.WriteString("- narration: what the narrator says in this scene, spoken language, in the user's language. No stage directions inside narration.\n")
+	fmt.Fprintf(&b, "- Length budget: the narration of all scenes together is at most %d Chinese characters (about %d English words) — the narrator reads ~4.5 characters per second, so a longer script makes a longer video than the user asked for. Count before answering.\n", seconds*9/2, seconds*5/2)
 	_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — layout, the elements and diagrams, what moves when (tied to phrases of the narration), exact numbers / labels / data shown on screen. Visuals must be makeable with HTML, SVG and canvas (diagrams, charts, icons, typography, simple vector characters); no photos or video footage.\n")
 	_, _ = b.WriteString("- The first scene hooks the viewer with a question or surprising fact; the last scene sums up in one memorable line.\n")
 	_, _ = b.WriteString("- Be factually accurate. If the user gave a full script, keep their wording and only split it into scenes.\n")

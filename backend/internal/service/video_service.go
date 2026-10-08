@@ -277,6 +277,36 @@ func (s *VideoService) done(ctx context.Context, r *videoRun, text string) {
 
 // chat runs one model call and adds its usage to the project.
 func (s *VideoService) chat(ctx context.Context, r *videoRun, msgs []LearnMessage, maxTokens int) (string, error) {
+	for attempt := 0; ; attempt++ {
+		answer, err := s.chatOnce(ctx, r, msgs, maxTokens)
+		if err == nil || attempt >= len(videoRetryBackoff) || !videoRetryable(err) {
+			return answer, err
+		}
+		// Scenes are written in parallel, so the account's concurrency limit (or a rate limit) can
+		// refuse one of them: wait and try again instead of failing the scene.
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(videoRetryBackoff[attempt]):
+		}
+	}
+}
+
+var videoRetryBackoff = []time.Duration{4 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second}
+
+// videoRetryable reports errors that go away by waiting: the per-account concurrency limit, rate
+// limits and an overloaded upstream.
+func videoRetryable(err error) bool {
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{"并发上限", "concurrency limit", "rate limit", "too many requests", "请求太频繁", "temporarily unavailable", "overloaded", "529"} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *VideoService) chatOnce(ctx context.Context, r *videoRun, msgs []LearnMessage, maxTokens int) (string, error) {
 	var out strings.Builder
 	res, err := s.stream(ctx, r.key, r.p.Options.Model, msgs, maxTokens, func(d string) error {
 		_, _ = out.WriteString(d)

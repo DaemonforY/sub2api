@@ -435,6 +435,36 @@ func TestVideoOwnershipPublishReviewAndAudio(t *testing.T) {
 	require.NoError(t, err, "anyone may play a public work")
 }
 
+func TestVideoConcurrencyLimitIsRetried(t *testing.T) {
+	saved := videoRetryBackoff
+	videoRetryBackoff = []time.Duration{time.Millisecond, time.Millisecond}
+	defer func() { videoRetryBackoff = saved }()
+	model := &fakeModel{broken: map[string]int{}}
+	refusals := 2
+	var mu sync.Mutex
+	stream := func(ctx context.Context, key, m string, msgs []LearnMessage, n int, onDelta func(string) error) (*LearnTutorResult, error) {
+		mu.Lock()
+		refuse := refusals > 0 && strings.Contains(msgs[0].Content, "motion designer")
+		if refuse {
+			refusals--
+		}
+		mu.Unlock()
+		if refuse {
+			return nil, errLearnRunFailed("同时进行的请求数已达你的账号的并发上限，请等其它请求完成后再试（Concurrency limit exceeded for user, please retry later）")
+		}
+		return model.stream(ctx, key, m, msgs, n, onDelta)
+	}
+	svc := newVideoService(newFakeVideoRepo(), &fakeTTS{}, stream, t.TempDir())
+	p, err := svc.Create(context.Background(), videoKeyA, VideoCreateInput{Mode: "motion", Prompt: "x"})
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ := svc.Get(context.Background(), 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Zero(t, refusals)
+
+	require.False(t, videoRetryable(errLearnRunFailed("余额不足")))
+}
+
 func TestVideoRecoverInterrupted(t *testing.T) {
 	model := &fakeModel{broken: map[string]int{}}
 	svc, repo, _ := newTestVideoService(t, model)
