@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"sync"
@@ -27,6 +28,7 @@ type AuthHandler struct {
 	redeemService        *service.RedeemService
 	totpService          *service.TotpService
 	userAttributeService *service.UserAttributeService
+	loginGuard           *service.LoginGuardService
 
 	dingTalkClientInstance *DingTalkClient
 	dingTalkClientMu       sync.Mutex
@@ -80,6 +82,9 @@ type LoginRequest struct {
 	TurnstileToken        string `json:"turnstile_token"`
 	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
 	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
+	// Built-in image captcha, asked for after repeated failed logins.
+	CaptchaID   string `json:"captcha_id"`
+	CaptchaCode string `json:"captcha_code"`
 }
 
 func captchaProof(turnstileToken, tencentTicket, tencentRandstr string) service.CaptchaProof {
@@ -243,17 +248,31 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	clientIP := ip.GetClientIP(c)
+	if err := h.loginGuard.CheckBlocked(c.Request.Context(), clientIP); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
 	proof := captchaProof(req.TurnstileToken, req.TencentCaptchaTicket, req.TencentCaptchaRandstr)
-	if err := h.authService.VerifyCaptcha(c.Request.Context(), proof, ip.GetClientIP(c)); err != nil {
+	if err := h.authService.VerifyCaptcha(c.Request.Context(), proof, clientIP); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if err := h.checkLoginCaptcha(c, clientIP, &req); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
 	token, user, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) && h.loginGuard != nil {
+			err = h.loginGuard.RecordFailure(c.Request.Context(), clientIP, req.Email)
+		}
 		response.ErrorFrom(c, err)
 		return
 	}
+	h.loginGuard.RecordSuccess(c.Request.Context(), req.Email)
 	_ = token // token 由 authService.Login 返回但此处由 respondWithTokenPair 重新生成
 
 	if err := h.ensureBackendModeAllowsUser(c.Request.Context(), user); err != nil {

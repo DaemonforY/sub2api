@@ -265,6 +265,16 @@ export default {
     accountCreatedSuccess: '账户创建成功！欢迎使用 {siteName}。',
     reloginRequired: '会话已过期，请重新登录。',
     turnstileExpired: '验证已过期，请重试',
+    imageCaptcha: {
+      label: '图形验证码',
+      placeholder: '输入右图中的 4 个字符',
+      alt: '图形验证码，点击换一张',
+      refresh: '看不清？点击换一张',
+      reload: '点击加载',
+      loading: '加载中…',
+      hint: '登录失败次数较多，请输入验证码；不区分大小写',
+      required: '请输入图形验证码'
+    },
     turnstileFailed: '验证失败，请重试',
     captchaVerified: '验证已完成',
     captchaLoading: '正在加载验证码…',

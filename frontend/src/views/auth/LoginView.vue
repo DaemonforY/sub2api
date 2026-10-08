@@ -97,6 +97,15 @@
           />
         </div>
 
+        <!-- Built-in image captcha, after repeated failed logins -->
+        <LoginImageCaptcha
+          v-if="imageCaptchaRequired && !captchaEnabled"
+          ref="imageCaptchaRef"
+          v-model:code="imageCaptchaCode"
+          v-model:captcha-id="imageCaptchaId"
+          :disabled="authActionDisabled"
+        />
+
         <!-- Submit Button -->
         <button
           type="submit"
@@ -235,6 +244,7 @@ import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
 import TotpLoginModal from '@/components/auth/TotpLoginModal.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
+import LoginImageCaptcha from '@/components/auth/LoginImageCaptcha.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
   buildOAuthLoginStartURL,
@@ -249,7 +259,7 @@ import type {
   LoginAgreementDocument,
   TotpLoginResponse
 } from '@/types'
-import { extractI18nErrorMessage } from '@/utils/apiError'
+import { extractApiErrorMetadata, extractI18nErrorMessage } from '@/utils/apiError'
 import { clearAllAffiliateReferralCodes, pickOAuthAffiliateCode } from '@/utils/oauthAffiliate'
 
 const { t } = useI18n()
@@ -312,6 +322,13 @@ const showAgreementModal = ref<boolean>(false)
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
 const turnstileToken = ref<string>('')
 const tencentCaptchaRandstr = ref<string>('')
+
+// Built-in image captcha: the server asks for it (metadata.captcha_required) after
+// several failed logins from this IP / for this email, when no third-party captcha is on.
+const imageCaptchaRef = ref<InstanceType<typeof LoginImageCaptcha> | null>(null)
+const imageCaptchaRequired = ref<boolean>(false)
+const imageCaptchaId = ref<string>('')
+const imageCaptchaCode = ref<string>('')
 const aliyunCaptchaReady = computed(
   () =>
     aliyunCaptchaEnabled.value &&
@@ -564,6 +581,11 @@ function validateForm(): boolean {
     isValid = false
   }
 
+  if (imageCaptchaRequired.value && !captchaEnabled.value && !imageCaptchaCode.value.trim()) {
+    errors.turnstile = t('auth.imageCaptcha.required')
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -594,7 +616,9 @@ async function handleLogin(): Promise<void> {
       tencent_captcha_ticket: tencentCaptchaEnabled.value ? turnstileToken.value : undefined,
       tencent_captcha_randstr: tencentCaptchaEnabled.value
         ? tencentCaptchaRandstr.value
-        : undefined
+        : undefined,
+      captcha_id: imageCaptchaRequired.value ? imageCaptchaId.value : undefined,
+      captcha_code: imageCaptchaRequired.value ? imageCaptchaCode.value.trim() : undefined
     })
 
     // Check if 2FA is required
@@ -604,6 +628,7 @@ async function handleLogin(): Promise<void> {
       totpUserEmailMasked.value = totpResponse.user_email_masked || ''
       show2FAModal.value = true
       isLoading.value = false
+      if (imageCaptchaRequired.value) void imageCaptchaRef.value?.refresh()
       return
     }
 
@@ -616,6 +641,13 @@ async function handleLogin(): Promise<void> {
     await router.push(redirectTo)
   } catch (error: unknown) {
     errorMessage.value = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed'))
+
+    // A captcha is good for one try: show it when the server first asks, otherwise get a new one.
+    if (extractApiErrorMetadata(error)?.captcha_required === 'true' && !imageCaptchaRequired.value) {
+      imageCaptchaRequired.value = true
+    } else if (imageCaptchaRequired.value) {
+      void imageCaptchaRef.value?.refresh()
+    }
 
     // Also show error toast
     appStore.showError(errorMessage.value)

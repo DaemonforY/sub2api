@@ -32,6 +32,7 @@ func backendModeAllowsAuthPath(path string) bool {
 	for _, suffix := range []string{
 		"/auth/login",
 		"/auth/login/2fa",
+		"/auth/login-captcha",
 		"/auth/passkey/login/begin",
 		"/auth/passkey/login/finish",
 		"/auth/logout",

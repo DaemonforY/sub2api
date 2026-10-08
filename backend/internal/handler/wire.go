@@ -267,10 +267,17 @@ func ProvideHandlers(
 	}
 }
 
+// ProvideAuthHandler builds the auth handler with the login brute-force guard.
+func ProvideAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, userAttributeService *service.UserAttributeService, loginGuard *service.LoginGuardService) *AuthHandler {
+	h := NewAuthHandler(cfg, authService, userService, settingService, promoService, redeemService, totpService, userAttributeService)
+	h.SetLoginGuard(loginGuard)
+	return h
+}
+
 // ProviderSet is the Wire provider set for all handlers
 var ProviderSet = wire.NewSet(
 	// Top-level handlers
-	NewAuthHandler,
+	ProvideAuthHandler,
 	NewUserHandler,
 	NewAPIKeyHandler,
 	NewUsageHandler,

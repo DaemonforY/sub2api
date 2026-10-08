@@ -266,6 +266,16 @@ export default {
     accountCreatedSuccess: 'Account created successfully! Welcome to {siteName}.',
     reloginRequired: 'Session expired. Please log in again.',
     turnstileExpired: 'Verification expired, please try again',
+    imageCaptcha: {
+      label: 'Captcha',
+      placeholder: 'Enter the 4 characters shown',
+      alt: 'Captcha image, click for a new one',
+      refresh: "Can't read it? Click for a new one",
+      reload: 'Click to load',
+      loading: 'Loading…',
+      hint: 'Several failed sign-ins — please enter the captcha (not case-sensitive)',
+      required: 'Please enter the captcha'
+    },
     turnstileFailed: 'Verification failed, please try again',
     captchaVerified: 'Verification completed',
     captchaLoading: 'Loading verification…',

@@ -8,6 +8,7 @@ import { refreshAuthTokens, type RefreshTokenResponse } from './tokenRefresh'
 export type { RefreshTokenResponse } from './tokenRefresh'
 import type {
   LoginRequest,
+  LoginCaptchaResponse,
   RegisterRequest,
   AuthResponse,
   CurrentUserResponse,
@@ -121,6 +122,14 @@ export function clearAuthToken(): void {
   localStorage.removeItem('refresh_token')
   localStorage.removeItem('auth_user')
   localStorage.removeItem('token_expires_at')
+}
+
+/**
+ * Built-in image captcha for the login form (required after repeated failed logins)
+ */
+export async function getLoginCaptcha(): Promise<LoginCaptchaResponse> {
+  const { data } = await apiClient.get<LoginCaptchaResponse>('/auth/login-captcha')
+  return data
 }
 
 /**

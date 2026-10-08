@@ -120,6 +120,15 @@ export interface LoginRequest {
   turnstile_token?: string
   tencent_captcha_ticket?: string
   tencent_captcha_randstr?: string
+  /** Built-in image captcha, asked for after repeated failed logins */
+  captcha_id?: string
+  captcha_code?: string
+}
+
+export interface LoginCaptchaResponse {
+  captcha_id: string
+  /** data:image/png;base64,… */
+  image: string
 }
 
 export interface TencentCaptchaRequestProof {

@@ -176,7 +176,7 @@ func abortRateLimit(c *gin.Context, retryAfter time.Duration) {
 	}
 	c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 		"error":   "rate limit exceeded",
-		"message": "Too many requests, please try again later",
+		"message": "请求太频繁，请稍后再试（Too many requests, please try again later）",
 	})
 }
 

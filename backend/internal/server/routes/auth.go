@@ -35,9 +35,15 @@ func RegisterAuthRoutes(
 		auth.POST("/register", rateLimiter.LimitWithOptions("auth-register", 5, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Register)
-		auth.POST("/login", rateLimiter.LimitWithOptions("auth-login", 20, time.Minute, middleware.RateLimitOptions{
+		// 登录：请求频率上限放宽到 60 次/分钟，照顾学校机房等多人共用一个出口 IP 的场景；
+		// 真正的防爆破在 LoginGuardService：同一 IP / 邮箱失败 3 次后要图形验证码，
+		// 同一 IP 15 分钟内失败 20 次封禁 15 分钟。
+		auth.POST("/login", rateLimiter.LimitWithOptions("auth-login", 60, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Login)
+		auth.GET("/login-captcha", rateLimiter.LimitWithOptions("auth-login-captcha", 30, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.LoginCaptcha)
 		auth.POST("/login/2fa", rateLimiter.LimitWithOptions("auth-login-2fa", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Login2FA)
