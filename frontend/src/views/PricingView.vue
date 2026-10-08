@@ -128,9 +128,9 @@
         <section class="space-y-3">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('pricing.faq.title') }}</h2>
           <div class="grid gap-3 md:grid-cols-2">
-            <div v-for="k in ['q1', 'q2', 'q3', 'q4', 'q5', 'q6']" :key="k" class="card p-4">
+            <div v-for="k in faqKeys" :key="k" class="card p-4">
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t(`pricing.faq.${k}`) }}</p>
-              <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ t(`pricing.faq.${k}a`, { min: fmt(data.min_recharge) }) }}</p>
+              <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ t(`pricing.faq.${k}a`, { min: fmt(data.min_recharge), days: priceLockGraceDays ?? 0 }) }}</p>
             </div>
           </div>
         </section>
@@ -150,6 +150,7 @@ import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
 import { getPublicPricing, planDays, planPeriodCapUSD, planMonthlyPrice, type PricingPlan, type PublicPricing } from '@/api/pricing'
 import { extractApiErrorMessage } from '@/utils/apiError'
+import { growthAPI } from '@/api/growth'
 
 const { t } = useI18n()
 const data = ref<PublicPricing | null>(null)
@@ -161,7 +162,14 @@ const daysPerMonth = ref(22)
 // Only estimate from a meaningful sample of real requests.
 const MIN_SAMPLES = 200
 
+// 老用户锁价 FAQ, shown when the program is on.
+const priceLockGraceDays = ref<number | null>(null)
+const faqKeys = computed(() => (priceLockGraceDays.value === null ? ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'] : ['q7', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6']))
+
 onMounted(async () => {
+  growthAPI.getPublicConfig().then((cfg) => {
+    priceLockGraceDays.value = cfg.price_lock_enabled ? cfg.price_lock_grace_days : null
+  }).catch(() => {})
   try {
     data.value = await getPublicPricing()
   } catch (e: unknown) {

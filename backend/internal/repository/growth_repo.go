@@ -151,6 +151,75 @@ LIMIT $%d OFFSET $%d`, where, len(args)-1, len(args)), args...)
 }
 
 // ---------------------------------------------------------------------------
+// 老用户锁价
+// ---------------------------------------------------------------------------
+
+// sqlPlanLockActive: user $1 has a subscription to group $3 that runs or expired at most the
+// grace period ago (expires_at >= $4).
+const sqlPlanLockActive = `EXISTS (
+    SELECT 1 FROM user_subscriptions s
+    WHERE s.user_id = $1 AND s.group_id = $3 AND s.deleted_at IS NULL AND s.expires_at >= $4)`
+
+func (r *growthRepository) LockedPlanPrice(ctx context.Context, userID, planID, groupID int64, activeSince time.Time) (float64, bool, error) {
+	var price float64
+	err := r.db.QueryRowContext(ctx, `
+SELECT l.locked_price::float8 FROM plan_price_locks l
+WHERE l.user_id = $1 AND l.plan_id = $2 AND `+sqlPlanLockActive, userID, planID, groupID, activeSince).Scan(&price)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, fmt.Errorf("load plan price lock: %w", err)
+	}
+	return price, true, nil
+}
+
+func (r *growthRepository) RecordPlanPriceLock(ctx context.Context, userID, planID, groupID int64, listPrice float64, orderID int64, activeSince time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
+INSERT INTO plan_price_locks (user_id, plan_id, locked_price, first_order_id, last_order_id)
+VALUES ($1, $2, $5, $6, $6)
+ON CONFLICT (user_id, plan_id) DO UPDATE SET
+    locked_price = CASE
+        WHEN plan_price_locks.last_order_id = $6 THEN plan_price_locks.locked_price
+        WHEN `+sqlPlanLockActive+` THEN LEAST(plan_price_locks.locked_price, EXCLUDED.locked_price)
+        ELSE EXCLUDED.locked_price
+    END,
+    last_order_id = $6,
+    updated_at = NOW()`, userID, planID, groupID, activeSince, listPrice, orderID)
+	if err != nil {
+		return fmt.Errorf("record plan price lock: %w", err)
+	}
+	return nil
+}
+
+func (r *growthRepository) PlanPriceLockStats(ctx context.Context, activeSince time.Time) ([]service.PlanPriceLockStat, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT p.id, p.name, p.price::float8, COUNT(l.user_id),
+  COALESCE(MIN(l.locked_price), 0)::float8, COALESCE(MAX(l.locked_price), 0)::float8,
+  COUNT(l.user_id) FILTER (WHERE l.locked_price < p.price)
+FROM subscription_plans p
+LEFT JOIN plan_price_locks l ON l.plan_id = p.id AND EXISTS (
+    SELECT 1 FROM user_subscriptions s
+    WHERE s.user_id = l.user_id AND s.group_id = p.group_id AND s.deleted_at IS NULL AND s.expires_at >= $1)
+WHERE p.for_sale
+GROUP BY p.id, p.name, p.price, p.sort_order
+ORDER BY p.sort_order, p.id`, activeSince)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []service.PlanPriceLockStat
+	for rows.Next() {
+		var st service.PlanPriceLockStat
+		if err := rows.Scan(&st.PlanID, &st.PlanName, &st.Price, &st.Locked, &st.MinLocked, &st.MaxLocked, &st.Below); err != nil {
+			return nil, err
+		}
+		out = append(out, st)
+	}
+	return out, rows.Err()
+}
+
+// ---------------------------------------------------------------------------
 // Invitee first-order bonus
 // ---------------------------------------------------------------------------
 

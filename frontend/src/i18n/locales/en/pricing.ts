@@ -65,6 +65,8 @@ export default {
       q4a: 'Models are billed at standard USD prices per million tokens; balance and subscription allowances are both deducted on that basis, and every request is listed under Usage.',
       q5: 'Discounts for students and teachers?',
       q5a: 'Verify your school email on the Invite page to get a discounted subscription price, as shown on the purchase page.',
+      q7: 'Will the price go up later?',
+      q7a: 'Early-member price lock: for a plan you have bought, renewals stay at the price you paid as long as you renew within {days} days of expiry; increases only apply to new buyers, and if the price drops you pay the lower one.',
       q6: 'Can I try first?',
       q6a: 'Yes. Top up from ¥{min} and try with a pay-as-you-go key; subscribe once you know you\'ll use it daily.'
     }

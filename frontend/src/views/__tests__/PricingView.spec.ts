@@ -8,6 +8,8 @@ vi.mock('@/api/pricing', async () => {
   const actual = await vi.importActual<typeof import('@/api/pricing')>('@/api/pricing')
   return { ...actual, getPublicPricing: (...a: unknown[]) => getPublicPricing(...a) }
 })
+const getPublicConfig = vi.fn()
+vi.mock('@/api/growth', () => ({ growthAPI: { getPublicConfig: (...a: unknown[]) => getPublicConfig(...a) } }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
   return { ...actual, useI18n: () => ({ t: (k: string, p?: Record<string, unknown>) => (p ? `${k}${JSON.stringify(p)}` : k) }) }
@@ -46,8 +48,21 @@ describe('pricing helpers', () => {
 })
 
 describe('PricingView', () => {
+  it('answers "will the price go up" when the price lock is on', async () => {
+    getPublicPricing.mockResolvedValue(pricing)
+    getPublicConfig.mockResolvedValue({ price_lock_enabled: true, price_lock_grace_days: 30 })
+    const w = mountView()
+    await flushPromises()
+    expect(w.text()).toContain('pricing.faq.q7a{"min":"1","days":30}')
+    getPublicConfig.mockResolvedValue({ price_lock_enabled: false, price_lock_grace_days: 30 })
+    const off = mountView()
+    await flushPromises()
+    expect(off.text()).not.toContain('pricing.faq.q7')
+  })
+
   it('lists live plans and recommends by usage', async () => {
     getPublicPricing.mockResolvedValue(pricing)
+    getPublicConfig.mockResolvedValue({ price_lock_enabled: false, price_lock_grace_days: 30 })
     const w = mountView()
     await flushPromises()
     expect(w.get('[data-testid="pricing-plans"]').text()).toContain('月度订阅')

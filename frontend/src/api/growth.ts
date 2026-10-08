@@ -10,6 +10,9 @@ export interface GrowthPublicConfig {
   invitee_bonus_cap: number
   /** Trial balance for signing up with an invite ($, 0 = off). */
   invitee_signup_bonus: number
+  /** 老用户锁价: buyers keep their price on renewal within price_lock_grace_days of expiry. */
+  price_lock_enabled: boolean
+  price_lock_grace_days: number
   leaderboard_enabled: boolean
   edu_verify_enabled: boolean
   edu_discount_percent: number
@@ -117,6 +120,8 @@ export interface GrowthSettings {
   invitee_bonus_cap: number
   invitee_signup_bonus: number
   invitee_signup_daily_limit: number
+  price_lock_enabled: boolean
+  price_lock_grace_days: number
   leaderboard_enabled: boolean
   edu_verify_enabled: boolean
   edu_email_suffixes: string[]
@@ -161,7 +166,23 @@ export const growthAPI = {
   },
 }
 
+/** Members holding an active price lock on a plan on sale. */
+export interface PlanPriceLockStat {
+  plan_id: number
+  plan_name: string
+  price: number
+  locked: number
+  min_locked: number
+  max_locked: number
+  /** Locks below today's price. */
+  below: number
+}
+
 export const adminGrowthAPI = {
+  async priceLocks(): Promise<PlanPriceLockStat[]> {
+    const { data } = await apiClient.get<PlanPriceLockStat[]>('/admin/growth/price-locks')
+    return data
+  },
   async getSettings(): Promise<GrowthSettings> {
     const { data } = await apiClient.get<GrowthSettings>('/admin/growth/settings')
     return data

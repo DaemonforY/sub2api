@@ -165,6 +165,9 @@
                   <span v-if="selectedPlan.edu_discounted" class="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" data-testid="edu-price-badge">
                     🎓 {{ t('payment.balancePay.eduPrice') }}
                   </span>
+                  <span v-if="selectedPlan.price_locked" class="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300" data-testid="locked-price-badge">
+                    🔒 {{ t('payment.balancePay.lockedPrice') }}
+                  </span>
                 </div>
                 <!-- Price -->
                 <div class="flex items-baseline gap-2">
@@ -280,7 +283,10 @@
                 <Icon name="gift" size="xl" class="mx-auto mb-3 text-gray-300 dark:text-dark-600" />
                 <p class="text-gray-500 dark:text-gray-400">{{ t('payment.noPlans') }}</p>
               </div>
-              <div v-else :class="planGridClass">
+              <p v-if="priceLockGraceDays !== null && checkout.plans.length" class="rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-800 dark:bg-violet-900/20 dark:text-violet-200" data-testid="price-lock-notice">
+                🔒 {{ t('payment.priceLockNotice', { days: priceLockGraceDays }) }}
+              </p>
+              <div v-if="checkout.plans.length" :class="planGridClass">
                 <SubscriptionPlanCard v-for="plan in checkout.plans" :key="plan.id" :plan="plan" :active-subscriptions="activeSubscriptions" @select="selectPlan" />
               </div>
               <!-- Active subscriptions (compact, below plan list) -->
@@ -390,6 +396,7 @@ import PaymentStatusPanel from '@/components/payment/PaymentStatusPanel.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import EduVerifyCard from '@/components/user/growth/EduVerifyCard.vue'
+import { growthAPI } from '@/api/growth'
 import { DEFAULT_PAYMENT_CURRENCY, formatPaymentAmount, normalizePaymentCurrency } from '@/components/payment/currency'
 import { planValiditySuffix as validitySuffixOf } from '@/components/payment/validity'
 import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSelector.vue'
@@ -1341,8 +1348,14 @@ async function resumeWechatPaymentFromQuery() {
   }
 }
 
+// 老用户锁价 rule shown above the plans (null when the program is off).
+const priceLockGraceDays = ref<number | null>(null)
+
 onMounted(async () => {
   track('pricing_view')
+  growthAPI.getPublicConfig().then((cfg) => {
+    priceLockGraceDays.value = cfg.price_lock_enabled ? cfg.price_lock_grace_days : null
+  }).catch(() => {})
   try {
     const res = await paymentAPI.getCheckoutInfo()
     checkout.value = res.data

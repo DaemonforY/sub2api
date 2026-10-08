@@ -69,6 +69,42 @@
           <router-link to="/admin/affiliates/withdrawals" class="inline-block text-sm text-primary-600 hover:underline dark:text-primary-400">{{ t('growth.admin.nav.withdrawals') }} →</router-link>
         </section>
 
+        <section class="card space-y-4 p-6" data-testid="growth-price-lock">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🔒 {{ t('growth.admin.settings.priceLockTitle') }}</h2>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.price_lock_enabled" />
+            {{ t('growth.admin.settings.priceLockEnabled') }}
+          </label>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-lock-grace">{{ t('growth.admin.settings.priceLockGrace') }}</label>
+              <input id="growth-lock-grace" v-model.number="form.price_lock_grace_days" type="number" min="0" max="365" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.priceLockGraceHint') }}</p>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500">{{ t('growth.admin.settings.priceLockHint') }}</p>
+          <table v-if="priceLocks.length" class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-gray-500">
+                <th class="py-1">{{ t('growth.admin.settings.priceLockCol.plan') }}</th>
+                <th class="text-right">{{ t('growth.admin.settings.priceLockCol.price') }}</th>
+                <th class="text-right">{{ t('growth.admin.settings.priceLockCol.locked') }}</th>
+                <th class="text-right">{{ t('growth.admin.settings.priceLockCol.range') }}</th>
+                <th class="text-right">{{ t('growth.admin.settings.priceLockCol.below') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="l in priceLocks" :key="l.plan_id" class="border-t border-gray-100 dark:border-dark-700">
+                <td class="py-1.5">{{ l.plan_name }}</td>
+                <td class="text-right tabular-nums">¥{{ l.price }}</td>
+                <td class="text-right tabular-nums">{{ l.locked }}</td>
+                <td class="text-right tabular-nums">{{ l.locked ? (l.min_locked === l.max_locked ? `¥${l.min_locked}` : `¥${l.min_locked}–${l.max_locked}`) : '—' }}</td>
+                <td class="text-right tabular-nums">{{ l.below }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
         <section class="card space-y-3 p-6">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🏆 {{ t('growth.admin.settings.leaderboardTitle') }}</h2>
           <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
@@ -178,7 +214,7 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import { adminGrowthAPI, growthAPI, type EduVerification, type GrowthSettings } from '@/api/growth'
+import { adminGrowthAPI, growthAPI, type EduVerification, type GrowthSettings, type PlanPriceLockStat } from '@/api/growth'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatDateTime } from '@/utils/format'
@@ -191,6 +227,7 @@ const saving = ref(false)
 const form = ref<GrowthSettings | null>(null)
 const suffixText = ref('')
 const affiliateEnabled = ref(true)
+const priceLocks = ref<PlanPriceLockStat[]>([])
 
 const verifications = ref<EduVerification[]>([])
 const total = ref(0)
@@ -210,6 +247,7 @@ async function loadSettings() {
     form.value = settings
     suffixText.value = settings.edu_email_suffixes.join('\n')
     affiliateEnabled.value = publicConfig.affiliate_enabled
+    adminGrowthAPI.priceLocks().then((v) => { priceLocks.value = v }).catch(() => {})
   } catch (err) {
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
   } finally {
@@ -227,6 +265,7 @@ async function save() {
       invitee_bonus_cap: Number(form.value.invitee_bonus_cap) || 0,
       invitee_signup_bonus: Number(form.value.invitee_signup_bonus) || 0,
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
+      price_lock_grace_days: Math.max(0, Math.round(Number(form.value.price_lock_grace_days) || 0)),
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,
       withdraw_min_cny: Number(form.value.withdraw_min_cny) || 50,
       withdraw_monthly_limit: Math.max(0, Math.floor(Number(form.value.withdraw_monthly_limit) || 0)),

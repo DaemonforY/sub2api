@@ -198,11 +198,43 @@ func (s *PaymentService) planPriceForUser(ctx context.Context, plan *dbent.Subsc
 // PlanPriceForUser returns the price userID pays for plan and whether the education
 // discount was applied. userID 0 (anonymous) always gets the list price.
 func (s *PaymentService) PlanPriceForUser(ctx context.Context, plan *dbent.SubscriptionPlan, userID int64) (float64, bool) {
+	d := s.PlanPriceDetailForUser(ctx, plan, userID)
+	return d.Price, d.EduDiscounted
+}
+
+// PlanPriceDetail is what a user pays for a plan and why.
+type PlanPriceDetail struct {
+	Price         float64
+	EduDiscounted bool
+	// Locked: the member's 老用户锁价 is below the current list price and is used instead.
+	Locked bool
+}
+
+// PlanPriceDetailForUser applies the member's price lock (when lower than the list price),
+// then the education discount on top.
+func (s *PaymentService) PlanPriceDetailForUser(ctx context.Context, plan *dbent.SubscriptionPlan, userID int64) PlanPriceDetail {
 	if plan == nil {
-		return 0, false
+		return PlanPriceDetail{}
 	}
 	if s.growthService == nil || userID <= 0 {
-		return plan.Price, false
+		return PlanPriceDetail{Price: plan.Price}
 	}
-	return s.growthService.DiscountedPrice(ctx, userID, plan.Price)
+	base, locked := s.growthService.LockedPrice(ctx, userID, plan.ID, plan.GroupID, plan.Price)
+	price, edu := s.growthService.DiscountedPrice(ctx, userID, base)
+	return PlanPriceDetail{Price: price, EduDiscounted: edu, Locked: locked}
+}
+
+// recordPlanPriceLock keeps the buyer's price for renewals (老用户锁价). It runs before the
+// subscription is extended so a lapsed subscription counts as lapsed; failures only log.
+func (s *PaymentService) recordPlanPriceLock(ctx context.Context, o *dbent.PaymentOrder) {
+	if s.growthService == nil || s.configService == nil || o == nil || o.PlanID == nil || *o.PlanID <= 0 {
+		return
+	}
+	plan, err := s.configService.GetPlan(ctx, *o.PlanID)
+	if err != nil || plan == nil {
+		return
+	}
+	if err := s.growthService.RecordPlanPurchase(ctx, o.UserID, plan.ID, plan.GroupID, plan.Price, o.ID); err != nil {
+		slog.Warn("record plan price lock failed", "orderID", o.ID, "userID", o.UserID, "error", err)
+	}
 }

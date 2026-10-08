@@ -143,6 +143,8 @@ export interface SubscriptionPlan {
   balance_price?: number
   /** Price includes the education discount (checkout-info only) */
   edu_discounted?: boolean
+  /** The member pays their locked early price (老用户锁价); original_price is today's list price */
+  price_locked?: boolean
 }
 
 export interface BalanceSubscriptionResult {

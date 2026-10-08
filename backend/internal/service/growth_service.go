@@ -32,6 +32,8 @@ const (
 	SettingKeyGrowthWithdrawEnabled     = "growth_withdraw_enabled"           // 是否开放返利提现（人工打款）
 	SettingKeyGrowthWithdrawMinCNY      = "growth_withdraw_min_cny"           // 最低提现金额（元）
 	SettingKeyGrowthWithdrawMonthly     = "growth_withdraw_monthly_limit"     // 每人每月最多提现次数（0=不限）
+	SettingKeyPriceLockEnabled          = "plan_price_lock_enabled"           // 老用户锁价（默认开启）
+	SettingKeyPriceLockGraceDays        = "plan_price_lock_grace_days"        // 订阅到期后多少天内续费仍按锁定价
 	SettingKeyEduVerifyEnabled          = "edu_verify_enabled"                // 是否开放教育邮箱认证
 	SettingKeyEduEmailSuffixes          = "edu_email_suffixes"                // 教育邮箱后缀（JSON 数组，如 ["edu.cn"]）
 	SettingKeyEduSubscriptionDiscount   = "edu_subscription_discount_percent" // 认证用户订阅折扣（百分比，0=无折扣）
@@ -43,6 +45,8 @@ const (
 	growthSignupBonusMax                = 5.0
 	growthSignupDailyLimitDefault       = 20
 	growthSignupDailyLimitMax           = 1000
+	growthPriceLockGraceDefault         = 30
+	growthPriceLockGraceMax             = 365
 	// One inviter gets at most this many trial credits granted to their invitees per day.
 	growthSignupPerInviterDaily    = 5
 	growthLeaderboardAdminLimitMax = 500
@@ -63,12 +67,16 @@ type GrowthSettings struct {
 	InviteeBonusRatePercent float64 `json:"invitee_bonus_rate_percent"`
 	InviteeBonusCap         float64 `json:"invitee_bonus_cap"`
 	// Trial balance for someone who signs up with an invite (0 = off), and how many a day at most.
-	InviteeSignupBonus      float64  `json:"invitee_signup_bonus"`
-	InviteeSignupDailyLimit int      `json:"invitee_signup_daily_limit"`
-	LeaderboardEnabled      bool     `json:"leaderboard_enabled"`
-	EduVerifyEnabled        bool     `json:"edu_verify_enabled"`
-	EduEmailSuffixes        []string `json:"edu_email_suffixes"`
-	EduDiscountPercent      float64  `json:"edu_discount_percent"`
+	InviteeSignupBonus      float64 `json:"invitee_signup_bonus"`
+	InviteeSignupDailyLimit int     `json:"invitee_signup_daily_limit"`
+	// 老用户锁价: buyers keep a plan's price on renewal while their subscription hasn't been
+	// expired for more than PriceLockGraceDays.
+	PriceLockEnabled   bool     `json:"price_lock_enabled"`
+	PriceLockGraceDays int      `json:"price_lock_grace_days"`
+	LeaderboardEnabled bool     `json:"leaderboard_enabled"`
+	EduVerifyEnabled   bool     `json:"edu_verify_enabled"`
+	EduEmailSuffixes   []string `json:"edu_email_suffixes"`
+	EduDiscountPercent float64  `json:"edu_discount_percent"`
 	// 返利提现规则（字段平铺在 JSON 里：withdraw_enabled / withdraw_min_cny / withdraw_monthly_limit）
 	WithdrawSettings
 }
@@ -126,6 +134,15 @@ type GrowthRepository interface {
 	// invitee registered after registeredAfter, the inviter has used the site (an API call or a paid
 	// order), and fewer than dailyLimit grants (perInviterLimit for this inviter) were made since dayStart.
 	GrantInviteeSignupBonus(ctx context.Context, inviteeID, inviterID int64, amount float64, registeredAfter, dayStart time.Time, dailyLimit, perInviterLimit int) (bool, error)
+	// LockedPlanPrice is userID's locked price for planID when their subscription to groupID
+	// expired no earlier than activeSince (or is still running).
+	LockedPlanPrice(ctx context.Context, userID, planID, groupID int64, activeSince time.Time) (float64, bool, error)
+	// RecordPlanPriceLock notes that userID paid order orderID for planID at listPrice: a lock
+	// that is still active keeps the lower of the two, a lapsed or missing one becomes listPrice.
+	// Repeating the same order changes nothing.
+	RecordPlanPriceLock(ctx context.Context, userID, planID, groupID int64, listPrice float64, orderID int64, activeSince time.Time) error
+	// PlanPriceLockStats counts active locks per plan on sale.
+	PlanPriceLockStats(ctx context.Context, activeSince time.Time) ([]PlanPriceLockStat, error)
 	// GrantInviteeBonus credits amount to the invitee's balance for orderID when the invitee has an
 	// inviter, no earlier paid gateway order and no previous bonus. Returns the inviter and whether it was granted.
 	GrantInviteeBonus(ctx context.Context, inviteeID, orderID int64, amount float64, bindingNotBefore *time.Time) (granted bool, inviterID int64, err error)
@@ -169,7 +186,8 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 
 	vals, err := s.settingRepo.GetMultiple(ctx, []string{
 		SettingKeyGrowthInviteeBonusRate, SettingKeyGrowthInviteeBonusCap, SettingKeyGrowthLeaderboardEnabled,
-		SettingKeyGrowthSignupBonus, SettingKeyGrowthSignupDailyLimit, SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
+		SettingKeyGrowthSignupBonus, SettingKeyGrowthSignupDailyLimit, SettingKeyPriceLockEnabled, SettingKeyPriceLockGraceDays,
+		SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 	})
 	if err != nil {
@@ -189,6 +207,8 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		InviteeBonusCap:         math.Max(0, parseFloatOr(vals[SettingKeyGrowthInviteeBonusCap], 0)),
 		InviteeSignupBonus:      clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupBonus], 0), 0, growthSignupBonusMax),
 		InviteeSignupDailyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupDailyLimit], growthSignupDailyLimitDefault), 1, growthSignupDailyLimitMax)),
+		PriceLockEnabled:        vals[SettingKeyPriceLockEnabled] != "false", // on unless turned off
+		PriceLockGraceDays:      int(clampFloat(parseFloatOr(vals[SettingKeyPriceLockGraceDays], growthPriceLockGraceDefault), 0, growthPriceLockGraceMax)),
 		LeaderboardEnabled:      vals[SettingKeyGrowthLeaderboardEnabled] != "false", // on unless turned off
 		EduVerifyEnabled:        vals[SettingKeyEduVerifyEnabled] == "true",
 		EduDiscountPercent:      clampFloat(parseFloatOr(vals[SettingKeyEduSubscriptionDiscount], 0), 0, growthEduDiscountMax),
@@ -227,6 +247,9 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if in.InviteeSignupDailyLimit > growthSignupDailyLimitMax {
 		return nil, infraerrors.BadRequest("INVALID_INVITEE_SIGNUP_LIMIT", "每天发放人数最多 1000（At most 1000 trial credits a day）")
 	}
+	if in.PriceLockGraceDays < 0 || in.PriceLockGraceDays > growthPriceLockGraceMax {
+		return nil, infraerrors.BadRequest("INVALID_PRICE_LOCK_GRACE", "锁价宽限期需在 0 到 365 天之间（Price lock grace must be 0–365 days）")
+	}
 	if !finite(in.EduDiscountPercent) || in.EduDiscountPercent < 0 || in.EduDiscountPercent > growthEduDiscountMax {
 		return nil, infraerrors.BadRequest("INVALID_EDU_DISCOUNT", "education discount must be between 0 and 90")
 	}
@@ -248,6 +271,8 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthLeaderboardEnabled: strconv.FormatBool(in.LeaderboardEnabled),
 		SettingKeyGrowthSignupBonus:        strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
 		SettingKeyGrowthSignupDailyLimit:   strconv.Itoa(in.InviteeSignupDailyLimit),
+		SettingKeyPriceLockEnabled:         strconv.FormatBool(in.PriceLockEnabled),
+		SettingKeyPriceLockGraceDays:       strconv.Itoa(in.PriceLockGraceDays),
 		SettingKeyEduVerifyEnabled:         strconv.FormatBool(in.EduVerifyEnabled),
 		SettingKeyEduEmailSuffixes:         string(suffixJSON),
 		SettingKeyEduSubscriptionDiscount:  strconv.FormatFloat(in.EduDiscountPercent, 'f', -1, 64),
@@ -522,6 +547,68 @@ func (s *GrowthService) GrantInviteeSignupBonus(ctx context.Context, inviteeID, 
 		_ = s.billingCache.InvalidateUserBalance(ctx, inviteeID)
 	}
 	return amount, nil
+}
+
+// ---------------------------------------------------------------------------
+// 老用户锁价
+// ---------------------------------------------------------------------------
+
+// PlanPriceLockStat is how many members hold a lock on a plan and at what prices.
+type PlanPriceLockStat struct {
+	PlanID    int64   `json:"plan_id"`
+	PlanName  string  `json:"plan_name"`
+	Price     float64 `json:"price"` // current list price
+	Locked    int64   `json:"locked"`
+	MinLocked float64 `json:"min_locked"`
+	MaxLocked float64 `json:"max_locked"`
+	Below     int64   `json:"below"` // locks below the current price (they pay less than new buyers)
+}
+
+func (s *GrowthService) priceLockActiveSince(settings *GrowthSettings) time.Time {
+	return time.Now().AddDate(0, 0, -settings.PriceLockGraceDays)
+}
+
+// LockedPrice returns the price userID has locked for a plan (group groupID) when the lock is
+// active and lower than listPrice.
+func (s *GrowthService) LockedPrice(ctx context.Context, userID, planID, groupID int64, listPrice float64) (float64, bool) {
+	if s == nil || s.repo == nil || userID <= 0 || planID <= 0 {
+		return listPrice, false
+	}
+	settings, err := s.GetSettings(ctx)
+	if err != nil || !settings.PriceLockEnabled {
+		return listPrice, false
+	}
+	locked, ok, err := s.repo.LockedPlanPrice(ctx, userID, planID, groupID, s.priceLockActiveSince(settings))
+	if err != nil || !ok || !finite(locked) || locked <= 0 || locked >= listPrice {
+		return listPrice, false
+	}
+	return locked, true
+}
+
+// RecordPlanPurchase keeps the buyer's price for later renewals. Call it before the order's
+// subscription is extended, so a lapsed subscription is seen as lapsed.
+func (s *GrowthService) RecordPlanPurchase(ctx context.Context, userID, planID, groupID int64, listPrice float64, orderID int64) error {
+	if s == nil || s.repo == nil || userID <= 0 || planID <= 0 || orderID <= 0 || !finite(listPrice) || listPrice <= 0 {
+		return nil
+	}
+	settings, err := s.GetSettings(ctx)
+	if err != nil {
+		return err
+	}
+	return s.repo.RecordPlanPriceLock(ctx, userID, planID, groupID, listPrice, orderID, s.priceLockActiveSince(settings))
+}
+
+// PriceLockStats is for the admin page.
+func (s *GrowthService) PriceLockStats(ctx context.Context) ([]PlanPriceLockStat, error) {
+	settings, err := s.GetSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.repo.PlanPriceLockStats(ctx, s.priceLockActiveSince(settings))
+	if out == nil {
+		out = []PlanPriceLockStat{}
+	}
+	return out, err
 }
 
 // ---------------------------------------------------------------------------

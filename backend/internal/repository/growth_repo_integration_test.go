@@ -349,3 +349,70 @@ func TestGrowthInviteeSignupBonus(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, got)
 }
+
+func TestGrowthPlanPriceLock(t *testing.T) {
+	e := newGrowthTestEnv(t)
+	e.set(t, map[string]string{service.SettingKeyPriceLockEnabled: "true", service.SettingKeyPriceLockGraceDays: "30"})
+	price := func(v float64) *float64 { return &v }
+	grp := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "lock-" + e.suffix, SubscriptionType: service.SubscriptionTypeSubscription, RateMultiplier: 1, MonthlyLimitUSD: price(1200)})
+	plan, err := integrationEntClient.SubscriptionPlan.Create().SetGroupID(grp.ID).SetName("月度-" + e.suffix).SetPrice(120).
+		SetValidityDays(1).SetValidityUnit("month").SetForSale(true).Save(e.ctx)
+	require.NoError(t, err)
+	early, late := e.user(t, "early"), e.user(t, "late")
+
+	// Early buys at ¥120 (no subscription yet), then has one running.
+	require.NoError(t, e.svc.RecordPlanPurchase(e.ctx, early.ID, plan.ID, grp.ID, 120, 9001))
+	sub := mustCreateSubscription(t, integrationEntClient, &service.UserSubscription{UserID: early.ID, GroupID: grp.ID,
+		StartsAt: time.Now().AddDate(0, 0, -5), ExpiresAt: time.Now().AddDate(0, 0, 25)})
+
+	// The plan goes up to ¥200: early keeps ¥120, a newcomer pays ¥200.
+	got, locked := e.svc.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 200)
+	require.True(t, locked)
+	require.InDelta(t, 120, got, 1e-9)
+	got, locked = e.svc.LockedPrice(e.ctx, late.ID, plan.ID, grp.ID, 200)
+	require.False(t, locked)
+	require.InDelta(t, 200, got, 1e-9)
+
+	// Renewing at the locked price keeps ¥120; repeating that order changes nothing.
+	require.NoError(t, e.svc.RecordPlanPurchase(e.ctx, early.ID, plan.ID, grp.ID, 200, 9002))
+	require.NoError(t, e.svc.RecordPlanPurchase(e.ctx, early.ID, plan.ID, grp.ID, 200, 9002))
+	got, _ = e.svc.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 200)
+	require.InDelta(t, 120, got, 1e-9)
+
+	// A cheaper list price wins over the lock.
+	got, locked = e.svc.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 99)
+	require.False(t, locked)
+	require.InDelta(t, 99, got, 1e-9)
+
+	stats, err := e.svc.PriceLockStats(e.ctx)
+	require.NoError(t, err)
+	var st *service.PlanPriceLockStat
+	for i := range stats {
+		if stats[i].PlanID == plan.ID {
+			st = &stats[i]
+		}
+	}
+	require.NotNil(t, st)
+	require.EqualValues(t, 1, st.Locked)
+	require.InDelta(t, 120, st.MinLocked, 1e-9)
+
+	// Lapsed more than 30 days: the lock no longer applies, and buying again locks the new price.
+	_, err = integrationDB.ExecContext(e.ctx, `UPDATE user_subscriptions SET expires_at = NOW() - INTERVAL '40 days' WHERE id = $1`, sub.ID)
+	require.NoError(t, err)
+	_, locked = e.svc.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 200)
+	require.False(t, locked)
+	require.NoError(t, e.svc.RecordPlanPurchase(e.ctx, early.ID, plan.ID, grp.ID, 200, 9003))
+	_, err = integrationDB.ExecContext(e.ctx, `UPDATE user_subscriptions SET expires_at = NOW() + INTERVAL '30 days' WHERE id = $1`, sub.ID)
+	require.NoError(t, err)
+	_, locked = e.svc.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 200)
+	require.False(t, locked) // locked at ¥200 now, which is not below the list price
+	got, locked = e.svc.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 260)
+	require.True(t, locked)
+	require.InDelta(t, 200, got, 1e-9)
+
+	// Turned off: everyone pays the list price.
+	e.set(t, map[string]string{service.SettingKeyPriceLockEnabled: "false"})
+	off := service.NewGrowthService(e.settings, e.repo, nil, nil, nil, nil)
+	_, locked = off.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 260)
+	require.False(t, locked)
+}

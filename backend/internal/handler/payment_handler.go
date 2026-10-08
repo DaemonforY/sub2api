@@ -129,14 +129,19 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 	eduDiscountActive := false
 	for _, p := range plans {
 		gi := groupInfo[p.GroupID]
-		price, eduDiscounted := h.paymentService.PlanPriceForUser(ctx, p, userID)
+		detail := h.paymentService.PlanPriceDetailForUser(ctx, p, userID)
+		price, eduDiscounted := detail.Price, detail.EduDiscounted
 		originalPrice := p.OriginalPrice
 		if eduDiscounted {
 			eduDiscountActive = true
-			if originalPrice == nil || *originalPrice < p.Price {
-				listPrice := p.Price
-				originalPrice = &listPrice
-			}
+		}
+		if detail.Locked {
+			// Struck through: what new buyers pay today, not an invented "original" price.
+			listPrice := p.Price
+			originalPrice = &listPrice
+		} else if eduDiscounted && (originalPrice == nil || *originalPrice < p.Price) {
+			listPrice := p.Price
+			originalPrice = &listPrice
 		}
 		planList = append(planList, checkoutPlan{
 			ID: int64(p.ID), GroupID: p.GroupID,
@@ -149,6 +154,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			ModelScopes: gi.ModelScopes,
 			Name:        p.Name, Description: p.Description, Price: price, OriginalPrice: originalPrice,
 			BalancePrice: h.paymentService.SubscriptionBalancePrice(price, cfg), EduDiscounted: eduDiscounted,
+			PriceLocked:  detail.Locked,
 			Currency:     p.Currency,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
 			ProductName: p.ProductName,
@@ -220,6 +226,8 @@ type checkoutPlan struct {
 	// BalancePrice is what the plan costs when paid with account balance.
 	BalancePrice  float64 `json:"balance_price"`
 	EduDiscounted bool    `json:"edu_discounted"`
+	// PriceLocked: the member pays their 老用户锁价; OriginalPrice then carries the current list price.
+	PriceLocked bool `json:"price_locked,omitempty"`
 }
 
 // parseFeatures splits a newline-separated features string into a string slice.

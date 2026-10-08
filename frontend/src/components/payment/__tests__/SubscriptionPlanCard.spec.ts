@@ -19,6 +19,7 @@ const i18n = createI18n({
         perMonth: "month",
         models: "Models",
         planCard: {
+          lockedPrice: "Your locked price",
           quota: "Quota",
           rate: "Rate",
           unlimited: "Unlimited",
@@ -52,6 +53,13 @@ const mountPlanCard = (groupPlatform: string, overrides: Partial<SubscriptionPla
   });
 
 describe("SubscriptionPlanCard", () => {
+  it("marks a locked early price and strikes through today's price", () => {
+    const w = mountPlanCard("openai", { price: 120, original_price: 200, price_locked: true });
+    expect(w.get('[data-testid="plan-price-locked"]').text()).toMatch(/Your locked price|payment.planCard.lockedPrice/);
+    expect(w.text()).toContain("200");
+    expect(mountPlanCard("openai").find('[data-testid="plan-price-locked"]').exists()).toBe(false);
+  });
+
   it("does not show Antigravity model scopes for OpenAI plans", () => {
     const text = mountPlanCard("openai").text();
 

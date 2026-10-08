@@ -52,6 +52,17 @@ func (h *GrowthHandler) UpdateSettings(c *gin.Context) {
 	response.Success(c, settings)
 }
 
+// PriceLocks GET /api/v1/admin/growth/price-locks — 老用户锁价 per plan on sale: how many members
+// hold an active lock and at what prices.
+func (h *GrowthHandler) PriceLocks(c *gin.Context) {
+	out, err := h.service.PriceLockStats(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
 // ListEduVerifications GET /api/v1/admin/growth/edu-verifications?page=&page_size=&search=
 func (h *GrowthHandler) ListEduVerifications(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))

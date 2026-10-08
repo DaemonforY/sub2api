@@ -33,7 +33,7 @@ func (r *channelLinkRepoStub) Create(_ context.Context, l *ChannelLink) error {
 	return nil
 }
 func (r *channelLinkRepoStub) Update(context.Context, *ChannelLink) error { return nil }
-func (r *channelLinkRepoStub) Delete(context.Context, int64) error         { return nil }
+func (r *channelLinkRepoStub) Delete(context.Context, int64) error        { return nil }
 func (r *channelLinkRepoStub) AddClick(_ context.Context, id int64) error {
 	r.clicks[id]++
 	return nil

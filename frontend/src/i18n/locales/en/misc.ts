@@ -321,6 +321,7 @@ export default {
       success: 'Purchase complete — your subscription is active',
       fulfillmentPending: 'Balance deducted; your subscription is being activated. Refresh shortly, or contact support if it does not appear (order {orderId}).',
       eduPrice: 'Education price',
+      lockedPrice: 'Your locked price',
     },
     status: {
       pending: 'Pending',
@@ -399,6 +400,7 @@ export default {
     tabTopUp: 'Top Up',
     tabSubscribe: 'Subscribe',
     noPlans: 'No subscription plans available',
+    priceLockNotice: 'Early-member price lock: the price you buy at is kept for you. As long as you renew within {days} days of expiry, renewals stay at that price even if it goes up; if it goes down, you pay the lower price.',
     notAvailable: 'Top-up is currently unavailable',
     confirmSubscription: 'Confirm Subscription',
     confirmCancel: 'Are you sure you want to cancel this order?',
@@ -475,6 +477,7 @@ export default {
     selectPlan: 'Select Plan',
     planFeatures: 'Features',
     planCard: {
+      lockedPrice: 'Your locked price',
       rate: 'Rate',
       peakRate: 'Peak Rate',
       dailyLimit: 'Daily',

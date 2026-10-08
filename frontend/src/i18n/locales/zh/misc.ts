@@ -345,6 +345,7 @@ export default {
       success: '购买成功，订阅已生效',
       fulfillmentPending: '余额已扣除，订阅正在开通中，请稍后刷新；如长时间未生效请联系客服（订单号 {orderId}）',
       eduPrice: '教育优惠价',
+      lockedPrice: '老用户锁定价',
     },
     status: {
       pending: '待支付',
@@ -423,6 +424,7 @@ export default {
     tabTopUp: '充值',
     tabSubscribe: '订阅',
     noPlans: '暂无可用订阅套餐',
+    priceLockNotice: '老用户锁价：现在买的价格会为你锁定。只要订阅不断档（到期后 {days} 天内续费），以后涨价也按你买时的价格续费；如果以后降价，就按更低的价格。',
     notAvailable: '充值功能暂未开放',
     confirmSubscription: '确认订阅',
     confirmCancel: '确定要取消此订单吗？',
@@ -499,6 +501,7 @@ export default {
     selectPlan: '选择套餐',
     planFeatures: '功能特性',
     planCard: {
+      lockedPrice: '你的锁定价',
       rate: '倍率',
       peakRate: '高峰倍率',
       dailyLimit: '日限额',
