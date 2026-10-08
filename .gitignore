@@ -134,6 +134,7 @@ deploy/docker-compose.override.yml
 vite.config.js
 !editor/vite.config.js
 !video/vite.config.js
+!video/scripts/
 docs/*
 !docs/PAYMENT.md
 !docs/PAYMENT_CN.md
