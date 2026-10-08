@@ -49,6 +49,8 @@ export default {
     startUsingApi: '开始使用 API 后，您的使用历史将显示在这里。',
     viewAllUsage: '查看全部',
     quickActions: '快捷操作',
+    inviteFriends: '邀请好友',
+    inviteFriendsHint: '分享邀请链接或海报，好友付费后你得返利',
     createApiKey: '创建 API 密钥',
     generateNewKey: '生成新的 API 密钥',
     batchImageAgent: '批量生图助手',
@@ -1039,6 +1041,41 @@ export default {
     endDate: '结束日期',
     apply: '应用',
     selectDateRange: '选择日期范围'
+  },
+
+  getStarted: {
+    title: '三步开始使用',
+    subtitle: '在 Codex、Claude Code 等编程工具里接入 HiveGPT，大约 3 分钟。',
+    doneTitle: '接入成功',
+    doneSubtitle: '已经收到你的第一次请求，之后的用量和费用都在「使用记录」里。',
+    later: '稍后再说',
+    finish: '完成',
+    waiting: '正在等你的第一次请求，每 10 秒自动检查一次…',
+    needCredit: '账户余额为 0 且没有订阅时，调用会失败。',
+    buy: '去充值或订阅',
+    tutorial: 'Codex 接入教程',
+    askAssistant: '遇到问题问智能客服',
+    viewUsage: '查看使用记录',
+    learnMore: '去 AI 学习站学更多用法',
+    steps: {
+      key: {
+        title: '创建一个 API Key',
+        hint: '选择分组（决定能用哪些模型、怎么计费），名字随便起。',
+        done: '已有 API Key。',
+        action: '创建 Key'
+      },
+      config: {
+        title: '复制接入配置',
+        hint: '在 Key 的「使用」里选 Codex 或 Claude Code，按步骤复制配置到电脑上。',
+        done: '配置已复制。',
+        action: '查看接入配置'
+      },
+      call: {
+        title: '发出第一次请求',
+        hint: '在终端运行 codex 或 claude，随便问一句。请求成功后这里会自动打勾。',
+        done: '已收到你的第一次请求。'
+      }
+    }
   },
 
   // Admin

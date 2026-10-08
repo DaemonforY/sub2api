@@ -4,6 +4,17 @@
       <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.quickActions') }}</h2>
     </div>
     <div class="space-y-3 p-4">
+      <button v-if="affiliateOn" @click="router.push('/affiliate')" data-testid="quick-action-invite" class="group flex w-full items-center gap-4 rounded-xl bg-primary-50 p-4 text-left ring-1 ring-primary-100 transition-all duration-200 hover:bg-primary-100 dark:bg-primary-900/20 dark:ring-primary-900/40 dark:hover:bg-primary-900/30">
+        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 transition-transform group-hover:scale-105 dark:bg-primary-900/40">
+          <Icon name="users" size="lg" class="text-primary-600 dark:text-primary-400" />
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.inviteFriends') }}</p>
+          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('dashboard.inviteFriendsHint') }}</p>
+        </div>
+        <Icon name="chevronRight" size="md" class="text-gray-400 transition-colors group-hover:text-primary-500 dark:text-dark-500" />
+      </button>
+
       <button @click="router.push('/keys')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
         <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 transition-transform group-hover:scale-105 dark:bg-primary-900/30">
           <Icon name="key" size="lg" class="text-primary-600 dark:text-primary-400" />
@@ -68,13 +79,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
+import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 const router = useRouter()
 const { t } = useI18n()
+// Invites are the best-converting channel: keep the way in at the top of the console.
+const affiliateOn = computed(() => isFeatureFlagEnabled(FeatureFlags.affiliate))
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
 
 onMounted(() => {

@@ -22,6 +22,30 @@
         </div>
       </div>
 
+      <!-- Activation reminder email -->
+      <div v-if="reminder" class="card space-y-2 p-4" data-testid="analytics-reminder">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.analytics.reminder.title') }}</h3>
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-testid="analytics-reminder-preview" @click="showPreview = !showPreview">
+              {{ showPreview ? t('admin.analytics.reminder.hidePreview') : t('admin.analytics.reminder.preview') }}
+            </button>
+            <button type="button" class="btn btn-sm" :class="reminder.enabled ? 'btn-secondary' : 'btn-primary'" :disabled="savingReminder" data-testid="analytics-reminder-toggle" @click="toggleReminder">
+              {{ reminder.enabled ? t('admin.analytics.reminder.turnOff') : t('admin.analytics.reminder.turnOn') }}
+            </button>
+          </div>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-dark-300">{{ t('admin.analytics.reminder.hint') }}</p>
+        <p class="text-sm">
+          <span :class="reminder.enabled ? 'text-emerald-600' : 'text-gray-500'">{{ reminder.enabled ? t('admin.analytics.reminder.on') : t('admin.analytics.reminder.off') }}</span>
+          · {{ t('admin.analytics.reminder.counts', { sent: reminder.sent, due: reminder.due }) }}
+        </p>
+        <div v-if="showPreview" class="space-y-1">
+          <p class="text-xs text-gray-500">{{ t('admin.analytics.reminder.subject') }}：{{ reminder.subject }}</p>
+          <iframe :srcdoc="reminder.preview" sandbox="" class="h-[520px] w-full rounded-lg border border-gray-200 bg-white dark:border-dark-600" :title="reminder.subject"></iframe>
+        </div>
+      </div>
+
       <div v-if="error" class="card p-4 text-sm text-red-600">{{ t('admin.analytics.loadFailed') }}：{{ error }}</div>
 
       <template v-if="data">
@@ -185,7 +209,8 @@ import { useI18n } from 'vue-i18n'
 import { CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import { getOverview, type AnalyticsOverview } from '@/api/admin/analytics'
+import { getOverview, getReminder, setReminder, type ActivationReminderStatus, type AnalyticsOverview } from '@/api/admin/analytics'
+import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
@@ -206,6 +231,34 @@ async function load(): Promise<void> {
     error.value = extractApiErrorMessage(e, t('admin.analytics.loadFailed'))
   } finally {
     loading.value = false
+  }
+}
+
+const appStore = useAppStore()
+const reminder = ref<ActivationReminderStatus | null>(null)
+const showPreview = ref(false)
+const savingReminder = ref(false)
+
+async function loadReminder(): Promise<void> {
+  try {
+    reminder.value = await getReminder()
+  } catch {
+    reminder.value = null
+  }
+}
+
+async function toggleReminder(): Promise<void> {
+  if (!reminder.value) return
+  const on = !reminder.value.enabled
+  if (on && !window.confirm(t('admin.analytics.reminder.confirm', { due: reminder.value.due }))) return
+  savingReminder.value = true
+  try {
+    reminder.value = await setReminder(on)
+    appStore.showSuccess(on ? t('admin.analytics.reminder.on') : t('admin.analytics.reminder.off'))
+  } catch (e: unknown) {
+    appStore.showError(extractApiErrorMessage(e, t('admin.analytics.loadFailed')))
+  } finally {
+    savingReminder.value = false
   }
 }
 
@@ -288,5 +341,8 @@ function eventLabel(ev: string): string {
   return te(key) ? t(key) : ev
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  void loadReminder()
+})
 </script>

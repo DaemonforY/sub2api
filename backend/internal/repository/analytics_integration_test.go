@@ -129,3 +129,48 @@ func TestAnalyticsRepositoryOverview(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, deleted, int64(2))
 }
+
+func TestActivationReminderRepositoryDueUsers(t *testing.T) {
+	ctx := context.Background()
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	repo := NewActivationReminderRepository(integrationDB)
+	mk := func(tag string, age time.Duration) *service.User {
+		u := mustCreateUser(t, integrationEntClient, &service.User{Email: "ar-" + tag + "-" + sfx + "@test.local", Username: "ar" + tag + sfx[len(sfx)-5:]})
+		_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - $1::interval WHERE id = $2`, fmt.Sprintf("%d seconds", int(age.Seconds())), u.ID)
+		require.NoError(t, err)
+		return u
+	}
+	due := mk("due", 30*time.Hour)
+	fresh := mk("fresh", 2*time.Hour)
+	old := mk("old", 100*time.Hour)
+	caller := mk("caller", 30*time.Hour)
+	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: caller.ID, Key: "sk-ar-" + sfx})
+	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "ar-acc-" + sfx})
+	_, err := integrationEntClient.UsageLog.Create().SetUserID(caller.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).
+		SetRequestID("ar-" + sfx).SetModel("gpt-5").SetCreatedAt(time.Now()).Save(ctx)
+	require.NoError(t, err)
+
+	ids := func() map[int64]bool {
+		users, err := repo.DueUsers(ctx, time.Now().Add(-72*time.Hour), time.Now().Add(-24*time.Hour), 500)
+		require.NoError(t, err)
+		out := map[int64]bool{}
+		for _, u := range users {
+			out[u.ID] = true
+		}
+		return out
+	}
+	got := ids()
+	require.True(t, got[due.ID])
+	require.False(t, got[fresh.ID], "too new")
+	require.False(t, got[old.ID], "too old")
+	require.False(t, got[caller.ID], "already made a call")
+
+	before, err := repo.SentCount(ctx)
+	require.NoError(t, err)
+	require.NoError(t, repo.MarkSent(ctx, due.ID))
+	require.NoError(t, repo.MarkSent(ctx, due.ID))
+	after, err := repo.SentCount(ctx)
+	require.NoError(t, err)
+	require.Equal(t, before+1, after)
+	require.False(t, ids()[due.ID], "only once")
+}

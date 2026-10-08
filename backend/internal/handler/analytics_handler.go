@@ -16,11 +16,12 @@ const analyticsMaxBody = 32 << 10
 
 // AnalyticsHandler receives browser events (埋点) and serves the admin dashboard.
 type AnalyticsHandler struct {
-	svc *service.AnalyticsService
+	svc      *service.AnalyticsService
+	reminder *service.ActivationReminderService
 }
 
-func NewAnalyticsHandler(svc *service.AnalyticsService) *AnalyticsHandler {
-	return &AnalyticsHandler{svc: svc}
+func NewAnalyticsHandler(svc *service.AnalyticsService, reminder *service.ActivationReminderService) *AnalyticsHandler {
+	return &AnalyticsHandler{svc: svc, reminder: reminder}
 }
 
 // Collect POST /api/v1/events — a batch from the main site, /learn or /editor. Signed-in requests
@@ -52,4 +53,31 @@ func (h *AnalyticsHandler) AdminOverview(c *gin.Context) {
 		return
 	}
 	response.Success(c, out)
+}
+
+// AdminReminder GET /api/v1/admin/analytics/reminder — the activation reminder email: on/off,
+// how many were sent, how many are due, and a preview.
+func (h *AnalyticsHandler) AdminReminder(c *gin.Context) {
+	out, err := h.reminder.Status(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+// AdminSetReminder PUT /api/v1/admin/analytics/reminder {"enabled": bool}
+func (h *AnalyticsHandler) AdminSetReminder(c *gin.Context) {
+	var in struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.reminder.SetEnabled(c.Request.Context(), in.Enabled); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	h.AdminReminder(c)
 }

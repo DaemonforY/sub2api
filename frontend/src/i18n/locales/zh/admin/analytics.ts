@@ -86,7 +86,23 @@ export default {
       learn_run: '学习站运行示例',
       editor_copy: '排版：复制到公众号',
       editor_draft_push: '排版：推送草稿箱',
-      editor_ai_use: '排版：使用 AI'
+      editor_ai_use: '排版：使用 AI',
+      guide_view: '看到上手引导',
+      guide_first_call: '引导中完成首次调用',
+      guide_dismiss: '关闭上手引导'
+    },
+    reminder: {
+      title: '新用户上手提醒邮件',
+      hint: '注册 24–72 小时还没有调用过 API 的用户，会收到一封「三步接入」邮件（创建 Key、复制配置、发出第一次请求），每人只发一次。每小时检查一次；需要先在系统设置里配置好邮件服务。',
+      on: '已开启',
+      off: '未开启',
+      turnOn: '开启',
+      turnOff: '关闭',
+      counts: '已发送 {sent} 封；下次运行会发给 {due} 人',
+      preview: '预览邮件',
+      hidePreview: '收起预览',
+      subject: '标题',
+      confirm: '开启后会给真实用户发邮件：下一次（一小时内）会发给 {due} 人，之后每位符合条件的新用户发一封。确定开启？'
     },
     empty: '暂无数据',
     loadFailed: '加载失败'

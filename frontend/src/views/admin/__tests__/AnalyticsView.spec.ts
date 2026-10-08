@@ -3,8 +3,15 @@ import { describe, expect, it, vi } from 'vitest'
 import AnalyticsView from '@/views/admin/AnalyticsView.vue'
 
 const getOverview = vi.fn()
+const getReminder = vi.fn()
+const setReminder = vi.fn()
 
-vi.mock('@/api/admin/analytics', () => ({ getOverview: (...a: unknown[]) => getOverview(...a) }))
+vi.mock('@/api/admin/analytics', () => ({
+  getOverview: (...a: unknown[]) => getOverview(...a),
+  getReminder: (...a: unknown[]) => getReminder(...a),
+  setReminder: (...a: unknown[]) => setReminder(...a)
+}))
+vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess: vi.fn(), showError: vi.fn() }) }))
 vi.mock('vue-chartjs', () => ({ Line: { template: '<div data-testid="chart" />' } }))
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -42,6 +49,7 @@ const overview = {
 describe('AnalyticsView', () => {
   it('loads 30 days and renders KPIs, channels, features and retention', async () => {
     getOverview.mockResolvedValue(overview)
+    getReminder.mockResolvedValue(null)
     const w = mount(AnalyticsView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } } })
     await flushPromises()
     expect(getOverview).toHaveBeenCalledWith(30)
@@ -58,5 +66,28 @@ describe('AnalyticsView', () => {
     await w.get('[data-testid="analytics-range-7"]').trigger('click')
     await flushPromises()
     expect(getOverview).toHaveBeenLastCalledWith(7)
+  })
+
+  it('turns the reminder email on only after confirming', async () => {
+    getOverview.mockResolvedValue(overview)
+    const off = { enabled: false, sent: 0, due: 3, subject: 'S', preview: '<p>hi</p>' }
+    getReminder.mockResolvedValue(off)
+    setReminder.mockResolvedValue({ ...off, enabled: true })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    const w = mount(AnalyticsView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } } })
+    await flushPromises()
+    expect(w.get('[data-testid="analytics-reminder"]').text()).toContain('{"sent":0,"due":3}')
+
+    await w.get('[data-testid="analytics-reminder-toggle"]').trigger('click')
+    expect(setReminder).not.toHaveBeenCalled()
+    await w.get('[data-testid="analytics-reminder-toggle"]').trigger('click')
+    await flushPromises()
+    expect(setReminder).toHaveBeenCalledWith(true)
+    expect(confirm.mock.calls[1][0]).toContain('{"due":3}')
+    expect(w.get('[data-testid="analytics-reminder-toggle"]').text()).toBe('admin.analytics.reminder.turnOff')
+
+    await w.get('[data-testid="analytics-reminder-preview"]').trigger('click')
+    expect(w.get('iframe').attributes('sandbox')).toBe('')
+    confirm.mockRestore()
   })
 })

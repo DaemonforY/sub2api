@@ -272,6 +272,7 @@
 
 <script setup lang="ts">
 import { track } from '@/utils/analytics'
+import { markGuideStep } from '@/utils/getStarted'
 import { ref, computed, h, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
@@ -1916,6 +1917,7 @@ const copyContent = async (content: string, index: number) => {
   const success = await clipboardCopy(content, t('keys.copied'))
   if (success) {
     track('key_config_copied', { client: activeClientTab.value, os: activeTab.value })
+    markGuideStep('copied')
     copiedIndex.value = index
     setTimeout(() => {
       copiedIndex.value = null

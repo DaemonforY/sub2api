@@ -1120,6 +1120,7 @@
 import { track } from '@/utils/analytics'
 	import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
+	import { useRoute } from 'vue-router'
 	import { useAppStore } from '@/stores/app'
 	import { useOnboardingStore } from '@/stores/onboarding'
 	import { useClipboard } from '@/composables/useClipboard'
@@ -1271,6 +1272,11 @@ const columns = computed<Column[]>(() =>
 )
 
 const apiKeys = ref<ApiKey[]>([])
+
+// Deep links from the dashboard's "get started" card: ?action=create opens the create dialog
+// (and then "use key" for the new key), ?action=use opens "use key" for the first active key.
+const route = useRoute()
+let guideAction = typeof route?.query?.action === 'string' ? route.query.action : ''
 const groups = ref<Group[]>([])
 const loading = ref(false)
 const submitting = ref(false)
@@ -1478,6 +1484,10 @@ const loadApiKeys = async () => {
     })
     if (signal.aborted) return
     apiKeys.value = response.items
+    if (guideAction === 'use' && response.items.length) {
+      guideAction = ''
+      openUseKeyModal(response.items.find((k) => k.status === 'active') || response.items[0])
+    }
     pagination.value.total = response.total
     pagination.value.pages = response.pages
 
@@ -1737,7 +1747,7 @@ const handleSubmit = async () => {
       appStore.showSuccess(t('keys.keyUpdatedSuccess'))
     } else {
       const customKey = formData.value.use_custom_key ? formData.value.custom_key : undefined
-      await keysAPI.create(
+      const created = await keysAPI.create(
         formData.value.name,
         formData.value.group_id,
         customKey,
@@ -1752,6 +1762,13 @@ const handleSubmit = async () => {
       // Only advance tour if active, on submit step, and creation succeeded
       if (onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) {
         onboardingStore.nextStep(500)
+      }
+      if (guideAction === 'create' && created) {
+        guideAction = ''
+        closeModals()
+        loadApiKeys()
+        openUseKeyModal(created)
+        return
       }
     }
     closeModals()
@@ -1956,6 +1973,7 @@ function formatResetTime(resetAt: string | null): string {
 }
 
 onMounted(() => {
+  if (guideAction === 'create') showCreateModal.value = true
   loadSavedColumns()
   loadApiKeys()
   loadGroups()

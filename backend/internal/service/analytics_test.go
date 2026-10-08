@@ -24,7 +24,9 @@ func (m *memAnalyticsRepo) SaveAttribution(_ context.Context, a UserAttribution)
 	m.attrs = append(m.attrs, a)
 	return nil
 }
-func (m *memAnalyticsRepo) DeleteEventsBefore(context.Context, time.Time) (int64, error) { return 0, nil }
+func (m *memAnalyticsRepo) DeleteEventsBefore(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
 func (m *memAnalyticsRepo) Overview(context.Context, time.Time, int) (*AnalyticsOverview, error) {
 	return &AnalyticsOverview{}, nil
 }

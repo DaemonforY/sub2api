@@ -50,4 +50,24 @@ export async function getOverview(days: number): Promise<AnalyticsOverview> {
   return data
 }
 
-export default { getOverview }
+export interface ActivationReminderStatus {
+  enabled: boolean
+  sent: number
+  /** Would go out on the next hourly run. */
+  due: number
+  subject: string
+  /** The email's HTML. */
+  preview: string
+}
+
+export async function getReminder(): Promise<ActivationReminderStatus> {
+  const { data } = await apiClient.get('/admin/analytics/reminder')
+  return data
+}
+
+export async function setReminder(enabled: boolean): Promise<ActivationReminderStatus> {
+  const { data } = await apiClient.put('/admin/analytics/reminder', { enabled })
+  return data
+}
+
+export default { getOverview, getReminder, setReminder }

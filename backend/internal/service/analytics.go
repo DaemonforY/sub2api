@@ -50,6 +50,9 @@ var AnalyticsEventNames = map[string]bool{
 	"editor_copy":       true, // copied the formatted article
 	"editor_draft_push": true, // pushed to the WeChat draft box
 	"editor_ai_use":     true,
+	"guide_view":        true, // dashboard "get started" card shown
+	"guide_first_call":  true, // … and saw the first API call arrive
+	"guide_dismiss":     true,
 }
 
 var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true}

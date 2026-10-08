@@ -1081,4 +1081,6 @@ func registerAnalyticsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		return
 	}
 	admin.GET("/analytics/overview", h.Analytics.AdminOverview)
+	admin.GET("/analytics/reminder", h.Analytics.AdminReminder)
+	admin.PUT("/analytics/reminder", h.Analytics.AdminSetReminder)
 }

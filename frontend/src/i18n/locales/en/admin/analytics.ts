@@ -86,7 +86,23 @@ export default {
       learn_run: 'Ran a lesson example',
       editor_copy: 'Editor: copied article',
       editor_draft_push: 'Editor: pushed to drafts',
-      editor_ai_use: 'Editor: used AI'
+      editor_ai_use: 'Editor: used AI',
+      guide_view: 'Saw the get-started card',
+      guide_first_call: 'First call from the card',
+      guide_dismiss: 'Closed the get-started card'
+    },
+    reminder: {
+      title: 'Get-started reminder email',
+      hint: 'Users who signed up 24–72 hours ago and have not made an API call get one "three steps" email (create a key, copy the config, send a first request) — once per user. Runs hourly; email (SMTP) must be set up in Settings.',
+      on: 'On',
+      off: 'Off',
+      turnOn: 'Turn on',
+      turnOff: 'Turn off',
+      counts: '{sent} sent; the next run would email {due}',
+      preview: 'Preview email',
+      hidePreview: 'Hide preview',
+      subject: 'Subject',
+      confirm: 'This emails real users: within an hour {due} people, then one email to each new user who qualifies. Turn it on?'
     },
     empty: 'No data yet',
     loadFailed: 'Failed to load'

@@ -49,6 +49,8 @@ export default {
     startUsingApi: 'Start using the API to see your usage history here.',
     viewAllUsage: 'View all usage',
     quickActions: 'Quick Actions',
+    inviteFriends: 'Invite friends',
+    inviteFriendsHint: 'Share your link or poster; earn a rebate when friends pay',
     createApiKey: 'Create API Key',
     generateNewKey: 'Generate a new API key',
     batchImageAgent: 'Batch Image Assistant',
@@ -1035,6 +1037,41 @@ export default {
     endDate: 'End Date',
     apply: 'Apply',
     selectDateRange: 'Select date range'
+  },
+
+  getStarted: {
+    title: 'Get started in three steps',
+    subtitle: 'Use HiveGPT in Codex, Claude Code and other coding tools — about 3 minutes.',
+    doneTitle: "You're connected",
+    doneSubtitle: 'We received your first request. Usage and costs are under Usage.',
+    later: 'Later',
+    finish: 'Done',
+    waiting: 'Waiting for your first request — checking every 10 seconds…',
+    needCredit: 'With a zero balance and no subscription, requests will fail.',
+    buy: 'Top up or subscribe',
+    tutorial: 'Codex setup guide',
+    askAssistant: 'Ask the support assistant',
+    viewUsage: 'View usage',
+    learnMore: 'Learn more on the AI learning site',
+    steps: {
+      key: {
+        title: 'Create an API key',
+        hint: 'Pick a group (it decides the models and pricing); any name will do.',
+        done: 'You have an API key.',
+        action: 'Create a key'
+      },
+      config: {
+        title: 'Copy the client config',
+        hint: 'Open "Use" on your key, pick Codex or Claude Code and copy the config to your computer.',
+        done: 'Config copied.',
+        action: 'Show the config'
+      },
+      call: {
+        title: 'Send your first request',
+        hint: 'Run codex or claude in a terminal and ask anything. This ticks itself once the request arrives.',
+        done: 'We received your first request.'
+      }
+    }
   },
 
   // Admin
