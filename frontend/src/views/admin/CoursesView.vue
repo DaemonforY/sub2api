@@ -177,6 +177,36 @@
             <textarea v-else v-model="form[field]" rows="8" class="input font-mono text-xs" :placeholder="t(`admin.courses.placeholders.${field}`)"></textarea>
           </div>
 
+          <!-- Netdisk delivery for a new course; existing courses use the 发货信息 tab -->
+          <div v-if="!current" class="space-y-3 border-t border-gray-100 pt-4 dark:border-dark-700" data-testid="course-new-delivery">
+            <div>
+              <span class="text-sm font-medium">{{ t('admin.courses.newDeliveryTitle') }}</span>
+              <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.courses.newDeliveryHint') }}</p>
+            </div>
+            <label class="block text-sm">
+              <span class="input-label">{{ t('admin.courses.fields.link') }}</span>
+              <input v-model="delivery.link" class="input" placeholder="https://pan.baidu.com/s/..." data-testid="new-delivery-link" />
+            </label>
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="text-sm">
+                <span class="input-label">{{ t('admin.courses.fields.code') }}</span>
+                <input v-model="delivery.code" class="input" maxlength="32" data-testid="new-delivery-code" />
+              </label>
+              <label class="text-sm">
+                <span class="input-label">{{ t('admin.courses.fields.password') }}</span>
+                <input v-model="delivery.password" class="input" maxlength="64" />
+              </label>
+            </div>
+            <label class="block text-sm">
+              <span class="input-label">{{ t('admin.courses.fields.note') }}</span>
+              <textarea v-model="delivery.note" rows="2" class="input" maxlength="2000"></textarea>
+            </label>
+          </div>
+          <div v-else-if="!current.delivery_version" class="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300" data-testid="course-missing-delivery">
+            <span class="flex-1">{{ t('admin.courses.missingDelivery') }}</span>
+            <button class="btn btn-secondary btn-sm" @click="switchPanel('delivery')">{{ t('admin.courses.goDelivery') }}</button>
+          </div>
+
           <div class="flex flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-dark-700">
             <button class="btn btn-primary" :disabled="busy" data-testid="course-save" @click="save">{{ t('common.save') }}</button>
             <a v-if="current && current.status !== 'draft'" :href="`/courses/${current.slug}`" target="_blank" class="btn btn-secondary">{{ t('admin.courses.viewPage') }}</a>
@@ -395,6 +425,7 @@ function fillForm(c: Course | null) {
 function startNew() {
   current.value = null
   fillForm(null)
+  Object.assign(delivery, { link: '', code: '', password: '', note: '', notify: true })
   panel.value = 'basic'
   editing.value = true
 }
@@ -433,7 +464,17 @@ async function switchPanel(next: Panel) {
 async function save() {
   busy.value = true
   try {
-    current.value = current.value ? await api.update(current.value.id, { ...form }) : await api.create({ ...form })
+    if (current.value) {
+      current.value = await api.update(current.value.id, { ...form })
+    } else {
+      current.value = await api.create({ ...form })
+      // First netdisk version goes with the new course; nobody is enrolled yet, so no emails.
+      if (delivery.link.trim()) {
+        await api.saveDelivery(current.value.id, { ...delivery, notify: false })
+        Object.assign(delivery, { link: '', code: '', password: '', note: '', notify: true })
+        current.value = await api.get(current.value.id)
+      }
+    }
     fillForm(current.value)
     appStore.showSuccess(t('common.saved'))
   } catch (err) {

@@ -77,6 +77,41 @@ describe('admin CoursesView', () => {
     expect(api.grant).toHaveBeenCalledWith(9, 'a@example.com', '')
   })
 
+  it('takes the netdisk link while creating a course and saves it as the first version', async () => {
+    api.list.mockResolvedValue([])
+    api.create.mockResolvedValue(saved)
+    api.saveDelivery.mockResolvedValue({ version: 1 })
+    api.get.mockResolvedValue({ ...saved, delivery_version: 1 })
+    const wrapper = mount(CoursesView, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="course-new"]').trigger('click')
+    await wrapper.get('[data-testid="course-title"]').setValue('AI Agent 实战')
+    await wrapper.get('[data-testid="course-slug"]').setValue('ai-agent')
+    await wrapper.get('[data-testid="new-delivery-link"]').setValue('https://pan.baidu.com/s/1abc')
+    await wrapper.get('[data-testid="new-delivery-code"]').setValue('ab12')
+    await wrapper.get('[data-testid="course-save"]').trigger('click')
+    await flushPromises()
+    expect(api.create).toHaveBeenCalled()
+    expect(api.saveDelivery).toHaveBeenCalledWith(9, { link: 'https://pan.baidu.com/s/1abc', code: 'ab12', password: '', note: '', notify: false })
+    expect(wrapper.find('[data-testid="course-new-delivery"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="course-missing-delivery"]').exists()).toBe(false)
+  })
+
+  it('warns when a saved course has no netdisk link yet', async () => {
+    api.list.mockResolvedValue([])
+    api.create.mockResolvedValue(saved)
+    const wrapper = mount(CoursesView, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="course-new"]').trigger('click')
+    await wrapper.get('[data-testid="course-title"]').setValue('AI Agent 实战')
+    await wrapper.get('[data-testid="course-save"]').trigger('click')
+    await flushPromises()
+    expect(api.saveDelivery).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="course-missing-delivery"]').exists()).toBe(true)
+  })
+
   it('saves the course rebate rate and sends a limited-time price with its end time', async () => {
     api.list.mockResolvedValue([])
     api.saveSettings.mockResolvedValue({ affiliate_rate_percent: 20 })
