@@ -82,6 +82,7 @@ type Handlers struct {
 	AppState         *UserAppStateHandler
 	PromptLibrary    *PromptLibraryHandler
 	ImageTools       *ImageToolsHandler
+	AnimationJob     *AnimationJobHandler
 	SiteHosting      *SiteHostingHandler
 	CanvasSession    *CanvasSessionHandler
 	CanvasCloud      *CanvasCloudHandler

@@ -601,6 +601,20 @@ func ProvidePromptLibraryService(repo PromptLibraryRepository, cfg *config.Confi
 	return NewPromptLibraryService(repo, NewPromptCoverStore(filepath.Join(filepath.Dir(filepath.Clean(dir)), "prompt-covers")))
 }
 
+// ProvideAnimationJobService wires the canvas' background AI 动画 jobs, which call this server's own
+// gateway on loopback. Jobs a previous process left running are failed first.
+func ProvideAnimationJobService(repo AnimationJobRepository, cfg *config.Config) *AnimationJobService {
+	port := 8080
+	if cfg != nil && cfg.Server.Port > 0 {
+		port = cfg.Server.Port
+	}
+	svc := NewAnimationJobService(repo, "http://127.0.0.1:"+strconv.Itoa(port))
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	svc.RecoverInterrupted(ctx)
+	return svc
+}
+
 // ProvideImageToolsService wires the canvas image tools (IMAGE_TOOLS_BASE_URL enables them).
 func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *ImageToolsService {
 	c := ImageToolsConfig{PriceRemoveBg: 0.02, PriceUpscale: 0.05, FreeDaily: 3}
@@ -1139,6 +1153,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePromptLibraryService,
 	ProvidePromptLibrarySyncService,
 	ProvideImageToolsService,
+	ProvideAnimationJobService,
 	ProvideSiteHostingService,
 	ProvideCanvasSessionService,
 	ProvideCanvasCloudService,
