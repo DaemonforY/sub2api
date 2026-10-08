@@ -6,7 +6,8 @@ canvas.hivegpt.cn {
 	log {
 		output file /var/log/caddy/canvas.log {
 			roll_size 20mb
-			roll_keep 5
+			roll_keep 60
+			roll_keep_for 2160h
 		}
 		format json
 	}

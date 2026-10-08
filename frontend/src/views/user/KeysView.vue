@@ -1117,6 +1117,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 	import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
 	import { useI18n } from 'vue-i18n'
 	import { useAppStore } from '@/stores/app'
@@ -1746,6 +1747,7 @@ const handleSubmit = async () => {
         expiresInDays,
         rateLimitData
       )
+      track('key_created')
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
       // Only advance tour if active, on submit step, and creation succeeded
       if (onboardingStore.isCurrentStep('[data-tour="key-form-submit"]')) {

@@ -4,6 +4,7 @@
  */
 
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { trackPageView } from '@/utils/analytics'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
@@ -588,6 +589,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Support assistant',
       titleKey: 'admin.assistant.title',
       descriptionKey: 'admin.assistant.description'
+    }
+  },
+  {
+    path: '/admin/analytics',
+    name: 'AdminAnalytics',
+    component: () => import('@/views/admin/AnalyticsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Analytics',
+      titleKey: 'admin.analytics.title',
+      descriptionKey: 'admin.analytics.description'
     }
   },
   {
@@ -1231,9 +1244,14 @@ router.beforeEach(async (to, _from, next) => {
 /**
  * Navigation guard: End loading and trigger prefetch
  */
-router.afterEach((to) => {
+router.afterEach((to, from, failure) => {
   // 结束导航加载状态
   navigationLoading.endNavigation()
+
+  // 埋点：每次进入新页面记一次浏览（不含后台页面，路径不带查询参数）
+  if (!failure && (to.path !== from.path || from.matched.length === 0) && !to.path.startsWith('/admin')) {
+    trackPageView(to.path)
+  }
 
   // 懒初始化预加载（首次导航时创建，传入 router 实例）
   if (!routePrefetch) {

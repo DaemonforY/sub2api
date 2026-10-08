@@ -374,6 +374,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -588,6 +589,7 @@ const inviteeBonusRate = ref(0)
 const inviteeBonusCap = ref(0)
 
 onMounted(async () => {
+  track('signup_view')
   syncAffiliateReferralCode()
   growthAPI.getPublicConfig().then((cfg) => {
     inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
@@ -1202,6 +1204,7 @@ async function handleRegister(): Promise<void> {
     clearAffiliateReferralCode()
 
     // Show success toast
+    track('signup_success', { flow: 'direct' })
     appStore.showSuccess(t('auth.accountCreatedSuccess', { siteName: siteName.value }))
     if (affCode && affiliateValidation.valid) {
       appStore.showSuccess(t('auth.affiliateBound'))

@@ -225,6 +225,7 @@ func ProvideHandlers(
 	learnHandler *LearnHandler,
 	editorHandler *EditorHandler,
 	assistantHandler *AssistantHandler,
+	analyticsHandler *AnalyticsHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -264,13 +265,15 @@ func ProvideHandlers(
 		Learn:            learnHandler,
 		Editor:           editorHandler,
 		Assistant:        assistantHandler,
+		Analytics:        analyticsHandler,
 	}
 }
 
-// ProvideAuthHandler builds the auth handler with the login brute-force guard.
-func ProvideAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, userAttributeService *service.UserAttributeService, loginGuard *service.LoginGuardService) *AuthHandler {
+// ProvideAuthHandler builds the auth handler with the login brute-force guard and sign-up attribution.
+func ProvideAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, userAttributeService *service.UserAttributeService, loginGuard *service.LoginGuardService, analytics *service.AnalyticsService) *AuthHandler {
 	h := NewAuthHandler(cfg, authService, userService, settingService, promoService, redeemService, totpService, userAttributeService)
 	h.SetLoginGuard(loginGuard)
+	h.analytics = analytics
 	return h
 }
 
@@ -310,6 +313,7 @@ var ProviderSet = wire.NewSet(
 	NewLearnHandler,
 	NewEditorHandler,
 	NewAssistantHandler,
+	NewAnalyticsHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

@@ -231,6 +231,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -634,6 +635,7 @@ async function handleLogin(): Promise<void> {
 
     // Show success toast
     clearAllAffiliateReferralCodes()
+    track('login_success')
     appStore.showSuccess(t('auth.loginSuccess'))
 
     // Redirect to dashboard or intended route
@@ -684,6 +686,7 @@ async function handlePasskeyLogin(): Promise<void> {
 
     await authStore.loginWithPasskey(proof)
     clearAllAffiliateReferralCodes()
+    track('login_success')
     appStore.showSuccess(t('auth.loginSuccess'))
     const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
     await router.push(redirectTo)
@@ -751,6 +754,7 @@ async function handle2FAVerify(code: string): Promise<void> {
     // Close modal and show success
     show2FAModal.value = false
     clearAllAffiliateReferralCodes()
+    track('login_success')
     appStore.showSuccess(t('auth.loginSuccess'))
 
     // Redirect to dashboard or intended route

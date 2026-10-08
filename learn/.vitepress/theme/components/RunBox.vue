@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { track } from '../analytics'
 // 「动手试试」: runs a lesson's example on HiveGPT for the signed-in learner (free runs a day).
 // The request can only carry messages plus an optional JSON schema / tools; the server picks
 // the model. Signed out or when runs are off, a recorded sample output is shown instead.
@@ -91,6 +92,7 @@ async function run() {
     if (props.tools) body.tools = JSON.parse(props.tools)
     const res = await runExample(body)
     result.value = res
+    track('learn_run', { lesson: props.lesson })
     if (props.chat) {
       history.value = [...history.value, { role: 'user', content: text }, { role: 'assistant', content: res.content }]
       input.value = ''

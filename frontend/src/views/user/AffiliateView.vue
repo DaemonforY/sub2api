@@ -177,6 +177,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -258,6 +259,7 @@ async function copyCode(): Promise<void> {
 
 async function copyInviteLink(): Promise<void> {
   if (!inviteLink.value) return
+  track('invite_link_copy')
   await copyToClipboard(inviteLink.value, t('affiliate.linkCopied'))
 }
 

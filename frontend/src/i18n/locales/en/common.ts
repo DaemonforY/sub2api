@@ -220,6 +220,7 @@ export default {
     coursesAdmin: 'Courses',
     learnAdmin: 'AI Learning',
     assistantAdmin: 'Support assistant',
+    analyticsAdmin: 'Analytics',
   },
 
   // Auth

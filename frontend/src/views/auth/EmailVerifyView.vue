@@ -190,6 +190,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -604,6 +605,7 @@ async function sendCode(): Promise<void> {
     }
 
     codeSent.value = true
+    track('signup_code_sent')
     startCountdown(response.countdown)
 
     showResendTurnstile.value = false
@@ -778,6 +780,7 @@ async function handleVerify(): Promise<void> {
     clearAllAffiliateReferralCodes()
 
     // Show success toast
+    track('signup_success', { flow: isPendingOAuthFlow() ? 'oauth' : 'email' })
     appStore.showSuccess(t('auth.accountCreatedSuccess', { siteName: siteName.value }))
     if (affCode.value && affCodeValid.value) {
       appStore.showSuccess(t('auth.affiliateBound'))

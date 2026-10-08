@@ -271,6 +271,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { ref, computed, h, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { saveAs } from 'file-saver'
@@ -1914,6 +1915,7 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
 const copyContent = async (content: string, index: number) => {
   const success = await clipboardCopy(content, t('keys.copied'))
   if (success) {
+    track('key_config_copied', { client: activeClientTab.value, os: activeTab.value })
     copiedIndex.value = index
     setTimeout(() => {
       copiedIndex.value = null

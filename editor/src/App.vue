@@ -358,6 +358,7 @@ import markdownit from 'markdown-it';
 import hljs from './lib/highlight.js';
 import TurndownService from 'turndown';
 import { STYLES } from './styles.js';
+import { track } from './lib/analytics.js';
 import { ImageStore } from './lib/imageStore.js';
 import { ImageCompressor } from './lib/imageCompressor.js';
 import { ImageHostManager } from './lib/imageHostManager.js';
@@ -1637,6 +1638,7 @@ const markdown = \`![图片](img://\${imageId})\`;
           await navigator.clipboard.write([clipboardItem]);
 
           this.copySuccess = true;
+          track('editor_copy');
           this.showToast('复制成功', 'success');
 
           // 自动保存到历史记录
@@ -1962,6 +1964,7 @@ const markdown = \`![图片](img://\${imageId})\`;
 
         if (success) {
           this.copySuccess = true;
+          track('editor_copy');
           this.showToast('复制成功（降级模式）', 'success');
           this.saveToHistory();
           setTimeout(() => { this.copySuccess = false; }, 2000);

@@ -33,7 +33,8 @@
 	log {
 		output file /var/log/caddy/sites.log {
 			roll_size 50mb
-			roll_keep 5
+			roll_keep 60
+			roll_keep_for 2160h
 		}
 	}
 }

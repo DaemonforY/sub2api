@@ -101,6 +101,7 @@ var ProviderSet = wire.NewSet(
 	NewCommunityRepository,
 	NewCourseRepository,
 	NewLearnRepository,
+	NewAnalyticsRepository,
 	NewPasskeyRepository,
 	NewPasskeySessionStore,
 	NewUserSubscriptionRepository,

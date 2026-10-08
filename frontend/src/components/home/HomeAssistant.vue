@@ -127,6 +127,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getAssistantConfig, streamAssistant, type AssistantConfig, type AssistantSource } from '@/api/assistant'
@@ -186,6 +187,7 @@ async function scrollDown() {
 }
 
 function openPanel() {
+  track('assistant_open')
   open.value = true
   scrollDown()
   nextTick(() => input.value?.focus())
@@ -214,6 +216,7 @@ async function ask(text: string) {
   }
   error.value = ''
   draft.value = ''
+  track('assistant_ask', { len: question.length })
   const history = messages.value.filter((m) => m.content).map((m) => ({ role: m.role, content: m.content }))
   messages.value.push({ role: 'user', content: question })
   const answer: ChatMessage = { role: 'assistant', content: '' }

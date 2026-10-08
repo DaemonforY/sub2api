@@ -65,3 +65,19 @@ func (h *AuthHandler) LoginCaptcha(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	response.Success(c, captcha)
 }
+
+// recordSignupAttribution saves where a new user came from. Without browser data (an old page, a
+// script) the invite code still marks the sign-up as coming from an invite.
+func (h *AuthHandler) recordSignupAttribution(c *gin.Context, user *service.User, visitorID string, attr *service.AnalyticsAttribution, affCode string) {
+	if h.analytics == nil || user == nil {
+		return
+	}
+	a := service.AnalyticsAttribution{}
+	if attr != nil {
+		a = *attr
+	}
+	if a.Aff == "" {
+		a.Aff = affCode
+	}
+	h.analytics.RecordSignup(c.Request.Context(), user.ID, visitorID, a)
+}

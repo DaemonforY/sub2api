@@ -139,6 +139,7 @@ func RegisterAdminRoutes(
 		registerCourseAdminRoutes(admin, h)
 		registerLearnAdminRoutes(admin, h)
 		registerAssistantAdminRoutes(admin, h)
+		registerAnalyticsAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -1072,4 +1073,12 @@ func channelMonitorModeV2Guard(settingService *service.SettingService) gin.Handl
 		}
 		c.Next()
 	}
+}
+
+// registerAnalyticsAdminRoutes 数据看板：访客、日活、注册转化、渠道、页面、功能使用和留存。
+func registerAnalyticsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Analytics == nil {
+		return
+	}
+	admin.GET("/analytics/overview", h.Analytics.AdminOverview)
 }

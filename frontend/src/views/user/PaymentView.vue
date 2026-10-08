@@ -352,6 +352,7 @@
 </template>
 
 <script setup lang="ts">
+import { track } from '@/utils/analytics'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -993,6 +994,7 @@ async function confirmSubscribe() {
 }
 
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
+  track('checkout_start', { type: orderType, amount: orderAmount, ...(planId ? { plan: planId } : {}) })
   submitting.value = true
   errorMessage.value = ''
   errorHintMessage.value = ''
@@ -1336,6 +1338,7 @@ async function resumeWechatPaymentFromQuery() {
 }
 
 onMounted(async () => {
+  track('pricing_view')
   try {
     const res = await paymentAPI.getCheckoutInfo()
     checkout.value = res.data

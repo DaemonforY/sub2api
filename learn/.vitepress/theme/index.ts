@@ -14,6 +14,7 @@ import AgentLoop from './components/AgentLoop.vue'
 import Showcase from './components/Showcase.vue'
 import CampusPerks from './components/CampusPerks.vue'
 import BigdataHub from './components/BigdataHub.vue'
+import { initAnalytics, trackPageView } from './analytics'
 import './style.css'
 import './heroui.css'
 
@@ -35,8 +36,15 @@ function rememberAffiliate() {
 export default {
   extends: DefaultTheme,
   Layout,
-  enhanceApp({ app }) {
-    if (typeof window !== 'undefined') rememberAffiliate()
+  enhanceApp({ app, router }) {
+    if (typeof window !== 'undefined') {
+      rememberAffiliate()
+      // 埋点: the first page, then every client-side navigation (".html" dropped).
+      initAnalytics('learn')
+      const view = (href: string) => trackPageView(new URL(href, window.location.origin).pathname.replace(/\.html$/, ''))
+      view(window.location.href)
+      router.onAfterRouteChange = view
+    }
     app.component('RunBox', RunBox)
     app.component('TryInCanvas', TryInCanvas)
     app.component('Mermaid', Mermaid)

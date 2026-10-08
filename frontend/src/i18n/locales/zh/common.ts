@@ -220,6 +220,7 @@ export default {
     coursesAdmin: '课程管理',
     learnAdmin: 'AI 学习',
     assistantAdmin: '智能客服',
+    analyticsAdmin: '数据看板',
   },
 
   // Auth

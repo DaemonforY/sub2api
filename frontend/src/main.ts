@@ -7,6 +7,7 @@ import { useAppStore } from '@/stores/app'
 import { updateFavicon } from '@/utils/branding'
 import { isIOSDevice } from '@/utils/device'
 import './style.css'
+import { initAnalytics } from '@/utils/analytics'
 
 function initIOSViewportZoomFix() {
   // iOS Safari 在输入框字号小于 16px 时聚焦会自动放大页面，且失焦后不会恢复。
@@ -34,6 +35,7 @@ async function bootstrap() {
   // Apply theme class globally before app mount to keep all routes consistent.
   initThemeClass()
   initIOSViewportZoomFix()
+  initAnalytics('main')
 
   const app = createApp(App)
   const pinia = createPinia()

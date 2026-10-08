@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './client'
+import { signupAttribution } from '@/utils/analytics'
 import { refreshAuthTokens, type RefreshTokenResponse } from './tokenRefresh'
 export type { RefreshTokenResponse } from './tokenRefresh'
 import type {
@@ -182,7 +183,8 @@ export async function login2FA(request: TotpLogin2FARequest): Promise<AuthRespon
  * @returns Authentication response with token and user data
  */
 export async function register(userData: RegisterRequest): Promise<AuthResponse> {
-  const { data } = await apiClient.post<AuthResponse>('/auth/register', userData)
+  // First-touch source (poster / invite / site) so the dashboard can credit the channel.
+  const { data } = await apiClient.post<AuthResponse>('/auth/register', { ...signupAttribution(), ...userData })
 
   // Store token and user data
   setAuthToken(data.access_token)

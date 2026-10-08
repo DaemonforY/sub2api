@@ -29,6 +29,7 @@ type AuthHandler struct {
 	totpService          *service.TotpService
 	userAttributeService *service.UserAttributeService
 	loginGuard           *service.LoginGuardService
+	analytics            *service.AnalyticsService
 
 	dingTalkClientInstance *DingTalkClient
 	dingTalkClientMu       sync.Mutex
@@ -62,6 +63,9 @@ type RegisterRequest struct {
 	// Built-in image captcha (only asked for here when email verification is off).
 	CaptchaID   string `json:"captcha_id"`
 	CaptchaCode string `json:"captcha_code"`
+	// First-touch source kept by the browser (utm, invite code, referrer, landing page).
+	VisitorID   string                        `json:"visitor_id"`
+	Attribution *service.AnalyticsAttribution `json:"attribution"`
 }
 
 // SendVerifyCodeRequest 发送验证码请求
@@ -233,6 +237,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 	h.loginGuard.RecordSignup(c.Request.Context(), clientIP)
+	h.recordSignupAttribution(c, user, req.VisitorID, req.Attribution, req.AffCode)
 
 	h.respondWithTokenPair(c, user)
 }

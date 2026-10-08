@@ -2,6 +2,8 @@
 // localStorage — the same scheme as the learning site (learn/.vitepress/theme/api.ts).
 // Backend contract: editor/API.md.
 
+import { track } from './analytics.js';
+
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 const EXPIRES_KEY = 'token_expires_at';
@@ -116,8 +118,10 @@ export function wechatUpload(account, kind, blob, filename) {
   return api('/editor/wechat/upload', { method: 'POST', form });
 }
 
-export function wechatDraft(account, article) {
-  return api('/editor/wechat/draft', { method: 'POST', json: { appid: account.appid, secret: account.secret, article } });
+export async function wechatDraft(account, article) {
+  const res = await api('/editor/wechat/draft', { method: 'POST', json: { appid: account.appid, secret: account.secret, article } });
+  track('editor_draft_push');
+  return res;
 }
 
 // --- 导入 ----------------------------------------------------------------------------------------
@@ -204,9 +208,12 @@ export async function streamAiText(body, onDelta, signal) {
     }
   }
   if (buf.trim()) handle(buf);
+  track('editor_ai_use', { kind: 'text' });
 }
 
 /** POST /editor/ai/image → {b64_json, mime}. */
-export function aiImage(keyId, prompt, size) {
-  return api('/editor/ai/image', { method: 'POST', json: { key_id: keyId, prompt, size } });
+export async function aiImage(keyId, prompt, size) {
+  const res = await api('/editor/ai/image', { method: 'POST', json: { key_id: keyId, prompt, size } });
+  track('editor_ai_use', { kind: 'image' });
+  return res;
 }
