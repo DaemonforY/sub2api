@@ -102,11 +102,15 @@ func TestStarterKey(t *testing.T) {
 	router := service.NewBillingRouteService(subs, groupRepo, settings)
 	keys := service.NewAPIKeyService(NewAPIKeyRepository(integrationEntClient, integrationDB), userRepo, groupRepo, subRepo, NewUserGroupRateRepository(integrationDB), nil, &config.Config{})
 	starter := service.NewStarterKeyService(keys, userRepo, router)
+	// Committed rows; other suites list groups and keys, so remove them afterwards.
+	committed := trackCommitted(t)
 
 	paygo := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "starter-paygo-" + sfx, Platform: service.PlatformOpenAI, SubscriptionType: service.SubscriptionTypeStandard, RateMultiplier: 1})
 	_, err := integrationDB.ExecContext(ctx, `UPDATE groups SET sort_order = -5000 WHERE id = $1`, paygo.ID)
 	require.NoError(t, err)
 	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "starter-" + sfx + "@test.local", Username: "starter" + sfx[len(sfx)-6:]})
+	committed.groups = append(committed.groups, paygo.ID)
+	committed.users = append(committed.users, user.ID)
 
 	k, created, err := starter.Ensure(ctx, user.ID)
 	require.NoError(t, err)
