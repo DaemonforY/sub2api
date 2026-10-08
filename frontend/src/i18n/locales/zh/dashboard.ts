@@ -1046,7 +1046,7 @@ export default {
 
   getStarted: {
     title: '三步开始使用',
-    subtitle: '在 Codex、Claude Code 等编程工具里接入 HiveGPT，大约 3 分钟。',
+    subtitle: '不用命令行：下载一个配置文件放进文件夹，就能在 Codex 里用上 HiveGPT，大约 3 分钟。',
     doneTitle: '接入成功',
     doneSubtitle: '已经收到你的第一次请求，之后的用量和费用都在「使用记录」里。',
     later: '稍后再说',
@@ -1054,29 +1054,49 @@ export default {
     waiting: '正在等你的第一次请求，每 10 秒自动检查一次…',
     needCredit: '账户余额为 0 且没有订阅时，调用会失败。',
     buy: '去充值或订阅',
-    tutorial: 'Codex 接入教程',
+    tutorial: 'Codex 接入教程（带截图）',
     askAssistant: '遇到问题问智能客服',
     viewUsage: '查看使用记录',
     learnMore: '去 AI 学习站学更多用法',
     scenes: '不知道用来做什么？看看场景玩法',
     steps: {
       key: {
-        title: '创建一个 API Key',
-        hint: '选择分组（决定能用哪些模型、怎么计费），名字随便起。',
+        title: 'API Key',
+        hint: '没能自动创建，请手动创建一个。',
+        preparing: '正在为你创建 Key…',
+        created: '已为你创建好「{name}」。订阅和余额都能用这个 Key，不用再建。',
         done: '已有 API Key。',
         action: '创建 Key'
       },
       config: {
-        title: '复制接入配置',
-        hint: '在 Key 的「使用」里选 Codex 或 Claude Code，按步骤复制配置到电脑上。',
-        done: '配置已复制。',
-        action: '查看接入配置'
+        title: '配置 Codex',
+        hint: '下载配置文件，放进 Codex 的文件夹，不用命令行。',
+        done: '配置文件已下载。',
+        action: '开始配置'
       },
       call: {
         title: '发出第一次请求',
-        hint: '在终端运行 codex 或 claude，随便问一句。请求成功后这里会自动打勾。',
+        hint: '重启 Codex，新建一个对话随便问一句。请求成功后这里会自动打勾。',
         done: '已收到你的第一次请求。'
       }
+    },
+    codex: {
+      title: '在 Codex 里用上 HiveGPT（桌面版、VS Code 插件都适用）',
+      os: { windows: 'Windows', mac: 'Mac', linux: 'Linux' },
+      install: '先装好 Codex 并打开一次（会自动建好下面这个文件夹）。',
+      installLink: '怎么安装',
+      download: '下载已经填好你的 Key 的配置文件：',
+      open: {
+        windows: '按键盘上的 Win + R，在弹出的「运行」框里粘贴下面这行，按回车，会打开 Codex 的文件夹：',
+        mac: '打开「访达」，按 Shift + Command + G，在「前往文件夹」里粘贴下面这行，按回车：',
+        linux: '打开文件管理器，按 Ctrl + L，粘贴下面这行，按回车（看不到的话按 Ctrl + H 显示隐藏文件夹）：'
+      },
+      copy: '复制',
+      copied: '已复制',
+      drop: '把刚下载的 config.toml（一般在「下载」文件夹里）拖进这个文件夹；提示已有同名文件就选「替换」。如果下载后变成了 config (1).toml，先改名为 config.toml。',
+      restart: '完全退出 Codex 再打开，就会用 HiveGPT 了。',
+      notes: '配置文件里有你的 Key，不要发给别人。用 Claude Code、Cherry Studio 等其他工具？',
+      otherTools: '去 Key 的「使用」里复制对应配置'
     }
   },
 

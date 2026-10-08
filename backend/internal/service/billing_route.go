@@ -174,6 +174,15 @@ func (s *BillingRouteService) usableSubscriptionGroup(ctx context.Context, user 
 	return nil
 }
 
+// DefaultPayAsYouGoGroup is where a new key goes by default: the platform's first active
+// pay-as-you-go group the user may use (nil when there is none).
+func (s *BillingRouteService) DefaultPayAsYouGoGroup(ctx context.Context, user *User, platform string) *Group {
+	if s == nil || s.groups == nil || user == nil {
+		return nil
+	}
+	return s.payAsYouGoGroup(ctx, user, platform)
+}
+
 // payAsYouGoGroup: the platform's first active pay-as-you-go group the user may use.
 func (s *BillingRouteService) payAsYouGoGroup(ctx context.Context, user *User, platform string) *Group {
 	s.activeGroups(ctx)

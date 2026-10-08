@@ -21,6 +21,30 @@ import (
 // APIKeyHandler handles API key-related requests
 type APIKeyHandler struct {
 	apiKeyService *service.APIKeyService
+	starter       *service.StarterKeyService
+}
+
+// ProvideAPIKeyHandler also serves the dashboard's starter key.
+func ProvideAPIKeyHandler(apiKeyService *service.APIKeyService, starter *service.StarterKeyService) *APIKeyHandler {
+	h := NewAPIKeyHandler(apiKeyService)
+	h.starter = starter
+	return h
+}
+
+// Starter POST /api/v1/keys/starter — the user's newest key, made for them (in the default
+// pay-as-you-go group) when they have none, so getting started needs no key form.
+func (h *APIKeyHandler) Starter(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	key, created, err := h.starter.Ensure(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"key": dto.APIKeyFromService(key), "created": created})
 }
 
 // NewAPIKeyHandler creates a new APIKeyHandler

@@ -18,16 +18,73 @@
         </span>
         <div class="min-w-0 space-y-1.5">
           <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t(`getStarted.steps.${s.key}.title`) }}</p>
-          <p class="text-xs leading-5 text-gray-500 dark:text-dark-400">{{ s.done ? t(`getStarted.steps.${s.key}.done`) : t(`getStarted.steps.${s.key}.hint`) }}</p>
-          <router-link v-if="!s.done && s.to" :to="s.to" class="btn btn-sm" :class="s.current ? 'btn-primary' : 'btn-secondary'" :data-testid="`get-started-go-${s.key}`">
-            {{ t(`getStarted.steps.${s.key}.action`) }}
+          <p class="text-xs leading-5 text-gray-500 dark:text-dark-400">{{ stepText(s) }}</p>
+          <router-link v-if="s.key === 'key' && !s.done && starterFailed" to="/keys?action=create" class="btn btn-sm btn-primary" data-testid="get-started-go-key">
+            {{ t('getStarted.steps.key.action') }}
           </router-link>
+          <button v-if="s.key === 'config' && hasKey && !configOpen" type="button" class="btn btn-sm" :class="s.current ? 'btn-primary' : 'btn-secondary'" data-testid="get-started-go-config" @click="openConfig">
+            {{ t('getStarted.steps.config.action') }}
+          </button>
           <p v-if="s.key === 'call' && !s.done && waiting" class="flex items-center gap-1.5 text-xs text-primary-600 dark:text-primary-400" data-testid="get-started-waiting">
             <span class="h-2 w-2 animate-pulse rounded-full bg-primary-500"></span>{{ t('getStarted.waiting') }}
           </p>
         </div>
       </li>
     </ol>
+
+    <!-- Set up Codex without a terminal: download config.toml, drop it into the .codex folder. -->
+    <div v-if="configOpen && starterKey" class="mx-4 mb-4 space-y-3 rounded-xl border border-primary-200 bg-white p-4 dark:border-primary-900/40 dark:bg-dark-800" data-testid="get-started-config">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('getStarted.codex.title') }}</p>
+        <div class="flex gap-1" role="tablist">
+          <button
+            v-for="o in OS_LIST"
+            :key="o"
+            type="button"
+            role="tab"
+            class="rounded-md px-2.5 py-1 text-xs"
+            :class="os === o ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300'"
+            :data-testid="`get-started-os-${o}`"
+            @click="os = o"
+          >
+            {{ t(`getStarted.codex.os.${o}`) }}
+          </button>
+        </div>
+      </div>
+      <ol class="space-y-2.5 text-sm text-gray-700 dark:text-dark-200">
+        <li class="flex gap-2">
+          <span class="font-semibold text-primary-600">1</span>
+          <span>{{ t('getStarted.codex.install') }}<a href="/learn/codex/hivegpt" target="_blank" rel="noopener" class="ml-1 text-primary-600 hover:underline">{{ t('getStarted.codex.installLink') }} ↗</a></span>
+        </li>
+        <li class="flex flex-wrap items-center gap-2">
+          <span class="font-semibold text-primary-600">2</span>
+          <span>{{ t('getStarted.codex.download') }}</span>
+          <button type="button" class="btn btn-sm btn-primary" data-testid="get-started-download" @click="downloadConfig">⬇ config.toml</button>
+        </li>
+        <li class="flex gap-2">
+          <span class="font-semibold text-primary-600">3</span>
+          <span class="space-y-1">
+            <span class="block">{{ t(`getStarted.codex.open.${os}`) }}</span>
+            <span class="inline-flex items-center gap-2">
+              <code class="rounded bg-gray-100 px-2 py-0.5 font-mono text-xs dark:bg-dark-700" data-testid="get-started-folder">{{ folder }}</code>
+              <button type="button" class="text-xs text-primary-600 hover:underline" @click="copyFolder">{{ folderCopied ? t('getStarted.codex.copied') : t('getStarted.codex.copy') }}</button>
+            </span>
+          </span>
+        </li>
+        <li class="flex gap-2">
+          <span class="font-semibold text-primary-600">4</span>
+          <span>{{ t('getStarted.codex.drop') }}</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="font-semibold text-primary-600">5</span>
+          <span>{{ t('getStarted.codex.restart') }}</span>
+        </li>
+      </ol>
+      <p class="text-xs leading-5 text-gray-500 dark:text-dark-400">
+        {{ t('getStarted.codex.notes') }}
+        <router-link to="/keys?action=use" class="text-primary-600 hover:underline">{{ t('getStarted.codex.otherTools') }}</router-link>
+      </p>
+    </div>
 
     <div class="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-gray-100 px-6 py-3 text-xs text-gray-500 dark:border-dark-700 dark:text-dark-400">
       <template v-if="allDone">
@@ -52,9 +109,13 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { usageAPI } from '@/api/usage'
+import { keysAPI } from '@/api/keys'
+import { useAppStore } from '@/stores/app'
 import { useSubscriptionStore } from '@/stores/subscriptions'
 import { guideStepDone, markGuideStep } from '@/utils/getStarted'
+import { codexConfigFolder, codexStarterConfig, detectDesktopOS, downloadTextFile, type DesktopOS } from '@/utils/codexStarterConfig'
 import { track } from '@/utils/analytics'
+import type { ApiKey } from '@/types'
 
 const props = defineProps<{
   userId: number
@@ -64,10 +125,12 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const appStore = useAppStore()
 const subscriptions = useSubscriptionStore()
 
 const POLL_MS = 10_000
 const POLL_FOR_MS = 15 * 60_000
+const OS_LIST: DesktopOS[] = ['windows', 'mac', 'linux']
 
 const keys = ref(props.apiKeys)
 const requests = ref(props.requests)
@@ -80,20 +143,73 @@ watch(() => [props.apiKeys, props.requests], ([k, r]) => {
   requests.value = Math.max(requests.value, r)
 })
 
+// The key the config uses: made for the user when they have none.
+const starterKey = ref<ApiKey | null>(null)
+const starterCreated = ref(false)
+const starterFailed = ref(false)
+const configOpen = ref(false)
+const os = ref<DesktopOS>(detectDesktopOS(typeof navigator === 'undefined' ? '' : navigator.userAgent))
+const folder = computed(() => codexConfigFolder(os.value))
+const folderCopied = ref(false)
+
 const hasKey = computed(() => keys.value > 0)
 const hasCall = computed(() => requests.value > 0)
 const allDone = computed(() => hasKey.value && hasCall.value)
 const visible = computed(() => !dismissed.value && startedEmpty)
 const needsCredit = computed(() => props.balance <= 0 && !subscriptions.hasActiveSubscriptions)
 
-const steps = computed(() => {
+type Step = { key: 'key' | 'config' | 'call'; done: boolean; current: boolean }
+const steps = computed<Step[]>(() => {
   const copiedDone = copied.value || hasCall.value
   return [
-    { key: 'key', done: hasKey.value, current: !hasKey.value, to: '/keys?action=create' },
-    { key: 'config', done: copiedDone, current: hasKey.value && !copiedDone, to: '/keys?action=use' },
-    { key: 'call', done: hasCall.value, current: hasKey.value && copiedDone && !hasCall.value, to: '' }
+    { key: 'key', done: hasKey.value, current: !hasKey.value },
+    { key: 'config', done: copiedDone, current: hasKey.value && !copiedDone },
+    { key: 'call', done: hasCall.value, current: hasKey.value && copiedDone && !hasCall.value }
   ]
 })
+
+function stepText(s: Step): string {
+  if (s.key === 'key' && s.done && starterCreated.value) return t('getStarted.steps.key.created', { name: starterKey.value?.name || '' })
+  if (s.key === 'key' && !s.done && !starterFailed.value) return t('getStarted.steps.key.preparing')
+  return s.done ? t(`getStarted.steps.${s.key}.done`) : t(`getStarted.steps.${s.key}.hint`)
+}
+
+async function ensureStarterKey(): Promise<void> {
+  try {
+    const res = await keysAPI.starter()
+    starterKey.value = res.key
+    starterCreated.value = res.created
+    keys.value = Math.max(keys.value, 1)
+    if (res.created) track('key_created', { source: 'starter' })
+  } catch {
+    starterFailed.value = true
+  }
+}
+
+function openConfig(): void {
+  configOpen.value = true
+  if (!starterKey.value) void ensureStarterKey()
+  track('guide_config_open', { os: os.value })
+}
+
+function downloadConfig(): void {
+  if (!starterKey.value) return
+  const base = appStore.cachedPublicSettings?.api_base_url || window.location.origin
+  downloadTextFile('config.toml', codexStarterConfig(base, starterKey.value.key))
+  markGuideStep('copied', props.userId)
+  copied.value = true
+  track('key_config_copied', { client: 'codex', via: 'download', os: os.value })
+}
+
+async function copyFolder(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(folder.value)
+    folderCopied.value = true
+    setTimeout(() => (folderCopied.value = false), 2000)
+  } catch {
+    window.prompt(t('getStarted.codex.copy'), folder.value)
+  }
+}
 
 // Waiting for the first call: check every 10 s for up to 15 minutes while the tab is visible.
 const waiting = computed(() => visible.value && hasKey.value && !hasCall.value)
@@ -144,6 +260,12 @@ onMounted(() => {
   if (visible.value) {
     track('guide_view', { step: steps.value.find((s) => !s.done)?.key || 'done' })
     void subscriptions.fetchActiveSubscriptions().catch(() => undefined)
+    // No key yet: make one now, so step 1 is already done and the Codex setup opens right away.
+    if (!hasKey.value) {
+      void ensureStarterKey().then(() => {
+        if (starterKey.value) configOpen.value = true
+      })
+    }
   }
 })
 

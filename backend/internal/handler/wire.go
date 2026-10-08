@@ -284,7 +284,7 @@ var ProviderSet = wire.NewSet(
 	// Top-level handlers
 	ProvideAuthHandler,
 	NewUserHandler,
-	NewAPIKeyHandler,
+	ProvideAPIKeyHandler,
 	NewUsageHandler,
 	NewRedeemHandler,
 	NewSubscriptionHandler,

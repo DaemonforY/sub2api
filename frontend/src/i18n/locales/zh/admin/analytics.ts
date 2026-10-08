@@ -229,7 +229,8 @@ export default {
       editor_ai_use: '排版：使用 AI',
       guide_view: '看到上手引导',
       guide_first_call: '引导中完成首次调用',
-      guide_dismiss: '关闭上手引导'
+      guide_dismiss: '关闭上手引导',
+      guide_config_open: '打开 Codex 配置引导'
     },
     reminder: {
       title: '新用户上手提醒邮件',

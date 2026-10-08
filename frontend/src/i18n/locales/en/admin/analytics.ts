@@ -229,7 +229,8 @@ export default {
       editor_ai_use: 'Editor: used AI',
       guide_view: 'Saw the get-started card',
       guide_first_call: 'First call from the card',
-      guide_dismiss: 'Closed the get-started card'
+      guide_dismiss: 'Closed the get-started card',
+      guide_config_open: 'Opened the Codex setup'
     },
     reminder: {
       title: 'Get-started reminder email',

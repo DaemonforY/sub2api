@@ -1042,7 +1042,7 @@ export default {
 
   getStarted: {
     title: 'Get started in three steps',
-    subtitle: 'Use HiveGPT in Codex, Claude Code and other coding tools — about 3 minutes.',
+    subtitle: 'No terminal needed: download one config file into a folder and use HiveGPT in Codex — about 3 minutes.',
     doneTitle: "You're connected",
     doneSubtitle: 'We received your first request. Usage and costs are under Usage.',
     later: 'Later',
@@ -1050,29 +1050,49 @@ export default {
     waiting: 'Waiting for your first request — checking every 10 seconds…',
     needCredit: 'With a zero balance and no subscription, requests will fail.',
     buy: 'Top up or subscribe',
-    tutorial: 'Codex setup guide',
+    tutorial: 'Codex setup guide (with screenshots)',
     askAssistant: 'Ask the support assistant',
     viewUsage: 'View usage',
     learnMore: 'Learn more on the AI learning site',
     scenes: 'Not sure what to use it for? See everyday use cases',
     steps: {
       key: {
-        title: 'Create an API key',
-        hint: 'Pick a group (it decides the models and pricing); any name will do.',
+        title: 'API key',
+        hint: "We couldn't create one for you — please create a key.",
+        preparing: 'Creating your key…',
+        created: 'We created "{name}" for you. It works with both your subscription and your balance.',
         done: 'You have an API key.',
         action: 'Create a key'
       },
       config: {
-        title: 'Copy the client config',
-        hint: 'Open "Use" on your key, pick Codex or Claude Code and copy the config to your computer.',
-        done: 'Config copied.',
-        action: 'Show the config'
+        title: 'Set up Codex',
+        hint: 'Download a config file and put it in the Codex folder — no terminal.',
+        done: 'Config file downloaded.',
+        action: 'Start'
       },
       call: {
         title: 'Send your first request',
-        hint: 'Run codex or claude in a terminal and ask anything. This ticks itself once the request arrives.',
+        hint: 'Restart Codex, start a chat and ask anything. This ticks itself once the request arrives.',
         done: 'We received your first request.'
       }
+    },
+    codex: {
+      title: 'Use HiveGPT in Codex (desktop app or VS Code extension)',
+      os: { windows: 'Windows', mac: 'Mac', linux: 'Linux' },
+      install: 'Install Codex and open it once (that creates the folder below).',
+      installLink: 'How to install',
+      download: 'Download the config file with your key already in it:',
+      open: {
+        windows: 'Press Win + R, paste the line below into the Run box and press Enter — the Codex folder opens:',
+        mac: 'Open Finder, press Shift + Command + G, paste the line below into Go to Folder and press Enter:',
+        linux: 'Open your file manager, press Ctrl + L, paste the line below and press Enter (Ctrl + H shows hidden folders):'
+      },
+      copy: 'Copy',
+      copied: 'Copied',
+      drop: 'Drag the downloaded config.toml (usually in Downloads) into that folder and choose Replace if asked. If it was saved as config (1).toml, rename it to config.toml first.',
+      restart: 'Quit Codex completely and open it again — it now uses HiveGPT.',
+      notes: 'The file contains your key; keep it to yourself. Using Claude Code, Cherry Studio or another tool?',
+      otherTools: 'Copy its config from "Use" on your key'
     }
   },
 

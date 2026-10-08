@@ -90,3 +90,37 @@ func TestBillingRoute(t *testing.T) {
 	require.False(t, off.Enabled(ctx))
 	require.Nil(t, off.Route(ctx, keyOn(subA, other), true, true))
 }
+
+func TestStarterKey(t *testing.T) {
+	ctx := context.Background()
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	settings := NewSettingRepository(integrationEntClient)
+	groupRepo := NewGroupRepository(integrationEntClient, integrationDB)
+	userRepo := NewUserRepository(integrationEntClient, integrationDB)
+	subRepo := NewUserSubscriptionRepository(integrationEntClient)
+	subs := service.NewSubscriptionService(groupRepo, subRepo, nil, integrationEntClient, &config.Config{})
+	router := service.NewBillingRouteService(subs, groupRepo, settings)
+	keys := service.NewAPIKeyService(NewAPIKeyRepository(integrationEntClient, integrationDB), userRepo, groupRepo, subRepo, NewUserGroupRateRepository(integrationDB), nil, &config.Config{})
+	starter := service.NewStarterKeyService(keys, userRepo, router)
+
+	paygo := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "starter-paygo-" + sfx, Platform: service.PlatformOpenAI, SubscriptionType: service.SubscriptionTypeStandard, RateMultiplier: 1})
+	_, err := integrationDB.ExecContext(ctx, `UPDATE groups SET sort_order = -5000 WHERE id = $1`, paygo.ID)
+	require.NoError(t, err)
+	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "starter-" + sfx + "@test.local", Username: "starter" + sfx[len(sfx)-6:]})
+
+	k, created, err := starter.Ensure(ctx, user.ID)
+	require.NoError(t, err)
+	require.True(t, created)
+	require.Equal(t, service.StarterKeyName, k.Name)
+	require.NotNil(t, k.GroupID)
+	require.Equal(t, paygo.ID, *k.GroupID)
+	require.NotEmpty(t, k.Key)
+
+	again, created, err := starter.Ensure(ctx, user.ID)
+	require.NoError(t, err)
+	require.False(t, created)
+	require.Equal(t, k.ID, again.ID)
+	var n int
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM api_keys WHERE user_id = $1 AND deleted_at IS NULL`, user.ID).Scan(&n))
+	require.Equal(t, 1, n)
+}

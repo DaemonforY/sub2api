@@ -54,6 +54,7 @@ var AnalyticsEventNames = map[string]bool{
 	"guide_view":        true, // dashboard "get started" card shown
 	"guide_first_call":  true, // … and saw the first API call arrive
 	"guide_dismiss":     true,
+	"guide_config_open": true, // opened the no-terminal Codex setup
 }
 
 var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true}

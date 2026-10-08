@@ -131,8 +131,18 @@ export async function toggleStatus(id: number, status: 'active' | 'inactive'): P
   return update(id, { status })
 }
 
+/**
+ * The user's newest key, made for them (default pay-as-you-go group) when they have none —
+ * the dashboard's getting-started card uses it so nobody has to fill in the key form first.
+ */
+export async function starter(): Promise<{ key: ApiKey; created: boolean }> {
+  const { data } = await apiClient.post<{ key: ApiKey; created: boolean }>('/keys/starter')
+  return data
+}
+
 export const keysAPI = {
   list,
+  starter,
   getById,
   create,
   update,
