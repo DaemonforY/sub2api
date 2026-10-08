@@ -23,6 +23,7 @@ type growthPublicConfig struct {
 	AffiliateEnabled        bool     `json:"affiliate_enabled"`
 	InviteeBonusRatePercent float64  `json:"invitee_bonus_rate_percent"`
 	InviteeBonusCap         float64  `json:"invitee_bonus_cap"`
+	InviteeSignupBonus      float64  `json:"invitee_signup_bonus"`
 	LeaderboardEnabled      bool     `json:"leaderboard_enabled"`
 	EduVerifyEnabled        bool     `json:"edu_verify_enabled"`
 	EduDiscountPercent      float64  `json:"edu_discount_percent"`
@@ -47,6 +48,7 @@ func (h *GrowthHandler) PublicConfig(c *gin.Context) {
 	if affiliateEnabled {
 		cfg.InviteeBonusRatePercent = settings.InviteeBonusRatePercent
 		cfg.InviteeBonusCap = settings.InviteeBonusCap
+		cfg.InviteeSignupBonus = settings.InviteeSignupBonus
 	}
 	if settings.EduVerifyEnabled {
 		cfg.EduDiscountPercent = settings.EduDiscountPercent

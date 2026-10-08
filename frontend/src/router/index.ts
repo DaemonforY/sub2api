@@ -610,6 +610,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/channel-links',
+    name: 'AdminChannelLinks',
+    component: () => import('@/views/admin/ChannelLinksView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Channel links',
+      titleKey: 'admin.channelLinks.title',
+      descriptionKey: 'admin.channelLinks.description'
+    }
+  },
+  {
     path: '/admin/courses',
     name: 'AdminCourses',
     component: () => import('@/views/admin/CoursesView.vue'),

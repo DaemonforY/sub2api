@@ -103,6 +103,7 @@
               <li>2. {{ t('affiliate.tips.line2', { rate: `${formattedRebateRate}%` }) }}</li>
               <li>3. {{ t('affiliate.tips.line3') }}</li>
               <li v-if="detail.aff_frozen_quota > 0">4. {{ t('affiliate.tips.line4') }}</li>
+              <li v-if="inviteeSignupBonus > 0" data-testid="invitee-trial-tip">🎁 {{ t('growth.inviteeBonus.affiliateTrialTip', { amount: inviteeSignupBonus }) }}</li>
               <li v-if="inviteeBonusRate > 0" data-testid="invitee-bonus-tip">🎁 {{ t('growth.inviteeBonus.affiliateTip', { rate: inviteeBonusRate }) }}</li>
               <li>💡 {{ t('growth.inviteeBonus.balanceForSubscription') }}</li>
             </ul>
@@ -115,6 +116,7 @@
           :rebate-rate="detail.effective_rebate_rate_percent ?? 0"
           :invitee-bonus-rate="inviteeBonusRate"
           :invitee-bonus-cap="inviteeBonusCap"
+          :invitee-signup-bonus="inviteeSignupBonus"
           :edu-discount="eduDiscount"
         />
 
@@ -282,6 +284,7 @@ async function transferQuota(): Promise<void> {
 
 const inviteeBonusRate = ref(0)
 const inviteeBonusCap = ref(0)
+const inviteeSignupBonus = ref(0)
 const eduDiscount = ref(0)
 
 onMounted(() => {
@@ -289,6 +292,7 @@ onMounted(() => {
   growthAPI.getPublicConfig().then((cfg) => {
     inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
     inviteeBonusCap.value = cfg.affiliate_enabled ? cfg.invitee_bonus_cap : 0
+    inviteeSignupBonus.value = cfg.affiliate_enabled ? cfg.invitee_signup_bonus || 0 : 0
     eduDiscount.value = cfg.edu_verify_enabled ? cfg.edu_discount_percent : 0
   }).catch(() => {})
 })

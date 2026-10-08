@@ -219,6 +219,22 @@ type AffiliateService struct {
 	settingService       *SettingService
 	authCacheInvalidator APIKeyAuthCacheInvalidator
 	billingCacheService  *BillingCacheService
+	// inviterBound runs after a user's inviter is set by the user (at sign-up or within the
+	// late-bind window) — the growth service grants the invitee's sign-up trial credit there.
+	inviterBound func(ctx context.Context, inviteeID, inviterID int64)
+}
+
+// SetInviterBoundHook registers what runs after a user binds an inviter.
+func (s *AffiliateService) SetInviterBoundHook(fn func(ctx context.Context, inviteeID, inviterID int64)) {
+	if s != nil {
+		s.inviterBound = fn
+	}
+}
+
+func (s *AffiliateService) afterInviterBound(ctx context.Context, inviteeID, inviterID int64) {
+	if s != nil && s.inviterBound != nil {
+		s.inviterBound(ctx, inviteeID, inviterID)
+	}
 }
 
 func NewAffiliateService(repo AffiliateRepository, settingService *SettingService, authCacheInvalidator APIKeyAuthCacheInvalidator, billingCacheService *BillingCacheService) *AffiliateService {
@@ -318,6 +334,7 @@ func (s *AffiliateService) BindInviterByCode(ctx context.Context, userID int64, 
 	if !bound {
 		return ErrAffiliateAlreadyBound
 	}
+	s.afterInviterBound(ctx, userID, inviterSummary.UserID)
 	return nil
 }
 

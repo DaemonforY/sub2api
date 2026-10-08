@@ -31,6 +31,22 @@
           </div>
         </section>
 
+        <section class="card space-y-4 p-6" data-testid="growth-signup-bonus">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🎟️ {{ t('growth.admin.settings.signupBonusTitle') }}</h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-signup-bonus">{{ t('growth.admin.settings.signupBonus') }}</label>
+              <input id="growth-signup-bonus" v-model.number="form.invitee_signup_bonus" type="number" min="0" max="5" step="0.1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.signupBonusHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-signup-limit">{{ t('growth.admin.settings.signupDailyLimit') }}</label>
+              <input id="growth-signup-limit" v-model.number="form.invitee_signup_daily_limit" type="number" min="1" max="1000" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.signupDailyLimitHint') }}</p>
+            </div>
+          </div>
+        </section>
+
         <section class="card space-y-3 p-6">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🏆 {{ t('growth.admin.settings.leaderboardTitle') }}</h2>
           <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
@@ -187,6 +203,8 @@ async function save() {
       ...form.value,
       invitee_bonus_rate_percent: Number(form.value.invitee_bonus_rate_percent) || 0,
       invitee_bonus_cap: Number(form.value.invitee_bonus_cap) || 0,
+      invitee_signup_bonus: Number(form.value.invitee_signup_bonus) || 0,
+      invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,
       edu_email_suffixes: suffixText.value.split(/[\s,，、]+/).map((s) => s.trim()).filter(Boolean),
     }

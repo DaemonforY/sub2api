@@ -8,6 +8,8 @@ export interface GrowthPublicConfig {
   affiliate_enabled: boolean
   invitee_bonus_rate_percent: number
   invitee_bonus_cap: number
+  /** Trial balance for signing up with an invite ($, 0 = off). */
+  invitee_signup_bonus: number
   leaderboard_enabled: boolean
   edu_verify_enabled: boolean
   edu_discount_percent: number
@@ -59,6 +61,8 @@ export interface InviteLeaderboard {
 export interface GrowthSettings {
   invitee_bonus_rate_percent: number
   invitee_bonus_cap: number
+  invitee_signup_bonus: number
+  invitee_signup_daily_limit: number
   leaderboard_enabled: boolean
   edu_verify_enabled: boolean
   edu_email_suffixes: string[]

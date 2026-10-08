@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 )
 
 // Growth programs built on top of the affiliate system:
@@ -26,6 +27,8 @@ const (
 	SettingKeyGrowthInviteeBonusRate    = "growth_invitee_bonus_rate"         // 被邀请人首单奖励比例（百分比，0=关闭）
 	SettingKeyGrowthInviteeBonusCap     = "growth_invitee_bonus_cap"          // 被邀请人首单奖励上限（0=不限）
 	SettingKeyGrowthLeaderboardEnabled  = "growth_leaderboard_enabled"        // 是否向用户展示邀请排行榜
+	SettingKeyGrowthSignupBonus         = "growth_invitee_signup_bonus"       // 被邀请人注册试用余额（0=关闭）
+	SettingKeyGrowthSignupDailyLimit    = "growth_invitee_signup_daily_limit" // 注册试用每天最多发放人数
 	SettingKeyEduVerifyEnabled          = "edu_verify_enabled"                // 是否开放教育邮箱认证
 	SettingKeyEduEmailSuffixes          = "edu_email_suffixes"                // 教育邮箱后缀（JSON 数组，如 ["edu.cn"]）
 	SettingKeyEduSubscriptionDiscount   = "edu_subscription_discount_percent" // 认证用户订阅折扣（百分比，0=无折扣）
@@ -34,7 +37,12 @@ const (
 	growthEduDiscountMax                = 90.0
 	growthEduSuffixesMax                = 20
 	growthLeaderboardPublicLimitDefault = 20
-	growthLeaderboardAdminLimitMax      = 500
+	growthSignupBonusMax                = 5.0
+	growthSignupDailyLimitDefault       = 20
+	growthSignupDailyLimitMax           = 1000
+	// One inviter gets at most this many trial credits granted to their invitees per day.
+	growthSignupPerInviterDaily    = 5
+	growthLeaderboardAdminLimitMax = 500
 )
 
 var defaultEduEmailSuffixes = []string{"edu.cn"}
@@ -49,8 +57,11 @@ var (
 
 // GrowthSettings are the admin-editable knobs of the growth programs.
 type GrowthSettings struct {
-	InviteeBonusRatePercent float64  `json:"invitee_bonus_rate_percent"`
-	InviteeBonusCap         float64  `json:"invitee_bonus_cap"`
+	InviteeBonusRatePercent float64 `json:"invitee_bonus_rate_percent"`
+	InviteeBonusCap         float64 `json:"invitee_bonus_cap"`
+	// Trial balance for someone who signs up with an invite (0 = off), and how many a day at most.
+	InviteeSignupBonus      float64  `json:"invitee_signup_bonus"`
+	InviteeSignupDailyLimit int      `json:"invitee_signup_daily_limit"`
 	LeaderboardEnabled      bool     `json:"leaderboard_enabled"`
 	EduVerifyEnabled        bool     `json:"edu_verify_enabled"`
 	EduEmailSuffixes        []string `json:"edu_email_suffixes"`
@@ -106,6 +117,10 @@ type GrowthRepository interface {
 	FindEduUser(ctx context.Context, query string) (int64, string, error)
 	DeleteEduVerification(ctx context.Context, userID int64) (bool, error)
 	ListEduVerifications(ctx context.Context, search string, page, pageSize int) ([]EduVerification, int64, error)
+	// GrantInviteeSignupBonus credits the trial balance once to inviteeID, bound to inviterID, when the
+	// invitee registered after registeredAfter, the inviter has used the site (an API call or a paid
+	// order), and fewer than dailyLimit grants (perInviterLimit for this inviter) were made since dayStart.
+	GrantInviteeSignupBonus(ctx context.Context, inviteeID, inviterID int64, amount float64, registeredAfter, dayStart time.Time, dailyLimit, perInviterLimit int) (bool, error)
 	// GrantInviteeBonus credits amount to the invitee's balance for orderID when the invitee has an
 	// inviter, no earlier paid gateway order and no previous bonus. Returns the inviter and whether it was granted.
 	GrantInviteeBonus(ctx context.Context, inviteeID, orderID int64, amount float64, bindingNotBefore *time.Time) (granted bool, inviterID int64, err error)
@@ -149,7 +164,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 
 	vals, err := s.settingRepo.GetMultiple(ctx, []string{
 		SettingKeyGrowthInviteeBonusRate, SettingKeyGrowthInviteeBonusCap, SettingKeyGrowthLeaderboardEnabled,
-		SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
+		SettingKeyGrowthSignupBonus, SettingKeyGrowthSignupDailyLimit, SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -166,6 +181,8 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 	settings := &GrowthSettings{
 		InviteeBonusRatePercent: clampFloat(parseFloatOr(vals[SettingKeyGrowthInviteeBonusRate], 0), 0, growthInviteeBonusRateMax),
 		InviteeBonusCap:         math.Max(0, parseFloatOr(vals[SettingKeyGrowthInviteeBonusCap], 0)),
+		InviteeSignupBonus:      clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupBonus], 0), 0, growthSignupBonusMax),
+		InviteeSignupDailyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupDailyLimit], growthSignupDailyLimitDefault), 1, growthSignupDailyLimitMax)),
 		LeaderboardEnabled:      vals[SettingKeyGrowthLeaderboardEnabled] != "false", // on unless turned off
 		EduVerifyEnabled:        vals[SettingKeyEduVerifyEnabled] == "true",
 		EduDiscountPercent:      clampFloat(parseFloatOr(vals[SettingKeyEduSubscriptionDiscount], 0), 0, growthEduDiscountMax),
@@ -190,6 +207,15 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if !finite(in.InviteeBonusCap) || in.InviteeBonusCap < 0 {
 		return nil, infraerrors.BadRequest("INVALID_INVITEE_BONUS_CAP", "invitee bonus cap must be >= 0")
 	}
+	if !finite(in.InviteeSignupBonus) || in.InviteeSignupBonus < 0 || in.InviteeSignupBonus > growthSignupBonusMax {
+		return nil, infraerrors.BadRequest("INVALID_INVITEE_SIGNUP_BONUS", "注册试用余额需在 0 到 5 之间（Sign-up trial credit must be between 0 and 5）")
+	}
+	if in.InviteeSignupDailyLimit <= 0 {
+		in.InviteeSignupDailyLimit = growthSignupDailyLimitDefault
+	}
+	if in.InviteeSignupDailyLimit > growthSignupDailyLimitMax {
+		return nil, infraerrors.BadRequest("INVALID_INVITEE_SIGNUP_LIMIT", "每天发放人数最多 1000（At most 1000 trial credits a day）")
+	}
 	if !finite(in.EduDiscountPercent) || in.EduDiscountPercent < 0 || in.EduDiscountPercent > growthEduDiscountMax {
 		return nil, infraerrors.BadRequest("INVALID_EDU_DISCOUNT", "education discount must be between 0 and 90")
 	}
@@ -205,6 +231,8 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthInviteeBonusRate:   strconv.FormatFloat(in.InviteeBonusRatePercent, 'f', -1, 64),
 		SettingKeyGrowthInviteeBonusCap:    strconv.FormatFloat(in.InviteeBonusCap, 'f', -1, 64),
 		SettingKeyGrowthLeaderboardEnabled: strconv.FormatBool(in.LeaderboardEnabled),
+		SettingKeyGrowthSignupBonus:        strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
+		SettingKeyGrowthSignupDailyLimit:   strconv.Itoa(in.InviteeSignupDailyLimit),
 		SettingKeyEduVerifyEnabled:         strconv.FormatBool(in.EduVerifyEnabled),
 		SettingKeyEduEmailSuffixes:         string(suffixJSON),
 		SettingKeyEduSubscriptionDiscount:  strconv.FormatFloat(in.EduDiscountPercent, 'f', -1, 64),
@@ -425,6 +453,57 @@ func (s *GrowthService) AdminRevokeEduVerification(ctx context.Context, userID i
 		return infraerrors.NotFound("EDU_VERIFICATION_NOT_FOUND", "no education verification for this user")
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Invitee sign-up trial credit
+// ---------------------------------------------------------------------------
+
+// ProvideGrowthService creates the growth service and has the affiliate service grant the
+// sign-up trial credit whenever a user binds an inviter.
+func ProvideGrowthService(settingRepo SettingRepository, repo GrowthRepository, settingService *SettingService, emailService *EmailService, billingCache *BillingCacheService, authInvalidator APIKeyAuthCacheInvalidator, affiliate *AffiliateService) *GrowthService {
+	s := NewGrowthService(settingRepo, repo, settingService, emailService, billingCache, authInvalidator)
+	affiliate.SetInviterBoundHook(func(ctx context.Context, inviteeID, inviterID int64) {
+		if _, err := s.GrantInviteeSignupBonus(ctx, inviteeID, inviterID); err != nil {
+			logger.LegacyPrintf("service.growth", "[Growth] sign-up trial credit for user %d failed: %v", inviteeID, err)
+		}
+	})
+	return s
+}
+
+// GrantInviteeSignupBonus gives someone who just signed up with an invite a little balance to try
+// the API with, so the first call doesn't wait for a payment. Once per user; abuse is bounded by a
+// daily total, a per-inviter daily cap, and inviters having to be real users themselves.
+func (s *GrowthService) GrantInviteeSignupBonus(ctx context.Context, inviteeID, inviterID int64) (float64, error) {
+	if s == nil || s.repo == nil || inviteeID <= 0 || inviterID <= 0 || inviteeID == inviterID {
+		return 0, nil
+	}
+	if s.settingService != nil && !s.settingService.IsAffiliateEnabled(ctx) {
+		return 0, nil
+	}
+	settings, err := s.GetSettings(ctx)
+	if err != nil {
+		return 0, err
+	}
+	amount := settings.InviteeSignupBonus
+	if amount <= 0 {
+		return 0, nil
+	}
+	now := time.Now()
+	local := now.In(analyticsTZ)
+	dayStart := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, analyticsTZ)
+	granted, err := s.repo.GrantInviteeSignupBonus(ctx, inviteeID, inviterID, amount,
+		now.Add(-AffiliateLateBindWindow), dayStart, settings.InviteeSignupDailyLimit, growthSignupPerInviterDaily)
+	if err != nil || !granted {
+		return 0, err
+	}
+	if s.authInvalidator != nil {
+		s.authInvalidator.InvalidateAuthCacheByUserID(ctx, inviteeID)
+	}
+	if s.billingCache != nil {
+		_ = s.billingCache.InvalidateUserBalance(ctx, inviteeID)
+	}
+	return amount, nil
 }
 
 // ---------------------------------------------------------------------------

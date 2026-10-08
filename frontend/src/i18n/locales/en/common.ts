@@ -221,6 +221,7 @@ export default {
     learnAdmin: 'AI Learning',
     assistantAdmin: 'Support assistant',
     analyticsAdmin: 'Analytics',
+    channelLinksAdmin: 'Channel links',
   },
 
   // Auth

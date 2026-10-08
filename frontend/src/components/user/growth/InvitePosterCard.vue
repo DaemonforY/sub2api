@@ -67,6 +67,7 @@ const props = defineProps<{
   rebateRate: number
   inviteeBonusRate: number
   inviteeBonusCap: number
+  inviteeSignupBonus?: number
   eduDiscount: number
 }>()
 
@@ -85,6 +86,7 @@ const data = computed<PosterData>(() => ({
   rebateRate: props.rebateRate,
   inviteeBonusRate: props.inviteeBonusRate,
   inviteeBonusCap: props.inviteeBonusCap,
+  inviteeSignupBonus: props.inviteeSignupBonus || 0,
   eduDiscount: props.eduDiscount
 }))
 
@@ -136,7 +138,7 @@ async function copyImage() {
 }
 
 onMounted(() => void renderAll())
-watch(() => [props.inviteLink, props.affCode, props.rebateRate, props.inviteeBonusRate, props.inviteeBonusCap, props.eduDiscount, locale.value], () => {
+watch(() => [props.inviteLink, props.affCode, props.rebateRate, props.inviteeBonusRate, props.inviteeBonusCap, props.inviteeSignupBonus, props.eduDiscount, locale.value], () => {
   for (const id of POSTER_TEMPLATES) delete images[id]
   void renderAll()
 })

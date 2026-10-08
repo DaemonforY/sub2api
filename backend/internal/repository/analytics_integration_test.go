@@ -226,3 +226,75 @@ func TestPublicPricing(t *testing.T) {
 	require.GreaterOrEqual(t, out.AvgSampleRequests, 1)
 	require.Greater(t, out.AvgRequestCostUSD, 0.0)
 }
+
+func TestChannelLinkRepository(t *testing.T) {
+	ctx := context.Background()
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	repo := NewChannelLinkRepository(integrationDB)
+	links := service.NewChannelLinkService(repo, nil)
+	analytics := service.NewAnalyticsService(NewAnalyticsRepository(integrationDB))
+
+	l, err := links.Create(ctx, service.ChannelLinkInput{Name: "测试渠道", Source: "xiaohongshu", Medium: "post", TargetPath: "/pricing"})
+	require.NoError(t, err)
+	_, err = links.Create(ctx, service.ChannelLinkInput{Code: l.Code, Name: "dup", Source: "x"})
+	require.ErrorIs(t, err, service.ErrChannelLinkCodeTaken)
+
+	// Two clicks from browsers; the visitors land with the link's tags.
+	ua := "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile"
+	target := links.Resolve(ctx, l.Code, ua)
+	require.Contains(t, target, "utm_campaign="+l.Code)
+	links.Resolve(ctx, l.Code, ua)
+	attr := service.AnalyticsAttribution{Source: "xiaohongshu", Medium: "post", Campaign: l.Code, Landing: "/pricing"}
+	va, vb := "cla"+sfx, "clb"+sfx
+	for _, v := range []string{va, vb} {
+		_, err := analytics.Ingest(ctx, service.AnalyticsBatch{VisitorID: v, App: "main", Attr: attr,
+			Events: []service.AnalyticsBatchEvent{{Name: "page_view", Path: "/pricing"}}}, service.AnalyticsRequestMeta{IP: "203.0.113.9", UserAgent: ua})
+		require.NoError(t, err)
+	}
+	// Both sign up; A calls the API and pays ¥60, B stops there.
+	mk := func(tag string) *service.User {
+		return mustCreateUser(t, integrationEntClient, &service.User{Email: "cl-" + tag + "-" + sfx + "@test.local", Username: "cl" + tag + sfx[len(sfx)-6:]})
+	}
+	a, b := mk("a"), mk("b")
+	analytics.RecordSignup(ctx, a.ID, va, attr)
+	analytics.RecordSignup(ctx, b.ID, vb, attr)
+	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: a.ID, Key: "sk-cl-" + sfx})
+	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "cl-acc-" + sfx})
+	_, err = integrationEntClient.UsageLog.Create().SetUserID(a.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).
+		SetRequestID("cl-" + sfx).SetModel("gpt-5").SetCreatedAt(time.Now()).Save(ctx)
+	require.NoError(t, err)
+	_, err = integrationEntClient.PaymentOrder.Create().
+		SetUserID(a.ID).SetUserEmail(a.Email).SetUserName(a.Username).
+		SetAmount(60).SetPayAmount(60).SetFeeRate(0).
+		SetRechargeCode("CL-" + sfx).SetOutTradeNo("cl_" + sfx).
+		SetPaymentType("alipay").SetPaymentTradeNo("t").
+		SetOrderType(payment.OrderTypeSubscription).SetStatus(service.OrderStatusCompleted).
+		SetPaidAt(time.Now()).SetExpiresAt(time.Now()).SetClientIP("127.0.0.1").SetSrcHost("test").
+		Save(ctx)
+	require.NoError(t, err)
+
+	all, err := links.List(ctx)
+	require.NoError(t, err)
+	var got *service.ChannelLink
+	for i := range all {
+		if all[i].Code == l.Code {
+			got = &all[i]
+		}
+	}
+	require.NotNil(t, got)
+	require.EqualValues(t, 2, got.Clicks)
+	require.EqualValues(t, 2, got.Visitors)
+	require.EqualValues(t, 2, got.Signups)
+	require.EqualValues(t, 1, got.Activated)
+	require.EqualValues(t, 1, got.PaidUsers)
+	require.InDelta(t, 60, got.Revenue, 1e-9)
+
+	// Editing keeps the code; deleting removes it.
+	upd, err := links.Update(ctx, l.ID, service.ChannelLinkInput{Code: "ignored", Name: "改名", Source: "xiaohongshu", TargetPath: "/register"})
+	require.NoError(t, err)
+	require.Equal(t, l.Code, upd.Code)
+	require.Equal(t, "/register", upd.TargetPath)
+	require.NoError(t, links.Delete(ctx, l.ID))
+	require.ErrorIs(t, links.Delete(ctx, l.ID), service.ErrChannelLinkNotFound)
+	require.Equal(t, "/", links.Resolve(ctx, l.Code, ua))
+}

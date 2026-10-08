@@ -154,6 +154,68 @@ LIMIT $%d OFFSET $%d`, where, len(args)-1, len(args)), args...)
 // Invitee first-order bonus
 // ---------------------------------------------------------------------------
 
+func (r *growthRepository) GrantInviteeSignupBonus(ctx context.Context, inviteeID, inviterID int64, amount float64, registeredAfter, dayStart time.Time, dailyLimit, perInviterLimit int) (bool, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("begin signup bonus tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	// Serialize grants so the daily counts below can't be raced past.
+	if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtext('growth_invitee_signup_bonus'))`); err != nil {
+		return false, fmt.Errorf("lock signup bonus: %w", err)
+	}
+	var ok bool
+	if err := tx.QueryRowContext(ctx, `
+SELECT EXISTS (
+    SELECT 1 FROM users u JOIN user_affiliates a ON a.user_id = u.id
+    WHERE u.id = $1 AND u.deleted_at IS NULL AND u.status = 'active' AND u.created_at >= $3 AND a.inviter_id = $2
+) AND EXISTS (
+    SELECT 1 FROM users v WHERE v.id = $2 AND v.deleted_at IS NULL AND v.status = 'active'
+      AND (EXISTS (SELECT 1 FROM usage_logs l WHERE l.user_id = v.id)
+        OR EXISTS (SELECT 1 FROM payment_orders o WHERE o.user_id = v.id AND o.paid_at IS NOT NULL))
+)`, inviteeID, inviterID, registeredAfter).Scan(&ok); err != nil {
+		return false, fmt.Errorf("check signup bonus eligibility: %w", err)
+	}
+	if !ok {
+		return false, nil
+	}
+	var today, byInviter int
+	if err := tx.QueryRowContext(ctx, `
+SELECT COUNT(*), COUNT(*) FILTER (WHERE source_user_id = $2)
+FROM user_affiliate_ledger WHERE action = 'invitee_signup_bonus' AND created_at >= $1`, dayStart, inviterID).Scan(&today, &byInviter); err != nil {
+		return false, fmt.Errorf("count signup bonuses: %w", err)
+	}
+	if today >= dailyLimit || byInviter >= perInviterLimit {
+		return false, nil
+	}
+	var ledgerID int64
+	err = tx.QueryRowContext(ctx, `
+INSERT INTO user_affiliate_ledger (user_id, action, amount, source_user_id, created_at, updated_at)
+VALUES ($1, 'invitee_signup_bonus', $2, $3, NOW(), NOW())
+ON CONFLICT (user_id) WHERE action = 'invitee_signup_bonus' DO NOTHING
+RETURNING id`, inviteeID, amount, inviterID).Scan(&ledgerID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil // already granted
+	}
+	if err != nil {
+		return false, fmt.Errorf("record signup bonus: %w", err)
+	}
+	var balanceAfter float64
+	if err := tx.QueryRowContext(ctx,
+		`UPDATE users SET balance = balance + $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL RETURNING balance`,
+		amount, inviteeID,
+	).Scan(&balanceAfter); err != nil {
+		return false, fmt.Errorf("credit signup bonus: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE user_affiliate_ledger SET balance_after = $1 WHERE id = $2`, balanceAfter, ledgerID); err != nil {
+		return false, fmt.Errorf("record signup bonus balance snapshot: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit signup bonus: %w", err)
+	}
+	return true, nil
+}
+
 func (r *growthRepository) GrantInviteeBonus(ctx context.Context, inviteeID, orderID int64, amount float64, bindingNotBefore *time.Time) (bool, int64, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

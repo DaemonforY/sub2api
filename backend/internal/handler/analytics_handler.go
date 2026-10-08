@@ -18,10 +18,11 @@ const analyticsMaxBody = 32 << 10
 type AnalyticsHandler struct {
 	svc      *service.AnalyticsService
 	reminder *service.ActivationReminderService
+	links    *service.ChannelLinkService
 }
 
-func NewAnalyticsHandler(svc *service.AnalyticsService, reminder *service.ActivationReminderService) *AnalyticsHandler {
-	return &AnalyticsHandler{svc: svc, reminder: reminder}
+func NewAnalyticsHandler(svc *service.AnalyticsService, reminder *service.ActivationReminderService, links *service.ChannelLinkService) *AnalyticsHandler {
+	return &AnalyticsHandler{svc: svc, reminder: reminder, links: links}
 }
 
 // Collect POST /api/v1/events — a batch from the main site, /learn or /editor. Signed-in requests
@@ -80,4 +81,70 @@ func (h *AnalyticsHandler) AdminSetReminder(c *gin.Context) {
 		return
 	}
 	h.AdminReminder(c)
+}
+
+// ChannelRedirect GET /go/:code — a 渠道链接: off to its landing page with the utm tags.
+func (h *AnalyticsHandler) ChannelRedirect(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	c.Header("X-Robots-Tag", "noindex")
+	c.Redirect(http.StatusFound, h.links.Resolve(c.Request.Context(), c.Param("code"), c.GetHeader("User-Agent")))
+}
+
+// AdminChannelLinks GET /api/v1/admin/analytics/channel-links
+func (h *AnalyticsHandler) AdminChannelLinks(c *gin.Context) {
+	out, err := h.links.List(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+// AdminCreateChannelLink POST /api/v1/admin/analytics/channel-links
+func (h *AnalyticsHandler) AdminCreateChannelLink(c *gin.Context) {
+	var in service.ChannelLinkInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	out, err := h.links.Create(c.Request.Context(), in)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+// AdminUpdateChannelLink PUT /api/v1/admin/analytics/channel-links/:id (the code never changes)
+func (h *AnalyticsHandler) AdminUpdateChannelLink(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "Invalid id")
+		return
+	}
+	var in service.ChannelLinkInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	out, err := h.links.Update(c.Request.Context(), id, in)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+// AdminDeleteChannelLink DELETE /api/v1/admin/analytics/channel-links/:id
+func (h *AnalyticsHandler) AdminDeleteChannelLink(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "Invalid id")
+		return
+	}
+	if err := h.links.Delete(c.Request.Context(), id); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"deleted": true})
 }

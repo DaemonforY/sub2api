@@ -121,7 +121,10 @@
         <!-- Channels -->
         <div class="card p-4" data-testid="analytics-channels">
           <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.analytics.channels') }}</h3>
-          <p class="mb-2 text-xs text-gray-500">{{ t('admin.analytics.channelsHint') }}</p>
+          <p class="mb-2 text-xs text-gray-500">
+            {{ t('admin.analytics.channelsHint') }}
+            <router-link to="/admin/channel-links" class="text-primary-600 hover:underline dark:text-primary-400">{{ t('admin.analytics.manageChannelLinks') }}</router-link>
+          </p>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>

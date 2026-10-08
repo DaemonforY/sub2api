@@ -34,6 +34,11 @@ describe('invite poster copy', () => {
     expect(minimalCopy(data, t).offer).toBe('扫码注册，首单返 10% 余额，最高 ¥30')
   })
 
+  it('mentions the sign-up trial balance when there is one', () => {
+    expect(inviteCopy(data, t).sub).toBe('扫码注册并付费后，奖励自动到账，余额可以直接买订阅。')
+    expect(inviteCopy({ ...data, inviteeSignupBonus: 1 }, t).sub).toBe('扫码注册就送 $1 试用余额，付费后奖励自动到账。')
+  })
+
   it('drops the friend reward when the invitee bonus is off', () => {
     const off = { ...data, inviteeBonusRate: 0, eduDiscount: 0 }
     expect(inviteCopy(off, t).stats.map((s) => s.label)).toEqual(['你'])

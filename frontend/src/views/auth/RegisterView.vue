@@ -181,7 +181,7 @@
             class="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
             data-testid="invitee-bonus-notice"
           >
-            🎁 {{ t('auth.affiliateCodeValid') }}<template v-if="inviteeBonusRate > 0">{{ inviteeBonusCap > 0 ? t('growth.inviteeBonus.registerNoticeCapped', { rate: inviteeBonusRate, cap: inviteeBonusCap }) : t('growth.inviteeBonus.registerNotice', { rate: inviteeBonusRate }) }}</template>
+            🎁 {{ t('auth.affiliateCodeValid') }}<template v-if="inviteeSignupBonus > 0">{{ t('growth.inviteeBonus.registerTrial', { amount: inviteeSignupBonus }) }}</template><template v-if="inviteeBonusRate > 0">{{ inviteeBonusCap > 0 ? t('growth.inviteeBonus.registerNoticeCapped', { rate: inviteeBonusRate, cap: inviteeBonusCap }) : t('growth.inviteeBonus.registerNotice', { rate: inviteeBonusRate }) }}</template>
           </p>
         </div>
 
@@ -587,6 +587,7 @@ const postRegisterRedirect = computed(() => {
 // Invitee first-order bonus advertised next to the invitation code (0 = program off).
 const inviteeBonusRate = ref(0)
 const inviteeBonusCap = ref(0)
+const inviteeSignupBonus = ref(0)
 
 onMounted(async () => {
   track('signup_view')
@@ -594,6 +595,7 @@ onMounted(async () => {
   growthAPI.getPublicConfig().then((cfg) => {
     inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
     inviteeBonusCap.value = cfg.invitee_bonus_cap
+    inviteeSignupBonus.value = cfg.affiliate_enabled ? cfg.invitee_signup_bonus || 0 : 0
   }).catch(() => {})
 
   try {

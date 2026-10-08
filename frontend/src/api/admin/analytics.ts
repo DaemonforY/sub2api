@@ -70,4 +70,46 @@ export async function setReminder(enabled: boolean): Promise<ActivationReminderS
   return data
 }
 
-export default { getOverview, getReminder, setReminder }
+/** 渠道链接: hivegpt.cn/go/<code> → target_path tagged with utm_source / utm_medium / utm_campaign=<code>. */
+export interface ChannelLink {
+  id: number
+  code: string
+  name: string
+  source: string
+  medium: string
+  target_path: string
+  aff_code: string
+  note: string
+  clicks: number
+  created_at: string
+  updated_at: string
+  visitors: number
+  signups: number
+  /** Made an API call. */
+  activated: number
+  paid_users: number
+  revenue: number
+}
+
+export type ChannelLinkInput = Pick<ChannelLink, 'name' | 'source' | 'medium' | 'target_path' | 'aff_code' | 'note'> & { code?: string }
+
+export async function listChannelLinks(): Promise<ChannelLink[]> {
+  const { data } = await apiClient.get('/admin/analytics/channel-links')
+  return data
+}
+
+export async function createChannelLink(input: ChannelLinkInput): Promise<ChannelLink> {
+  const { data } = await apiClient.post('/admin/analytics/channel-links', input)
+  return data
+}
+
+export async function updateChannelLink(id: number, input: ChannelLinkInput): Promise<ChannelLink> {
+  const { data } = await apiClient.put(`/admin/analytics/channel-links/${id}`, input)
+  return data
+}
+
+export async function deleteChannelLink(id: number): Promise<void> {
+  await apiClient.delete(`/admin/analytics/channel-links/${id}`)
+}
+
+export default { getOverview, getReminder, setReminder, listChannelLinks, createChannelLink, updateChannelLink, deleteChannelLink }

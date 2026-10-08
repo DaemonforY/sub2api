@@ -27,6 +27,8 @@ export interface PosterData {
   inviteeBonusRate: number
   /** Invitee bonus cap in yuan (0 = no cap). */
   inviteeBonusCap: number
+  /** Trial balance the invitee gets on signing up ($, 0 = off). */
+  inviteeSignupBonus?: number
   /** Education verification subscription discount, percent (0 = off). */
   eduDiscount: number
 }
@@ -116,7 +118,9 @@ export function inviteCopy(data: PosterData, t: Translate) {
   return {
     tag: t('affiliatePoster.invite.tag'),
     headline: [t('affiliatePoster.invite.line1'), t('affiliatePoster.invite.line2')],
-    sub: t('affiliatePoster.invite.sub'),
+    sub: (data.inviteeSignupBonus || 0) > 0
+      ? t('affiliatePoster.invite.subTrial', { amount: trimMoney(data.inviteeSignupBonus || 0) })
+      : t('affiliatePoster.invite.sub'),
     stats: [
       ...(c.hasBonus ? [{ label: t('affiliatePoster.invite.friend'), value: c.bonus, desc: t('affiliatePoster.invite.friendDesc', { cap: c.capText }) }] : []),
       { label: t('affiliatePoster.invite.you'), value: c.rebate, desc: t('affiliatePoster.invite.youDesc') },

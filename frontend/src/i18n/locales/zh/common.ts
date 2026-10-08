@@ -221,6 +221,7 @@ export default {
     learnAdmin: 'AI 学习',
     assistantAdmin: '智能客服',
     analyticsAdmin: '数据看板',
+    channelLinksAdmin: '渠道链接',
   },
 
   // Auth

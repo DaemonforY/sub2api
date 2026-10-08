@@ -98,6 +98,7 @@ func (s *AffiliateService) BindInviterLate(ctx context.Context, userID int64, re
 	if !bound {
 		return ErrAffiliateAlreadyBound
 	}
+	s.afterInviterBound(ctx, userID, inviter.UserID)
 	return nil
 }
 

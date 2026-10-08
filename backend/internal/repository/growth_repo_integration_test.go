@@ -287,3 +287,65 @@ func TestGrowthInviteLeaderboard(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, none)
 }
+
+func TestGrowthInviteeSignupBonus(t *testing.T) {
+	e := newGrowthTestEnv(t)
+	var before int
+	require.NoError(t, integrationDB.QueryRowContext(e.ctx,
+		`SELECT COUNT(*) FROM user_affiliate_ledger WHERE action = 'invitee_signup_bonus' AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Shanghai') AT TIME ZONE 'Asia/Shanghai'`).Scan(&before))
+	e.set(t, map[string]string{
+		service.SettingKeyAffiliateEnabled:       "true",
+		service.SettingKeyGrowthSignupBonus:      "1",
+		service.SettingKeyGrowthSignupDailyLimit: fmt.Sprintf("%d", before+6),
+	})
+	settingService := service.NewSettingService(e.settings, nil)
+	aff := service.NewAffiliateService(e.affRepo, settingService, nil, nil)
+	growth := service.ProvideGrowthService(e.settings, e.repo, settingService, nil, nil, nil, aff)
+
+	code := func(u *service.User) string {
+		s, err := e.affRepo.EnsureUserAffiliate(e.ctx, u.ID)
+		require.NoError(t, err)
+		return s.AffCode
+	}
+	signUp := func(name, inviteCode string) *service.User {
+		u := e.user(t, name)
+		require.NoError(t, aff.BindInviterByCode(e.ctx, u.ID, inviteCode))
+		return u
+	}
+
+	// An inviter who never used the site can't hand out trial credit.
+	idle := e.user(t, "idle")
+	u := signUp("viaidle", code(idle))
+	require.Zero(t, e.balance(t, u.ID))
+
+	// A paying inviter can: each invitee gets it once.
+	inviter := e.user(t, "inviter")
+	e.paidOrder(t, inviter, 10, payment.TypeAlipay, time.Now())
+	first := signUp("inv1", code(inviter))
+	require.InDelta(t, 1.0, e.balance(t, first.ID), 1e-9)
+	again, err := growth.GrantInviteeSignupBonus(e.ctx, first.ID, inviter.ID)
+	require.NoError(t, err)
+	require.Zero(t, again)
+	require.InDelta(t, 1.0, e.balance(t, first.ID), 1e-9)
+
+	// Five a day per inviter.
+	for i := 2; i <= 5; i++ {
+		require.InDelta(t, 1.0, e.balance(t, signUp(fmt.Sprintf("inv%d", i), code(inviter)).ID), 1e-9)
+	}
+	require.Zero(t, e.balance(t, signUp("inv6", code(inviter)).ID))
+
+	// The daily total applies across inviters.
+	other := e.user(t, "other")
+	e.paidOrder(t, other, 10, payment.TypeWxpay, time.Now())
+	require.InDelta(t, 1.0, e.balance(t, signUp("oth1", code(other)).ID), 1e-9)
+	require.Zero(t, e.balance(t, signUp("oth2", code(other)).ID))
+
+	// Accounts older than the late-bind window don't qualify.
+	old := e.user(t, "old")
+	_, err = integrationDB.ExecContext(e.ctx, `UPDATE users SET created_at = NOW() - INTERVAL '8 days' WHERE id = $1`, old.ID)
+	require.NoError(t, err)
+	e.invite(t, other, old, time.Now())
+	got, err := growth.GrantInviteeSignupBonus(e.ctx, old.ID, other.ID)
+	require.NoError(t, err)
+	require.Zero(t, got)
+}
