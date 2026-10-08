@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -12,11 +14,12 @@ import (
 type GrowthHandler struct {
 	service        *service.GrowthService
 	settingService *service.SettingService
+	withdraw       *service.AffiliateWithdrawService
 }
 
 // NewGrowthHandler creates the user growth handler.
-func NewGrowthHandler(svc *service.GrowthService, settingService *service.SettingService) *GrowthHandler {
-	return &GrowthHandler{service: svc, settingService: settingService}
+func NewGrowthHandler(svc *service.GrowthService, settingService *service.SettingService, withdraw *service.AffiliateWithdrawService) *GrowthHandler {
+	return &GrowthHandler{service: svc, settingService: settingService, withdraw: withdraw}
 }
 
 type growthPublicConfig struct {
@@ -28,6 +31,8 @@ type growthPublicConfig struct {
 	EduVerifyEnabled        bool     `json:"edu_verify_enabled"`
 	EduDiscountPercent      float64  `json:"edu_discount_percent"`
 	EduEmailSuffixes        []string `json:"edu_email_suffixes"`
+	WithdrawEnabled         bool     `json:"withdraw_enabled"`
+	WithdrawMinCNY          float64  `json:"withdraw_min_cny,omitempty"`
 }
 
 // PublicConfig GET /api/v1/growth/config — what the register, referral and purchase pages advertise.
@@ -49,6 +54,10 @@ func (h *GrowthHandler) PublicConfig(c *gin.Context) {
 		cfg.InviteeBonusRatePercent = settings.InviteeBonusRatePercent
 		cfg.InviteeBonusCap = settings.InviteeBonusCap
 		cfg.InviteeSignupBonus = settings.InviteeSignupBonus
+		if settings.Enabled {
+			cfg.WithdrawEnabled = true
+			cfg.WithdrawMinCNY = settings.MinCNY
+		}
 	}
 	if settings.EduVerifyEnabled {
 		cfg.EduDiscountPercent = settings.EduDiscountPercent
@@ -128,4 +137,59 @@ func (h *GrowthHandler) Leaderboard(c *gin.Context) {
 		return
 	}
 	response.Success(c, board)
+}
+
+// WithdrawStatus GET /api/v1/user/aff/withdraw — the withdrawal box on 邀请返利.
+func (h *GrowthHandler) WithdrawStatus(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	status, err := h.withdraw.Status(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, status)
+}
+
+// RequestWithdraw POST /api/v1/user/aff/withdraw
+func (h *GrowthHandler) RequestWithdraw(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	var req service.WithdrawRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	w, err := h.withdraw.Request(c.Request.Context(), subject.UserID, req)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, w)
+}
+
+// CancelWithdraw POST /api/v1/user/aff/withdraw/:id/cancel
+func (h *GrowthHandler) CancelWithdraw(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "Invalid withdrawal id")
+		return
+	}
+	w, err := h.withdraw.Cancel(c.Request.Context(), subject.UserID, id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, w)
 }

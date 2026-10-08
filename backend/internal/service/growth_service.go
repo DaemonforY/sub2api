@@ -29,6 +29,9 @@ const (
 	SettingKeyGrowthLeaderboardEnabled  = "growth_leaderboard_enabled"        // 是否向用户展示邀请排行榜
 	SettingKeyGrowthSignupBonus         = "growth_invitee_signup_bonus"       // 被邀请人注册试用余额（0=关闭）
 	SettingKeyGrowthSignupDailyLimit    = "growth_invitee_signup_daily_limit" // 注册试用每天最多发放人数
+	SettingKeyGrowthWithdrawEnabled     = "growth_withdraw_enabled"           // 是否开放返利提现（人工打款）
+	SettingKeyGrowthWithdrawMinCNY      = "growth_withdraw_min_cny"           // 最低提现金额（元）
+	SettingKeyGrowthWithdrawMonthly     = "growth_withdraw_monthly_limit"     // 每人每月最多提现次数（0=不限）
 	SettingKeyEduVerifyEnabled          = "edu_verify_enabled"                // 是否开放教育邮箱认证
 	SettingKeyEduEmailSuffixes          = "edu_email_suffixes"                // 教育邮箱后缀（JSON 数组，如 ["edu.cn"]）
 	SettingKeyEduSubscriptionDiscount   = "edu_subscription_discount_percent" // 认证用户订阅折扣（百分比，0=无折扣）
@@ -66,6 +69,8 @@ type GrowthSettings struct {
 	EduVerifyEnabled        bool     `json:"edu_verify_enabled"`
 	EduEmailSuffixes        []string `json:"edu_email_suffixes"`
 	EduDiscountPercent      float64  `json:"edu_discount_percent"`
+	// 返利提现规则（字段平铺在 JSON 里：withdraw_enabled / withdraw_min_cny / withdraw_monthly_limit）
+	WithdrawSettings
 }
 
 // EduVerification is a verified school email of a user.
@@ -165,6 +170,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 	vals, err := s.settingRepo.GetMultiple(ctx, []string{
 		SettingKeyGrowthInviteeBonusRate, SettingKeyGrowthInviteeBonusCap, SettingKeyGrowthLeaderboardEnabled,
 		SettingKeyGrowthSignupBonus, SettingKeyGrowthSignupDailyLimit, SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
+		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -187,6 +193,11 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		EduVerifyEnabled:        vals[SettingKeyEduVerifyEnabled] == "true",
 		EduDiscountPercent:      clampFloat(parseFloatOr(vals[SettingKeyEduSubscriptionDiscount], 0), 0, growthEduDiscountMax),
 		EduEmailSuffixes:        defaultEduEmailSuffixes,
+		WithdrawSettings: WithdrawSettings{
+			Enabled:      vals[SettingKeyGrowthWithdrawEnabled] == "true",
+			MinCNY:       clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMinCNY], withdrawMinCNYDefault), withdrawMinCNYFloor, 100000),
+			MonthlyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMonthly], withdrawMonthlyLimitDefault), 0, withdrawMonthlyLimitMax)),
+		},
 	}
 	if raw := strings.TrimSpace(vals[SettingKeyEduEmailSuffixes]); raw != "" {
 		var list []string
@@ -226,6 +237,10 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if len(suffixes) > growthEduSuffixesMax {
 		return nil, infraerrors.BadRequest("INVALID_EDU_SUFFIXES", "too many school email suffixes")
 	}
+	withdraw, err := normalizeWithdrawSettings(in.WithdrawSettings)
+	if err != nil {
+		return nil, err
+	}
 	suffixJSON, _ := json.Marshal(suffixes)
 	if err := s.settingRepo.SetMultiple(ctx, map[string]string{
 		SettingKeyGrowthInviteeBonusRate:   strconv.FormatFloat(in.InviteeBonusRatePercent, 'f', -1, 64),
@@ -236,6 +251,9 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyEduVerifyEnabled:         strconv.FormatBool(in.EduVerifyEnabled),
 		SettingKeyEduEmailSuffixes:         string(suffixJSON),
 		SettingKeyEduSubscriptionDiscount:  strconv.FormatFloat(in.EduDiscountPercent, 'f', -1, 64),
+		SettingKeyGrowthWithdrawEnabled:    strconv.FormatBool(withdraw.Enabled),
+		SettingKeyGrowthWithdrawMinCNY:     strconv.FormatFloat(withdraw.MinCNY, 'f', -1, 64),
+		SettingKeyGrowthWithdrawMonthly:    strconv.Itoa(withdraw.MonthlyLimit),
 	}); err != nil {
 		return nil, fmt.Errorf("save growth settings: %w", err)
 	}

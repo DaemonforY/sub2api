@@ -47,6 +47,28 @@
           </div>
         </section>
 
+        <section class="card space-y-4 p-6" data-testid="growth-withdraw">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">💸 {{ t('growth.admin.settings.withdrawTitle') }}</h2>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.withdraw_enabled" data-testid="withdraw-enabled-toggle" />
+            {{ t('growth.admin.settings.withdrawEnabled') }}
+          </label>
+          <p class="text-xs leading-relaxed text-gray-400">{{ t('growth.admin.settings.withdrawHint') }}</p>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-withdraw-min">{{ t('growth.admin.settings.withdrawMin') }}</label>
+              <input id="growth-withdraw-min" v-model.number="form.withdraw_min_cny" type="number" min="1" max="100000" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.withdrawMinHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-withdraw-monthly">{{ t('growth.admin.settings.withdrawMonthly') }}</label>
+              <input id="growth-withdraw-monthly" v-model.number="form.withdraw_monthly_limit" type="number" min="0" max="31" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.withdrawMonthlyHint') }}</p>
+            </div>
+          </div>
+          <router-link to="/admin/affiliates/withdrawals" class="inline-block text-sm text-primary-600 hover:underline dark:text-primary-400">{{ t('growth.admin.nav.withdrawals') }} →</router-link>
+        </section>
+
         <section class="card space-y-3 p-6">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🏆 {{ t('growth.admin.settings.leaderboardTitle') }}</h2>
           <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
@@ -206,6 +228,8 @@ async function save() {
       invitee_signup_bonus: Number(form.value.invitee_signup_bonus) || 0,
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,
+      withdraw_min_cny: Number(form.value.withdraw_min_cny) || 50,
+      withdraw_monthly_limit: Math.max(0, Math.floor(Number(form.value.withdraw_monthly_limit) || 0)),
       edu_email_suffixes: suffixText.value.split(/[\s,，、]+/).map((s) => s.trim()).filter(Boolean),
     }
     form.value = await adminGrowthAPI.updateSettings(payload)

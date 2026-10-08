@@ -219,6 +219,7 @@ export default {
       pricing_view: 'Opened pricing',
       checkout_start: 'Started payment',
       invite_link_copy: 'Copied invite link',
+      withdraw_request: 'Requested a rebate withdrawal',
       canvas_click: 'Went to the canvas',
       assistant_open: 'Opened support assistant',
       assistant_ask: 'Asked the assistant',

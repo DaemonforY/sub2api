@@ -43,6 +43,7 @@ var AnalyticsEventNames = map[string]bool{
 	"pricing_view":      true,
 	"checkout_start":    true,
 	"invite_link_copy":  true,
+	"withdraw_request":  true, // asked to withdraw rebates
 	"canvas_click":      true, // a link out to the canvas
 	"assistant_open":    true,
 	"assistant_ask":     true,

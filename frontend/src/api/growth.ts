@@ -14,6 +14,60 @@ export interface GrowthPublicConfig {
   edu_verify_enabled: boolean
   edu_discount_percent: number
   edu_email_suffixes: string[]
+  /** 返利提现是否开放（人工打款） */
+  withdraw_enabled?: boolean
+  withdraw_min_cny?: number
+}
+
+export type WithdrawMethod = 'alipay' | 'wechat'
+export type WithdrawStatusValue = 'pending' | 'paid' | 'rejected' | 'cancelled'
+
+export interface AffiliateWithdrawal {
+  id: number
+  user_id: number
+  user_email?: string
+  username?: string
+  /** 扣除的返利额度（与「可用返利」同单位） */
+  quota_amount: number
+  /** 应打款金额（人民币） */
+  cny_amount: number
+  method: WithdrawMethod
+  account: string
+  real_name: string
+  user_note: string
+  status: WithdrawStatusValue
+  /** 打款备注或驳回原因 */
+  admin_note: string
+  reviewed_at?: string | null
+  created_at: string
+}
+
+export interface WithdrawStatus {
+  enabled: boolean
+  min_cny: number
+  /** 0 = 不限 */
+  monthly_limit: number
+  month_used: number
+  withdrawable_cny: number
+  available_quota: number
+  /** 付费订单带来的返利，折合人民币（累计） */
+  cash_cny: number
+  /** 已提现 + 处理中（人民币） */
+  withdrawn_cny: number
+  has_pending: boolean
+  last_method?: WithdrawMethod
+  last_account?: string
+  last_real_name?: string
+  withdrawals: AffiliateWithdrawal[]
+  freeze_hours: number
+}
+
+export interface WithdrawRequestPayload {
+  cny_amount: number
+  method: WithdrawMethod
+  account: string
+  real_name: string
+  note?: string
 }
 
 export interface EduVerification {
@@ -67,6 +121,10 @@ export interface GrowthSettings {
   edu_verify_enabled: boolean
   edu_email_suffixes: string[]
   edu_discount_percent: number
+  withdraw_enabled: boolean
+  withdraw_min_cny: number
+  /** 0 = 不限 */
+  withdraw_monthly_limit: number
 }
 
 export const growthAPI = {
@@ -87,6 +145,18 @@ export const growthAPI = {
   },
   async getLeaderboard(period: LeaderboardPeriod): Promise<InviteLeaderboard> {
     const { data } = await apiClient.get<InviteLeaderboard>('/user/aff/leaderboard', { params: { period } })
+    return data
+  },
+  async getWithdrawStatus(): Promise<WithdrawStatus> {
+    const { data } = await apiClient.get<WithdrawStatus>('/user/aff/withdraw')
+    return data
+  },
+  async requestWithdraw(payload: WithdrawRequestPayload): Promise<AffiliateWithdrawal> {
+    const { data } = await apiClient.post<AffiliateWithdrawal>('/user/aff/withdraw', payload)
+    return data
+  },
+  async cancelWithdraw(id: number): Promise<AffiliateWithdrawal> {
+    const { data } = await apiClient.post<AffiliateWithdrawal>(`/user/aff/withdraw/${id}/cancel`)
     return data
   },
 }
@@ -114,6 +184,24 @@ export const adminGrowthAPI = {
   },
   async getLeaderboard(params: { start?: string; end?: string; limit?: number }): Promise<InviteLeaderboard> {
     const { data } = await apiClient.get<InviteLeaderboard>('/admin/growth/leaderboard', { params })
+    return data
+  },
+  async listWithdrawals(params: { status?: WithdrawStatusValue | ''; search?: string; page?: number; page_size?: number }): Promise<BasePaginationResponse<AffiliateWithdrawal>> {
+    const { data } = await apiClient.get<BasePaginationResponse<AffiliateWithdrawal>>('/admin/growth/withdrawals', { params })
+    return data
+  },
+  async withdrawalPendingCount(): Promise<number> {
+    const { data } = await apiClient.get<{ count: number }>('/admin/growth/withdrawals/pending-count')
+    return data.count
+  },
+  /** note: 打款流水号等，可留空 */
+  async markWithdrawalPaid(id: number, note: string): Promise<AffiliateWithdrawal> {
+    const { data } = await apiClient.post<AffiliateWithdrawal>(`/admin/growth/withdrawals/${id}/paid`, { note })
+    return data
+  },
+  /** note: 驳回原因，用户会看到 */
+  async rejectWithdrawal(id: number, note: string): Promise<AffiliateWithdrawal> {
+    const { data } = await apiClient.post<AffiliateWithdrawal>(`/admin/growth/withdrawals/${id}/reject`, { note })
     return data
   },
 }

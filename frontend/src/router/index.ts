@@ -959,6 +959,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/affiliates/withdrawals',
+    name: 'AdminAffiliateWithdrawals',
+    component: () => import('@/views/admin/affiliates/AdminWithdrawalsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Rebate Withdrawals',
+      titleKey: 'growth.admin.nav.withdrawals'
+    }
+  },
+  {
     path: '/admin/affiliates/transfers',
     name: 'AdminAffiliateTransfers',
     component: () => import('@/views/admin/affiliates/AdminAffiliateTransfersView.vue'),

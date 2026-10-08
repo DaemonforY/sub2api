@@ -157,6 +157,11 @@ func registerGrowthAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		growth.POST("/edu-verifications", h.Admin.Growth.GrantEduVerification)
 		growth.DELETE("/edu-verifications/:user_id", h.Admin.Growth.RevokeEduVerification)
 		growth.GET("/leaderboard", h.Admin.Growth.Leaderboard)
+		// 返利提现审核
+		growth.GET("/withdrawals", h.Admin.Growth.ListWithdrawals)
+		growth.GET("/withdrawals/pending-count", h.Admin.Growth.WithdrawalPendingCount)
+		growth.POST("/withdrawals/:id/paid", h.Admin.Growth.MarkWithdrawalPaid)
+		growth.POST("/withdrawals/:id/reject", h.Admin.Growth.RejectWithdrawal)
 	}
 }
 

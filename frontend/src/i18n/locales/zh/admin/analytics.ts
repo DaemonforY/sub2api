@@ -219,6 +219,7 @@ export default {
       pricing_view: '打开充值 / 订阅页',
       checkout_start: '发起支付',
       invite_link_copy: '复制邀请链接',
+      withdraw_request: '申请返利提现',
       canvas_click: '点击进入画布',
       assistant_open: '打开智能客服',
       assistant_ask: '向客服提问',

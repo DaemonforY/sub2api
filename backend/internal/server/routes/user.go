@@ -40,6 +40,10 @@ func RegisterUserRoutes(
 			user.POST("/aff/bind", h.User.BindAffiliateInviter)
 			if h.Growth != nil {
 				user.GET("/aff/leaderboard", h.Growth.Leaderboard)
+				// 返利提现（人工打款）
+				user.GET("/aff/withdraw", h.Growth.WithdrawStatus)
+				user.POST("/aff/withdraw", panelRateLimiter.Heavy(), h.Growth.RequestWithdraw)
+				user.POST("/aff/withdraw/:id/cancel", h.Growth.CancelWithdraw)
 				// 教育邮箱认证：发码走重限流（每个邮箱另有冷却与尝试次数上限）
 				user.GET("/edu", h.Growth.GetEdu)
 				user.POST("/edu/send-code", panelRateLimiter.Heavy(), h.Growth.SendEduCode)

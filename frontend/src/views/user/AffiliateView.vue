@@ -120,6 +120,8 @@
           :edu-discount="eduDiscount"
         />
 
+        <WithdrawCard ref="withdrawCard" @changed="loadAffiliateDetail(true)" @loaded="(s) => (withdrawableCny = s.enabled ? s.withdrawable_cny : 0)" />
+
         <div class="card p-6">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -129,7 +131,7 @@
             <button
               class="btn btn-primary"
               :disabled="transferring || detail.aff_quota <= 0"
-              @click="transferQuota"
+              @click="requestTransfer"
             >
               <Icon v-if="transferring" name="refresh" size="sm" class="animate-spin" />
               <Icon v-else name="dollar" size="sm" />
@@ -140,6 +142,15 @@
             {{ t('affiliate.transfer.empty') }}
           </p>
         </div>
+
+        <ConfirmDialog
+          :show="confirmTransfer"
+          :title="t('affiliate.transfer.button')"
+          :message="t('growth.withdraw.transferWarn', { amount: withdrawableCny.toFixed(2) })"
+          danger
+          @confirm="confirmTransfer = false; transferQuota()"
+          @cancel="confirmTransfer = false"
+        />
 
         <InviteLeaderboardCard />
 
@@ -186,6 +197,8 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import InviteLeaderboardCard from '@/components/user/growth/InviteLeaderboardCard.vue'
 import InvitePosterCard from '@/components/user/growth/InvitePosterCard.vue'
+import WithdrawCard from '@/components/user/growth/WithdrawCard.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { growthAPI } from '@/api/growth'
 import userAPI from '@/api/user'
 import type { UserAffiliateDetail } from '@/types'
@@ -205,6 +218,10 @@ const transferring = ref(false)
 const bindCode = ref('')
 const binding = ref(false)
 const detail = ref<UserAffiliateDetail | null>(null)
+const withdrawCard = ref<InstanceType<typeof WithdrawCard> | null>(null)
+// Cash the user could still withdraw; moving rebates to balance gives that up, so ask first.
+const withdrawableCny = ref(0)
+const confirmTransfer = ref(false)
 
 const inviteLink = computed(() => {
   if (!detail.value) return ''
@@ -265,6 +282,14 @@ async function copyInviteLink(): Promise<void> {
   await copyToClipboard(inviteLink.value, t('affiliate.linkCopied'))
 }
 
+function requestTransfer(): void {
+  if (withdrawableCny.value > 0) {
+    confirmTransfer.value = true
+    return
+  }
+  void transferQuota()
+}
+
 async function transferQuota(): Promise<void> {
   if (!detail.value || detail.value.aff_quota <= 0 || transferring.value) return
   transferring.value = true
@@ -274,6 +299,7 @@ async function transferQuota(): Promise<void> {
     await Promise.all([
       loadAffiliateDetail(true),
       authStore.refreshUser().catch(() => undefined),
+      withdrawCard.value?.reload(),
     ])
   } catch (error) {
     appStore.showError(extractApiErrorMessage(error, t('affiliate.transferFailed')))

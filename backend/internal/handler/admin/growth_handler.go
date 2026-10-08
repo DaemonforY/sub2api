@@ -14,12 +14,13 @@ import (
 
 // GrowthHandler serves the admin "推广设置" and invite leaderboard pages.
 type GrowthHandler struct {
-	service *service.GrowthService
+	service  *service.GrowthService
+	withdraw *service.AffiliateWithdrawService
 }
 
 // NewGrowthHandler creates the admin growth handler.
-func NewGrowthHandler(svc *service.GrowthService) *GrowthHandler {
-	return &GrowthHandler{service: svc}
+func NewGrowthHandler(svc *service.GrowthService, withdraw *service.AffiliateWithdrawService) *GrowthHandler {
+	return &GrowthHandler{service: svc, withdraw: withdraw}
 }
 
 // GetSettings GET /api/v1/admin/growth/settings
@@ -34,7 +35,11 @@ func (h *GrowthHandler) GetSettings(c *gin.Context) {
 
 // UpdateSettings PUT /api/v1/admin/growth/settings
 func (h *GrowthHandler) UpdateSettings(c *gin.Context) {
+	// Start from the saved settings so fields an older page doesn't send (e.g. the withdrawal rules) keep their values.
 	var req service.GrowthSettings
+	if current, err := h.service.GetSettings(c.Request.Context()); err == nil && current != nil {
+		req = *current
+	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
@@ -136,4 +141,73 @@ func parseGrowthTime(c *gin.Context, name string) (*time.Time, bool) {
 	}
 	response.BadRequest(c, "Invalid "+name+": use RFC3339 or YYYY-MM-DD")
 	return nil, false
+}
+
+// ListWithdrawals GET /api/v1/admin/growth/withdrawals?status=&search=&page=&page_size=
+func (h *GrowthHandler) ListWithdrawals(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	f := service.WithdrawFilter{Status: c.Query("status"), Search: c.Query("search"), Page: page, PageSize: pageSize}
+	items, total, err := h.withdraw.AdminList(c.Request.Context(), f)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if f.Page < 1 {
+		f.Page = 1
+	}
+	if f.PageSize < 1 || f.PageSize > 100 {
+		f.PageSize = 20
+	}
+	response.Paginated(c, items, total, f.Page, f.PageSize)
+}
+
+// WithdrawalPendingCount GET /api/v1/admin/growth/withdrawals/pending-count
+func (h *GrowthHandler) WithdrawalPendingCount(c *gin.Context) {
+	n, err := h.withdraw.PendingCount(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"count": n})
+}
+
+type withdrawReviewRequest struct {
+	Note string `json:"note"`
+}
+
+// MarkWithdrawalPaid POST /api/v1/admin/growth/withdrawals/:id/paid
+func (h *GrowthHandler) MarkWithdrawalPaid(c *gin.Context) {
+	h.reviewWithdrawal(c, true)
+}
+
+// RejectWithdrawal POST /api/v1/admin/growth/withdrawals/:id/reject
+func (h *GrowthHandler) RejectWithdrawal(c *gin.Context) {
+	h.reviewWithdrawal(c, false)
+}
+
+func (h *GrowthHandler) reviewWithdrawal(c *gin.Context, paid bool) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "Invalid withdrawal id")
+		return
+	}
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	var req withdrawReviewRequest
+	_ = c.ShouldBindJSON(&req)
+	var w *service.AffiliateWithdrawal
+	if paid {
+		w, err = h.withdraw.MarkPaid(c.Request.Context(), id, subject.UserID, req.Note)
+	} else {
+		w, err = h.withdraw.Reject(c.Request.Context(), id, subject.UserID, req.Note)
+	}
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, w)
 }
