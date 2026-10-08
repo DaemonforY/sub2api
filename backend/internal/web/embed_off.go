@@ -25,6 +25,9 @@ func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer
 	return nil, errors.New("frontend not embedded")
 }
 
+// SetVideoHost is a no-op for non-embed builds.
+func (s *FrontendServer) SetVideoHost(string) {}
+
 // InvalidateCache is a no-op for non-embed builds
 func (s *FrontendServer) InvalidateCache() {}
 

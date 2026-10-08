@@ -184,7 +184,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			// Image tools bill the balance themselves after a run succeeds (subscribers get free runs).
 			strings.HasPrefix(c.Request.URL.Path, "/api/v1/image-tools/") ||
 			// Site hosting bills the balance itself (extra sites) and checks the subscription.
-			strings.HasPrefix(c.Request.URL.Path, "/api/v1/hosting/")
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/hosting/") ||
+			// HiveGPT 视频 costs nothing itself: its agent calls the gateway with this key, which bills
+			// (and refuses an empty balance) there, so history and the gallery stay reachable.
+			strings.HasPrefix(c.Request.URL.Path, "/api/v1/video/")
 
 		// ── 4. SimpleMode → early return ─────────────────────────────
 

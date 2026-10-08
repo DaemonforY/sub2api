@@ -1,0 +1,12 @@
+# HiveGPT 视频 — append to /etc/caddy/Caddyfile on the host (same server as the main site).
+# Needs: DNS A record video.<domain> → this server, and VIDEO_DOMAIN=video.<domain> in deploy/.env.
+# Pre-create the log file (sudo touch /var/log/caddy/video.log && sudo chown caddy:caddy …) before reloading.
+video.hivegpt.cn {
+	encode zstd gzip
+	reverse_proxy localhost:8080 {
+		header_up X-Real-IP {remote_host}
+	}
+	log {
+		output file /var/log/caddy/video.log
+	}
+}

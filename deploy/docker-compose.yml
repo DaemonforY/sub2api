@@ -131,6 +131,9 @@ services:
       # Static-site hosting: sites are served at <name>.<SITES_DOMAIN> (use a domain that does
       # not share cookies with the main site; point *.<SITES_DOMAIN> at this server). Empty = off.
       - SITES_DOMAIN=${SITES_DOMAIN:-}
+      # HiveGPT 视频: served when the host is <VIDEO_DOMAIN> (e.g. video.hivegpt.cn; Caddy proxies
+      # it here like the main site). Empty hides the app; its API keeps working.
+      - VIDEO_DOMAIN=${VIDEO_DOMAIN:-}
 
       # =======================================================================
       # Gemini OAuth Configuration (for Gemini accounts)

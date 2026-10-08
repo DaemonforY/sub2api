@@ -366,6 +366,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/video-connect',
+    name: 'VideoConnect',
+    component: () => import('@/views/user/VideoConnectView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Sign in to HiveGPT Video',
+      titleKey: 'videoConnect.title'
+    }
+  },
+  {
     path: '/canvas-connect',
     name: 'CanvasConnect',
     component: () => import('@/views/user/CanvasConnectView.vue'),

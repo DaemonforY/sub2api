@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  ::selection { background: #fed7aa; color: #431407; }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-sm hover:from-brand-600 hover:to-brand-700; }
+  .btn-ghost { @apply btn border border-ink-200 bg-white text-ink-700 hover:border-brand-300 hover:text-brand-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500; }
+  .btn-sm { @apply px-2.5 py-1.5 text-xs rounded-lg; }
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-700 transition hover:border-brand-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200; }
+  .chip-on { @apply border-brand-500 bg-brand-500 text-white hover:border-brand-500 dark:border-brand-500 dark:bg-brand-500 dark:text-white; }
+  .card { @apply rounded-2xl border border-ink-200/80 bg-white shadow-sm dark:border-ink-800 dark:bg-ink-900; }
+  .input { @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-ink-700 dark:bg-ink-900 dark:focus:ring-brand-900/40; }
+  .bg-grid { background-image: linear-gradient(rgba(124,45,18,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(124,45,18,.05) 1px, transparent 1px); background-size: 32px 32px; }
+  .dark .bg-grid { background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px); }
+  .thin-scroll { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.18) transparent; }
+}

@@ -84,6 +84,7 @@ type Handlers struct {
 	ImageTools       *ImageToolsHandler
 	AnimationJob     *AnimationJobHandler
 	SiteHosting      *SiteHostingHandler
+	Video            *VideoHandler
 	CanvasSession    *CanvasSessionHandler
 	CanvasCloud      *CanvasCloudHandler
 	Community        *CommunityHandler

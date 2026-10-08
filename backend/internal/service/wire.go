@@ -615,6 +615,29 @@ func ProvideAnimationJobService(repo AnimationJobRepository, cfg *config.Config)
 	return svc
 }
 
+// ProvideVideoService wires HiveGPT 视频: the agent calls this server's own gateway on loopback and
+// narrates with Edge TTS. Projects a previous process left running are marked interrupted.
+func ProvideVideoService(repo VideoRepository, cfg *config.Config) *VideoService {
+	port, dir := 8080, "./data/video"
+	if cfg != nil {
+		if cfg.Server.Port > 0 {
+			port = cfg.Server.Port
+		}
+		if cfg.Video.Dir != "" {
+			dir = cfg.Video.Dir
+		}
+	}
+	gateway := "http://127.0.0.1:" + strconv.Itoa(port)
+	if cfg != nil && cfg.Video.GatewayURL != "" {
+		gateway = cfg.Video.GatewayURL
+	}
+	svc := NewVideoService(repo, NewEdgeTTS(), gateway, dir)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	svc.RecoverInterrupted(ctx)
+	return svc
+}
+
 // ProvideImageToolsService wires the canvas image tools (IMAGE_TOOLS_BASE_URL enables them).
 func ProvideImageToolsService(repo ImageToolsRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *ImageToolsService {
 	c := ImageToolsConfig{PriceRemoveBg: 0.02, PriceUpscale: 0.05, FreeDaily: 3}
@@ -1160,6 +1183,7 @@ var ProviderSet = wire.NewSet(
 	ProvideImageToolsService,
 	ProvideAnimationJobService,
 	ProvideSiteHostingService,
+	ProvideVideoService,
 	ProvideCanvasSessionService,
 	ProvideCanvasMembershipService,
 	ProvideCanvasCloudService,

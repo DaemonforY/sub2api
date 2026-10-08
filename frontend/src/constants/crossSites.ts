@@ -7,6 +7,10 @@
 // VITE_CANVAS_SITE_URL overrides it for local development (e.g. http://localhost:3100/).
 export const CANVAS_SITE_URL = (import.meta.env.VITE_CANVAS_SITE_URL as string | undefined) || 'https://canvas.hivegpt.cn/'
 
+/** HiveGPT 视频：AI 讲解视频与动画，部署在 video 子域名（同一个后端） */
+// VITE_VIDEO_SITE_URL overrides it for local development.
+export const VIDEO_SITE_URL = (import.meta.env.VITE_VIDEO_SITE_URL as string | undefined) || 'https://video.hivegpt.cn/'
+
 // Prompt-library cover hosts that are unreachable from some networks (e.g. mainland China). The
 // canvas relays them at /img-proxy/<host>/<path> (allowlisted in its nginx.conf; keep in sync).
 const CANVAS_PROXIED_IMAGE_HOSTS = new Set(['raw.githubusercontent.com', 'pbs.twimg.com', 'cms-assets.youmind.com', 'cdn.imgedify.com', 'bibigpt-apps.chatvid.ai', 'cdn.jsdelivr.net'])

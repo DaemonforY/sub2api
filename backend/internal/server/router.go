@@ -85,6 +85,7 @@ func SetupRouter(
 				frontendServer.InvalidateCache()
 				refreshFrameOrigins()
 			})
+			frontendServer.SetVideoHost(cfg.Video.Domain)
 			r.Use(frontendServer.Middleware())
 		}
 	} else {
@@ -155,6 +156,7 @@ func registerRoutes(
 	routes.RegisterImageToolsRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
 	routes.RegisterAnimationJobRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
 	routes.RegisterSiteRoutes(v1, h, jwtAuth, apiKeyAuth, settingService, panelRateLimiter)
+	routes.RegisterVideoRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
 	routes.RegisterCanvasRoutes(v1, h, jwtAuth, settingService, panelRateLimiter, cfg.CORS.AllowedOrigins)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, auditLog, stepUpAuth, settingService, panelRateLimiter)
 	routes.RegisterGatewayRoutes(r, h, apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, compositeResolver, cfg)

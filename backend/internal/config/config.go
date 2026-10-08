@@ -73,6 +73,7 @@ type Config struct {
 	Contest                 ContestConfig                 `mapstructure:"contest"`
 	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
 	Sites                   SitesConfig                   `mapstructure:"sites"`
+	Video                   VideoConfig                   `mapstructure:"video"`
 	Community               CommunityConfig               `mapstructure:"community"`
 	CanvasCloud             CanvasCloudConfig             `mapstructure:"canvas_cloud"`
 	Security                SecurityConfig                `mapstructure:"security"`
@@ -734,6 +735,16 @@ type CommunityConfig struct {
 // CanvasCloudConfig is where the canvas cloud sync keeps users' files (default ./data/canvas-cloud).
 type CanvasCloudConfig struct {
 	Dir string `mapstructure:"dir"`
+}
+
+// VideoConfig is HiveGPT 视频: the app is served when the request's host is Domain (e.g.
+// video.hivegpt.cn, proxied to this server); an empty Domain only hides the app — the API stays.
+type VideoConfig struct {
+	Domain string `mapstructure:"domain"`
+	// Dir stores narration audio; keep it on the persistent data volume.
+	Dir string `mapstructure:"dir"`
+	// GatewayURL overrides where the agent sends model calls (default: this server on loopback).
+	GatewayURL string `mapstructure:"gateway_url"`
 }
 
 // SitesConfig is the static-site hosting for subscribers: sites are served at <name>.<Domain>
@@ -2091,6 +2102,9 @@ func setDefaults() {
 	viper.SetDefault("image_tools.free_daily", 3)
 	viper.SetDefault("sites.domain", "")
 	viper.SetDefault("sites.dir", "./data/sites")
+	viper.SetDefault("video.domain", "")
+	viper.SetDefault("video.dir", "./data/video")
+	viper.SetDefault("video.gateway_url", "")
 	viper.SetDefault("community.dir", "./data/community")
 	viper.SetDefault("canvas_cloud.dir", "./data/canvas-cloud")
 	viper.SetDefault("sites.main_site_url", "https://hivegpt.cn")

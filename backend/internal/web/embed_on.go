@@ -10,6 +10,7 @@ import (
 	htmlpkg "html"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -43,6 +44,13 @@ type FrontendServer struct {
 	cache       *HTMLCache
 	settings    PublicSettingsProvider
 	overrideDir string // local file override directory
+	videoHost   string // HiveGPT 视频 is served for this host (e.g. video.hivegpt.cn)
+}
+
+// SetVideoHost makes requests for host (without port) serve the HiveGPT 视频 app (dist/video)
+// instead of the main site. Empty disables it.
+func (s *FrontendServer) SetVideoHost(host string) {
+	s.videoHost = strings.ToLower(strings.TrimSpace(host))
 }
 
 // NewFrontendServer creates a new frontend server with settings injection
@@ -98,6 +106,11 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 		cleanPath := strings.TrimPrefix(path, "/")
 		if cleanPath == "" {
 			cleanPath = "index.html"
+		}
+
+		if s.videoHost != "" && requestHost(c.Request) == s.videoHost {
+			s.serveVideo(c, cleanPath)
+			return
 		}
 
 		// /learn is a separate static site (VitePress), not part of the SPA.
@@ -191,6 +204,59 @@ func (s *FrontendServer) serveEditor(c *gin.Context, cleanPath string) {
 	}
 	http.ServeFileFS(c.Writer, c.Request, s.distFS, name)
 	c.Abort()
+}
+
+// serveVideo serves the HiveGPT 视频 single-page app on its own host. player.html runs AI-written
+// scene code inside a sandboxed iframe, so it gets its own policy: scripts may run but nothing may
+// reach the network.
+func (s *FrontendServer) serveVideo(c *gin.Context, cleanPath string) {
+	name := "video/" + cleanPath
+	if cleanPath == "index.html" || !s.isFile(name) {
+		name = "video/index.html"
+	}
+	if !s.isFile(name) {
+		c.String(http.StatusNotFound, "Not found")
+		c.Abort()
+		return
+	}
+	switch {
+	case name == "video/player.html":
+		origin := requestOrigin(c.Request)
+		c.Header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' "+origin+"; style-src 'unsafe-inline' "+origin+
+			"; img-src data: blob: "+origin+"; font-src data: "+origin+"; media-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors "+origin)
+		c.Header("X-Frame-Options", "SAMEORIGIN")
+		c.Header("Cache-Control", "no-cache")
+	case strings.HasPrefix(name, "video/fonts/"):
+		// Loaded from the sandboxed player (an opaque origin), so fonts need CORS.
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Cache-Control", staticAssetsCacheControl)
+	case strings.HasPrefix(name, "video/assets/"):
+		c.Header("Cache-Control", staticAssetsCacheControl)
+	case strings.HasSuffix(name, ".html"):
+		c.Header("Cache-Control", "no-cache")
+	}
+	http.ServeFileFS(c.Writer, c.Request, s.distFS, name)
+	c.Abort()
+}
+
+// requestHost is the request's host without port, lower-cased.
+func requestHost(r *http.Request) string {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return strings.ToLower(host)
+}
+
+// requestOrigin is the browser-visible origin of the request (TLS ends at the proxy).
+func requestOrigin(r *http.Request) string {
+	scheme := "http"
+	if proto := strings.ToLower(strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0])); proto == "https" || proto == "http" {
+		scheme = proto
+	} else if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
 }
 
 func (s *FrontendServer) isFile(name string) bool {

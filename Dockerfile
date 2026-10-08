@@ -74,6 +74,21 @@ COPY editor/ ./
 RUN pnpm run build
 
 # -----------------------------------------------------------------------------
+# Stage 1d: HiveGPT 视频 (video.<domain>, Vite app; served by the Go binary on that host)
+# -----------------------------------------------------------------------------
+FROM --platform=${BUILDPLATFORM} ${NODE_IMAGE} AS video-builder
+ARG NPM_CONFIG_REGISTRY
+
+WORKDIR /app/video
+RUN corepack enable && corepack prepare pnpm@9 --activate
+COPY video/package.json video/pnpm-lock.yaml ./
+RUN --mount=type=cache,id=sub2api-pnpm-store,target=/root/.local/share/pnpm/store \
+    if [ -n "${NPM_CONFIG_REGISTRY}" ]; then pnpm config set registry "${NPM_CONFIG_REGISTRY}"; fi && \
+    pnpm install --frozen-lockfile --prefer-offline
+COPY video/ ./
+RUN pnpm run build
+
+# -----------------------------------------------------------------------------
 # Stage 2: Backend Builder
 # -----------------------------------------------------------------------------
 # --platform=$BUILDPLATFORM: run the Go toolchain on the native host arch and
@@ -114,6 +129,7 @@ COPY backend/ ./
 COPY --from=frontend-builder /app/backend/internal/web/dist ./internal/web/dist
 COPY --from=learn-builder /app/learn/.vitepress/dist ./internal/web/dist/learn
 COPY --from=editor-builder /app/editor/dist ./internal/web/dist/editor
+COPY --from=video-builder /app/video/dist ./internal/web/dist/video
 
 # Build the binary (BuildType=release for CI builds, embed frontend)
 # Version precedence: build arg VERSION > exact git tag > cmd/server/VERSION
