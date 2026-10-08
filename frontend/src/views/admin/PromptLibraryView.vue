@@ -175,6 +175,9 @@
                 {{ t('admin.promptLibrary.translation.lastRun', { time: formatTime(translation.last_run_at), n: translation.last_translated, scenes: translation.last_scenes }) }}
               </div>
               <div v-if="translation?.last_error" class="mt-1 max-w-sm truncate text-xs text-red-500" :title="translation.last_error">{{ translation.last_error }}</div>
+              <div v-if="translation?.next_auto_run_at" class="mt-1 max-w-sm text-xs text-amber-600" data-testid="translation-backoff">
+                {{ t('admin.promptLibrary.translation.backoff', { time: formatTime(translation.next_auto_run_at) }) }}
+              </div>
             </div>
           </div>
           <div class="grid gap-3 md:grid-cols-3">

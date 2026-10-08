@@ -117,6 +117,7 @@ export default {
       left: '{n} English titles left',
       running: 'Curating…',
       scenesLeft: '{n} new prompts with unchecked scenes',
+      backoff: 'Paused after failures until {time}; saving the model settings or running it now retries at once',
       lastRun: 'Last run {time}: {n} titles translated, {scenes} scenes checked',
       run: 'Curate remaining prompts',
       started: 'Curation started; refresh to see progress'

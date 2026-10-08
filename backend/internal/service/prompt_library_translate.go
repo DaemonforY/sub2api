@@ -60,6 +60,10 @@ const (
 	promptTranslateTitleRunes = 30
 
 	promptSceneBatch = 20
+
+	// After a failed model pass the hourly sync waits before trying again: 2h, 4h, 8h … up to a day.
+	promptTranslateBackoffBase = 2 * time.Hour
+	promptTranslateBackoffMax  = 24 * time.Hour
 )
 
 var (
@@ -82,6 +86,8 @@ type PromptTranslateStatus struct {
 	LastTranslated  int        `json:"last_translated"`
 	LastScenes      int        `json:"last_scenes"`
 	LastError       string     `json:"last_error"`
+	// NextAutoRunAt: after failures the hourly sync skips the model until then (the button still runs).
+	NextAutoRunAt *time.Time `json:"next_auto_run_at,omitempty"`
 }
 
 // PromptSceneCandidate is a source item whose automatic scenes a model should check.
@@ -114,10 +120,14 @@ type PromptTitleTranslator struct {
 	lastCount  int
 	lastScenes int
 	lastError  string
+	// Failed model passes in a row, and when the hourly sync may try the model again.
+	failStreak int
+	nextAuto   time.Time
+	now        func() time.Time
 }
 
 func NewPromptTitleTranslator(repo PromptLibraryRepository, settings SettingRepository) *PromptTitleTranslator {
-	return &PromptTitleTranslator{repo: repo, settings: settings, client: &http.Client{Timeout: 2 * time.Minute}}
+	return &PromptTitleTranslator{repo: repo, settings: settings, client: &http.Client{Timeout: 2 * time.Minute}, now: time.Now}
 }
 
 type promptTranslateSecrets struct {
@@ -161,8 +171,13 @@ func (t *PromptTitleTranslator) Status(ctx context.Context) (*PromptTranslateSta
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	return &PromptTranslateStatus{PromptTranslateConfig: cfg.PromptTranslateConfig, Untranslated: left, UncheckedScenes: unchecked, Running: t.running,
-		LastRunAt: t.lastRunAt, LastTranslated: t.lastCount, LastScenes: t.lastScenes, LastError: t.lastError}, nil
+	out := &PromptTranslateStatus{PromptTranslateConfig: cfg.PromptTranslateConfig, Untranslated: left, UncheckedScenes: unchecked, Running: t.running,
+		LastRunAt: t.lastRunAt, LastTranslated: t.lastCount, LastScenes: t.lastScenes, LastError: t.lastError}
+	if !t.nextAuto.IsZero() && t.nextAuto.After(t.now()) {
+		next := t.nextAuto
+		out.NextAutoRunAt = &next
+	}
+	return out, nil
 }
 
 func (t *PromptTitleTranslator) SaveConfig(ctx context.Context, in PromptTranslateConfigInput) error {
@@ -176,7 +191,14 @@ func (t *PromptTitleTranslator) SaveConfig(ctx context.Context, in PromptTransla
 	} else if in.ClearAPIKey {
 		values[settingPromptTranslateAPIKey] = ""
 	}
-	return t.settings.SetMultiple(ctx, values)
+	if err := t.settings.SetMultiple(ctx, values); err != nil {
+		return err
+	}
+	// A new configuration gets tried at the next sync.
+	t.mu.Lock()
+	t.failStreak, t.nextAuto = 0, time.Time{}
+	t.mu.Unlock()
+	return nil
 }
 
 // AfterSync applies the bundled corrections and, when a model is configured, translates the titles
@@ -196,7 +218,21 @@ func (t *PromptTitleTranslator) AfterSync(ctx context.Context) {
 	if err != nil || !cfg.ready() {
 		return
 	}
+	t.autoRun(ctx, cfg)
+}
+
+// autoRun is the hourly model pass, skipped while backing off after failures: a broken
+// configuration (wrong model, key or quota) would otherwise fail — and log errors — every hour.
+func (t *PromptTitleTranslator) autoRun(ctx context.Context, cfg promptTranslateSecrets) bool {
+	t.mu.Lock()
+	wait := t.nextAuto
+	t.mu.Unlock()
+	if !wait.IsZero() && t.now().Before(wait) {
+		slog.Debug("prompt library: model pass skipped after failures", "until", wait)
+		return false
+	}
 	_, _ = t.run(ctx, cfg, promptTranslateAfterSync)
+	return true
 }
 
 // RunAsync translates every remaining English title and checks every remaining scene in the background (admin button).
@@ -228,7 +264,10 @@ func (t *PromptTitleTranslator) run(ctx context.Context, cfg promptTranslateSecr
 	if err != nil {
 		slog.Warn("prompt library: title translation failed", "error", err, "translated", translated)
 	}
-	checked, sceneErr := t.checkScenes(ctx, cfg, max)
+	checked, sceneErr := 0, error(nil)
+	if !isPromptModelConfigError(err) {
+		checked, sceneErr = t.checkScenes(ctx, cfg, max)
+	}
 	if sceneErr != nil {
 		slog.Warn("prompt library: scene check failed", "error", sceneErr, "checked", checked)
 		if err == nil {
@@ -238,7 +277,7 @@ func (t *PromptTitleTranslator) run(ctx context.Context, cfg promptTranslateSecr
 	if translated > 0 || checked > 0 {
 		slog.Info("prompt library: model pass done", "titles", translated, "scenes", checked)
 	}
-	now := time.Now()
+	now := t.now()
 	t.mu.Lock()
 	t.running = false
 	t.lastRunAt = &now
@@ -247,6 +286,11 @@ func (t *PromptTitleTranslator) run(ctx context.Context, cfg promptTranslateSecr
 	t.lastError = ""
 	if err != nil {
 		t.lastError = truncateRunes(err.Error(), 300)
+		t.failStreak++
+		wait := promptTranslateBackoffBase << min(t.failStreak-1, 8)
+		t.nextAuto = now.Add(min(wait, promptTranslateBackoffMax))
+	} else {
+		t.failStreak, t.nextAuto = 0, time.Time{}
 	}
 	t.mu.Unlock()
 	return translated, err
@@ -268,8 +312,8 @@ func (t *PromptTitleTranslator) translate(ctx context.Context, cfg promptTransla
 		}
 		if err != nil {
 			failures++
-			// A few bad batches are tolerated; a broken configuration stops early.
-			if failures >= 3 && translated == 0 {
+			// A few bad batches are tolerated; a broken configuration (or a rate limit) stops at once.
+			if isPromptModelConfigError(err) || (failures >= 3 && translated == 0) {
 				return translated, err
 			}
 			continue
@@ -291,6 +335,30 @@ If a title is meaningless (punctuation, timestamps, template fragments), map it 
 // callModel sends one Chat Completions request and returns the reply text.
 func (t *PromptTitleTranslator) callModel(ctx context.Context, cfg promptTranslateSecrets, instruction string, payload any) (string, error) {
 	return openAIChat(ctx, t.client, cfg.BaseURL, cfg.apiKey, cfg.Model, instruction, payload)
+}
+
+// modelHTTPError is a non-200 reply from a helper model.
+type modelHTTPError struct {
+	status int
+	body   string
+}
+
+func (e *modelHTTPError) Error() string {
+	return fmt.Sprintf("模型返回 HTTP %d：%s", e.status, e.body)
+}
+
+// isPromptModelConfigError: replies that more requests in the same pass won't fix — a bad request or
+// model (400 / 404), a bad key (401 / 403) or a rate limit (429).
+func isPromptModelConfigError(err error) bool {
+	var he *modelHTTPError
+	if !errors.As(err, &he) {
+		return false
+	}
+	switch he.status {
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound, http.StatusTooManyRequests:
+		return true
+	}
+	return false
 }
 
 // openAIChat sends one OpenAI-compatible Chat Completions request (payload JSON-encoded as the user
@@ -318,7 +386,7 @@ func openAIChat(ctx context.Context, client *http.Client, baseURL, apiKey, model
 	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("模型返回 HTTP %d：%s", resp.StatusCode, truncateRunes(strings.TrimSpace(string(raw)), 200))
+		return "", &modelHTTPError{status: resp.StatusCode, body: truncateRunes(strings.TrimSpace(string(raw)), 200)}
 	}
 	var parsed struct {
 		Choices []struct {
@@ -410,7 +478,7 @@ func (t *PromptTitleTranslator) checkScenes(ctx context.Context, cfg promptTrans
 		content, err := t.callModel(ctx, cfg, promptSceneInstruction, input)
 		if err != nil {
 			failures++
-			if failures >= 3 && checked == 0 {
+			if isPromptModelConfigError(err) || (failures >= 3 && checked == 0) {
 				return checked, err
 			}
 			continue

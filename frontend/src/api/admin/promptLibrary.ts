@@ -171,6 +171,8 @@ export interface PromptTranslationStatus {
   last_translated: number
   last_scenes: number
   last_error: string
+  /** After failures the hourly sync skips the model until then; saving the settings or the button runs it now. */
+  next_auto_run_at?: string
 }
 
 export interface PromptTranslationInput {

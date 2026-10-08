@@ -117,6 +117,7 @@ export default {
       left: '还有 {n} 个英文标题未翻译',
       running: '正在整理…',
       scenesLeft: '还有 {n} 条新提示词的场景未校正',
+      backoff: '自动整理失败，已暂停到 {time} 再试；保存模型配置或点「立即整理剩余条目」会马上重试',
       lastRun: '上次整理：{time}，翻译 {n} 个标题，校正 {scenes} 条场景',
       run: '立即整理剩余条目',
       started: '已开始整理，稍后刷新查看进度'

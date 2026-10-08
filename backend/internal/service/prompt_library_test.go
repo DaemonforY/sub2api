@@ -353,3 +353,84 @@ func TestBundledTitleDictionaryLoads(t *testing.T) {
 		require.True(t, promptCJK.MatchString(zh), "%q → %q", en, zh)
 	}
 }
+
+func TestPromptTitleTranslatorStopsAndBacksOffOnConfigErrors(t *testing.T) {
+	var calls int
+	status := http.StatusTooManyRequests
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(`{"error":{"message":"rate limited"}}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": "{}"}}}})
+	}))
+	defer srv.Close()
+	titles := make([]string, 100) // 3 batches
+	for i := range titles {
+		titles[i] = "Title " + string(rune('A'+i%26))
+	}
+	scenes := make([]PromptSceneCandidate, 30) // 2 batches
+	for i := range scenes {
+		scenes[i] = PromptSceneCandidate{ID: int64(i + 1), Title: "x", Prompt: "y"}
+	}
+	repo := &translateRepo{pending: titles, applied: map[string]string{}, sceneItems: scenes}
+	tr := NewPromptTitleTranslator(repo, nil)
+	clock := time.Date(2026, 10, 8, 9, 24, 0, 0, time.UTC)
+	tr.now = func() time.Time { return clock }
+	cfg := promptTranslateSecrets{PromptTranslateConfig: PromptTranslateConfig{BaseURL: srv.URL + "/v1", Model: "m"}, apiKey: "k"}
+
+	// A 429 stops the whole pass at the first request: no more title batches, no scene check.
+	require.True(t, tr.autoRun(context.Background(), cfg))
+	require.Equal(t, 1, calls)
+	require.Contains(t, tr.lastError, "HTTP 429")
+	require.Equal(t, clock.Add(2*time.Hour), tr.nextAuto)
+
+	// The hourly sync then waits 2h, 4h, …
+	clock = clock.Add(time.Hour)
+	require.False(t, tr.autoRun(context.Background(), cfg))
+	require.Equal(t, 1, calls)
+	clock = clock.Add(time.Hour + time.Second)
+	require.True(t, tr.autoRun(context.Background(), cfg))
+	require.Equal(t, 2, calls)
+	require.Equal(t, clock.Add(4*time.Hour), tr.nextAuto)
+	st, err := (&PromptTitleTranslator{repo: &countRepo{}, now: tr.now, nextAuto: tr.nextAuto}).Status(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, st.NextAutoRunAt)
+
+	// A working model (e.g. after fixing the configuration, or the admin button) resets the wait.
+	status = http.StatusOK
+	_, err = tr.run(context.Background(), cfg, 100)
+	require.NoError(t, err)
+	require.True(t, tr.nextAuto.IsZero())
+	require.Zero(t, tr.failStreak)
+}
+
+func TestPromptTitleTranslatorToleratesAServerError(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": map[string]string{"content": `{"Cat poster": "猫咪海报"}`}}}})
+	}))
+	defer srv.Close()
+	titles := make([]string, 80) // 2 batches
+	for i := range titles {
+		titles[i] = "Cat poster"
+	}
+	repo := &translateRepo{pending: titles, applied: map[string]string{}}
+	tr := NewPromptTitleTranslator(repo, nil)
+	n, err := tr.run(context.Background(), promptTranslateSecrets{PromptTranslateConfig: PromptTranslateConfig{BaseURL: srv.URL + "/v1", Model: "m"}, apiKey: "k"}, 100)
+	require.NoError(t, err, "one bad batch is tolerated")
+	require.Equal(t, 1, n)
+	require.Equal(t, 2, calls)
+}
+
+type countRepo struct{ PromptLibraryRepository }
+
+func (countRepo) CountUntranslated(context.Context) (int64, error)    { return 0, nil }
+func (countRepo) CountUncheckedScenes(context.Context) (int64, error) { return 0, nil }
