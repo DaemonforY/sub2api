@@ -12,6 +12,7 @@ import sites from './sites'
 import courses from './courses'
 import learn from './learn'
 import assistant from './assistant'
+import pricing from './pricing'
 
 export default {
   ...landing,
@@ -28,4 +29,5 @@ export default {
   ...courses,
   ...learn,
   ...assistant,
+  ...pricing,
 }

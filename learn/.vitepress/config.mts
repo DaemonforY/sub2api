@@ -54,6 +54,7 @@ export default defineConfig({
         activeMatch: '^/[a-dh]/',
         items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
+      { text: '接入教程', link: '/connect/', activeMatch: '^/connect/' },
       { text: 'Codex 教程', link: '/codex/', activeMatch: '^/codex/' },
       { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
       { text: '学员作品', link: '/showcase', activeMatch: '^/showcase' },
@@ -64,6 +65,7 @@ export default defineConfig({
         text: 'HiveGPT',
         items: [
           { text: '回到 HiveGPT', link: 'https://hivegpt.cn/', target: '_self' },
+          { text: '价格：订阅还是按量', link: 'https://hivegpt.cn/pricing', target: '_self' },
           { text: '付费课程', link: 'https://hivegpt.cn/courses', target: '_self' },
         ],
       },
@@ -87,6 +89,18 @@ export default defineConfig({
         },
       ],
       '/codex/': [{ text: 'Codex 教程', items: [{ text: '教程首页', link: '/codex/' }] }, ...codexSidebar],
+      '/connect/': [
+        {
+          text: '接入教程',
+          items: [
+            { text: '开始之前', link: '/connect/' },
+            { text: 'Codex 接入 HiveGPT', link: '/codex/hivegpt' },
+            { text: '在常用工具里配置', link: '/connect/tools' },
+            { text: '用 SDK 调用', link: '/connect/sdk' },
+          ],
+        },
+        { text: 'HiveGPT', items: [{ text: '订阅还是按量', link: 'https://hivegpt.cn/pricing' }] },
+      ],
       '/guide/': [{ text: '延伸阅读（JavaGuide）', items: [{ text: '目录与来源', link: '/guide/' }] }, ...guideSidebar],
     },
     outline: { level: [2, 3], label: '本页目录' },

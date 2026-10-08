@@ -568,6 +568,8 @@
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('home.v2.footer.product') }}</h3>
           <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
             <li><a :href="canvasLink('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.canvas') }}</a></li>
+            <li><router-link to="/pricing" class="hover:text-gray-900 dark:hover:text-white">{{ t('pricing.navLabel') }}</router-link></li>
+            <li><a href="/learn/connect/" class="hover:text-gray-900 dark:hover:text-white">{{ t('pricing.guideNav') }}</a></li>
             <li><router-link to="/contests" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.contests') }}</router-link></li>
             <li v-if="hasCourses"><router-link to="/courses" class="hover:text-gray-900 dark:hover:text-white">{{ t('courses.navLabel') }}</router-link></li>
             <li v-if="showModelPlazaEntry"><router-link to="/model-plaza" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.plaza') }}</router-link></li>

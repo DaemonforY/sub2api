@@ -1,0 +1,79 @@
+---
+title: 在常用工具里配置 HiveGPT
+description: 在 OpenCode、CodeBuddy 等编程工具，以及 Cherry Studio、Chatbox 等对话客户端里使用 HiveGPT：OpenAI 兼容接口怎么填 Base URL、API Key 和模型名。
+---
+
+# 在常用工具里配置
+
+这篇讲 Codex 以外的工具。Codex 请看 [Codex 接入 HiveGPT](/codex/hivegpt)。
+
+所有工具的思路都一样：在设置里找到 **「自定义 / OpenAI 兼容」** 一类的模型服务，填三项：
+
+| 项目 | 填写 |
+|---|---|
+| API 地址（Base URL） | `https://hivegpt.cn/v1`，个别工具填 `https://hivegpt.cn` |
+| API Key | 你在 [API 密钥](https://hivegpt.cn/keys) 页创建的 Key |
+| 模型 | 你的分组里可用的模型，例如 `gpt-5.5`，用 [`/v1/models`](/connect/#查看可用模型) 查 |
+
+::: tip 菜单名称以工具当前版本为准
+各工具更新很快，下面写的是要找的设置项，具体菜单的位置和叫法可能和你看到的略有不同。
+:::
+
+## OpenCode
+
+OpenCode 是开源的终端编程助手。HiveGPT 的「使用密钥」弹窗能直接生成它的配置：
+
+1. 在 [API 密钥](https://hivegpt.cn/keys?action=use) 页找到 GPT 类分组的 Key，点「使用密钥」，选 **OpenCode**。
+2. 复制生成的 `opencode.json`，保存到：
+   - macOS / Linux：`~/.config/opencode/opencode.json`
+   - Windows：`%USERPROFILE%\.config\opencode\opencode.json`
+
+   目录不存在就先创建。
+3. 在项目目录里运行 `opencode`，用 `/models` 选择一个 HiveGPT 的模型，随便问一句试试。
+
+生成的配置大致是这样（Key 换成你自己的）：
+
+```json
+{
+  "provider": {
+    "openai": {
+      "options": {
+        "baseURL": "https://hivegpt.cn/v1",
+        "apiKey": "sk-你的Key"
+      }
+    }
+  }
+}
+```
+
+弹窗生成的文件里还带着各个模型的上下文长度和推理强度，直接用弹窗里的版本即可。
+
+## CodeBuddy 等 IDE 编程助手
+
+如果你用的 IDE 助手支持「自定义模型」或「OpenAI 兼容接口」：
+
+1. 打开模型设置，新增一个自定义模型（提供商类型选 OpenAI / OpenAI 兼容）。
+2. API 地址填 `https://hivegpt.cn/v1`，API Key 填你的 Key，模型名填 `gpt-5.5` 等分组里的模型。
+3. 保存后在对话里切换到这个模型，发一句话测试。
+
+只支持官方账号登录、没有自定义模型入口的工具，用不了第三方接口。
+
+## Cherry Studio
+
+Cherry Studio 是桌面端的多模型对话客户端：
+
+1. 打开设置里的 **模型服务**，添加一个提供商，类型选 **OpenAI**。
+2. API 地址先填 `https://hivegpt.cn`，API 密钥填你的 Key，点「检查」。如果检查失败，把地址改成 `https://hivegpt.cn/v1` 再试。
+3. 在模型列表里添加模型（可以用「管理」从接口拉取，也可以手动填 `gpt-5.5`），然后回到对话界面选择它。
+
+## Chatbox
+
+1. 打开设置里的模型提供方，添加一个自定义提供方，API 模式选 **OpenAI API 兼容**。
+2. API 地址填 `https://hivegpt.cn`；如果有单独的「API 路径」，填 `/v1/chat/completions`。
+3. 填入 API Key 和模型名 `gpt-5.5`，保存后新建对话测试。
+
+## 还是不通？
+
+1. 先用 [接入教程首页](/connect/#验证-key-能用) 里的 curl 命令测一下 Key 本身是否可用。curl 能通，问题就在工具的配置上。
+2. 对照 [常见报错](/connect/#常见报错) 排查。最常见的是：地址多了或少了 `/v1`，以及模型名不在你 Key 的分组里。
+3. 到 [使用记录](https://hivegpt.cn/usage) 看请求有没有到达 HiveGPT：有记录说明网络和 Key 都没问题；没有记录说明请求没发过来。

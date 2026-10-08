@@ -51,6 +51,9 @@ func RegisterPaymentRoutes(
 	// Signed resume-token recovery is the preferred public lookup path.
 	// The legacy anonymous out_trade_no verify endpoint remains available as a
 	// persisted-state compatibility path for staggered upgrades.
+	// 公开价格页（/pricing）：在售套餐、按量分组和充值比例，不需要登录
+	v1.GET("/pricing", panelRateLimiter.PublicIP(), paymentHandler.GetPublicPricing)
+
 	public := v1.Group("/payment/public")
 	{
 		public.POST("/orders/verify", paymentHandler.VerifyOrderPublic)

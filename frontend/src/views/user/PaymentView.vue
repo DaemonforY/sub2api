@@ -5,6 +5,10 @@
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
       </div>
       <template v-else>
+        <!-- Not sure which to pick: the public comparison page -->
+        <p v-if="paymentPhase === 'select' && !selectedPlan && !course" class="text-right text-sm">
+          <router-link to="/pricing" class="text-primary-600 hover:underline dark:text-primary-400" data-testid="payment-compare-link">{{ t('pricing.compareLink') }}</router-link>
+        </p>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
         <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"

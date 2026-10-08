@@ -174,3 +174,55 @@ func TestActivationReminderRepositoryDueUsers(t *testing.T) {
 	require.Equal(t, before+1, after)
 	require.False(t, ids()[due.ID], "only once")
 }
+
+func TestPublicPricing(t *testing.T) {
+	ctx := context.Background()
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	sub := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-sub-" + sfx, Platform: service.PlatformOpenAI, SubscriptionType: service.SubscriptionTypeSubscription, IsExclusive: true, RateMultiplier: 1})
+	daily := 60.0
+	require.NoError(t, integrationEntClient.Group.UpdateOneID(sub.ID).SetDailyLimitUsd(daily).Exec(ctx))
+	payg := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-payg-" + sfx, Platform: service.PlatformOpenAI, RateMultiplier: 1.2})
+	hidden := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-vip-" + sfx, Platform: service.PlatformOpenAI, IsExclusive: true, RateMultiplier: 0.5})
+	orig := 299.0
+	_, err := integrationEntClient.SubscriptionPlan.Create().SetGroupID(sub.ID).SetName("月度-" + sfx).SetPrice(120).SetOriginalPrice(orig).
+		SetValidityDays(30).SetValidityUnit("days").SetForSale(true).Save(ctx)
+	require.NoError(t, err)
+	_, err = integrationEntClient.SubscriptionPlan.Create().SetGroupID(sub.ID).SetName("下架-" + sfx).SetPrice(1).
+		SetValidityDays(30).SetValidityUnit("days").SetForSale(false).Save(ctx)
+	require.NoError(t, err)
+
+	member := mustCreateUser(t, integrationEntClient, &service.User{Email: "pp-" + sfx + "@test.local", Username: "pp" + sfx[len(sfx)-6:]})
+	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: member.ID, Key: "sk-pp-" + sfx})
+	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "pp-acc-" + sfx})
+	_, err = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
+		SetRequestID("pp-" + sfx).SetModel("gpt-5.5").SetActualCost(0.2).SetCreatedAt(time.Now()).Save(ctx)
+	require.NoError(t, err)
+
+	svc := service.NewPaymentConfigService(integrationEntClient, NewSettingRepository(integrationEntClient), nil)
+	out, err := svc.PublicPricing(ctx)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, out.RechargeMultiplier, 0.0001)
+
+	var plan *service.PublicPricingPlan
+	for i := range out.Plans {
+		require.NotEqual(t, "下架-"+sfx, out.Plans[i].Name, "only plans on sale")
+		if out.Plans[i].Name == "月度-"+sfx {
+			plan = &out.Plans[i]
+		}
+	}
+	require.NotNil(t, plan)
+	require.Equal(t, 120.0, plan.Price)
+	require.Equal(t, sub.Name, plan.GroupName)
+	require.NotNil(t, plan.DailyLimitUSD)
+	require.Equal(t, daily, *plan.DailyLimitUSD)
+
+	names := map[string]bool{}
+	for _, g := range out.PayAsYouGo {
+		names[g.Name] = true
+	}
+	require.True(t, names[payg.Name])
+	require.False(t, names[hidden.Name], "exclusive groups are not public")
+	require.False(t, names[sub.Name], "subscription groups are not pay-as-you-go")
+	require.GreaterOrEqual(t, out.AvgSampleRequests, 1)
+	require.Greater(t, out.AvgRequestCostUSD, 0.0)
+}

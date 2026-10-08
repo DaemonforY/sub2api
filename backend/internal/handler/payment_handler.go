@@ -743,3 +743,16 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 func isWeChatBrowser(c *gin.Context) bool {
 	return strings.Contains(strings.ToLower(c.GetHeader("User-Agent")), "micromessenger")
 }
+
+// GetPublicPricing returns the plans on sale, the pay-as-you-go groups and how much balance one
+// yuan buys, for the public /pricing page (no login).
+// GET /api/v1/pricing
+func (h *PaymentHandler) GetPublicPricing(c *gin.Context) {
+	out, err := h.configService.PublicPricing(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=300")
+	response.Success(c, out)
+}
