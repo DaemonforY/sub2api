@@ -84,6 +84,8 @@ export const useAuthStore = defineStore('auth', () => {
   const runMode = ref<'standard' | 'simple'>('standard')
   const pendingAuthSession = ref<PendingAuthSessionSummary | null>(null)
   let refreshIntervalId: ReturnType<typeof setInterval> | null = null
+  let lastUserRefreshAt = 0
+  let visibilityListener: (() => void) | null = null
   let tokenRefreshTimeoutId: ReturnType<typeof setTimeout> | null = null
 
   // ==================== Computed ====================
@@ -148,19 +150,29 @@ export const useAuthStore = defineStore('auth', () => {
     // Clear existing interval if any
     stopAutoRefresh()
 
-    refreshIntervalId = setInterval(() => {
-      if (token.value) {
-        refreshUser().catch((error) => {
-          console.error('Auto-refresh user failed:', error)
-        })
-      }
-    }, AUTO_REFRESH_INTERVAL)
+    // Background tabs don't poll (a forgotten tab used to call /auth/me all day); coming back
+    // to a tab refreshes at once if the data is older than one interval.
+    const tick = () => {
+      if (!token.value || document.visibilityState === 'hidden') return
+      refreshUser().catch((error) => {
+        console.error('Auto-refresh user failed:', error)
+      })
+    }
+    refreshIntervalId = setInterval(tick, AUTO_REFRESH_INTERVAL)
+    visibilityListener = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastUserRefreshAt >= AUTO_REFRESH_INTERVAL) tick()
+    }
+    document.addEventListener('visibilitychange', visibilityListener)
   }
 
   /**
    * Stop auto-refresh interval
    */
   function stopAutoRefresh(): void {
+    if (visibilityListener) {
+      document.removeEventListener('visibilitychange', visibilityListener)
+      visibilityListener = null
+    }
     if (refreshIntervalId) {
       clearInterval(refreshIntervalId)
       refreshIntervalId = null
@@ -438,6 +450,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
+      lastUserRefreshAt = Date.now()
       const response = await authAPI.getCurrentUser()
       if (response.data.run_mode) {
         runMode.value = response.data.run_mode

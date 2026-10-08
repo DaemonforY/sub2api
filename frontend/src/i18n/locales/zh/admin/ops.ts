@@ -492,6 +492,10 @@ export default {
           account: '账号级别指标'
         },
         metrics: {
+          ttftP50: '首字延迟中位数（毫秒）',
+          ttftP95: '首字延迟 P95（毫秒）',
+          p95Latency: '整次请求 P95 耗时（毫秒）',
+          p99Latency: '整次请求 P99 耗时（毫秒）',
           successRate: '成功率 (%)',
           errorRate: '错误率 (%)',
           upstreamErrorRate: '上游错误率 (%)',
@@ -510,6 +514,10 @@ export default {
           overloadAccountCount: '过载账号数'
         },
         metricDescriptions: {
+          ttftP50: '统计窗口内首个 Token 返回时间的中位数，用户感觉「卡」时会明显升高（平时 2–5 秒）。',
+          ttftP95: '统计窗口内首个 Token 返回时间的 P95。',
+          p95Latency: '统计窗口内整次请求耗时的 P95；流式回答本身较慢，阈值建议按分钟设。',
+          p99Latency: '统计窗口内整次请求耗时的 P99。',
           successRate: '统计窗口内成功请求占比（0~100）。',
           errorRate: '统计窗口内失败请求占比（0~100）。',
           upstreamErrorRate: '统计窗口内上游错误占比（0~100）。',

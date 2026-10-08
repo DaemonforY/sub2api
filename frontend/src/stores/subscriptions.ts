@@ -89,6 +89,7 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
     if (pollerInterval) return
 
     pollerInterval = setInterval(() => {
+      if (document.visibilityState === 'hidden') return // background tabs don't poll
       fetchActiveSubscriptions(true).catch((error) => {
         console.error('Subscription polling failed:', error)
       })

@@ -597,6 +597,24 @@ func (s *OpsAlertEvaluatorService) computeRuleMetric(
 		return 0, false
 	}
 
+	// Latency rules: whole request (p95/p99_latency_ms) or time to first token (ttft_*_ms).
+	pick := func(v *int) (float64, bool) {
+		if overview.RequestCountSLA <= 0 || v == nil {
+			return 0, false
+		}
+		return float64(*v), true
+	}
+	switch strings.TrimSpace(rule.MetricType) {
+	case "p95_latency_ms":
+		return pick(overview.Duration.P95)
+	case "p99_latency_ms":
+		return pick(overview.Duration.P99)
+	case "ttft_p50_ms":
+		return pick(overview.TTFT.P50)
+	case "ttft_p95_ms":
+		return pick(overview.TTFT.P95)
+	}
+
 	switch strings.TrimSpace(rule.MetricType) {
 	case "success_rate":
 		if overview.RequestCountSLA <= 0 {

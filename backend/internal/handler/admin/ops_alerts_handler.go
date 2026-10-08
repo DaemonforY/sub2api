@@ -31,6 +31,10 @@ var validOpsAlertMetricTypes = []string{
 	"account_error_ratio",
 	"account_temp_unscheduled_count",
 	"overload_account_count",
+	"p95_latency_ms",
+	"p99_latency_ms",
+	"ttft_p50_ms",
+	"ttft_p95_ms",
 	"proxy_expired_count",
 	"proxy_expiring_soon_count",
 }

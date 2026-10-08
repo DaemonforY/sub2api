@@ -387,4 +387,28 @@ describe('useAuthStore', () => {
       expect(store.isSimpleMode).toBe(false)
     })
   })
+
+  describe('background tabs', () => {
+    it('does not poll /auth/me while hidden and catches up when the tab comes back', async () => {
+      mockLogin.mockResolvedValue(fakeAuthResponse)
+      mockGetCurrentUser.mockResolvedValue({ data: { ...fakeUser } })
+      const store = useAuthStore()
+      await store.login({ email: 'test@example.com', password: '123456' })
+      mockGetCurrentUser.mockClear()
+
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+      await vi.advanceTimersByTimeAsync(5 * 60_000)
+      expect(mockGetCurrentUser).not.toHaveBeenCalled()
+
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+      // (stores from earlier tests in this file are still listening, so count relatively)
+      const afterReturn = mockGetCurrentUser.mock.calls.length
+      expect(afterReturn).toBeGreaterThan(0)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(mockGetCurrentUser.mock.calls.length).toBeGreaterThan(afterReturn)
+      store.logout?.()
+    })
+  })
 })

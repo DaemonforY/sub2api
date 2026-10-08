@@ -492,6 +492,10 @@ export default {
           account: 'Account-level Metrics'
         },
         metrics: {
+          ttftP50: 'Time to first token, median (ms)',
+          ttftP95: 'Time to first token, P95 (ms)',
+          p95Latency: 'Request duration P95 (ms)',
+          p99Latency: 'Request duration P99 (ms)',
           successRate: 'Success Rate (%)',
           errorRate: 'Error Rate (%)',
           upstreamErrorRate: 'Upstream Error Rate (%)',
@@ -510,6 +514,10 @@ export default {
           overloadAccountCount: 'Overloaded Accounts'
         },
         metricDescriptions: {
+          ttftP50: 'Median time to the first token in the window — what users feel as lag (normally 2–5 s).',
+          ttftP95: 'P95 time to the first token in the window.',
+          p95Latency: 'P95 of whole-request duration; streamed answers are slow by nature, so set minutes, not seconds.',
+          p99Latency: 'P99 of whole-request duration.',
           successRate: 'Percentage of successful requests in the window (0-100).',
           errorRate: 'Percentage of failed requests in the window (0-100).',
           upstreamErrorRate: 'Percentage of upstream failures in the window (0-100).',
