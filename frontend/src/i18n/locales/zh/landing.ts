@@ -143,8 +143,8 @@ export default {
       hero: {
         eyebrow: '{site} · AI 创作与 API 一站式平台',
         titleLead: '一个 Key，',
-        titleHighlight: '畅用顶级 AI',
-        subtitle: '画图、视频、编程助手一站搞定。按量计费，稳定不掉线。',
+        titleHighlight: '畅用主流 AI',
+        subtitle: '画图、视频、编程助手一站搞定。按量计费，也可以订阅。',
         chips: {
           models: '多模型聚合',
           billing: '按量计费',
@@ -290,7 +290,7 @@ export default {
         secondary: '先去画布看看'
       },
       footer: {
-        desc: '一个 Key 畅用顶级 AI：画图、视频、编程助手一站搞定。',
+        desc: '一个 Key 畅用主流 AI：画图、视频、编程助手一站搞定。',
         product: '产品',
         support: '支持',
         canvas: '无限画布',

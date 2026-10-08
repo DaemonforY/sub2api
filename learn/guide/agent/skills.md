@@ -67,7 +67,7 @@ skill-name/
 1. 前面是 **YAML 前置元数据**，告诉宿主“我是谁、什么时候该用我”；
 2. 后面是**正文**，写具体流程、约束、示例和失败处理。
 
-想要学 Skill 怎么写，我们直接看最顶级的开源 Skill 就好了。
+想要学 Skill 怎么写，可以直接看几个口碑好的开源 Skill。
 
 这里我们以 [Superpowers 的 TDD 技能](https://github.com/obra/superpowers/blob/main/skills/test-driven-development/SKILL.md)为例，
 

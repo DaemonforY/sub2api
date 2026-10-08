@@ -143,8 +143,8 @@ export default {
       hero: {
         eyebrow: '{site} · AI creation and API in one place',
         titleLead: 'One key for ',
-        titleHighlight: 'top-tier AI',
-        subtitle: 'Images, video and coding assistants in one place. Pay as you go, always on.',
+        titleHighlight: 'popular AI models',
+        subtitle: 'Images, video and coding assistants in one place. Pay as you go or subscribe.',
         chips: {
           models: 'Many models',
           billing: 'Pay as you go',
@@ -290,7 +290,7 @@ export default {
         secondary: 'Try the canvas first'
       },
       footer: {
-        desc: 'One key for top-tier AI: images, video and coding assistants in one place.',
+        desc: 'One key for popular AI models: images, video and coding assistants in one place.',
         product: 'Product',
         support: 'Support',
         canvas: 'Infinite Canvas',
