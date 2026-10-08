@@ -32,7 +32,9 @@ func RegisterAuthRoutes(
 	auth.Use(gin.HandlerFunc(auditLog))
 	{
 		// 注册/登录/2FA/验证码发送均属于高风险入口，增加服务端兜底限流（Redis 故障时 fail-close）
-		auth.POST("/register", rateLimiter.LimitWithOptions("auth-register", 5, time.Minute, middleware.RateLimitOptions{
+		// 注册、发送验证码：上限 20 次/分钟（照顾一个班在机房同时注册）；
+		// 同一 IP 发码多、注册多或失败多时由 LoginGuardService 要求图形验证码，失败 20 次封禁。
+		auth.POST("/register", rateLimiter.LimitWithOptions("auth-register", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Register)
 		// 登录：请求频率上限放宽到 60 次/分钟，照顾学校机房等多人共用一个出口 IP 的场景；
@@ -41,7 +43,7 @@ func RegisterAuthRoutes(
 		auth.POST("/login", rateLimiter.LimitWithOptions("auth-login", 60, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.Login)
-		auth.GET("/login-captcha", rateLimiter.LimitWithOptions("auth-login-captcha", 30, time.Minute, middleware.RateLimitOptions{
+		auth.GET("/login-captcha", rateLimiter.LimitWithOptions("auth-login-captcha", 60, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.LoginCaptcha)
 		auth.POST("/login/2fa", rateLimiter.LimitWithOptions("auth-login-2fa", 20, time.Minute, middleware.RateLimitOptions{
@@ -53,7 +55,7 @@ func RegisterAuthRoutes(
 		auth.POST("/passkey/login/finish", rateLimiter.LimitWithOptions("passkey-login-finish", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Passkey.FinishLogin)
-		auth.POST("/send-verify-code", rateLimiter.LimitWithOptions("auth-send-verify-code", 5, time.Minute, middleware.RateLimitOptions{
+		auth.POST("/send-verify-code", rateLimiter.LimitWithOptions("auth-send-verify-code", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.SendVerifyCode)
 		// Token刷新接口添加速率限制：每分钟最多 30 次（Redis 故障时 fail-close）

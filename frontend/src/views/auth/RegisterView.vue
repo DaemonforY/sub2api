@@ -252,6 +252,17 @@
           />
         </div>
 
+        <!-- Built-in image captcha (email verification off), when the server asks -->
+        <ImageCaptcha
+          v-if="imageCaptchaRequired && !captchaEnabled && !emailVerifyEnabled"
+          ref="imageCaptchaRef"
+          v-model:code="imageCaptchaCode"
+          v-model:captcha-id="imageCaptchaId"
+          input-id="register-captcha"
+          :hint="t('auth.imageCaptcha.hintRegister')"
+          :disabled="isLoading"
+        />
+
         <LoginAgreementPrompt
           v-if="loginAgreementEnabled"
           :accepted="agreementAccepted"
@@ -374,6 +385,7 @@ import EmailOAuthButtons from '@/components/auth/EmailOAuthButtons.vue'
 import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
+import ImageCaptcha from '@/components/auth/ImageCaptcha.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
   buildOAuthLoginStartURL,
@@ -386,7 +398,7 @@ import {
   validateAffiliateCode
 } from '@/api/auth'
 import { buildAuthErrorMessage } from '@/utils/authError'
-import { extractApiErrorCode, extractI18nErrorMessage } from '@/utils/apiError'
+import { extractApiErrorCode, extractApiErrorMetadata, extractI18nErrorMessage } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
   isRegistrationEmailSuffixAllowed,
@@ -452,6 +464,13 @@ const showAgreementModal = ref<boolean>(false)
 
 // Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
+
+// Built-in image captcha for direct sign-up (no email verification); with email
+// verification it is asked for on the code page instead.
+const imageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
+const imageCaptchaRequired = ref<boolean>(false)
+const imageCaptchaId = ref<string>('')
+const imageCaptchaCode = ref<string>('')
 const turnstileToken = ref<string>('')
 const tencentCaptchaRandstr = ref<string>('')
 const aliyunCaptchaReady = computed(
@@ -1053,6 +1072,16 @@ function validateForm(): boolean {
     isValid = false
   }
 
+  if (
+    imageCaptchaRequired.value &&
+    !captchaEnabled.value &&
+    !emailVerifyEnabled.value &&
+    !imageCaptchaCode.value.trim()
+  ) {
+    errors.turnstile = t('auth.imageCaptcha.required')
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -1165,7 +1194,10 @@ async function handleRegister(): Promise<void> {
       tencent_captcha_randstr: tencentCaptchaEnabled.value ? tencentCaptchaRandstr.value : undefined,
       promo_code: formData.promo_code || undefined,
       invitation_code: formData.invitation_code || undefined,
-      ...(affCode ? { aff_code: affCode } : {})
+      ...(affCode ? { aff_code: affCode } : {}),
+      ...(imageCaptchaRequired.value
+        ? { captcha_id: imageCaptchaId.value, captcha_code: imageCaptchaCode.value.trim() }
+        : {})
     })
     clearAffiliateReferralCode()
 
@@ -1183,6 +1215,13 @@ async function handleRegister(): Promise<void> {
 
     // Also show error toast
     appStore.showError(errorMessage.value)
+
+    // A captcha is good for one try: show it when the server first asks, otherwise get a new one.
+    if (extractApiErrorMetadata(error)?.captcha_required === 'true' && !imageCaptchaRequired.value) {
+      imageCaptchaRequired.value = true
+    } else if (imageCaptchaRequired.value) {
+      void imageCaptchaRef.value?.refresh()
+    }
   } finally {
     if (captchaEnabled.value) {
       resetCaptchaProof()

@@ -152,6 +152,9 @@ export interface RegisterRequest {
   promo_code?: string
   invitation_code?: string
   aff_code?: string
+  /** Built-in image captcha (sign-up without email verification) */
+  captcha_id?: string
+  captcha_code?: string
 }
 
 export interface AffiliateInvitee {
@@ -190,6 +193,9 @@ export interface SendVerifyCodeRequest {
   tencent_captcha_randstr?: string
   pending_auth_token?: string
   pending_oauth_token?: string
+  /** Built-in image captcha, asked for when this IP requests many codes */
+  captcha_id?: string
+  captcha_code?: string
 }
 
 export interface SendVerifyCodeResponse {

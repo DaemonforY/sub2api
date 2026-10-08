@@ -26,6 +26,19 @@ func (h *AuthHandler) checkLoginCaptcha(c *gin.Context, clientIP string, req *Lo
 	return h.loginGuard.VerifyCaptcha(c.Request.Context(), clientIP, req.CaptchaID, req.CaptchaCode)
 }
 
+// checkRegisterCaptcha asks for the image captcha on a sign-up step (sending the
+// email code, or registering when email verification is off) once this IP has
+// requested several codes, created accounts or failed — see register_guard.go.
+func (h *AuthHandler) checkRegisterCaptcha(c *gin.Context, clientIP, captchaID, captchaCode string) error {
+	if h.loginGuard == nil || h.thirdPartyCaptchaEnabled(c) {
+		return nil
+	}
+	if !h.loginGuard.RegisterCaptchaRequired(c.Request.Context(), clientIP) {
+		return nil
+	}
+	return h.loginGuard.VerifyCaptcha(c.Request.Context(), clientIP, captchaID, captchaCode)
+}
+
 func (h *AuthHandler) thirdPartyCaptchaEnabled(c *gin.Context) bool {
 	if h.settingSvc == nil {
 		return false
@@ -37,7 +50,7 @@ func (h *AuthHandler) thirdPartyCaptchaEnabled(c *gin.Context) bool {
 	return cfg.TurnstileEnabled || cfg.Tencent.Enabled || cfg.Aliyun.Enabled
 }
 
-// LoginCaptcha issues a built-in image captcha for the login form.
+// LoginCaptcha issues a built-in image captcha for the login and sign-up forms.
 // GET /api/v1/auth/login-captcha
 func (h *AuthHandler) LoginCaptcha(c *gin.Context) {
 	if err := h.loginGuard.CheckBlocked(c.Request.Context(), ip.GetClientIP(c)); err != nil {

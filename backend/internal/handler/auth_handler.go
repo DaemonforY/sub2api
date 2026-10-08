@@ -59,6 +59,9 @@ type RegisterRequest struct {
 	PromoCode             string `json:"promo_code"`      // 注册优惠码
 	InvitationCode        string `json:"invitation_code"` // 邀请码
 	AffCode               string `json:"aff_code"`        // 邀请返利码
+	// Built-in image captcha (only asked for here when email verification is off).
+	CaptchaID   string `json:"captcha_id"`
+	CaptchaCode string `json:"captcha_code"`
 }
 
 // SendVerifyCodeRequest 发送验证码请求
@@ -67,6 +70,9 @@ type SendVerifyCodeRequest struct {
 	TurnstileToken        string `json:"turnstile_token"`
 	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`
 	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`
+	// Built-in image captcha, asked for when this IP requests many codes.
+	CaptchaID   string `json:"captcha_id"`
+	CaptchaCode string `json:"captcha_code"`
 }
 
 // SendVerifyCodeResponse 发送验证码响应
@@ -188,11 +194,25 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	// 验证当前启用的验证码（邮箱验证码注册场景避免重复校验一次性票据）
-	proof := captchaProof(req.TurnstileToken, req.TencentCaptchaTicket, req.TencentCaptchaRandstr)
-	if err := h.authService.VerifyCaptchaForRegister(c.Request.Context(), proof, ip.GetClientIP(c), req.VerifyCode); err != nil {
+	clientIP := ip.GetClientIP(c)
+	if err := h.loginGuard.CheckBlocked(c.Request.Context(), clientIP); err != nil {
 		response.ErrorFrom(c, err)
 		return
+	}
+
+	// 验证当前启用的验证码（邮箱验证码注册场景避免重复校验一次性票据）
+	proof := captchaProof(req.TurnstileToken, req.TencentCaptchaTicket, req.TencentCaptchaRandstr)
+	if err := h.authService.VerifyCaptchaForRegister(c.Request.Context(), proof, clientIP, req.VerifyCode); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	// 同理：走邮箱验证码时，图形验证码已在发送验证码那一步校验过
+	withEmailCode := strings.TrimSpace(req.VerifyCode) != ""
+	if !withEmailCode {
+		if err := h.checkRegisterCaptcha(c, clientIP, req.CaptchaID, req.CaptchaCode); err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
 	}
 
 	_, user, err := h.authService.RegisterWithVerification(
@@ -205,9 +225,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		req.AffCode,
 	)
 	if err != nil {
-		response.ErrorFrom(c, err)
+		flagged := h.loginGuard.RecordRegisterFailure(c.Request.Context(), clientIP, err)
+		if withEmailCode {
+			flagged = err // the captcha lives on the send-code step
+		}
+		response.ErrorFrom(c, flagged)
 		return
 	}
+	h.loginGuard.RecordSignup(c.Request.Context(), clientIP)
 
 	h.respondWithTokenPair(c, user)
 }
@@ -221,17 +246,28 @@ func (h *AuthHandler) SendVerifyCode(c *gin.Context) {
 		return
 	}
 
+	clientIP := ip.GetClientIP(c)
+	if err := h.loginGuard.CheckBlocked(c.Request.Context(), clientIP); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
 	proof := captchaProof(req.TurnstileToken, req.TencentCaptchaTicket, req.TencentCaptchaRandstr)
-	if err := h.authService.VerifyCaptcha(c.Request.Context(), proof, ip.GetClientIP(c)); err != nil {
+	if err := h.authService.VerifyCaptcha(c.Request.Context(), proof, clientIP); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if err := h.checkRegisterCaptcha(c, clientIP, req.CaptchaID, req.CaptchaCode); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
 	result, err := h.authService.SendVerifyCodeAsync(c.Request.Context(), req.Email, c.GetHeader("Accept-Language"))
 	if err != nil {
-		response.ErrorFrom(c, err)
+		response.ErrorFrom(c, h.loginGuard.RecordRegisterFailure(c.Request.Context(), clientIP, err))
 		return
 	}
+	h.loginGuard.RecordCodeSent(c.Request.Context(), clientIP)
 
 	response.Success(c, SendVerifyCodeResponse{
 		Message:   "Verification code sent successfully",

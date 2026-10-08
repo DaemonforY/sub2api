@@ -266,6 +266,7 @@ export default {
     reloginRequired: '会话已过期，请重新登录。',
     turnstileExpired: '验证已过期，请重试',
     imageCaptcha: {
+      hintRegister: '为防止批量注册，请先输入验证码再发送；不区分大小写',
       label: '图形验证码',
       placeholder: '输入右图中的 4 个字符',
       alt: '图形验证码，点击换一张',

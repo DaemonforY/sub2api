@@ -86,12 +86,12 @@ describe('login image captcha', () => {
     await flushPromises()
     await wrapper.get('#email').setValue('user@example.com')
     await wrapper.get('#password').setValue('wrong-pass')
-    expect(wrapper.find('[data-testid="login-image-captcha"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="image-captcha"]').exists()).toBe(false)
 
     loginMock.mockRejectedValueOnce(wrongPassword)
     await submit(wrapper)
     expect(loginMock.mock.calls[0][0].captcha_id).toBeUndefined()
-    expect(wrapper.find('[data-testid="login-image-captcha"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="image-captcha"]').exists()).toBe(true)
     expect(getLoginCaptchaMock).toHaveBeenCalledTimes(1)
 
     // Without an answer the form does not submit.
@@ -99,14 +99,14 @@ describe('login image captcha', () => {
     expect(loginMock).toHaveBeenCalledTimes(1)
 
     loginMock.mockRejectedValueOnce(wrongPassword)
-    await wrapper.get('#login-captcha').setValue('ab7k')
+    await wrapper.get('#image-captcha').setValue('ab7k')
     await submit(wrapper)
     expect(loginMock.mock.calls[1][0]).toMatchObject({ captcha_id: 'cap-1', captcha_code: 'ab7k' })
     expect(getLoginCaptchaMock).toHaveBeenCalledTimes(2)
-    expect((wrapper.get('#login-captcha').element as HTMLInputElement).value).toBe('')
+    expect((wrapper.get('#image-captcha').element as HTMLInputElement).value).toBe('')
 
     loginMock.mockResolvedValueOnce({})
-    await wrapper.get('#login-captcha').setValue('M3XQ')
+    await wrapper.get('#image-captcha').setValue('M3XQ')
     await submit(wrapper)
     expect(loginMock.mock.calls[2][0]).toMatchObject({ captcha_id: 'cap-2', captcha_code: 'M3XQ' })
   })
@@ -118,7 +118,7 @@ describe('login image captcha', () => {
     await wrapper.get('#password').setValue('wrong-pass')
     loginMock.mockRejectedValueOnce({ ...wrongPassword, metadata: undefined })
     await submit(wrapper)
-    expect(wrapper.find('[data-testid="login-image-captcha"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="image-captcha"]').exists()).toBe(false)
     expect(getLoginCaptchaMock).not.toHaveBeenCalled()
   })
 })

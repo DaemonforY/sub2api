@@ -98,7 +98,7 @@
         </div>
 
         <!-- Built-in image captcha, after repeated failed logins -->
-        <LoginImageCaptcha
+        <ImageCaptcha
           v-if="imageCaptchaRequired && !captchaEnabled"
           ref="imageCaptchaRef"
           v-model:code="imageCaptchaCode"
@@ -244,7 +244,7 @@ import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
 import TotpLoginModal from '@/components/auth/TotpLoginModal.vue'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
-import LoginImageCaptcha from '@/components/auth/LoginImageCaptcha.vue'
+import ImageCaptcha from '@/components/auth/ImageCaptcha.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
   buildOAuthLoginStartURL,
@@ -325,7 +325,7 @@ const tencentCaptchaRandstr = ref<string>('')
 
 // Built-in image captcha: the server asks for it (metadata.captcha_required) after
 // several failed logins from this IP / for this email, when no third-party captcha is on.
-const imageCaptchaRef = ref<InstanceType<typeof LoginImageCaptcha> | null>(null)
+const imageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
 const imageCaptchaRequired = ref<boolean>(false)
 const imageCaptchaId = ref<string>('')
 const imageCaptchaCode = ref<string>('')

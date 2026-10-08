@@ -267,6 +267,7 @@ export default {
     reloginRequired: 'Session expired. Please log in again.',
     turnstileExpired: 'Verification expired, please try again',
     imageCaptcha: {
+      hintRegister: 'To stop bulk sign-ups, enter the captcha first (not case-sensitive)',
       label: 'Captcha',
       placeholder: 'Enter the 4 characters shown',
       alt: 'Captcha image, click for a new one',

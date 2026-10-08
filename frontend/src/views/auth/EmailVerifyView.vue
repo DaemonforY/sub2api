@@ -86,6 +86,18 @@
           />
         </div>
 
+        <!-- Built-in image captcha before (re)sending the code, when the server asks -->
+        <ImageCaptcha
+          v-if="imageCaptchaRequired && !captchaEnabled"
+          ref="imageCaptchaRef"
+          v-model:code="imageCaptchaCode"
+          v-model:captcha-id="imageCaptchaId"
+          input-id="register-captcha"
+          :hint="t('auth.imageCaptcha.hintRegister')"
+          :disabled="isSendingCode"
+          @keydown.enter.prevent="handleResendCode"
+        />
+
         <div v-if="pendingOAuthCreateCaptchaEnabled" class="space-y-2">
           <TurnstileWidget
             ref="createAccountTurnstileRef"
@@ -184,6 +196,7 @@ import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
 import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
+import ImageCaptcha from '@/components/auth/ImageCaptcha.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
   persistOAuthTokenContext,
@@ -195,7 +208,7 @@ import {
 } from '@/api/auth'
 import { apiClient } from '@/api/client'
 import { buildAuthErrorMessage } from '@/utils/authError'
-import { extractApiErrorCode } from '@/utils/apiError'
+import { extractApiErrorCode, extractApiErrorMetadata } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
   isRegistrationEmailSuffixAllowed,
@@ -285,6 +298,13 @@ const resendTencentCaptchaRandstr = ref<string>('')
 const createAccountTurnstileToken = ref<string>('')
 const createAccountTencentCaptchaRandstr = ref<string>('')
 const showResendTurnstile = ref<boolean>(false)
+
+// Built-in image captcha: the server asks for it (metadata.captcha_required) when this
+// IP has requested several codes, created accounts or failed — see register_guard.go.
+const imageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
+const imageCaptchaRequired = ref<boolean>(false)
+const imageCaptchaId = ref<string>('')
+const imageCaptchaCode = ref<string>('')
 const aliyunCaptchaReady = computed(
   () =>
     aliyunCaptchaEnabled.value &&
@@ -534,6 +554,7 @@ async function sendCode(): Promise<void> {
   errorMessage.value = ''
   let requestSucceeded = false
   let captchaProofUsed = false
+  const imageCaptchaUsed = imageCaptchaRequired.value && !captchaEnabled.value
 
   try {
     if (!shouldBypassRegistrationEmailPolicy() && !isRegistrationEmailSuffixAllowed(email.value, registrationEmailSuffixWhitelist.value)) {
@@ -555,7 +576,9 @@ async function sendCode(): Promise<void> {
         : undefined,
       tencent_captcha_randstr: tencentCaptchaEnabled.value
         ? resendTencentCaptchaRandstr.value || initialTencentCaptchaRandstr.value || undefined
-        : undefined
+        : undefined,
+      captcha_id: imageCaptchaUsed ? imageCaptchaId.value : undefined,
+      captcha_code: imageCaptchaUsed ? imageCaptchaCode.value.trim() : undefined
     } as Parameters<typeof sendVerifyCode>[0]
     captchaProofUsed = Boolean(
       requestPayload.turnstile_token || requestPayload.tencent_captcha_ticket
@@ -588,7 +611,14 @@ async function sendCode(): Promise<void> {
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.sendCodeFailed'))
 
     appStore.showError(errorMessage.value)
+    if (extractApiErrorMetadata(error)?.captcha_required === 'true') {
+      imageCaptchaRequired.value = true
+    }
   } finally {
+    // A captcha is good for one request: get a new one for the next send.
+    if (imageCaptchaUsed) {
+      void imageCaptchaRef.value?.refresh()
+    }
     if (captchaProofUsed) {
       clearStoredCaptchaProof()
       initialTurnstileToken.value = ''
@@ -630,6 +660,11 @@ async function handleResendCode(): Promise<void> {
 
   if (turnstileEnabled.value && !resendTurnstileToken.value) {
     errors.value.turnstile = t('auth.completeVerification')
+    return
+  }
+
+  if (imageCaptchaRequired.value && !captchaEnabled.value && !imageCaptchaCode.value.trim()) {
+    errors.value.turnstile = t('auth.imageCaptcha.required')
     return
   }
 

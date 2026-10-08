@@ -23,6 +23,8 @@ import (
 //     enabled, which then guards every login);
 //   - an IP with many failures is refused for a while.
 //
+// Registration uses the same captcha, IP failure counter and block (register_guard.go).
+//
 // Redis errors fail open: logging in must not break when Redis hiccups (the route's
 // request-rate limit still applies).
 const (
@@ -39,8 +41,8 @@ const (
 )
 
 var (
-	ErrLoginCaptchaRequired = infraerrors.BadRequest("LOGIN_CAPTCHA_REQUIRED", "请输入图形验证码（Please enter the captcha）")
-	ErrLoginCaptchaInvalid  = infraerrors.BadRequest("LOGIN_CAPTCHA_INVALID", "图形验证码错误或已过期，请重新输入（Invalid or expired captcha）")
+	ErrImageCaptchaRequired = infraerrors.BadRequest("IMAGE_CAPTCHA_REQUIRED", "请输入图形验证码（Please enter the captcha）")
+	ErrImageCaptchaInvalid  = infraerrors.BadRequest("IMAGE_CAPTCHA_INVALID", "图形验证码错误或已过期，请重新输入（Invalid or expired captcha）")
 )
 
 // LoginGuardCache is the Redis side of the login guard.
@@ -90,8 +92,14 @@ func loginTooManyAttempts(retry time.Duration) error {
 		WithMetadata(map[string]string{"retry_after_minutes": strconv.Itoa(minutes)})
 }
 
+// withCaptchaRequired flags err so the form shows the image captcha, keeping its other metadata.
 func withCaptchaRequired(err *infraerrors.ApplicationError) error {
-	return err.WithMetadata(map[string]string{"captcha_required": "true"})
+	md := make(map[string]string, len(err.Metadata)+1)
+	for k, v := range err.Metadata {
+		md[k] = v
+	}
+	md["captcha_required"] = "true"
+	return err.WithMetadata(md)
 }
 
 // CheckBlocked refuses an IP that is serving a block.
@@ -133,7 +141,7 @@ func (s *LoginGuardService) CaptchaRequired(ctx context.Context, ip, email strin
 func (s *LoginGuardService) VerifyCaptcha(ctx context.Context, ip, id, answer string) error {
 	id, answer = strings.TrimSpace(id), strings.ToUpper(strings.TrimSpace(answer))
 	if id == "" || answer == "" {
-		return withCaptchaRequired(ErrLoginCaptchaRequired)
+		return withCaptchaRequired(ErrImageCaptchaRequired)
 	}
 	want, err := s.cache.Take(ctx, loginCaptchaKey(id))
 	if err != nil {
@@ -142,7 +150,7 @@ func (s *LoginGuardService) VerifyCaptcha(ctx context.Context, ip, id, answer st
 	}
 	if want == "" || subtle.ConstantTimeCompare([]byte(want), []byte(answer)) != 1 {
 		s.countIP(ctx, ip)
-		return withCaptchaRequired(ErrLoginCaptchaInvalid)
+		return withCaptchaRequired(ErrImageCaptchaInvalid)
 	}
 	return nil
 }

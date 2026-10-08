@@ -19,7 +19,9 @@ const {
   authStoreState,
   createTurnstileResetMock,
   verifyActionMock,
+  getLoginCaptchaMock,
 } = vi.hoisted(() => ({
+  getLoginCaptchaMock: vi.fn(),
   pushMock: vi.fn(),
   showSuccessMock: vi.fn(),
   showErrorMock: vi.fn(),
@@ -93,6 +95,7 @@ vi.mock('@/api/auth', async () => {
     ...actual,
     getPublicSettings: (...args: any[]) => getPublicSettingsMock(...args),
     sendVerifyCode: (...args: any[]) => sendVerifyCodeMock(...args),
+    getLoginCaptcha: (...args: any[]) => getLoginCaptchaMock(...args),
     sendPendingOAuthVerifyCode: (...args: any[]) => sendPendingOAuthVerifyCodeMock(...args),
     persistOAuthTokenContext: (...args: any[]) => persistOAuthTokenContextMock(...args),
   }
@@ -898,5 +901,56 @@ describe('EmailVerifyView', () => {
       tencent_captcha_ticket: undefined,
       tencent_captcha_randstr: undefined,
     }))
+  })
+
+  it('asks for the image captcha when the server wants one, and sends it with the next code request', async () => {
+    let n = 0
+    getLoginCaptchaMock.mockImplementation(async () => {
+      n += 1
+      return { captcha_id: `cap-${n}`, image: 'data:image/png;base64,AAAA' }
+    })
+    sendVerifyCodeMock.mockRejectedValueOnce({
+      status: 400,
+      reason: 'IMAGE_CAPTCHA_REQUIRED',
+      message: '请输入图形验证码（Please enter the captcha）',
+      metadata: { captcha_required: 'true' },
+    })
+    sessionStorage.setItem(
+      'register_data',
+      JSON.stringify({ email: 'new@example.com', password: 'secret-123' })
+    )
+
+    const wrapper = mount(EmailVerifyView, {
+      global: {
+        stubs: {
+          AuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
+          Icon: true,
+          TurnstileWidget: true,
+          transition: false,
+        },
+      },
+    })
+    await flushPromises()
+
+    expect(sendVerifyCodeMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-testid="image-captcha"]').exists()).toBe(true)
+    expect(getLoginCaptchaMock).toHaveBeenCalledTimes(1)
+
+    const resend = () =>
+      wrapper.findAll('button').find((b) => b.text() === 'auth.resendCode')!.trigger('click')
+
+    // Not without an answer.
+    await resend()
+    await flushPromises()
+    expect(sendVerifyCodeMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.get('#register-captcha').setValue('ab7k')
+    await resend()
+    await flushPromises()
+    expect(sendVerifyCodeMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ email: 'new@example.com', captcha_id: 'cap-1', captcha_code: 'ab7k' })
+    )
+    // Used up: a new one is ready for a later resend.
+    expect(getLoginCaptchaMock).toHaveBeenCalledTimes(2)
   })
 })

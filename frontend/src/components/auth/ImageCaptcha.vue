@@ -1,9 +1,9 @@
 <template>
-  <div data-testid="login-image-captcha">
-    <label for="login-captcha" class="input-label">{{ t('auth.imageCaptcha.label') }}</label>
+  <div data-testid="image-captcha">
+    <label :for="inputId" class="input-label">{{ t('auth.imageCaptcha.label') }}</label>
     <div class="flex items-center gap-3">
       <input
-        id="login-captcha"
+        :id="inputId"
         v-model="code"
         type="text"
         inputmode="text"
@@ -20,7 +20,7 @@
         class="h-11 w-[132px] shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-dark-600 dark:bg-dark-800"
         :title="t('auth.imageCaptcha.refresh')"
         :disabled="loading || disabled"
-        data-testid="login-image-captcha-refresh"
+        data-testid="image-captcha-refresh"
         @click="refresh"
       >
         <img
@@ -37,7 +37,7 @@
       </button>
     </div>
     <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
-      {{ t('auth.imageCaptcha.hint') }} · {{ t('auth.imageCaptcha.refresh') }}
+      {{ hint || t('auth.imageCaptcha.hint') }} · {{ t('auth.imageCaptcha.refresh') }}
     </p>
   </div>
 </template>
@@ -49,7 +49,12 @@ import { getLoginCaptcha } from '@/api/auth'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
-defineProps<{ disabled?: boolean }>()
+// Built-in image captcha (login, sign-up): the server asks for it with
+// metadata.captcha_required; each captcha is good for one request.
+withDefaults(defineProps<{ disabled?: boolean; hint?: string; inputId?: string }>(), {
+  hint: '',
+  inputId: 'image-captcha'
+})
 
 const code = defineModel<string>('code', { default: '' })
 const captchaId = defineModel<string>('captchaId', { default: '' })

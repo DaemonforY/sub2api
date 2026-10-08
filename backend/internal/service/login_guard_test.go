@@ -134,12 +134,12 @@ func TestLoginGuardCaptchaIsOneTimeAndWrongAnswersCount(t *testing.T) {
 
 	require.NoError(t, g.VerifyCaptcha(ctx, "1.2.3.4", c.ID, " "+strings.ToLower(code)+" "))
 	err = g.VerifyCaptcha(ctx, "1.2.3.4", c.ID, code)
-	require.ErrorIs(t, err, ErrLoginCaptchaInvalid, "a captcha works once")
+	require.ErrorIs(t, err, ErrImageCaptchaInvalid, "a captcha works once")
 	require.True(t, captchaFlagged(err))
 	require.EqualValues(t, 1, cache.ints[loginGuardIPKey("1.2.3.4")], "a wrong captcha counts against the IP")
 
 	err = g.VerifyCaptcha(ctx, "1.2.3.4", "", "")
-	require.ErrorIs(t, err, ErrLoginCaptchaRequired)
+	require.ErrorIs(t, err, ErrImageCaptchaRequired)
 	require.True(t, captchaFlagged(err))
 }
 
@@ -162,4 +162,61 @@ func TestLoginCaptchaCodesUseTheUnambiguousAlphabet(t *testing.T) {
 			require.True(t, strings.ContainsRune(loginCaptchaAlphabet, ch), code)
 		}
 	}
+}
+
+func TestRegisterGuardAsksForCaptchaAfterThreeCodesFromAnIP(t *testing.T) {
+	ctx := context.Background()
+	g := NewLoginGuardService(newMemLoginGuardCache())
+	for i := 0; i < registerCaptchaAfterIPSends-1; i++ {
+		g.RecordCodeSent(ctx, "1.2.3.4")
+	}
+	require.False(t, g.RegisterCaptchaRequired(ctx, "1.2.3.4"))
+	g.RecordCodeSent(ctx, "1.2.3.4")
+	require.True(t, g.RegisterCaptchaRequired(ctx, "1.2.3.4"))
+	require.False(t, g.RegisterCaptchaRequired(ctx, "5.6.7.8"))
+}
+
+func TestRegisterGuardAsksForCaptchaAfterTwoSignupsFromAnIP(t *testing.T) {
+	ctx := context.Background()
+	cache := newMemLoginGuardCache()
+	g := NewLoginGuardService(cache)
+	g.RecordSignup(ctx, "1.2.3.4")
+	require.False(t, g.RegisterCaptchaRequired(ctx, "1.2.3.4"))
+	g.RecordSignup(ctx, "1.2.3.4")
+	require.True(t, g.RegisterCaptchaRequired(ctx, "1.2.3.4"))
+	require.Equal(t, registerSignupWindow, cache.ttls[registerSignupIPKey("1.2.3.4")])
+}
+
+func TestRegisterGuardAsksEveryoneDuringASurgeOfCodeRequests(t *testing.T) {
+	ctx := context.Background()
+	cache := newMemLoginGuardCache()
+	g := NewLoginGuardService(cache)
+	cache.ints[registerSendSiteKey()] = registerCaptchaSiteWideSends
+	require.True(t, g.RegisterCaptchaRequired(ctx, "8.8.8.8"))
+}
+
+func TestRegisterGuardCountsClientErrorsOnly(t *testing.T) {
+	ctx := context.Background()
+	cache := newMemLoginGuardCache()
+	g := NewLoginGuardService(cache)
+
+	require.Equal(t, ErrServiceUnavailable, g.RecordRegisterFailure(ctx, "1.2.3.4", ErrServiceUnavailable))
+	require.Zero(t, cache.ints[loginGuardIPKey("1.2.3.4")], "server errors are not the visitor's fault")
+
+	suffix := infraerrors.BadRequest("EMAIL_SUFFIX_NOT_ALLOWED", "x").WithMetadata(map[string]string{"allowed_suffixes": "@qq.com"})
+	_ = g.RecordRegisterFailure(ctx, "1.2.3.4", ErrInvalidVerifyCode)
+	err := g.RecordRegisterFailure(ctx, "1.2.3.4", ErrEmailExists)
+	require.False(t, captchaFlagged(err))
+	err = g.RecordRegisterFailure(ctx, "1.2.3.4", suffix)
+	require.True(t, captchaFlagged(err), "third failure asks for the captcha")
+	var appErr *infraerrors.ApplicationError
+	require.ErrorAs(t, err, &appErr)
+	require.Equal(t, "@qq.com", appErr.Metadata["allowed_suffixes"], "existing metadata is kept")
+	require.True(t, g.RegisterCaptchaRequired(ctx, "1.2.3.4"))
+	require.True(t, g.CaptchaRequired(ctx, "1.2.3.4", "someone@x.com"), "sign-up failures count for login too")
+
+	for i := 0; i < loginBlockAfterIPFails; i++ {
+		_ = g.RecordRegisterFailure(ctx, "1.2.3.4", ErrInvalidVerifyCode)
+	}
+	require.Error(t, g.CheckBlocked(ctx, "1.2.3.4"))
 }
