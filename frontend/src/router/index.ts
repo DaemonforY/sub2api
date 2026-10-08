@@ -610,6 +610,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/margin',
+    name: 'AdminMargin',
+    component: () => import('@/views/admin/MarginView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Plan margins',
+      titleKey: 'admin.margin.title',
+      descriptionKey: 'admin.margin.description'
+    }
+  },
+  {
     path: '/admin/channel-links',
     name: 'AdminChannelLinks',
     component: () => import('@/views/admin/ChannelLinksView.vue'),

@@ -959,6 +959,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/assistant', label: t('nav.assistantAdmin'), icon: ChatIcon, hideInSimpleMode: true },
     { path: '/admin/analytics', label: t('nav.analyticsAdmin'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/admin/channel-links', label: t('nav.channelLinksAdmin'), icon: GlobeIcon, hideInSimpleMode: true },
+    { path: '/admin/margin', label: t('nav.marginAdmin'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: ShieldIcon, hideInSimpleMode: true }
   ]
 

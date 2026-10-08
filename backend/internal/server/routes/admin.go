@@ -1083,6 +1083,8 @@ func registerAnalyticsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	admin.GET("/analytics/overview", h.Analytics.AdminOverview)
 	admin.GET("/analytics/reminder", h.Analytics.AdminReminder)
 	admin.PUT("/analytics/reminder", h.Analytics.AdminSetReminder)
+	admin.GET("/analytics/margin", h.Analytics.AdminMargin)
+	admin.PUT("/analytics/margin/cost", h.Analytics.AdminSetMarginCost)
 	admin.GET("/analytics/channel-links", h.Analytics.AdminChannelLinks)
 	admin.POST("/analytics/channel-links", h.Analytics.AdminCreateChannelLink)
 	admin.PUT("/analytics/channel-links/:id", h.Analytics.AdminUpdateChannelLink)

@@ -222,6 +222,7 @@ export default {
     assistantAdmin: '智能客服',
     analyticsAdmin: '数据看板',
     channelLinksAdmin: '渠道链接',
+    marginAdmin: '套餐毛利',
   },
 
   // Auth

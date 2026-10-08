@@ -112,4 +112,79 @@ export async function deleteChannelLink(id: number): Promise<void> {
   await apiClient.delete(`/admin/analytics/channel-links/${id}`)
 }
 
-export default { getOverview, getReminder, setReminder, listChannelLinks, createChannelLink, updateChannelLink, deleteChannelLink }
+/** 套餐毛利: usage valued at standard prices × cost_per_usd (CNY per $1) against payments (CNY). */
+export interface MarginReport {
+  cost_per_usd: number
+  configured: boolean
+  days: number
+  since: string
+  totals: {
+    revenue: number
+    recharge_revenue: number
+    subscription_revenue: number
+    other_revenue: number
+    paygo_billed: number
+    paygo_cost: number
+    subscription_cost: number
+    admin_cost: number
+    member_cost: number
+    margin: number
+  }
+  groups: {
+    group_id: number
+    name: string
+    subscription: boolean
+    users: number
+    usage_usd: number
+    billed_usd: number
+    cost: number
+    margin?: number
+  }[]
+  plans: {
+    id: number
+    name: string
+    group_name: string
+    price: number
+    days: number
+    cap_usd: number | null
+    max_cost: number | null
+    max_loss: number
+    break_even_usd: number
+    sold: number
+    revenue: number
+  }[]
+  subscriptions: MarginSubscription[]
+  users: { user_id: number; email: string; usage_usd: number; billed_usd: number; paid: number; cost: number; margin: number }[]
+}
+
+export interface MarginSubscription {
+  id: number
+  user_id: number
+  email: string
+  group_name: string
+  starts_at: string
+  expires_at: string
+  paid: number
+  usage_usd: number
+  active: boolean
+  days_elapsed: number
+  days_total: number
+  cost: number
+  margin: number
+  projected_usd: number
+  projected_cost: number
+  projected_margin: number
+  status: 'ok' | 'risk' | 'loss' | 'gift'
+}
+
+export async function getMargin(days: number): Promise<MarginReport> {
+  const { data } = await apiClient.get('/admin/analytics/margin', { params: { days } })
+  return data
+}
+
+export async function setMarginCost(costPerUSD: number, days: number): Promise<MarginReport> {
+  const { data } = await apiClient.put('/admin/analytics/margin/cost', { cost_per_usd: costPerUSD }, { params: { days } })
+  return data
+}
+
+export default { getOverview, getReminder, setReminder, getMargin, setMarginCost, listChannelLinks, createChannelLink, updateChannelLink, deleteChannelLink }

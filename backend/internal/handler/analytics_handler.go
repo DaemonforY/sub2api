@@ -19,10 +19,11 @@ type AnalyticsHandler struct {
 	svc      *service.AnalyticsService
 	reminder *service.ActivationReminderService
 	links    *service.ChannelLinkService
+	margin   *service.MarginService
 }
 
-func NewAnalyticsHandler(svc *service.AnalyticsService, reminder *service.ActivationReminderService, links *service.ChannelLinkService) *AnalyticsHandler {
-	return &AnalyticsHandler{svc: svc, reminder: reminder, links: links}
+func NewAnalyticsHandler(svc *service.AnalyticsService, reminder *service.ActivationReminderService, links *service.ChannelLinkService, margin *service.MarginService) *AnalyticsHandler {
+	return &AnalyticsHandler{svc: svc, reminder: reminder, links: links, margin: margin}
 }
 
 // Collect POST /api/v1/events — a batch from the main site, /learn or /editor. Signed-in requests
@@ -147,4 +148,33 @@ func (h *AnalyticsHandler) AdminDeleteChannelLink(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"deleted": true})
+}
+
+// AdminMargin GET /api/v1/admin/analytics/margin?days=30 — 套餐毛利: usage cost against payments,
+// per group, plan, subscription and member.
+func (h *AnalyticsHandler) AdminMargin(c *gin.Context) {
+	days, _ := strconv.Atoi(c.Query("days"))
+	out, err := h.margin.Report(c.Request.Context(), days)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+// AdminSetMarginCost PUT /api/v1/admin/analytics/margin/cost {"cost_per_usd": 0.3} — CNY paid
+// upstream for $1 of usage.
+func (h *AnalyticsHandler) AdminSetMarginCost(c *gin.Context) {
+	var in struct {
+		CostPerUSD float64 `json:"cost_per_usd"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.margin.SetCostPerUSD(c.Request.Context(), in.CostPerUSD); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	h.AdminMargin(c)
 }

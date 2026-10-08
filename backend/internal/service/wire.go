@@ -1151,6 +1151,7 @@ var ProviderSet = wire.NewSet(
 	ProvideAnalyticsService,
 	ProvideActivationReminderService,
 	NewChannelLinkService,
+	NewMarginService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

@@ -298,3 +298,97 @@ func TestChannelLinkRepository(t *testing.T) {
 	require.ErrorIs(t, links.Delete(ctx, l.ID), service.ErrChannelLinkNotFound)
 	require.Equal(t, "/", links.Resolve(ctx, l.Code, ua))
 }
+
+func TestMarginRepositoryLoad(t *testing.T) {
+	ctx := context.Background()
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	now := time.Now()
+	since := now.AddDate(0, 0, -30)
+	limit := func(v float64) *float64 { return &v }
+	grp := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "margin-sub-" + sfx, SubscriptionType: service.SubscriptionTypeSubscription,
+		RateMultiplier: 1, DailyLimitUSD: limit(60), WeeklyLimitUSD: limit(350), MonthlyLimitUSD: limit(1200)})
+	payGo := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "margin-paygo-" + sfx, RateMultiplier: 1})
+	plan, err := integrationEntClient.SubscriptionPlan.Create().SetGroupID(grp.ID).SetName("月度-" + sfx).SetPrice(120).
+		SetValidityDays(1).SetValidityUnit("month").SetForSale(true).Save(ctx)
+	require.NoError(t, err)
+
+	mk := func(tag string) *service.User {
+		return mustCreateUser(t, integrationEntClient, &service.User{Email: "mg-" + tag + "-" + sfx + "@test.local", Username: "mg" + tag + sfx[len(sfx)-6:]})
+	}
+	payer, gifted := mk("payer"), mk("gift")
+	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "mg-acc-" + sfx})
+	order := func(u *service.User, typ, payType string, amount float64, paidAt time.Time, planID, groupID int64) {
+		c := integrationEntClient.PaymentOrder.Create().
+			SetUserID(u.ID).SetUserEmail(u.Email).SetUserName(u.Username).
+			SetAmount(amount).SetPayAmount(amount).SetFeeRate(0).
+			SetRechargeCode(fmt.Sprintf("MG-%d", time.Now().UnixNano())).SetOutTradeNo(fmt.Sprintf("mg_%d", time.Now().UnixNano())).
+			SetPaymentType(payType).SetPaymentTradeNo("t").SetOrderType(typ).SetStatus(service.OrderStatusCompleted).
+			SetPaidAt(paidAt).SetExpiresAt(paidAt).SetClientIP("127.0.0.1").SetSrcHost("test")
+		if planID > 0 {
+			c.SetPlanID(planID).SetSubscriptionGroupID(groupID)
+		}
+		_, err := c.Save(ctx)
+		require.NoError(t, err)
+	}
+	start := now.AddDate(0, 0, -4)
+	paidSub := mustCreateSubscription(t, integrationEntClient, &service.UserSubscription{UserID: payer.ID, GroupID: grp.ID, StartsAt: start, ExpiresAt: start.AddDate(0, 0, 30)})
+	order(payer, payment.OrderTypeSubscription, "wxpay", 120, start.Add(-time.Minute), plan.ID, grp.ID)
+	order(payer, payment.OrderTypeBalance, "alipay", 50, now.Add(-time.Hour), 0, 0)
+	giftSub := mustCreateSubscription(t, integrationEntClient, &service.UserSubscription{UserID: gifted.ID, GroupID: grp.ID, StartsAt: now.AddDate(0, 0, -10), ExpiresAt: now.AddDate(0, 0, -7)})
+
+	use := func(u *service.User, groupID int64, subID *int64, cost, billed float64) {
+		key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: u.ID, Key: fmt.Sprintf("sk-mg-%d", time.Now().UnixNano())})
+		c := integrationEntClient.UsageLog.Create().SetUserID(u.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(groupID).
+			SetRequestID(fmt.Sprintf("mg-%d", time.Now().UnixNano())).SetModel("gpt-5").SetCreatedAt(now.Add(-time.Hour)).
+			SetTotalCost(cost).SetActualCost(billed)
+		if subID != nil {
+			c.SetSubscriptionID(*subID).SetBillingType(service.BillingTypeSubscription)
+		}
+		_, err := c.Save(ctx)
+		require.NoError(t, err)
+	}
+	use(payer, grp.ID, &paidSub.ID, 160, 160)
+	use(payer, payGo.ID, nil, 10, 12)
+	use(gifted, grp.ID, &giftSub.ID, 300, 300)
+
+	raw, err := NewMarginRepository(integrationDB).Load(ctx, since, 500)
+	require.NoError(t, err)
+	groups := map[int64]service.MarginGroupRow{}
+	for _, g := range raw.Groups {
+		groups[g.GroupID] = g
+	}
+	require.True(t, groups[grp.ID].Subscription)
+	require.EqualValues(t, 2, groups[grp.ID].Users)
+	require.InDelta(t, 460, groups[grp.ID].UsageUSD, 1e-9)
+	require.False(t, groups[payGo.ID].Subscription)
+	require.InDelta(t, 12, groups[payGo.ID].BilledUSD, 1e-9)
+	require.GreaterOrEqual(t, raw.SubscriptionRevenue, 120.0)
+	require.GreaterOrEqual(t, raw.RechargeRevenue, 50.0)
+
+	var gotPlan *service.MarginPlanRow
+	for i := range raw.Plans {
+		if raw.Plans[i].ID == plan.ID {
+			gotPlan = &raw.Plans[i]
+		}
+	}
+	require.NotNil(t, gotPlan)
+	require.EqualValues(t, 1, gotPlan.Sold)
+	require.InDelta(t, 1200, *gotPlan.MonthlyLimitUSD, 1e-9)
+
+	subs := map[int64]service.MarginSubscriptionRow{}
+	for _, s := range raw.Subscriptions {
+		subs[s.ID] = s
+	}
+	require.InDelta(t, 120, subs[paidSub.ID].Paid, 1e-9)
+	require.InDelta(t, 160, subs[paidSub.ID].UsageUSD, 1e-9)
+	require.Zero(t, subs[giftSub.ID].Paid)
+	require.InDelta(t, 300, subs[giftSub.ID].UsageUSD, 1e-9)
+
+	users := map[int64]service.MarginUserRow{}
+	for _, u := range raw.Users {
+		users[u.UserID] = u
+	}
+	require.InDelta(t, 170, users[payer.ID].UsageUSD, 1e-9)
+	require.InDelta(t, 12, users[payer.ID].BilledUSD, 1e-9)
+	require.InDelta(t, 170, users[payer.ID].Paid, 1e-9)
+}

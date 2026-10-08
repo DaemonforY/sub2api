@@ -222,6 +222,7 @@ export default {
     assistantAdmin: 'Support assistant',
     analyticsAdmin: 'Analytics',
     channelLinksAdmin: 'Channel links',
+    marginAdmin: 'Plan margins',
   },
 
   // Auth
