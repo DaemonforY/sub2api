@@ -1053,6 +1053,7 @@ export default {
     askAssistant: 'Ask the support assistant',
     viewUsage: 'View usage',
     learnMore: 'Learn more on the AI learning site',
+    scenes: 'Not sure what to use it for? See everyday use cases',
     steps: {
       key: {
         title: 'Create an API key',

@@ -194,6 +194,11 @@ export default {
           title: '创作比赛',
           badge: '有奖',
           points: '投稿 AI 作品赢取奖励,社区投票公开透明,截止时刻冻结排名'
+        },
+        scenes: {
+          title: 'AI 能帮你做什么',
+          badge: '场景玩法',
+          points: '办公、销售、老师、学生、自媒体等按身份找用法,可直接复制的提示词,让 AI 帮你批量处理文件'
         }
       },
       community: {
@@ -299,6 +304,7 @@ export default {
         batch: '批量生图',
         docs: '使用文档',
         learn: 'AI 学习站',
+        scenes: 'AI 场景玩法',
         partner: '合作站点：{site}',
         keys: 'API Key 管理'
       }

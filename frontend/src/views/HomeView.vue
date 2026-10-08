@@ -581,6 +581,7 @@
           <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
             <li v-if="docUrl"><a :href="docUrl" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.docs') }}</a></li>
             <li><a :href="learnUrl('footer')" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.learn') }}</a></li>
+            <li><a href="/learn/scenes/?utm_source=home&utm_medium=footer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.scenes') }}</a></li>
             <li><router-link to="/keys" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.keys') }}</router-link></li>
             <li v-for="site in partnerSites" :key="site.key">
               <a :href="partnerSiteUrl(site, '/', 'footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">

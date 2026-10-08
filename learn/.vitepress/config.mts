@@ -54,6 +54,7 @@ export default defineConfig({
         activeMatch: '^/[a-dh]/',
         items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
+      { text: '场景玩法', link: '/scenes/', activeMatch: '^/scenes/' },
       { text: '接入教程', link: '/connect/', activeMatch: '^/connect/' },
       { text: 'Codex 教程', link: '/codex/', activeMatch: '^/codex/' },
       { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
@@ -100,6 +101,44 @@ export default defineConfig({
           ],
         },
         { text: 'HiveGPT', items: [{ text: '订阅还是按量', link: 'https://hivegpt.cn/pricing' }] },
+      ],
+      '/scenes/': [
+        {
+          text: '场景玩法',
+          items: [
+            { text: 'AI 能帮你做什么', link: '/scenes/' },
+            { text: '提示词心法', link: '/scenes/prompting' },
+          ],
+        },
+        {
+          text: '按身份找用法',
+          items: [
+            { text: '办公室日常', link: '/scenes/office' },
+            { text: '销售与运营', link: '/scenes/sales' },
+            { text: '老师', link: '/scenes/teacher' },
+            { text: '学生', link: '/scenes/student' },
+            { text: '财务与数据', link: '/scenes/data' },
+            { text: '自媒体与内容', link: '/scenes/content' },
+            { text: '个人生活', link: '/scenes/life' },
+            { text: '小老板与个体户', link: '/scenes/business' },
+          ],
+        },
+        {
+          text: '让 AI 帮你动手',
+          items: [
+            { text: '自动化入门', link: '/scenes/automation' },
+            { text: '批量处理文件和表格', link: '/scenes/automation-files' },
+            { text: '网页整理与浏览器操作', link: '/scenes/automation-web' },
+            { text: '定时任务和一键小工具', link: '/scenes/automation-schedule' },
+          ],
+        },
+        {
+          text: '准备工作',
+          items: [
+            { text: '接入教程', link: '/connect/' },
+            { text: '安装 Codex 并接入 HiveGPT', link: '/c/c1' },
+          ],
+        },
       ],
       '/guide/': [{ text: '延伸阅读（JavaGuide）', items: [{ text: '目录与来源', link: '/guide/' }] }, ...guideSidebar],
     },

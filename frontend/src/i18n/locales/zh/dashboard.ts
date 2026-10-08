@@ -1057,6 +1057,7 @@ export default {
     askAssistant: '遇到问题问智能客服',
     viewUsage: '查看使用记录',
     learnMore: '去 AI 学习站学更多用法',
+    scenes: '不知道用来做什么？看看场景玩法',
     steps: {
       key: {
         title: '创建一个 API Key',

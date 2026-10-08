@@ -6,10 +6,10 @@
     </div>
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       <component
-        :is="card.external ? 'a' : 'router-link'"
+        :is="card.external || card.page ? 'a' : 'router-link'"
         v-for="card in cards"
         :key="card.key"
-        v-bind="card.external ? { href: card.to, target: '_blank', rel: 'noopener noreferrer' } : { to: card.to }"
+        v-bind="card.page ? { href: card.to } : card.external ? { href: card.to, target: '_blank', rel: 'noopener noreferrer' } : { to: card.to }"
         class="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-200/70 bg-white/70 p-6 shadow-sm backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700 dark:bg-dark-800/60"
       >
         <div :class="['pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl transition group-hover:opacity-40', card.glow]"></div>
@@ -43,12 +43,14 @@ const props = defineProps<{ isAuthenticated: boolean; showModelPlaza: boolean }>
 const { t } = useI18n()
 
 interface Card {
-  key: 'coding' | 'image' | 'video' | 'batch' | 'plaza' | 'contest'
+  key: 'coding' | 'image' | 'video' | 'batch' | 'plaza' | 'contest' | 'scenes'
   emoji: string
   tile: string
   glow: string
   to: string
   external?: boolean
+  /** A page served beside the SPA (e.g. /learn), opened in the same tab. */
+  page?: boolean
 }
 
 const cards = computed<Card[]>(() => {
@@ -59,7 +61,8 @@ const cards = computed<Card[]>(() => {
     { key: 'video', emoji: '🎬', tile: 'bg-gradient-to-br from-rose-400 to-orange-500', glow: 'bg-rose-400', to: canvasUrl({ medium: 'home-scenario', baseUrl: origin, path: '/video' }), external: true },
     { key: 'batch', emoji: '🗂️', tile: 'bg-gradient-to-br from-emerald-400 to-teal-600', glow: 'bg-emerald-400', to: '/batch-image' },
     { key: 'plaza', emoji: '🧭', tile: 'bg-gradient-to-br from-amber-400 to-yellow-500', glow: 'bg-amber-400', to: '/model-plaza' },
-    { key: 'contest', emoji: '🏆', tile: 'bg-gradient-to-br from-violet-500 to-indigo-600', glow: 'bg-violet-500', to: '/contests' }
+    { key: 'contest', emoji: '🏆', tile: 'bg-gradient-to-br from-violet-500 to-indigo-600', glow: 'bg-violet-500', to: '/contests' },
+    { key: 'scenes', emoji: '💡', tile: 'bg-gradient-to-br from-lime-400 to-green-600', glow: 'bg-lime-400', to: '/learn/scenes/?utm_source=home&utm_medium=home-scenario', page: true }
   ]
   return props.showModelPlaza ? list : list.filter((c) => c.key !== 'plaza')
 })

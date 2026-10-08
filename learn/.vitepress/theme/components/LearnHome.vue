@@ -52,6 +52,18 @@ const runChip = computed(() =>
   !runEnabled.value ? '代码可复制到本地运行' : freeRuns.value > 0 ? `登录后每天 ${freeRuns.value} 次免费运行` : '用自己的 Key 在线运行',
 )
 
+// 场景玩法 (/scenes/): what AI is good for at work and at home, by role — for people who don't code.
+const scenes = [
+  { href: '/scenes/office', icon: '💼', title: '办公室日常', text: '邮件、会议纪要、周报、整理表格、对比两版合同' },
+  { href: '/scenes/sales', icon: '📈', title: '销售与运营', text: '客户跟进话术、竞品整理、活动方案、数据复盘' },
+  { href: '/scenes/teacher', icon: '🍎', title: '老师', text: '教案、出题与批改、家长沟通、课件大纲' },
+  { href: '/scenes/student', icon: '🎓', title: '学生', text: '学习计划、读论文、练口语、简历和面试' },
+  { href: '/scenes/data', icon: '📊', title: '财务与数据', text: 'Excel 公式、数据清洗、合并几十张表、报表分析' },
+  { href: '/scenes/content', icon: '✍️', title: '自媒体与内容', text: '选题、公众号排版、配图、短视频脚本' },
+  { href: '/scenes/life', icon: '🏠', title: '个人生活', text: '旅行攻略、记账、看懂体检单、家里的琐事' },
+  { href: '/scenes/automation', icon: '🤖', title: '让 AI 帮你动手', text: '批量整理文件、合并表格、抓网页、定时汇总' },
+]
+
 const more = [
   { href: '/codex/', icon: '⌘', tint: 'violet', title: 'Codex 教程', text: 'CLI、桌面应用、IDE 扩展和云端任务，配置、沙箱、AGENTS.md、Skills、MCP、子代理，接入 HiveGPT 就能用。', cta: '去学' },
   { href: '/bigdata/', icon: '◆', tint: 'blue', title: '大数据专区', text: 'Spark、Flink、Paimon 源码学习：调度、Shuffle、Checkpoint、状态和 LSM 合并，每个结论都有源码位置和实验。', cta: '去学' },
@@ -106,6 +118,23 @@ const more = [
       <div class="hu-stat"><b>{{ lessonCount }}</b><span>节课</span></div>
       <div class="hu-stat"><b>{{ hours }}<small>小时</small></b><span>学习时长</span></div>
       <div class="hu-stat"><b>100%</b><span>课程免费阅读</span></div>
+    </section>
+
+    <section class="hu-section" data-testid="home-scenes">
+      <div class="hu-section-head">
+        <div>
+          <h2>不写代码，AI 也能帮你做很多事</h2>
+          <p>不只是写代码和做 PPT。按你的身份找用法，提示词复制就能用，还能让 AI 帮你批量处理文件。</p>
+        </div>
+        <a class="hu-btn hu-btn-flat" :href="withBase('/scenes/')">场景玩法 →</a>
+      </div>
+      <div class="hu-grid hu-grid-4">
+        <a v-for="s in scenes" :key="s.href" class="hu-card hu-more" :href="withBase(s.href)">
+          <span class="hu-more-icon violet">{{ s.icon }}</span>
+          <h3>{{ s.title }}</h3>
+          <p>{{ s.text }}</p>
+        </a>
+      </div>
     </section>
 
     <section id="tracks" class="hu-section">

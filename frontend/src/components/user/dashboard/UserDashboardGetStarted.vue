@@ -42,6 +42,7 @@
         <a href="/learn/codex/hivegpt" target="_blank" rel="noopener" class="text-primary-600 hover:underline">{{ t('getStarted.tutorial') }} ↗</a>
         <a href="/home" target="_blank" rel="noopener" class="text-primary-600 hover:underline">{{ t('getStarted.askAssistant') }} ↗</a>
       </template>
+      <a href="/learn/scenes/?utm_source=dashboard&utm_medium=get-started" target="_blank" rel="noopener" class="text-primary-600 hover:underline" data-testid="get-started-scenes">{{ t('getStarted.scenes') }} ↗</a>
     </div>
   </section>
 </template>

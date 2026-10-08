@@ -194,6 +194,11 @@ export default {
           title: 'Contests',
           badge: 'Prizes',
           points: 'Submit AI art to win prizes,Transparent community voting,Ranking frozen at the deadline'
+        },
+        scenes: {
+          title: 'What AI can do for you',
+          badge: 'Use cases',
+          points: 'Ideas by role: office work / sales / teachers / students / creators,Copy-ready prompts,Let AI batch-process your files'
         }
       },
       community: {
@@ -299,6 +304,7 @@ export default {
         batch: 'Batch images',
         docs: 'Documentation',
         learn: 'AI learning hub',
+        scenes: 'AI use cases',
         partner: 'Partner site: {site}',
         keys: 'API keys'
       }
