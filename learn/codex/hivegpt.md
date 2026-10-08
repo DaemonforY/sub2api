@@ -21,7 +21,7 @@ description: 在 HiveGPT 创建 OpenAI 类分组的 Key，用「使用密钥」�
 
 1. 登录 [HiveGPT](https://hivegpt.cn)，打开左侧「API 密钥」页，点「创建密钥」。
 2. **分组**必须选 OpenAI 类的分组，例如「GPT-按量」。Codex 只能调用这类分组下的模型，选错分组是「模型不可用」最常见的原因。
-   买了订阅的话选套餐对应的分组（例如「Codex-Pro-白领办公版」），调用从订阅额度里扣；订阅和按量怎么选，见 [价格页](https://hivegpt.cn/pricing)。
+   买了订阅也不用换 Key：同一个 Key 会先用订阅额度，用完或到期后自动从余额扣费；订阅和按量怎么选，见 [价格页](https://hivegpt.cn/pricing)。
 3. 名称随意，建议写清用途，比如「codex-笔记本」。以后哪台设备丢了，可以单独删除对应的 Key。
 
 ## 第二步：打开「使用密钥」弹窗

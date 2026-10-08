@@ -13,6 +13,8 @@ export interface GrowthPublicConfig {
   /** 老用户锁价: buyers keep their price on renewal within price_lock_grace_days of expiry. */
   price_lock_enabled: boolean
   price_lock_grace_days: number
+  /** One key serves both subscriptions and balance (smart billing). */
+  smart_billing?: boolean
   leaderboard_enabled: boolean
   edu_verify_enabled: boolean
   edu_discount_percent: number
@@ -179,6 +181,14 @@ export interface PlanPriceLockStat {
 }
 
 export const adminGrowthAPI = {
+  async getSmartBilling(): Promise<{ enabled: boolean }> {
+    const { data } = await apiClient.get<{ enabled: boolean }>('/admin/growth/smart-billing')
+    return data
+  },
+  async setSmartBilling(enabled: boolean): Promise<{ enabled: boolean }> {
+    const { data } = await apiClient.put<{ enabled: boolean }>('/admin/growth/smart-billing', { enabled })
+    return data
+  },
   async priceLocks(): Promise<PlanPriceLockStat[]> {
     const { data } = await apiClient.get<PlanPriceLockStat[]>('/admin/growth/price-locks')
     return data

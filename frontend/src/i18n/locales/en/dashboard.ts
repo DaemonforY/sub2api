@@ -104,6 +104,7 @@ export default {
     namePlaceholder: 'My API Key',
     groupLabel: 'Group',
     selectGroup: 'Select a group',
+    smartBillingHint: 'One key works with both your subscription and your balance: chat and Codex requests use your subscription first; without one, or once its allowance is used up, they are billed to your balance — no need to switch keys. The group only sets the default.',
     statusLabel: 'Status',
     selectStatus: 'Select status',
     saving: 'Saving...',

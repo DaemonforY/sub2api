@@ -1168,6 +1168,7 @@ var ProviderSet = wire.NewSet(
 	NewChannelLinkService,
 	NewAffiliateWithdrawService,
 	NewMarginService,
+	NewBillingRouteService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

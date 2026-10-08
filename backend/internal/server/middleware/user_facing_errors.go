@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
@@ -28,6 +29,24 @@ func insufficientBalanceMessage(balance float64) string {
 
 // subscriptionLimitMessage explains a subscription rejection from ValidateAndCheckLimits, including
 // how much was used and when the window resets.
+// With smart billing the same key falls back to balance by itself; the user only lacks balance.
+const (
+	msgSubscriptionNotFoundSmart = "这个 Key 属于订阅分组，你目前没有该分组的有效订阅，余额也不足：充值后这个 Key 会自动按量计费继续使用，或到控制台购买 / 续费套餐（No active subscription found for this group）"
+	smartBillingHintOld          = "；急用可换一个按量计费分组的 Key"
+	smartBillingHintNew          = "；余额也不足，充值后这个 Key 会自动改用余额继续，不用换 Key"
+)
+
+func subscriptionNotFoundMessage(smart bool) string {
+	if smart {
+		return msgSubscriptionNotFoundSmart
+	}
+	return msgSubscriptionNotFound
+}
+
+func smartBillingLimitMessage(msg string) string {
+	return strings.Replace(msg, smartBillingHintOld, smartBillingHintNew, 1)
+}
+
 func subscriptionLimitMessage(err error, sub *service.UserSubscription, group *service.Group) string {
 	if sub == nil || group == nil {
 		return err.Error()

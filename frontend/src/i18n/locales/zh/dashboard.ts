@@ -104,6 +104,7 @@ export default {
     namePlaceholder: '我的 API 密钥',
     groupLabel: '分组',
     selectGroup: '选择分组',
+    smartBillingHint: '一个 Key 订阅和按量都能用：你有订阅时，对话和 Codex 请求先用订阅额度；没有订阅或额度用完时，自动从余额扣费，不用换 Key。分组只决定默认怎么计费。',
     statusLabel: '状态',
     selectStatus: '选择状态',
     saving: '保存中...',

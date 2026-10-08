@@ -505,6 +505,9 @@
               />
             </template>
           </Select>
+          <p v-if="smartBilling" class="mt-1.5 text-xs leading-relaxed text-gray-500 dark:text-gray-400" data-testid="smart-billing-hint">
+            {{ t('keys.smartBillingHint') }}
+          </p>
         </div>
 
         <!-- Custom Key Section (only for create) -->
@@ -1119,6 +1122,7 @@
 <script setup lang="ts">
 import { track } from '@/utils/analytics'
 	import { ref, reactive, computed, onMounted, onUnmounted, type ComponentPublicInstance } from 'vue'
+import { growthAPI } from '@/api/growth'
 	import { useI18n } from 'vue-i18n'
 	import { useRoute } from 'vue-router'
 	import { useAppStore } from '@/stores/app'
@@ -1972,7 +1976,11 @@ function formatResetTime(resetAt: string | null): string {
   return `${mins}m`
 }
 
+// One key serves both subscriptions and balance: the group only sets the default.
+const smartBilling = ref(false)
+
 onMounted(() => {
+  growthAPI.getPublicConfig().then((cfg) => { smartBilling.value = !!cfg.smart_billing }).catch(() => {})
   if (guideAction === 'create') showCreateModal.value = true
   loadSavedColumns()
   loadApiKeys()

@@ -303,7 +303,7 @@ var ProviderSet = wire.NewSet(
 	NewAsyncImageHandler,
 	ProvideBatchImageHandler,
 	NewContestHandler,
-	NewGrowthHandler,
+	ProvideGrowthHandler,
 	NewUserAppStateHandler,
 	NewPromptLibraryHandler,
 	NewImageToolsHandler,
@@ -362,7 +362,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewCommunityHandler,
 	admin.NewCourseHandler,
 	admin.NewLearnHandler,
-	admin.NewGrowthHandler,
+	admin.ProvideGrowthHandler,
 
 	// AdminHandlers and Handlers constructors
 	ProvideAdminHandlers,

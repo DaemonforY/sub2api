@@ -130,7 +130,7 @@
           <div class="grid gap-3 md:grid-cols-2">
             <div v-for="k in faqKeys" :key="k" class="card p-4">
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t(`pricing.faq.${k}`) }}</p>
-              <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ t(`pricing.faq.${k}a`, { min: fmt(data.min_recharge), days: priceLockGraceDays ?? 0 }) }}</p>
+              <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ t(`pricing.faq.${k}a${smartBilling && SMART_FAQ.includes(k) ? 'Smart' : ''}`, { min: fmt(data.min_recharge), days: priceLockGraceDays ?? 0 }) }}</p>
             </div>
           </div>
         </section>
@@ -164,11 +164,15 @@ const MIN_SAMPLES = 200
 
 // 老用户锁价 FAQ, shown when the program is on.
 const priceLockGraceDays = ref<number | null>(null)
+// With smart billing one key serves both subscriptions and balance; these answers change.
+const smartBilling = ref(false)
+const SMART_FAQ = ['q1', 'q2', 'q3']
 const faqKeys = computed(() => (priceLockGraceDays.value === null ? ['q1', 'q2', 'q3', 'q4', 'q5', 'q6'] : ['q7', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6']))
 
 onMounted(async () => {
   growthAPI.getPublicConfig().then((cfg) => {
     priceLockGraceDays.value = cfg.price_lock_enabled ? cfg.price_lock_grace_days : null
+    smartBilling.value = !!cfg.smart_billing
   }).catch(() => {})
   try {
     data.value = await getPublicPricing()

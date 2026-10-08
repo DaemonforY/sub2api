@@ -14,13 +14,40 @@ import (
 
 // GrowthHandler serves the admin "推广设置" and invite leaderboard pages.
 type GrowthHandler struct {
-	service  *service.GrowthService
-	withdraw *service.AffiliateWithdrawService
+	service      *service.GrowthService
+	withdraw     *service.AffiliateWithdrawService
+	billingRoute *service.BillingRouteService
 }
 
 // NewGrowthHandler creates the admin growth handler.
 func NewGrowthHandler(svc *service.GrowthService, withdraw *service.AffiliateWithdrawService) *GrowthHandler {
 	return &GrowthHandler{service: svc, withdraw: withdraw}
+}
+
+// ProvideGrowthHandler also serves the smart billing switch.
+func ProvideGrowthHandler(svc *service.GrowthService, withdraw *service.AffiliateWithdrawService, billingRoute *service.BillingRouteService) *GrowthHandler {
+	return &GrowthHandler{service: svc, withdraw: withdraw, billingRoute: billingRoute}
+}
+
+// SmartBilling GET /api/v1/admin/growth/smart-billing — 一个 Key 自动切换订阅与按量: on or off.
+func (h *GrowthHandler) SmartBilling(c *gin.Context) {
+	response.Success(c, gin.H{"enabled": h.billingRoute.Enabled(c.Request.Context())})
+}
+
+// SetSmartBilling PUT /api/v1/admin/growth/smart-billing {"enabled": bool}
+func (h *GrowthHandler) SetSmartBilling(c *gin.Context) {
+	var in struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.billingRoute.SetEnabled(c.Request.Context(), in.Enabled); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	h.SmartBilling(c)
 }
 
 // GetSettings GET /api/v1/admin/growth/settings

@@ -69,6 +69,15 @@
           <router-link to="/admin/affiliates/withdrawals" class="inline-block text-sm text-primary-600 hover:underline dark:text-primary-400">{{ t('growth.admin.nav.withdrawals') }} →</router-link>
         </section>
 
+        <section class="card space-y-3 p-6" data-testid="growth-smart-billing">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🔀 {{ t('growth.admin.settings.smartBillingTitle') }}</h2>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle :model-value="smartBilling" :disabled="smartBillingSaving" @update:model-value="toggleSmartBilling" />
+            {{ t('growth.admin.settings.smartBillingEnabled') }}
+          </label>
+          <p class="text-xs leading-relaxed text-gray-400">{{ t('growth.admin.settings.smartBillingHint') }}</p>
+        </section>
+
         <section class="card space-y-4 p-6" data-testid="growth-price-lock">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🔒 {{ t('growth.admin.settings.priceLockTitle') }}</h2>
           <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
@@ -228,6 +237,21 @@ const form = ref<GrowthSettings | null>(null)
 const suffixText = ref('')
 const affiliateEnabled = ref(true)
 const priceLocks = ref<PlanPriceLockStat[]>([])
+const smartBilling = ref(true)
+const smartBillingSaving = ref(false)
+
+// Saved at once (its own switch, not part of the form below).
+async function toggleSmartBilling(on: boolean) {
+  smartBillingSaving.value = true
+  try {
+    smartBilling.value = (await adminGrowthAPI.setSmartBilling(on)).enabled
+    appStore.showSuccess(t('growth.admin.settings.saved'))
+  } catch (err) {
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    smartBillingSaving.value = false
+  }
+}
 
 const verifications = ref<EduVerification[]>([])
 const total = ref(0)
@@ -248,6 +272,7 @@ async function loadSettings() {
     suffixText.value = settings.edu_email_suffixes.join('\n')
     affiliateEnabled.value = publicConfig.affiliate_enabled
     adminGrowthAPI.priceLocks().then((v) => { priceLocks.value = v }).catch(() => {})
+    adminGrowthAPI.getSmartBilling().then((v) => { smartBilling.value = v.enabled }).catch(() => {})
   } catch (err) {
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
   } finally {

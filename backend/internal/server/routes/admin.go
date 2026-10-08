@@ -154,6 +154,8 @@ func registerGrowthAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		growth.GET("/settings", h.Admin.Growth.GetSettings)
 		growth.PUT("/settings", h.Admin.Growth.UpdateSettings)
 		growth.GET("/price-locks", h.Admin.Growth.PriceLocks)
+		growth.GET("/smart-billing", h.Admin.Growth.SmartBilling)
+		growth.PUT("/smart-billing", h.Admin.Growth.SetSmartBilling)
 		growth.GET("/edu-verifications", h.Admin.Growth.ListEduVerifications)
 		growth.POST("/edu-verifications", h.Admin.Growth.GrantEduVerification)
 		growth.DELETE("/edu-verifications/:user_id", h.Admin.Growth.RevokeEduVerification)

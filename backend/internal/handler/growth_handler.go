@@ -15,6 +15,14 @@ type GrowthHandler struct {
 	service        *service.GrowthService
 	settingService *service.SettingService
 	withdraw       *service.AffiliateWithdrawService
+	billingRoute   *service.BillingRouteService
+}
+
+// ProvideGrowthHandler also tells the pages whether one key serves both subscriptions and balance.
+func ProvideGrowthHandler(svc *service.GrowthService, settingService *service.SettingService, withdraw *service.AffiliateWithdrawService, billingRoute *service.BillingRouteService) *GrowthHandler {
+	h := NewGrowthHandler(svc, settingService, withdraw)
+	h.billingRoute = billingRoute
+	return h
 }
 
 // NewGrowthHandler creates the user growth handler.
@@ -23,18 +31,20 @@ func NewGrowthHandler(svc *service.GrowthService, settingService *service.Settin
 }
 
 type growthPublicConfig struct {
-	AffiliateEnabled        bool     `json:"affiliate_enabled"`
-	InviteeBonusRatePercent float64  `json:"invitee_bonus_rate_percent"`
-	InviteeBonusCap         float64  `json:"invitee_bonus_cap"`
-	InviteeSignupBonus      float64  `json:"invitee_signup_bonus"`
-	PriceLockEnabled        bool     `json:"price_lock_enabled"`
-	PriceLockGraceDays      int      `json:"price_lock_grace_days"`
-	LeaderboardEnabled      bool     `json:"leaderboard_enabled"`
-	EduVerifyEnabled        bool     `json:"edu_verify_enabled"`
-	EduDiscountPercent      float64  `json:"edu_discount_percent"`
-	EduEmailSuffixes        []string `json:"edu_email_suffixes"`
-	WithdrawEnabled         bool     `json:"withdraw_enabled"`
-	WithdrawMinCNY          float64  `json:"withdraw_min_cny,omitempty"`
+	AffiliateEnabled        bool    `json:"affiliate_enabled"`
+	InviteeBonusRatePercent float64 `json:"invitee_bonus_rate_percent"`
+	InviteeBonusCap         float64 `json:"invitee_bonus_cap"`
+	InviteeSignupBonus      float64 `json:"invitee_signup_bonus"`
+	PriceLockEnabled        bool    `json:"price_lock_enabled"`
+	PriceLockGraceDays      int     `json:"price_lock_grace_days"`
+	// One key serves both the user's subscriptions and balance (smart billing).
+	SmartBilling       bool     `json:"smart_billing"`
+	LeaderboardEnabled bool     `json:"leaderboard_enabled"`
+	EduVerifyEnabled   bool     `json:"edu_verify_enabled"`
+	EduDiscountPercent float64  `json:"edu_discount_percent"`
+	EduEmailSuffixes   []string `json:"edu_email_suffixes"`
+	WithdrawEnabled    bool     `json:"withdraw_enabled"`
+	WithdrawMinCNY     float64  `json:"withdraw_min_cny,omitempty"`
 }
 
 // PublicConfig GET /api/v1/growth/config — what the register, referral and purchase pages advertise.
@@ -53,6 +63,7 @@ func (h *GrowthHandler) PublicConfig(c *gin.Context) {
 		EduEmailSuffixes:   settings.EduEmailSuffixes,
 		PriceLockEnabled:   settings.PriceLockEnabled,
 		PriceLockGraceDays: settings.PriceLockGraceDays,
+		SmartBilling:       h.billingRoute.Enabled(ctx),
 	}
 	if affiliateEnabled {
 		cfg.InviteeBonusRatePercent = settings.InviteeBonusRatePercent

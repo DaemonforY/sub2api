@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -19,7 +20,13 @@ const maxAPIKeyAuthorizationHeaderBytes = service.MaxAPIKeyCredentialBytes + 128
 
 // NewAPIKeyAuthMiddleware 创建 API Key 认证中间件
 func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) APIKeyAuthMiddleware {
-	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, cfg))
+	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, nil, cfg))
+}
+
+// ProvideAPIKeyAuthMiddleware is the server's middleware: with smart billing, a request moves
+// between the user's subscriptions and pay-as-you-go automatically (see BillingRouteService).
+func ProvideAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, billingRoute *service.BillingRouteService, cfg *config.Config) APIKeyAuthMiddleware {
+	return APIKeyAuthMiddleware(apiKeyAuthWithSubscription(apiKeyService, subscriptionService, billingRoute, cfg))
 }
 
 // apiKeyAuthWithSubscription API Key认证中间件（支持订阅验证）
@@ -31,7 +38,7 @@ func NewAPIKeyAuthMiddleware(apiKeyService *service.APIKeyService, subscriptionS
 // /v1/usage、/v1/sub2api/billing 端点与异步生图任务查询只需鉴权，不需要计费执行。
 // usage 允许过期/配额耗尽的 Key 查询自身用量，billing 用于读取当前 Key 的倍率配置，
 // 异步生图查询允许已耗尽额度的 Key 拉取自身任务结果。
-func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) gin.HandlerFunc {
+func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, billingRoute *service.BillingRouteService, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// ── 1. 提取 API Key ──────────────────────────────────────────
 		if rejectInvalidAuthAbuse(c, apiKeyService) {
@@ -196,6 +203,27 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 
+		// ── 4b. 订阅 / 按量自动切换 ─────────────────────────────────
+		// The request may be served by another of the user's groups: a subscription with quota
+		// left (text requests on a pay-as-you-go key), or pay-as-you-go when the key's own
+		// subscription is missing or used up. The key in the context then carries that group.
+		if billingRoute != nil && !skipBilling && !billingInfoRequest {
+			balanceOK := !apiKeyBalanceBelowAuthThreshold(apiKey.User.Balance, cfg)
+			if g := billingRoute.Route(c.Request.Context(), apiKey, smartBillingUpgradePath(c.Request.URL.Path), balanceOK); g != nil {
+				routed := *apiKey
+				routed.Group = g
+				gid := g.ID
+				routed.GroupID = &gid
+				apiKey = &routed
+				mode := "balance"
+				if g.IsSubscriptionType() {
+					mode = "subscription"
+				}
+				c.Header("X-Billing-Mode", mode)
+				c.Header("X-Billing-Group-Id", strconv.FormatInt(g.ID, 10))
+			}
+		}
+
 		// ── 5. 按端点需要加载订阅 ───────────────────────────────────
 
 		var subscription *service.UserSubscription
@@ -210,7 +238,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			)
 			if subErr != nil {
 				if !skipBilling {
-					AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", msgSubscriptionNotFound)
+					AbortWithError(c, 403, "SUBSCRIPTION_NOT_FOUND", subscriptionNotFoundMessage(billingRoute.Enabled(c.Request.Context())))
 					return
 				}
 				// skipBilling: 订阅不存在也放行，handler 会返回可用的数据
@@ -263,7 +291,11 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 						code = "USAGE_LIMIT_EXCEEDED"
 						status = 429
 					}
-					AbortWithError(c, status, code, subscriptionLimitMessage(validateErr, subscription, apiKey.Group))
+					msg := subscriptionLimitMessage(validateErr, subscription, apiKey.Group)
+					if billingRoute.Enabled(c.Request.Context()) {
+						msg = smartBillingLimitMessage(msg)
+					}
+					AbortWithError(c, status, code, msg)
 					return
 				}
 			} else {
@@ -475,4 +507,15 @@ func isContestKeyEntrySubmission(method, path string) bool {
 		}
 	}
 	return true
+}
+
+// smartBillingUpgradePath: text endpoints, where a pay-as-you-go key may use the user's
+// subscription instead. Images, videos, embeddings and the like stay on the key's group.
+func smartBillingUpgradePath(path string) bool {
+	for _, p := range []string{"/v1/messages", "/v1/chat/completions", "/v1/responses", "/responses", "/backend-api/codex/", "/v1beta/models/"} {
+		if path == p || strings.HasPrefix(path, p+"/") || (strings.HasSuffix(p, "/") && strings.HasPrefix(path, p)) {
+			return true
+		}
+	}
+	return false
 }

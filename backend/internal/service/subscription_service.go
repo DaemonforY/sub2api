@@ -57,6 +57,9 @@ type SubscriptionService struct {
 
 	maintenanceQueue *SubscriptionMaintenanceQueue
 	now              func() time.Time
+
+	// userSubsChanged runs when a user's subscriptions change (smart billing forgets its cache).
+	userSubsChanged func(userID int64)
 }
 
 // NewSubscriptionService 创建订阅服务
@@ -142,6 +145,7 @@ func (s *SubscriptionService) jitteredTTL(ttl time.Duration) time.Duration {
 
 // InvalidateSubCache 失效指定用户+分组的订阅 L1 缓存
 func (s *SubscriptionService) InvalidateSubCache(userID, groupID int64) {
+	s.notifyUserSubsChanged(userID)
 	if s.subCacheL1 == nil {
 		return
 	}
@@ -150,7 +154,21 @@ func (s *SubscriptionService) InvalidateSubCache(userID, groupID int64) {
 
 // InvalidateSubCacheSync 失效订阅 L1 缓存并等待 Ristretto 删除操作生效。
 func (s *SubscriptionService) InvalidateSubCacheSync(userID, groupID int64) {
+	s.notifyUserSubsChanged(userID)
 	s.invalidateSubCacheKeySync(subCacheKey(userID, groupID))
+}
+
+// SetUserSubsChangedHook registers what runs when a user's subscriptions change.
+func (s *SubscriptionService) SetUserSubsChangedHook(fn func(userID int64)) {
+	if s != nil {
+		s.userSubsChanged = fn
+	}
+}
+
+func (s *SubscriptionService) notifyUserSubsChanged(userID int64) {
+	if s != nil && s.userSubsChanged != nil {
+		s.userSubsChanged(userID)
+	}
 }
 
 func (s *SubscriptionService) invalidateSubCacheKeySync(key string) {
