@@ -10,24 +10,80 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
 
+// committedRows tracks rows these tests write through integrationEntClient / integrationDB
+// (the repositories under test take a *sql.DB, so they can't run inside testEntTx). Without
+// cleanup the groups, users, keys, accounts and usage logs leak into suites that count rows,
+// e.g. GroupRepoSuite.TestListActiveByPlatform and UsageLogRepoSuite's dashboard stats.
+type committedRows struct {
+	users, groups, accounts []int64
+	visitors                []string
+}
+
+func trackCommitted(t *testing.T) *committedRows {
+	t.Helper()
+	r := &committedRows{}
+	t.Cleanup(func() {
+		ctx := context.Background()
+		users, groups, accounts := pq.Array(r.users), pq.Array(r.groups), pq.Array(r.accounts)
+		for _, q := range []struct {
+			sql  string
+			args []any
+		}{
+			{`DELETE FROM usage_logs WHERE user_id = ANY($1) OR group_id = ANY($2) OR account_id = ANY($3)`, []any{users, groups, accounts}},
+			{`DELETE FROM payment_orders WHERE user_id = ANY($1)`, []any{users}},
+			{`DELETE FROM user_subscriptions WHERE user_id = ANY($1) OR group_id = ANY($2)`, []any{users, groups}},
+			{`DELETE FROM subscription_plans WHERE group_id = ANY($1)`, []any{groups}},
+			{`DELETE FROM api_keys WHERE user_id = ANY($1)`, []any{users}},
+			{`DELETE FROM analytics_events WHERE user_id = ANY($1) OR visitor_id = ANY($2)`, []any{users, pq.Array(r.visitors)}},
+			{`DELETE FROM user_attributions WHERE user_id = ANY($1)`, []any{users}},
+			{`DELETE FROM activation_reminders WHERE user_id = ANY($1)`, []any{users}},
+			{`DELETE FROM accounts WHERE id = ANY($1)`, []any{accounts}},
+			{`DELETE FROM groups WHERE id = ANY($1)`, []any{groups}},
+			{`DELETE FROM users WHERE id = ANY($1)`, []any{users}},
+		} {
+			_, err := integrationDB.ExecContext(ctx, q.sql, q.args...)
+			require.NoError(t, err, q.sql)
+		}
+	})
+	return r
+}
+
+func (r *committedRows) user(u *service.User) *service.User {
+	r.users = append(r.users, u.ID)
+	return u
+}
+
+func (r *committedRows) group(g *service.Group) *service.Group {
+	r.groups = append(r.groups, g.ID)
+	return g
+}
+
+func (r *committedRows) account(a *service.Account) *service.Account {
+	r.accounts = append(r.accounts, a.ID)
+	return a
+}
+
 func TestAnalyticsRepositoryOverview(t *testing.T) {
 	ctx := context.Background()
+	rows := trackCommitted(t)
 	n := time.Now().UnixNano()
 	sfx := fmt.Sprintf("%d", n)
 	src := "poster-" + sfx[len(sfx)-8:] // a channel only this test uses
 	repo := NewAnalyticsRepository(integrationDB)
 	svc := service.NewAnalyticsService(repo)
 	mk := func(tag string) *service.User {
-		return mustCreateUser(t, integrationEntClient, &service.User{Email: "an-" + tag + "-" + sfx + "@test.local", Username: "an" + tag + sfx[len(sfx)-6:]})
+		return rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "an-" + tag + "-" + sfx + "@test.local", Username: "an" + tag + sfx[len(sfx)-6:]}))
 	}
 	ua := "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile"
 	attr := service.AnalyticsAttribution{Source: src, Medium: "edu", Landing: "/home"}
 
 	// Two visitors arrive from the poster; one more comes directly.
 	visitA, visitB, visitC := "va"+sfx, "vb"+sfx, "vc"+sfx
+	rows.visitors = append(rows.visitors, visitA, visitB, visitC)
 	for _, v := range []string{visitA, visitB} {
 		_, err := svc.Ingest(ctx, service.AnalyticsBatch{VisitorID: v, App: "main", Attr: attr, Events: []service.AnalyticsBatchEvent{
 			{Name: "page_view", Path: "/home-" + sfx + "?token=secret"},
@@ -46,7 +102,7 @@ func TestAnalyticsRepositoryOverview(t *testing.T) {
 	svc.RecordSignup(ctx, b.ID, visitB, attr)
 	svc.RecordSignup(ctx, b.ID, visitB, service.AnalyticsAttribution{Source: "other"}) // first one wins
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: a.ID, Key: "sk-an-" + sfx})
-	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "an-acc-" + sfx})
+	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "an-acc-" + sfx}))
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(a.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).
 		SetRequestID("an-" + sfx).SetModel("gpt-5").SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
@@ -132,10 +188,11 @@ func TestAnalyticsRepositoryOverview(t *testing.T) {
 
 func TestActivationReminderRepositoryDueUsers(t *testing.T) {
 	ctx := context.Background()
+	rows := trackCommitted(t)
 	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
 	repo := NewActivationReminderRepository(integrationDB)
 	mk := func(tag string, age time.Duration) *service.User {
-		u := mustCreateUser(t, integrationEntClient, &service.User{Email: "ar-" + tag + "-" + sfx + "@test.local", Username: "ar" + tag + sfx[len(sfx)-5:]})
+		u := rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "ar-" + tag + "-" + sfx + "@test.local", Username: "ar" + tag + sfx[len(sfx)-5:]}))
 		_, err := integrationDB.ExecContext(ctx, `UPDATE users SET created_at = NOW() - $1::interval WHERE id = $2`, fmt.Sprintf("%d seconds", int(age.Seconds())), u.ID)
 		require.NoError(t, err)
 		return u
@@ -145,7 +202,7 @@ func TestActivationReminderRepositoryDueUsers(t *testing.T) {
 	old := mk("old", 100*time.Hour)
 	caller := mk("caller", 30*time.Hour)
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: caller.ID, Key: "sk-ar-" + sfx})
-	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "ar-acc-" + sfx})
+	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "ar-acc-" + sfx}))
 	_, err := integrationEntClient.UsageLog.Create().SetUserID(caller.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).
 		SetRequestID("ar-" + sfx).SetModel("gpt-5").SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
@@ -177,12 +234,13 @@ func TestActivationReminderRepositoryDueUsers(t *testing.T) {
 
 func TestPublicPricing(t *testing.T) {
 	ctx := context.Background()
+	rows := trackCommitted(t)
 	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
-	sub := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-sub-" + sfx, Platform: service.PlatformOpenAI, SubscriptionType: service.SubscriptionTypeSubscription, IsExclusive: true, RateMultiplier: 1})
+	sub := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-sub-" + sfx, Platform: service.PlatformOpenAI, SubscriptionType: service.SubscriptionTypeSubscription, IsExclusive: true, RateMultiplier: 1}))
 	daily := 60.0
 	require.NoError(t, integrationEntClient.Group.UpdateOneID(sub.ID).SetDailyLimitUsd(daily).Exec(ctx))
-	payg := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-payg-" + sfx, Platform: service.PlatformOpenAI, RateMultiplier: 1.2})
-	hidden := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-vip-" + sfx, Platform: service.PlatformOpenAI, IsExclusive: true, RateMultiplier: 0.5})
+	payg := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-payg-" + sfx, Platform: service.PlatformOpenAI, RateMultiplier: 1.2}))
+	hidden := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-vip-" + sfx, Platform: service.PlatformOpenAI, IsExclusive: true, RateMultiplier: 0.5}))
 	orig := 299.0
 	_, err := integrationEntClient.SubscriptionPlan.Create().SetGroupID(sub.ID).SetName("月度-" + sfx).SetPrice(120).SetOriginalPrice(orig).
 		SetValidityDays(30).SetValidityUnit("days").SetForSale(true).Save(ctx)
@@ -191,9 +249,9 @@ func TestPublicPricing(t *testing.T) {
 		SetValidityDays(30).SetValidityUnit("days").SetForSale(false).Save(ctx)
 	require.NoError(t, err)
 
-	member := mustCreateUser(t, integrationEntClient, &service.User{Email: "pp-" + sfx + "@test.local", Username: "pp" + sfx[len(sfx)-6:]})
+	member := rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "pp-" + sfx + "@test.local", Username: "pp" + sfx[len(sfx)-6:]}))
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: member.ID, Key: "sk-pp-" + sfx})
-	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "pp-acc-" + sfx})
+	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "pp-acc-" + sfx}))
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
 		SetRequestID("pp-" + sfx).SetModel("gpt-5.5").SetActualCost(0.2).SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
@@ -229,6 +287,7 @@ func TestPublicPricing(t *testing.T) {
 
 func TestChannelLinkRepository(t *testing.T) {
 	ctx := context.Background()
+	rows := trackCommitted(t)
 	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
 	repo := NewChannelLinkRepository(integrationDB)
 	links := service.NewChannelLinkService(repo, nil)
@@ -246,6 +305,7 @@ func TestChannelLinkRepository(t *testing.T) {
 	links.Resolve(ctx, l.Code, ua)
 	attr := service.AnalyticsAttribution{Source: "xiaohongshu", Medium: "post", Campaign: l.Code, Landing: "/pricing"}
 	va, vb := "cla"+sfx, "clb"+sfx
+	rows.visitors = append(rows.visitors, va, vb)
 	for _, v := range []string{va, vb} {
 		_, err := analytics.Ingest(ctx, service.AnalyticsBatch{VisitorID: v, App: "main", Attr: attr,
 			Events: []service.AnalyticsBatchEvent{{Name: "page_view", Path: "/pricing"}}}, service.AnalyticsRequestMeta{IP: "203.0.113.9", UserAgent: ua})
@@ -253,13 +313,13 @@ func TestChannelLinkRepository(t *testing.T) {
 	}
 	// Both sign up; A calls the API and pays ¥60, B stops there.
 	mk := func(tag string) *service.User {
-		return mustCreateUser(t, integrationEntClient, &service.User{Email: "cl-" + tag + "-" + sfx + "@test.local", Username: "cl" + tag + sfx[len(sfx)-6:]})
+		return rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "cl-" + tag + "-" + sfx + "@test.local", Username: "cl" + tag + sfx[len(sfx)-6:]}))
 	}
 	a, b := mk("a"), mk("b")
 	analytics.RecordSignup(ctx, a.ID, va, attr)
 	analytics.RecordSignup(ctx, b.ID, vb, attr)
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: a.ID, Key: "sk-cl-" + sfx})
-	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "cl-acc-" + sfx})
+	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "cl-acc-" + sfx}))
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(a.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).
 		SetRequestID("cl-" + sfx).SetModel("gpt-5").SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
@@ -301,22 +361,23 @@ func TestChannelLinkRepository(t *testing.T) {
 
 func TestMarginRepositoryLoad(t *testing.T) {
 	ctx := context.Background()
+	rows := trackCommitted(t)
 	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
 	now := time.Now()
 	since := now.AddDate(0, 0, -30)
 	limit := func(v float64) *float64 { return &v }
-	grp := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "margin-sub-" + sfx, SubscriptionType: service.SubscriptionTypeSubscription,
-		RateMultiplier: 1, DailyLimitUSD: limit(60), WeeklyLimitUSD: limit(350), MonthlyLimitUSD: limit(1200)})
-	payGo := mustCreateGroup(t, integrationEntClient, &service.Group{Name: "margin-paygo-" + sfx, RateMultiplier: 1})
+	grp := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "margin-sub-" + sfx, SubscriptionType: service.SubscriptionTypeSubscription,
+		RateMultiplier: 1, DailyLimitUSD: limit(60), WeeklyLimitUSD: limit(350), MonthlyLimitUSD: limit(1200)}))
+	payGo := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "margin-paygo-" + sfx, RateMultiplier: 1}))
 	plan, err := integrationEntClient.SubscriptionPlan.Create().SetGroupID(grp.ID).SetName("月度-" + sfx).SetPrice(120).
 		SetValidityDays(1).SetValidityUnit("month").SetForSale(true).Save(ctx)
 	require.NoError(t, err)
 
 	mk := func(tag string) *service.User {
-		return mustCreateUser(t, integrationEntClient, &service.User{Email: "mg-" + tag + "-" + sfx + "@test.local", Username: "mg" + tag + sfx[len(sfx)-6:]})
+		return rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "mg-" + tag + "-" + sfx + "@test.local", Username: "mg" + tag + sfx[len(sfx)-6:]}))
 	}
 	payer, gifted := mk("payer"), mk("gift")
-	acc := mustCreateAccount(t, integrationEntClient, &service.Account{Name: "mg-acc-" + sfx})
+	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "mg-acc-" + sfx}))
 	order := func(u *service.User, typ, payType string, amount float64, paidAt time.Time, planID, groupID int64) {
 		c := integrationEntClient.PaymentOrder.Create().
 			SetUserID(u.ID).SetUserEmail(u.Email).SetUserName(u.Username).

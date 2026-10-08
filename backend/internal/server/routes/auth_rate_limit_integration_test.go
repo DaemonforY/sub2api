@@ -26,8 +26,9 @@ func TestAuthRegisterRateLimitThresholdHitReturns429(t *testing.T) {
 
 	router := newAuthRoutesTestRouter(rdb)
 	const path = "/api/v1/auth/register"
+	const limit = 20 // auth-register in auth.go: a class signing up from one lab IP stays under it
 
-	for i := 1; i <= 6; i++ {
+	for i := 1; i <= limit+1; i++ {
 		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
 		req.Header.Set("Content-Type", "application/json")
 		req.RemoteAddr = "198.51.100.10:23456"
@@ -35,11 +36,11 @@ func TestAuthRegisterRateLimitThresholdHitReturns429(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
-		if i <= 5 {
+		if i <= limit {
 			require.Equal(t, http.StatusBadRequest, w.Code, "第 %d 次请求应先进入业务校验", i)
 			continue
 		}
-		require.Equal(t, http.StatusTooManyRequests, w.Code, "第 6 次请求应命中限流")
+		require.Equal(t, http.StatusTooManyRequests, w.Code, "第 %d 次请求应命中限流", i)
 		require.Contains(t, w.Body.String(), "rate limit exceeded")
 	}
 }
