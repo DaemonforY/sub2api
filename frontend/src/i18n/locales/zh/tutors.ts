@@ -85,7 +85,7 @@ export default {
     },
     tierPrice: '每次提问约 {low}–{high}',
     costTitle: '按现在的资料估算：每次提问约 {low}–{high}',
-    costDetail: '模型 {model}，每次输入约 {input} tokens（规则 + 资料 + 对话）、输出约 {output} tokens。学生连续提问时规则和资料会被缓存，费用接近低值；资料越多越贵。实际以「使用记录」为准。',
+    costDetail: '模型 {model}，每次输入约 {input} tokens（上游固定指令 + 规则 + 资料 + 对话）、输出约 {output} tokens。学生连续提问时规则和资料会被缓存，费用接近低值；资料越多越贵。实际以「使用记录」为准。',
     costClass: '例如 {students} 人的班、每人每天问 {n} 次：约 {low}–{high} / 天。建议给这个 Key 设额度上限，作为总花费的硬上限。',
     enabled: '开放给学生使用',
     delete: '删除助教',

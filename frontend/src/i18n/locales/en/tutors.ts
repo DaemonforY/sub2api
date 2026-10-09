@@ -85,7 +85,7 @@ export default {
     },
     tierPrice: 'About {low}–{high} a question',
     costTitle: 'With the current materials, each question costs about {low}–{high}',
-    costDetail: 'Model {model}; about {input} tokens in (rules + materials + conversation) and {output} tokens out. In a run of questions the rules and materials are cached, so it is closer to the low end; more materials cost more. Usage records show the actual amounts.',
+    costDetail: 'Model {model}; about {input} tokens in (fixed upstream instructions + rules + materials + conversation) and {output} tokens out. In a run of questions the rules and materials are cached, so it is closer to the low end; more materials cost more. Usage records show the actual amounts.',
     costClass: 'For example, a class of {students} asking {n} questions each a day: about {low}–{high} a day. Set a quota on this key as a hard spending cap.',
     enabled: 'Open to students',
     delete: 'Delete tutor',
