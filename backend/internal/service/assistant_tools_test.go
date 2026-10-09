@@ -224,6 +224,7 @@ func TestAssistantChatWithTools(t *testing.T) {
 	require.Len(t, bodies, 3)
 	system := bodies[0]["messages"].([]any)[0].(map[string]any)["content"].(string)
 	require.Contains(t, system, "list_key_models")
+	require.NotContains(t, system, "没有开放报错明细查询")
 
 	require.Len(t, runs.runs, 1)
 	run := runs.runs[0]
@@ -265,4 +266,26 @@ func TestAssistantChatWithTools(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 3, total)
 	require.Len(t, list, 3)
+}
+
+func TestAssistantPromptWithoutErrorLookup(t *testing.T) {
+	ctx := context.Background()
+	var body map[string]any
+	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &body)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, sseText("请把状态码和错误信息发给我。"))
+	}))
+	defer gw.Close()
+	svc, _, _ := newAssistantAgentForTest(t, gw.URL, false)
+	_, err := svc.SaveSettings(ctx, 1, AssistantSettings{Enabled: true, Tools: true, Model: "m", KeyID: 7, UserPerDay: 5, GuestPerDay: 2, DailyCap: 10})
+	require.NoError(t, err)
+	_, err = svc.Chat(ctx, AssistantAsker{UserID: 5}, AssistantChatInput{Messages: []LearnMessage{{Role: "user", Content: "为什么报错"}}}, func(string) error { return nil }, nil)
+	require.NoError(t, err)
+	system := body["messages"].([]any)[0].(map[string]any)["content"].(string)
+	require.Contains(t, system, "没有开放报错明细查询", "the model must not claim there were no errors")
+	for _, tool := range body["tools"].([]any) {
+		require.NotEqual(t, "get_recent_errors", tool.(map[string]any)["function"].(map[string]any)["name"])
+	}
 }
