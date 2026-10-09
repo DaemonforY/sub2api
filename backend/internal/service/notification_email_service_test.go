@@ -702,3 +702,15 @@ func (s *notificationEmailTestSMTPServer) handleConn(conn net.Conn) {
 		}
 	}
 }
+
+func TestNotificationEmailExpiryReminderHasRenewButton(t *testing.T) {
+	svc := NewNotificationEmailService(newNotificationEmailMemorySettingRepo(), nil)
+	for _, locale := range []string{"zh", "en"} {
+		p, err := svc.PreviewTemplate(context.Background(), NotificationEmailPreviewInput{
+			Event: NotificationEmailEventSubscriptionExpiryReminder, Locale: locale,
+			Variables: map[string]string{"renew_url": "https://hivegpt.cn/subscriptions?utm_source=email"},
+		})
+		require.NoError(t, err)
+		require.Contains(t, p.HTML, `href="https://hivegpt.cn/subscriptions?utm_source=email"`, locale)
+	}
+}

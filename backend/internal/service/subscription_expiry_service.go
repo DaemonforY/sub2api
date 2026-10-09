@@ -208,6 +208,7 @@ func (s *SubscriptionExpiryService) sendExpiryReminderIfDue(ctx context.Context,
 			"subscription_group": sub.Group.Name,
 			"expiry_time":        sub.ExpiresAt.Format("2006-01-02 15:04"),
 			"days_remaining":     strconv.Itoa(daysRemaining),
+			"renew_url":          RenewURL + "?utm_source=email&utm_medium=expiry&utm_campaign=" + strconv.Itoa(daysRemaining) + "d",
 		},
 	}); err != nil {
 		log.Printf("[SubscriptionExpiry] Send expiry reminder failed: subscription=%d user=%d err=%v", sub.ID, sub.UserID, err)

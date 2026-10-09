@@ -262,7 +262,10 @@ func (s *BalanceNotifyService) getBalanceNotifyConfig(ctx context.Context) (enab
 			threshold = f
 		}
 	}
-	rechargeURL = settings[SettingKeyBalanceLowNotifyRechargeURL]
+	rechargeURL = strings.TrimSpace(settings[SettingKeyBalanceLowNotifyRechargeURL])
+	if rechargeURL == "" {
+		rechargeURL = RechargeURL // the email's 立即充值 button would otherwise link nowhere
+	}
 	return
 }
 

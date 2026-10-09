@@ -913,6 +913,7 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"current_balance":     "12.34",
 			"threshold":           "20.00",
 			"recharge_url":        "https://example.com/recharge",
+			"renew_url":           "https://example.com/subscriptions",
 			"recharge_amount":     "50.00",
 			"order_id":            "1024",
 			"course_title":        "AI Agent 实战",
@@ -963,6 +964,7 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"current_balance":     "12.34",
 		"threshold":           "20.00",
 		"recharge_url":        "https://example.com/recharge",
+		"renew_url":           "https://example.com/subscriptions",
 		"recharge_amount":     "50.00",
 		"order_id":            "1024",
 		"course_title":        "AI Agent in practice",
@@ -1083,7 +1085,7 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Description:  "Optional reminder sent before an active subscription expires.",
 		Category:     "subscription",
 		Optional:     true,
-		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "expiry_time", "days_remaining", "unsubscribe_url"),
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "subscription_group", "expiry_time", "days_remaining", "renew_url", "unsubscribe_url"),
 	},
 	NotificationEmailEventBalanceLow: {
 		Event:        NotificationEmailEventBalanceLow,
@@ -1267,6 +1269,8 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>Hello {{recipient_name}},</p>
 <p>Your <strong>{{subscription_group}}</strong> subscription will expire in <strong>{{days_remaining}}</strong> day(s).</p>
 <p>Expiry time: <strong>{{expiry_time}}</strong></p>
+<p>Renew before it expires to keep using it without interruption.</p>
+<p><a class="button" href="{{renew_url}}">Renew now</a></p>
 <p class="muted"><a href="{{unsubscribe_url}}">Unsubscribe from optional subscription reminders</a></p>`),
 		},
 		notificationEmailLocaleChinese: {
@@ -1275,6 +1279,8 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>{{recipient_name}}，您好：</p>
 <p>您的 <strong>{{subscription_group}}</strong> 订阅将在 <strong>{{days_remaining}}</strong> 天后到期。</p>
 <p>到期时间：<strong>{{expiry_time}}</strong></p>
+<p>到期前续费可以无缝接上，不影响使用。</p>
+<p><a class="button" href="{{renew_url}}">立即续费</a></p>
 <p class="muted"><a href="{{unsubscribe_url}}">退订此类订阅提醒</a></p>`),
 		},
 	},

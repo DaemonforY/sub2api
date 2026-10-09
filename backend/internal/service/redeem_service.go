@@ -27,6 +27,9 @@ var (
 // RechargeURL is where gateway errors send users who are out of balance or subscription quota.
 const RechargeURL = "https://hivegpt.cn/purchase"
 
+// RenewURL is where subscription expiry reminders send users to renew.
+const RenewURL = "https://hivegpt.cn/subscriptions"
+
 const (
 	redeemMaxErrorsPerHour  = 20
 	redeemRateLimitDuration = time.Hour
