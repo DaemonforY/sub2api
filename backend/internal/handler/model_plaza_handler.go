@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -249,4 +250,22 @@ func toModelPlazaOfficialPricing(p *service.PlazaOfficialPricing) *modelPlazaOff
 		CacheReadPrice:    p.CacheReadPrice,
 		Intervals:         toUserPricingIntervals(p.Intervals),
 	}
+}
+
+// PublicGroups is what an anonymous visitor of the model plaza sees: the non-exclusive groups with
+// their models and display prices. ok is false while the plaza is off or requires sign-in, so pages
+// for crawlers (meta tags, sitemap, llms.txt) only describe it when anyone can open it.
+func (h *ModelPlazaHandler) PublicGroups(ctx context.Context) (groups []service.PlazaGroup, ok bool) {
+	if h == nil || h.settingService == nil || h.plazaService == nil {
+		return nil, false
+	}
+	rt := h.settingService.GetModelPlazaRuntime(ctx)
+	if !rt.Enabled || rt.RequireAuth {
+		return nil, false
+	}
+	all, err := h.plazaService.ListGroups(ctx)
+	if err != nil {
+		return nil, false
+	}
+	return filterPlazaVisibleGroups(all, nil, false), true
 }

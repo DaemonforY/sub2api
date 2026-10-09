@@ -12,7 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type fakeSEOContent struct{}
+type fakeSEOContent struct{ plazaOff bool }
+
+func (f fakeSEOContent) Models(context.Context) ([]SEOModel, bool) {
+	if f.plazaOff {
+		return nil, false
+	}
+	in, out := 5.0, 30.0
+	return []SEOModel{{Name: "gpt-5.5", Group: "GPT-按量", Input: &in, Output: &out}}, true
+}
 
 func (fakeSEOContent) Courses(context.Context) ([]SEOPage, error) {
 	return []SEOPage{{Path: "/courses/ai-coding", Title: "AI 编程实战", Description: "从零用 Codex 写项目", Price: 99, Updated: time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)}}, nil
@@ -148,4 +156,24 @@ func TestMainLLMsTxt(t *testing.T) {
 	full := mainLLMsTxt(context.Background(), testSite, fakeSEOContent{}, learn, true)
 	require.Contains(t, full, "### 怎么创建 API Key")
 	require.Contains(t, full, "Python 示例")
+}
+
+func TestModelPlazaFollowsTheSwitch(t *testing.T) {
+	ctx := context.Background()
+
+	on := mainPageMeta(ctx, testSite, fakeSEOContent{}, "/model-plaza")
+	require.True(t, on.Index)
+	require.Equal(t, []string{"gpt-5.5（GPT-按量）：输入 $5 / 输出 $30（每 100 万 token）"}, on.List)
+	require.Contains(t, mainLLMsTxt(ctx, testSite, fakeSEOContent{}, nil, false), "gpt-5.5（GPT-按量）：输入 $5 / 输出 $30")
+
+	off := fakeSEOContent{plazaOff: true}
+	require.False(t, mainPageMeta(ctx, testSite, off, "/model-plaza").Index)
+	for _, p := range mainSitemapPages(ctx, off) {
+		require.NotEqual(t, "/model-plaza", p.Path)
+	}
+	require.NotContains(t, mainLLMsTxt(ctx, testSite, off, nil, false), "model-plaza")
+	for _, l := range mainPageMeta(ctx, testSite, off, "/").Links {
+		require.NotEqual(t, "/model-plaza", l.Path)
+	}
+	require.False(t, mainPageMeta(ctx, testSite, nil, "/model-plaza").Index)
 }

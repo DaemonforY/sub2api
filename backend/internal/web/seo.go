@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	htmlpkg "html"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -41,8 +42,19 @@ type SEOLearnPage struct {
 	Text  string
 }
 
+// SEOModel is a model on the public model plaza, with its display price per 1M tokens (USD).
+type SEOModel struct {
+	Name      string
+	Group     string
+	Input     *float64
+	Output    *float64
+	CacheRead *float64
+}
+
 // SEOContent supplies the dynamic public pages. Implementations should cache: crawlers call it often.
 type SEOContent interface {
+	// Models is the public model plaza; ok is false while the plaza is off or needs sign-in.
+	Models(ctx context.Context) (models []SEOModel, ok bool)
 	Courses(ctx context.Context) ([]SEOPage, error)
 	VideoWorks(ctx context.Context) ([]SEOPage, error)
 	VideoWork(ctx context.Context, id string) (*SEOPage, error)
@@ -124,11 +136,23 @@ func homeDescription(name string) string {
 		"可接入 Codex、OpenCode、Cherry Studio 等 AI 工具，还有无限画布 AI 生图、AI 学习站、公众号排版和付费课程。"
 }
 
-func mainNavLinks() []seoLink {
-	return []seoLink{
+func plazaPublic(ctx context.Context, content SEOContent) bool {
+	if content == nil {
+		return false
+	}
+	_, ok := content.Models(ctx)
+	return ok
+}
+
+func mainNavLinks(ctx context.Context, content SEOContent) []seoLink {
+	links := []seoLink{
 		{"/", "首页"},
 		{"/pricing", "价格与套餐"},
-		{"/model-plaza", "模型广场"},
+	}
+	if plazaPublic(ctx, content) {
+		links = append(links, seoLink{"/model-plaza", "模型广场"})
+	}
+	return append(links, []seoLink{
 		{"/learn/", "AI 学习站（教程）"},
 		{"/learn/connect/", "接入教程：Codex、OpenCode、Cherry Studio、SDK"},
 		{"/courses", "AI 课程"},
@@ -136,7 +160,7 @@ func mainNavLinks() []seoLink {
 		{"/editor/", "公众号排版"},
 		{"/register", "注册"},
 		{"/login", "登录"},
-	}
+	}...)
 }
 
 // mainStaticPages are the main site's fixed public pages, in sitemap order.
@@ -158,10 +182,28 @@ func mainPageMeta(ctx context.Context, site seoSite, content SEOContent, path st
 	if p == "/home" {
 		p = "/"
 	}
-	m := pageMeta{Path: p, Image: site.Logo, OGType: "website", Links: mainNavLinks()}
+	m := pageMeta{Path: p, Image: site.Logo, OGType: "website", Links: mainNavLinks(ctx, content)}
 	for _, sp := range mainStaticPages {
 		if sp.Path != p {
 			continue
+		}
+		if p == "/model-plaza" {
+			if content == nil {
+				break
+			}
+			models, ok := content.Models(ctx)
+			if !ok {
+				break // plaza off or behind sign-in: falls through to the noindex default below
+			}
+			m.Index = true
+			m.Title = sp.Title + " | " + site.Name
+			m.Description = sp.Description
+			m.H1 = sp.Title
+			m.Paragraphs = []string{sp.Description, "价格为每 100 万 token 的美元价，充值 ¥1 = $1 额度。"}
+			for _, md := range models {
+				m.List = append(m.List, modelPriceLine(md))
+			}
+			return m
 		}
 		m.Index = true
 		if p == "/" {
@@ -313,7 +355,7 @@ func sitemapXML(site seoSite, pages []SEOPage) []byte {
 func mainSitemapPages(ctx context.Context, content SEOContent) []SEOPage {
 	var out []SEOPage
 	for _, sp := range mainStaticPages {
-		if sp.Path == "/login" || sp.Path == "/register" {
+		if sp.Path == "/login" || sp.Path == "/register" || (sp.Path == "/model-plaza" && !plazaPublic(ctx, content)) {
 			continue
 		}
 		out = append(out, SEOPage{Path: sp.Path})
@@ -338,7 +380,7 @@ func mainLLMsTxt(ctx context.Context, site seoSite, content SEOContent, learn []
 
 	_, _ = b.WriteString("## 主要页面\n\n")
 	for _, sp := range mainStaticPages {
-		if sp.Path == "/" {
+		if sp.Path == "/" || (sp.Path == "/model-plaza" && !plazaPublic(ctx, content)) {
 			continue
 		}
 		_, _ = b.WriteString("- [" + sp.Title + "](" + site.abs(sp.Path) + "): " + sp.Description + "\n")
@@ -354,6 +396,13 @@ func mainLLMsTxt(ctx context.Context, site seoSite, content SEOContent, learn []
 	}
 
 	if content != nil {
+		if models, ok := content.Models(ctx); ok && len(models) > 0 {
+			_, _ = b.WriteString("## 可用模型与价格（每 100 万 token，美元）\n\n")
+			for _, md := range models {
+				_, _ = b.WriteString("- " + modelPriceLine(md) + "\n")
+			}
+			_, _ = b.WriteString("\n完整列表：" + site.abs("/model-plaza") + "\n\n")
+		}
 		if courses, err := content.Courses(ctx); err == nil && len(courses) > 0 {
 			_, _ = b.WriteString("## 课程\n\n")
 			for _, c := range courses {
@@ -653,4 +702,25 @@ func clipText(s string, n int) string {
 	}
 	r := []rune(s)
 	return strings.TrimSpace(string(r[:n])) + "…"
+}
+
+// modelPriceLine is "gpt-5.5（GPT-按量）：输入 $5 / 输出 $30 / 缓存 $0.5（每 100 万 token）".
+func modelPriceLine(m SEOModel) string {
+	line := m.Name
+	if m.Group != "" {
+		line += "（" + m.Group + "）"
+	}
+	var parts []string
+	for _, p := range []struct {
+		label string
+		v     *float64
+	}{{"输入", m.Input}, {"输出", m.Output}, {"缓存", m.CacheRead}} {
+		if p.v != nil {
+			parts = append(parts, p.label+" $"+strconv.FormatFloat(*p.v, 'f', -1, 64))
+		}
+	}
+	if len(parts) == 0 {
+		return line
+	}
+	return line + "：" + strings.Join(parts, " / ") + "（每 100 万 token）"
 }

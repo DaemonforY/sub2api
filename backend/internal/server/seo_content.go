@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,12 @@ import (
 type seoContent struct {
 	courses *service.CourseService
 	videos  *service.VideoService
+	plaza   plazaSource
 	faq     []web.SEOFAQ
+
+	modelList  []web.SEOModel
+	modelOK    bool
+	modelUntil time.Time
 
 	mu          sync.Mutex
 	courseList  []web.SEOPage
@@ -23,6 +29,11 @@ type seoContent struct {
 	workList    []web.SEOPage
 	workUntil   time.Time
 	works       map[string]seoWork
+}
+
+// plazaSource is the model plaza as an anonymous visitor sees it (handler.ModelPlazaHandler).
+type plazaSource interface {
+	PublicGroups(ctx context.Context) ([]service.PlazaGroup, bool)
 }
 
 type seoWork struct {
@@ -36,8 +47,8 @@ const (
 	seoWorkCacheMax = 2000
 )
 
-func newSEOContent(courses *service.CourseService, videos *service.VideoService) *seoContent {
-	s := &seoContent{courses: courses, videos: videos, works: map[string]seoWork{}}
+func newSEOContent(courses *service.CourseService, videos *service.VideoService, plaza plazaSource) *seoContent {
+	s := &seoContent{courses: courses, videos: videos, plaza: plaza, works: map[string]seoWork{}}
 	for _, f := range service.AssistantFAQ() {
 		s.faq = append(s.faq, web.SEOFAQ{Question: f.Title, Answer: f.Text, Link: f.URL})
 	}
@@ -45,6 +56,39 @@ func newSEOContent(courses *service.CourseService, videos *service.VideoService)
 }
 
 func (s *seoContent) FAQ() []web.SEOFAQ { return s.faq }
+
+func (s *seoContent) Models(ctx context.Context) ([]web.SEOModel, bool) {
+	if s.plaza == nil {
+		return nil, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if time.Now().Before(s.modelUntil) {
+		return s.modelList, s.modelOK
+	}
+	groups, ok := s.plaza.PublicGroups(ctx)
+	var out []web.SEOModel
+	for _, g := range groups {
+		for _, m := range g.Models {
+			sm := web.SEOModel{Name: m.Name, Group: g.Name}
+			if p := m.Pricing; p != nil {
+				sm.Input, sm.Output, sm.CacheRead = perMillion(p.InputPrice), perMillion(p.OutputPrice), perMillion(p.CacheReadPrice)
+			}
+			out = append(out, sm)
+		}
+	}
+	s.modelList, s.modelOK, s.modelUntil = out, ok, time.Now().Add(seoContentTTL)
+	return out, ok
+}
+
+// perMillion turns a per-token USD price into the per-1M-token price, rounded to 4 decimals.
+func perMillion(perToken *float64) *float64 {
+	if perToken == nil {
+		return nil
+	}
+	v := math.Round(*perToken*1e6*1e4) / 1e4
+	return &v
+}
 
 func (s *seoContent) Courses(ctx context.Context) ([]web.SEOPage, error) {
 	if s.courses == nil {

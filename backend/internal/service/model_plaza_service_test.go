@@ -16,7 +16,7 @@ func newPlazaService(channels []Channel, groups []Group, pricing *PricingService
 	repo := &mockChannelRepository{
 		listAllFn: func(ctx context.Context) ([]Channel, error) { return channels, nil },
 	}
-	return NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, pricing, nil, nil)
+	return NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, pricing, nil, nil, nil)
 }
 
 func plazaPricedChannel(id int64, name string, groupIDs []int64, platform string, models ...string) Channel {
@@ -329,7 +329,7 @@ func TestListPlazaGroups_RepoErrorsPropagate(t *testing.T) {
 	repo := &mockChannelRepository{
 		listAllFn: func(ctx context.Context) ([]Channel, error) { return nil, sentinel },
 	}
-	svc := NewModelPlazaService(repo, &stubGroupRepoForAvailable{}, nil, nil, nil)
+	svc := NewModelPlazaService(repo, &stubGroupRepoForAvailable{}, nil, nil, nil, nil)
 	out, err := svc.ListGroups(context.Background())
 	require.Nil(t, out)
 	require.ErrorIs(t, err, sentinel)
@@ -337,7 +337,7 @@ func TestListPlazaGroups_RepoErrorsPropagate(t *testing.T) {
 	svc2 := NewModelPlazaService(
 		&mockChannelRepository{listAllFn: func(ctx context.Context) ([]Channel, error) { return nil, nil }},
 		&stubGroupRepoForAvailable{listActiveErr: sentinel},
-		nil, nil, nil,
+		nil, nil, nil, nil,
 	)
 	out2, err2 := svc2.ListGroups(context.Background())
 	require.Nil(t, out2)
@@ -354,7 +354,7 @@ func newPlazaServiceWithBilling(channels []Channel, groups []Group, groupPlatfor
 	}
 	cs := NewChannelService(repo, nil, nil, nil)
 	bs := NewBillingService(&config.Config{}, catalog)
-	return NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, catalog, bs, NewModelPricingResolver(cs, bs))
+	return NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, catalog, bs, NewModelPricingResolver(cs, bs), nil)
 }
 
 func plazaModelsByName(models []PlazaModel) map[string]PlazaModel {
@@ -507,4 +507,47 @@ func TestListGroups_TimePricingPassthrough(t *testing.T) {
 	require.InDelta(t, 0.5, m.TimePricing.Periods[0].Multiplier, 1e-12)
 	// 展示单价为标准时段价
 	require.InDelta(t, 0.28e-6, *m.Pricing.InputPrice, 1e-15)
+}
+
+type stubPlazaModelLister map[int64][]string
+
+func (s stubPlazaModelLister) GetAvailableModels(_ context.Context, groupID *int64, _ string) []string {
+	if groupID == nil {
+		return nil
+	}
+	return s[*groupID]
+}
+
+// A group whose channel lists no models shows the models its accounts accept; a group whose
+// channel lists models keeps them.
+func TestListGroups_FallsBackToAccountModelsWhenChannelHasNone(t *testing.T) {
+	channels := []Channel{
+		{ID: 1, Name: "empty", Status: StatusActive, GroupIDs: []int64{5}},
+		plazaPricedChannel(2, "priced", []int64{6}, PlatformOpenAI, "gpt-priced"),
+	}
+	groups := []Group{
+		{ID: 5, Name: "GPT-按量", Platform: PlatformOpenAI, RateMultiplier: 1},
+		{ID: 6, Name: "other", Platform: PlatformOpenAI, RateMultiplier: 1},
+		{ID: 7, Name: "no-accounts", Platform: PlatformOpenAI, RateMultiplier: 1},
+	}
+	repo := &mockChannelRepository{listAllFn: func(ctx context.Context) ([]Channel, error) { return channels, nil }}
+	lister := stubPlazaModelLister{5: {"gpt-5.5", "gpt-6-luna", "gpt-*"}, 6: {"should-not-appear"}}
+	svc := NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, nil, nil, nil, lister)
+
+	out, err := svc.ListGroups(context.Background())
+	require.NoError(t, err)
+	byID := map[int64]PlazaGroup{}
+	for _, g := range out {
+		byID[g.ID] = g
+	}
+	require.Contains(t, byID, int64(5))
+	names := []string{}
+	for _, m := range byID[5].Models {
+		names = append(names, m.Name)
+		require.Equal(t, PlatformOpenAI, m.Platform)
+	}
+	require.Equal(t, []string{"gpt-5.5", "gpt-6-luna"}, names, "wildcards are skipped")
+	require.Len(t, byID[6].Models, 1)
+	require.Equal(t, "gpt-priced", byID[6].Models[0].Name)
+	require.NotContains(t, byID, int64(7), "groups with no models stay hidden")
 }

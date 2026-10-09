@@ -94,7 +94,11 @@ func SetupRouter(
 			if handlers != nil && handlers.Video != nil {
 				videos = handlers.Video.Service()
 			}
-			frontendServer.SetSEOContent(newSEOContent(courses, videos))
+			var plaza plazaSource
+			if handlers != nil && handlers.ModelPlaza != nil {
+				plaza = handlers.ModelPlaza
+			}
+			frontendServer.SetSEOContent(newSEOContent(courses, videos, plaza))
 			frontendServer.SetVideoPlayer(newVideoPlayerSource(videos))
 			r.Use(frontendServer.Middleware())
 		}

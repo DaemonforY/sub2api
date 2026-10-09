@@ -47,7 +47,7 @@ func TestAPINotFoundMessages(t *testing.T) {
 		require.Equal(t, tc.code, body.Code, tc.path)
 		require.Contains(t, body.Message, tc.contains, tc.path)
 		require.Contains(t, body.Message, "（", tc.path) // English kept in parentheses
-		require.NotNil(t, body.Error, tc.path) // OpenAI-style error object for SDKs
+		require.NotNil(t, body.Error, tc.path)          // OpenAI-style error object for SDKs
 		require.Equal(t, body.Message, body.Error.Message, tc.path)
 		require.Equal(t, "not_found_error", body.Error.Type, tc.path)
 	}

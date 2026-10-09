@@ -67,6 +67,12 @@ type ModelPlazaService struct {
 	pricingService *PricingService
 	billingService *BillingService
 	resolver       *ModelPricingResolver
+	modelLister    PlazaModelLister
+}
+
+// PlazaModelLister lists the models a group's accounts accept — what /v1/models returns for it.
+type PlazaModelLister interface {
+	GetAvailableModels(ctx context.Context, groupID *int64, platform string) []string
 }
 
 // NewModelPlazaService 创建模型广场服务。
@@ -76,6 +82,7 @@ func NewModelPlazaService(
 	pricingService *PricingService,
 	billingService *BillingService,
 	resolver *ModelPricingResolver,
+	modelLister PlazaModelLister,
 ) *ModelPlazaService {
 	return &ModelPlazaService{
 		channelRepo:    channelRepo,
@@ -83,6 +90,7 @@ func NewModelPlazaService(
 		pricingService: pricingService,
 		billingService: billingService,
 		resolver:       resolver,
+		modelLister:    modelLister,
 	}
 }
 
@@ -186,6 +194,25 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 					Platform: m.Platform,
 					Pricing:  m.Pricing,
 				})
+			}
+		}
+	}
+
+	// A group whose channels list no models shows the models its accounts accept (as /v1/models
+	// does). Only names are added: the price shown comes from the same resolver billing uses, so a
+	// channel pricing row is never needed just to make a model visible.
+	if s.modelLister != nil {
+		for _, gid := range order {
+			pg := byGroup[gid]
+			if len(pg.Models) > 0 || pg.Platform == PlatformComposite {
+				continue
+			}
+			id := gid
+			for _, name := range s.modelLister.GetAvailableModels(ctx, &id, pg.Platform) {
+				if name == "" || strings.Contains(name, "*") {
+					continue
+				}
+				pg.Models = append(pg.Models, PlazaModel{Name: name, Platform: pg.Platform})
 			}
 		}
 	}
