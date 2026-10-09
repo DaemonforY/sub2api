@@ -55,6 +55,7 @@ export default defineConfig({
         items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
       { text: '场景玩法', link: '/scenes/', activeMatch: '^/scenes/' },
+      { text: '生图提示词', link: '/prompts/', activeMatch: '^/prompts/' },
       { text: '接入教程', link: '/connect/', activeMatch: '^/connect/' },
       { text: 'Codex 教程', link: '/codex/', activeMatch: '^/codex/' },
       { text: '大数据', link: '/bigdata/', activeMatch: '^/bigdata/' },
@@ -118,6 +119,26 @@ export default defineConfig({
           ],
         },
         { text: 'HiveGPT', items: [{ text: '订阅还是按量', link: 'https://hivegpt.cn/pricing' }] },
+      ],
+      '/prompts/': [
+        {
+          text: '生图提示词',
+          items: [
+            { text: '提示词大全', link: '/prompts/' },
+            { text: '中文文字不乱码', link: '/prompts/chinese-text' },
+            { text: '电商产品图', link: '/prompts/product' },
+            { text: '小红书 / 公众号 / 抖音封面', link: '/prompts/cover' },
+            { text: '头像与风格化写真', link: '/prompts/avatar' },
+          ],
+        },
+        {
+          text: '系统学习',
+          items: [
+            { text: 'B1 · 提示词的结构', link: '/b/b1' },
+            { text: 'B3 · 参考图和图生图', link: '/b/b3' },
+            { text: 'B4 · 局部编辑、扩图和抠图', link: '/b/b4' },
+          ],
+        },
       ],
       '/scenes/': [
         {
