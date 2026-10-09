@@ -44,6 +44,10 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | OpenCode、CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
 | 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk)，完整代码见 [Python](/connect/python)、[Node.js](/connect/nodejs) | 5 分钟 |
 | LangChain（Python / JS） | [LangChain 接入 HiveGPT](/connect/langchain) | 5 分钟 |
+| Java、Spring AI | [Java 调用 GPT API](/connect/java) | 5 分钟 |
+| Go | [Go 调用 GPT API](/connect/go) | 5 分钟 |
+| 批量处理 Excel 表格 | [用 GPT 批量处理 Excel](/connect/excel) | 10 分钟 |
+| 飞书、企业微信群机器人 | [群机器人接入 GPT](/connect/feishu-wecom-bot) | 10 分钟 |
 | VS Code 里的 Cline / Roo Code | [Cline 配置自定义 API](/connect/cline) | 3 分钟 |
 | Dify 应用和工作流 | [Dify 接入 OpenAI 兼容模型](/connect/dify) | 5 分钟 |
 | Obsidian 笔记 | [Obsidian Copilot 接入](/connect/obsidian) | 3 分钟 |
