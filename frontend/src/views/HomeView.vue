@@ -372,13 +372,13 @@
           </div>
         </div>
 
+        <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" />
+
         <HomeCommunityWall />
 
         <HomeScenarios :is-authenticated="isAuthenticated" :show-model-plaza="showModelPlazaEntry" />
 
         <HomeShowcase />
-
-        <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" />
 
         <!-- Why: gateway strengths -->
         <div class="mb-10 text-center">
