@@ -27,6 +27,7 @@ const (
 	NotificationEmailEventSubscriptionExpiryReminder  = "subscription.expiry_reminder"
 	NotificationEmailEventBalanceLow                  = "balance.low"
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
+	NotificationEmailEventPaymentOrderAbandoned       = "payment.order_abandoned"
 	NotificationEmailEventCoursePurchaseSuccess       = "course.purchase_success"
 	NotificationEmailEventCourseDeliveryUpdated       = "course.delivery_updated"
 	NotificationEmailEventAccountQuotaAlert           = "account.quota_alert"
@@ -914,6 +915,10 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"threshold":           "20.00",
 			"recharge_url":        "https://example.com/recharge",
 			"renew_url":           "https://example.com/subscriptions",
+			"order_item":          "余额充值",
+			"order_item_en":       "balance top-up",
+			"order_amount":        "50.00",
+			"purchase_url":        "https://example.com/purchase",
 			"recharge_amount":     "50.00",
 			"order_id":            "1024",
 			"course_title":        "AI Agent 实战",
@@ -965,6 +970,10 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"threshold":           "20.00",
 		"recharge_url":        "https://example.com/recharge",
 		"renew_url":           "https://example.com/subscriptions",
+		"order_item":          "余额充值",
+		"order_item_en":       "balance top-up",
+		"order_amount":        "50.00",
+		"purchase_url":        "https://example.com/purchase",
 		"recharge_amount":     "50.00",
 		"order_id":            "1024",
 		"course_title":        "AI Agent in practice",
@@ -1102,6 +1111,14 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Category:     "billing",
 		Optional:     false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "recharge_amount", "current_balance", "order_id"),
+	},
+	NotificationEmailEventPaymentOrderAbandoned: {
+		Event:        NotificationEmailEventPaymentOrderAbandoned,
+		Label:        "Unpaid order reminder",
+		Description:  "Optional reminder about an hour after a top-up or subscription order expired unpaid, at most once a week per user (推广设置).",
+		Category:     "billing",
+		Optional:     true,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "order_item", "order_item_en", "order_amount", "purchase_url", "unsubscribe_url"),
 	},
 	NotificationEmailEventCoursePurchaseSuccess: {
 		Event:        NotificationEmailEventCoursePurchaseSuccess,
@@ -1320,6 +1337,28 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>您的余额充值 <strong>${{recharge_amount}}</strong> 已完成。</p>
 <p>当前余额：<strong>${{current_balance}}</strong></p>
 			<p>订单号：{{order_id}}</p>`),
+		},
+	},
+	NotificationEmailEventPaymentOrderAbandoned: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] Your order is waiting",
+			HTML: notificationEmailCard("#4f46e5", "Finish your order", `
+<p>Hello {{recipient_name}},</p>
+<p>Your {{order_item_en}} order of <strong>{{order_amount}}</strong> timed out before it was paid, so nothing was charged.</p>
+<p>If you were interrupted, you can pick it up again in a minute:</p>
+<p><a class="button" href="{{purchase_url}}">Continue</a></p>
+<p>If the payment page had a problem, reply to this email or ask the assistant on the home page.</p>
+<p class="muted"><a href="{{unsubscribe_url}}">Unsubscribe from unpaid order reminders</a></p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 你的订单还没完成付款",
+			HTML: notificationEmailCard("#4f46e5", "订单还没付款", `
+<p>{{recipient_name}}，您好：</p>
+<p>你刚才下的 <strong>{{order_item}}</strong> 订单（<strong>¥{{order_amount}}</strong>）在付款前超时关闭了，没有扣款。</p>
+<p>如果是被打断了，可以回来接着买，一分钟就好：</p>
+<p><a class="button" href="{{purchase_url}}">继续购买</a></p>
+<p>如果是付款页面出了问题，直接回复这封邮件，或在首页右下角问智能客服。</p>
+<p class="muted"><a href="{{unsubscribe_url}}">退订此类提醒</a></p>`),
 		},
 	},
 	NotificationEmailEventCoursePurchaseSuccess: {

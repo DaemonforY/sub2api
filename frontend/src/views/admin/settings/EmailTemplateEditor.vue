@@ -385,6 +385,11 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "余额充值订单支付完成并入账后发送。",
     categoryLabel: "计费",
   },
+  "payment.order_abandoned": {
+    label: "未付款订单提醒",
+    timing: "充值或订阅订单超时未付款约 1 小时后，若用户之后没有再下单或付款则发送；每人每周最多一封，在推广设置中开启。",
+    categoryLabel: "计费",
+  },
   "account.quota_alert": {
     label: "账号限额告警",
     timing: "上游账号的用量达到配置的额度告警阈值时发送给管理员通知邮箱。",
@@ -456,6 +461,11 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   "balance.recharge_success": {
     label: "Balance Recharge Success",
     timing: "Sent after a balance recharge order is paid and credited.",
+    categoryLabel: "Billing",
+  },
+  "payment.order_abandoned": {
+    label: "Unpaid Order Reminder",
+    timing: "About an hour after a top-up or subscription order expires unpaid, if the user hasn't ordered or paid since; at most once a week per user. Turn it on in growth settings.",
     categoryLabel: "Billing",
   },
   "account.quota_alert": {

@@ -85,6 +85,8 @@ type GrowthSettings struct {
 	FirstTopupBonusPercent float64 `json:"first_topup_bonus_percent"`
 	FirstTopupBonusCap     float64 `json:"first_topup_bonus_cap"`
 	FirstTopupMinAmount    float64 `json:"first_topup_min_amount"`
+	// 未付款订单提醒: email users whose order expired unpaid (see AbandonedOrderReminderService).
+	AbandonedOrderReminder bool `json:"abandoned_order_reminder"`
 	// 返利提现规则（字段平铺在 JSON 里：withdraw_enabled / withdraw_min_cny / withdraw_monthly_limit）
 	WithdrawSettings
 }
@@ -203,6 +205,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
+		SettingKeyGrowthAbandonedOrderReminder,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -230,6 +233,7 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		FirstTopupBonusPercent:  clampFloat(parseFloatOr(vals[SettingKeyGrowthFirstTopupRate], 0), 0, growthInviteeBonusRateMax),
 		FirstTopupBonusCap:      math.Max(0, parseFloatOr(vals[SettingKeyGrowthFirstTopupCap], 0)),
 		FirstTopupMinAmount:     math.Max(0, parseFloatOr(vals[SettingKeyGrowthFirstTopupMin], 0)),
+		AbandonedOrderReminder:  vals[SettingKeyGrowthAbandonedOrderReminder] == "true",
 		WithdrawSettings: WithdrawSettings{
 			Enabled:      vals[SettingKeyGrowthWithdrawEnabled] == "true",
 			MinCNY:       clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMinCNY], withdrawMinCNYDefault), withdrawMinCNYFloor, 100000),
@@ -289,22 +293,23 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	}
 	suffixJSON, _ := json.Marshal(suffixes)
 	if err := s.settingRepo.SetMultiple(ctx, map[string]string{
-		SettingKeyGrowthInviteeBonusRate:   strconv.FormatFloat(in.InviteeBonusRatePercent, 'f', -1, 64),
-		SettingKeyGrowthInviteeBonusCap:    strconv.FormatFloat(in.InviteeBonusCap, 'f', -1, 64),
-		SettingKeyGrowthLeaderboardEnabled: strconv.FormatBool(in.LeaderboardEnabled),
-		SettingKeyGrowthSignupBonus:        strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
-		SettingKeyGrowthSignupDailyLimit:   strconv.Itoa(in.InviteeSignupDailyLimit),
-		SettingKeyPriceLockEnabled:         strconv.FormatBool(in.PriceLockEnabled),
-		SettingKeyPriceLockGraceDays:       strconv.Itoa(in.PriceLockGraceDays),
-		SettingKeyEduVerifyEnabled:         strconv.FormatBool(in.EduVerifyEnabled),
-		SettingKeyEduEmailSuffixes:         string(suffixJSON),
-		SettingKeyEduSubscriptionDiscount:  strconv.FormatFloat(in.EduDiscountPercent, 'f', -1, 64),
-		SettingKeyGrowthWithdrawEnabled:    strconv.FormatBool(withdraw.Enabled),
-		SettingKeyGrowthWithdrawMinCNY:     strconv.FormatFloat(withdraw.MinCNY, 'f', -1, 64),
-		SettingKeyGrowthWithdrawMonthly:    strconv.Itoa(withdraw.MonthlyLimit),
-		SettingKeyGrowthFirstTopupRate:     strconv.FormatFloat(in.FirstTopupBonusPercent, 'f', -1, 64),
-		SettingKeyGrowthFirstTopupCap:      strconv.FormatFloat(in.FirstTopupBonusCap, 'f', -1, 64),
-		SettingKeyGrowthFirstTopupMin:      strconv.FormatFloat(in.FirstTopupMinAmount, 'f', -1, 64),
+		SettingKeyGrowthInviteeBonusRate:       strconv.FormatFloat(in.InviteeBonusRatePercent, 'f', -1, 64),
+		SettingKeyGrowthInviteeBonusCap:        strconv.FormatFloat(in.InviteeBonusCap, 'f', -1, 64),
+		SettingKeyGrowthLeaderboardEnabled:     strconv.FormatBool(in.LeaderboardEnabled),
+		SettingKeyGrowthSignupBonus:            strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
+		SettingKeyGrowthSignupDailyLimit:       strconv.Itoa(in.InviteeSignupDailyLimit),
+		SettingKeyPriceLockEnabled:             strconv.FormatBool(in.PriceLockEnabled),
+		SettingKeyPriceLockGraceDays:           strconv.Itoa(in.PriceLockGraceDays),
+		SettingKeyEduVerifyEnabled:             strconv.FormatBool(in.EduVerifyEnabled),
+		SettingKeyEduEmailSuffixes:             string(suffixJSON),
+		SettingKeyEduSubscriptionDiscount:      strconv.FormatFloat(in.EduDiscountPercent, 'f', -1, 64),
+		SettingKeyGrowthWithdrawEnabled:        strconv.FormatBool(withdraw.Enabled),
+		SettingKeyGrowthWithdrawMinCNY:         strconv.FormatFloat(withdraw.MinCNY, 'f', -1, 64),
+		SettingKeyGrowthWithdrawMonthly:        strconv.Itoa(withdraw.MonthlyLimit),
+		SettingKeyGrowthFirstTopupRate:         strconv.FormatFloat(in.FirstTopupBonusPercent, 'f', -1, 64),
+		SettingKeyGrowthFirstTopupCap:          strconv.FormatFloat(in.FirstTopupBonusCap, 'f', -1, 64),
+		SettingKeyGrowthFirstTopupMin:          strconv.FormatFloat(in.FirstTopupMinAmount, 'f', -1, 64),
+		SettingKeyGrowthAbandonedOrderReminder: strconv.FormatBool(in.AbandonedOrderReminder),
 	}); err != nil {
 		return nil, fmt.Errorf("save growth settings: %w", err)
 	}

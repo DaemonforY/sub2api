@@ -136,6 +136,15 @@
           </table>
         </section>
 
+        <section class="card space-y-3 p-6" data-testid="growth-abandoned-order">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">📬 {{ t('growth.admin.settings.abandonedTitle') }}</h2>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.abandoned_order_reminder" />
+            {{ t('growth.admin.settings.abandonedEnabled') }}
+          </label>
+          <p class="text-xs text-gray-400">{{ t('growth.admin.settings.abandonedHint') }}</p>
+        </section>
+
         <section class="card space-y-3 p-6">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🏆 {{ t('growth.admin.settings.leaderboardTitle') }}</h2>
           <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">

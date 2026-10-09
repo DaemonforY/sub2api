@@ -139,6 +139,7 @@ export interface GrowthSettings {
   first_topup_bonus_percent: number
   first_topup_bonus_cap: number
   first_topup_min_amount: number
+  abandoned_order_reminder: boolean
 }
 
 export const growthAPI = {
