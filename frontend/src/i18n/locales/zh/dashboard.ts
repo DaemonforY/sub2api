@@ -137,6 +137,14 @@ export default {
         description: '打开子站画布，网关地址已自动填好，粘贴此密钥即可文生图、图生图与视频生成。',
         cta: '打开画布'
       },
+      chatClients: {
+        title: '一键导入对话客户端',
+        description: '已装好 Cherry Studio 或 Chatbox 的话，点一下就把地址和这个密钥填好，在客户端里确认保存即可聊天。',
+        cherry: '导入 Cherry Studio',
+        chatbox: '导入 Chatbox',
+        notInstalled: '点了没反应？先下载安装',
+        manual: '或按教程手动填：'
+      },
       description: '将以下环境变量添加到您的终端配置文件或直接在终端中运行。',
       copy: '复制',
       copied: '已复制',
@@ -1053,6 +1061,10 @@ export default {
     finish: '完成',
     waiting: '正在等你的第一次请求，每 10 秒自动检查一次…',
     needCredit: '账户余额为 0 且没有订阅时，调用会失败。',
+    chat: {
+      title: '💬 想在电脑上和 AI 聊天？',
+      desc: '已装 Cherry Studio 或 Chatbox 的话，点一下自动填好地址和密钥（没装先到官网下载）。'
+    },
     canvas: {
       title: '🎨 只想用 AI 画图？',
       desc: '打开无限画布，用这个账号一键连接，输入一句话就能出图，不用配置任何东西。',

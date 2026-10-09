@@ -137,6 +137,14 @@ export default {
         description: 'Opens the canvas site with the gateway URL pre-filled. Paste this key there to generate and edit images or videos.',
         cta: 'Open canvas'
       },
+      chatClients: {
+        title: 'Import into a chat app',
+        description: 'With Cherry Studio or Chatbox installed, one click fills in the address and this key; confirm in the app and start chatting.',
+        cherry: 'Import to Cherry Studio',
+        chatbox: 'Import to Chatbox',
+        notInstalled: 'Nothing happens? Install it first:',
+        manual: 'or set it up by hand:'
+      },
       description:
         'Add the following environment variables to your terminal profile or run directly in terminal to configure API access.',
       copy: 'Copy',
@@ -1049,6 +1057,10 @@ export default {
     finish: 'Done',
     waiting: 'Waiting for your first request — checking every 10 seconds…',
     needCredit: 'With a zero balance and no subscription, requests will fail.',
+    chat: {
+      title: '💬 Want to chat on your computer?',
+      desc: 'With Cherry Studio or Chatbox installed, one click fills in the address and key (download them from their sites first).'
+    },
     canvas: {
       title: '🎨 Just want to make images?',
       desc: 'Open the canvas, connect this account in one click and describe a picture — nothing to configure.',

@@ -44,6 +44,32 @@
           <span class="flex-shrink-0 text-sm font-medium text-primary-600 group-hover:underline dark:text-primary-400">{{ t('keys.useKeyModal.canvas.cta') }} →</span>
         </a>
 
+        <!-- One-click import into desktop chat clients (OpenAI-compatible keys) -->
+        <div
+          v-if="showChatClients"
+          class="rounded-lg border border-gray-200 px-4 py-3 dark:border-dark-700"
+          data-testid="use-key-chat-clients"
+        >
+          <p class="text-sm font-medium text-gray-900 dark:text-white">💬 {{ t('keys.useKeyModal.chatClients.title') }}</p>
+          <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">{{ t('keys.useKeyModal.chatClients.description') }}</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <a :href="cherryLink" class="btn btn-secondary btn-sm" data-testid="use-key-cherry" @click="track('key_config_copied', { client: 'cherry-studio', os: 'deeplink' })">
+              {{ t('keys.useKeyModal.chatClients.cherry') }}
+            </a>
+            <a :href="chatboxLink" class="btn btn-secondary btn-sm" data-testid="use-key-chatbox" @click="track('key_config_copied', { client: 'chatbox', os: 'deeplink' })">
+              {{ t('keys.useKeyModal.chatClients.chatbox') }}
+            </a>
+          </div>
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ t('keys.useKeyModal.chatClients.notInstalled') }}
+            <a href="https://www.cherry-ai.com/" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline dark:text-primary-400">Cherry Studio</a> /
+            <a href="https://chatboxai.app/" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline dark:text-primary-400">Chatbox</a>
+            · {{ t('keys.useKeyModal.chatClients.manual') }}
+            <a href="/learn/connect/cherry-studio" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Cherry Studio</a> /
+            <a href="/learn/connect/chatbox" target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-400">Chatbox</a>
+          </p>
+        </div>
+
         <!-- Client Tabs -->
         <div v-if="clientTabs.length" class="overflow-x-auto border-b border-gray-200 dark:border-dark-700">
           <nav class="-mb-px flex min-w-max gap-4 sm:gap-6" aria-label="Client">
@@ -282,6 +308,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform } from '@/types'
 import { canvasUrl } from '@/constants/crossSites'
+import { chatboxImportLink, cherryStudioImportLink } from '@/utils/chatClientImport'
 import {
   findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
@@ -532,6 +559,12 @@ const currentTabs = computed(() => {
 })
 
 // 无限画布入口：预填网关地址，用户只需在画布里粘贴 Key（Key 不放进 URL）
+// Desktop chat clients speak the OpenAI Chat Completions API, which OpenAI-type groups serve.
+const chatClientBase = computed(() => props.baseUrl || window.location.origin)
+const showChatClients = computed(() => props.platform === 'openai' && !!props.apiKey)
+const cherryLink = computed(() => cherryStudioImportLink(chatClientBase.value, props.apiKey))
+const chatboxLink = computed(() => chatboxImportLink(chatClientBase.value, props.apiKey))
+
 const canvasEntryUrl = computed(() =>
   canvasUrl({ medium: 'use-key', baseUrl: props.baseUrl || window.location.origin })
 )

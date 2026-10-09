@@ -21,6 +21,18 @@
       </a>
     </div>
 
+    <!-- Chat in a desktop client: one-click import of the starter key -->
+    <div v-if="!allDone && starterKey" class="mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-sky-50 px-4 py-3 dark:bg-sky-900/15" data-testid="get-started-chat">
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('getStarted.chat.title') }}</p>
+        <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('getStarted.chat.desc') }}</p>
+      </div>
+      <span class="flex shrink-0 gap-2">
+        <a :href="chatLinks.cherry" class="btn btn-sm btn-secondary" data-testid="get-started-cherry" @click="track('key_config_copied', { client: 'cherry-studio', os: 'get-started' })">Cherry Studio</a>
+        <a :href="chatLinks.chatbox" class="btn btn-sm btn-secondary" data-testid="get-started-chatbox" @click="track('key_config_copied', { client: 'chatbox', os: 'get-started' })">Chatbox</a>
+      </span>
+    </div>
+
     <ol class="grid gap-3 p-4 md:grid-cols-3">
       <li v-for="(s, i) in steps" :key="s.key" class="flex gap-3 rounded-xl p-4" :class="s.done ? 'bg-emerald-50 dark:bg-emerald-900/15' : s.current ? 'bg-primary-50 ring-1 ring-primary-200 dark:bg-primary-900/20 dark:ring-primary-800' : 'bg-gray-50 dark:bg-dark-800/50'" :data-testid="`get-started-step-${s.key}`" :data-done="s.done">
         <span class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold" :class="s.done ? 'bg-emerald-500 text-white' : 'bg-white text-gray-600 ring-1 ring-gray-200 dark:bg-dark-700 dark:text-dark-200 dark:ring-dark-600'">
@@ -127,6 +139,7 @@ import { guideStepDone, markGuideStep } from '@/utils/getStarted'
 import { codexConfigFolder, codexStarterConfig, detectDesktopOS, downloadTextFile, type DesktopOS } from '@/utils/codexStarterConfig'
 import { track } from '@/utils/analytics'
 import { canvasUrl } from '@/constants/crossSites'
+import { chatboxImportLink, cherryStudioImportLink } from '@/utils/chatClientImport'
 import type { ApiKey } from '@/types'
 
 const props = defineProps<{
@@ -158,6 +171,11 @@ watch(() => [props.apiKeys, props.requests], ([k, r]) => {
 
 // The key the config uses: made for the user when they have none.
 const starterKey = ref<ApiKey | null>(null)
+const chatLinks = computed(() => {
+  const base = appStore.cachedPublicSettings?.api_base_url || window.location.origin
+  const key = starterKey.value?.key || ''
+  return { cherry: cherryStudioImportLink(base, key), chatbox: chatboxImportLink(base, key) }
+})
 const starterCreated = ref(false)
 const starterFailed = ref(false)
 const configOpen = ref(false)

@@ -341,6 +341,16 @@ describe('UseKeyModal', () => {
     expect(codeBlocks.join('\n')).toContain('experimental_bearer_token = "sk-grok-codex-test"')
   })
 
+  it('offers one-click import into Cherry Studio and Chatbox for OpenAI keys only', () => {
+    const stubs = { BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' }, Icon: { template: '<span />' } }
+    const openai = mount(UseKeyModal, { props: { show: true, apiKey: 'sk-test', baseUrl: 'https://example.com/', platform: 'openai' }, global: { stubs } })
+    expect(openai.get('[data-testid="use-key-cherry"]').attributes('href')).toMatch(/^cherrystudio:\/\/providers\/api-keys\?v=1&data=/)
+    expect(openai.get('[data-testid="use-key-chatbox"]').attributes('href')).toMatch(/^chatbox:\/\/provider\/import\?config=/)
+
+    const grok = mount(UseKeyModal, { props: { show: true, apiKey: 'sk-test', baseUrl: 'https://example.com/', platform: 'grok' }, global: { stubs } })
+    expect(grok.find('[data-testid="use-key-chat-clients"]').exists()).toBe(false)
+  })
+
   it('keeps legacy OpenAI Codex config as the default', () => {
     const wrapper = mount(UseKeyModal, {
       props: {

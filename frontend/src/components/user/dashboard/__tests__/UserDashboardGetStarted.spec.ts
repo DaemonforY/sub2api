@@ -79,6 +79,13 @@ describe('UserDashboardGetStarted', () => {
     expect(href).toContain('utm_medium=dashboard-guide')
   })
 
+  it('offers one-click chat client import with the starter key', async () => {
+    const w = mountCard()
+    await flushPromises()
+    expect(w.get('[data-testid="get-started-cherry"]').attributes('href')).toMatch(/^cherrystudio:\/\//)
+    expect(w.get('[data-testid="get-started-chatbox"]').attributes('href')).toMatch(/^chatbox:\/\//)
+  })
+
   it('falls back to the key form when the key cannot be made', async () => {
     starter.mockRejectedValue(new Error('nope'))
     const w = mountCard()
