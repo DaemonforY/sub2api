@@ -35,3 +35,13 @@ The file contains JSON data with model pricing information including:
 - Model capabilities
 
 Last updated: 2025-08-10
+
+## HiveGPT price patches (`hivegpt_overrides.json`)
+
+`deploy/docker-compose.yml` points `PRICING_OVERRIDE_FILE` at this file. Its entries are merged field by field
+over the synced catalog and win over it; the file is re-read when it changes.
+
+- `gpt-5.6-sol` (also billed for its alias `gpt-5.6`): OpenAI's promotional price ($4 in / $0.40 cached / $20 out
+  per 1M, >272K $8 / $0.80 / $30, Fast, Batch and Flex tiers to match), which the catalog lists only under
+  `gpt-5.6`. OpenAI says the promotion runs at least through 2026-11-21 — **delete this entry when it ends**,
+  and the catalog's `gpt-5.6-sol` price applies again.
