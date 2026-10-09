@@ -47,3 +47,29 @@ describe('resolveRouteDocumentTitle', () => {
     ])).toBe('账号调度器 - EzouAPI')
   })
 })
+
+describe('serverDocumentTitle', () => {
+  it('首屏保留服务端为可收录页面写的 SEO 标题，其他页面照常', async () => {
+    const { vi } = await import('vitest')
+    vi.resetModules()
+    document.head.innerHTML = '<meta name="robots" content="index,follow" />'
+    document.title = '价格与套餐 | HiveGPT'
+    window.history.replaceState(null, '', '/pricing/')
+    const title = await import('@/router/title')
+
+    expect(title.serverDocumentTitle('/pricing')).toBe('价格与套餐 | HiveGPT')
+    expect(title.resolveRouteDocumentTitle({ name: 'Pricing', params: {}, meta: { title: 'Pricing' }, path: '/pricing' }, 'HiveGPT')).toBe('价格与套餐 | HiveGPT')
+    expect(title.resolveRouteDocumentTitle({ name: 'Keys', params: {}, meta: { title: 'API Keys' }, path: '/keys' }, 'HiveGPT')).toBe('API Keys - HiveGPT')
+  })
+
+  it('noindex 页面不保留服务端标题', async () => {
+    const { vi } = await import('vitest')
+    vi.resetModules()
+    document.head.innerHTML = '<meta name="robots" content="noindex,follow" />'
+    document.title = 'HiveGPT'
+    window.history.replaceState(null, '', '/dashboard')
+    const title = await import('@/router/title')
+
+    expect(title.serverDocumentTitle('/dashboard')).toBeNull()
+  })
+})

@@ -405,3 +405,6 @@ func (h *VideoHandler) reply(c *gin.Context, p *service.VideoProject, err error)
 	}
 	response.Success(c, p)
 }
+
+// Service is the video service (the server reads public works for page titles and the sitemap).
+func (h *VideoHandler) Service() *service.VideoService { return h.service }

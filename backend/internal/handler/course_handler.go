@@ -94,3 +94,6 @@ func (h *CourseHandler) Delivery(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
 	response.Success(c, d)
 }
+
+// Service is the course service (the server reads public courses for page titles and the sitemap).
+func (h *CourseHandler) Service() *service.CourseService { return h.svc }

@@ -86,6 +86,15 @@ func SetupRouter(
 				refreshFrameOrigins()
 			})
 			frontendServer.SetVideoHost(cfg.Video.Domain)
+			var courses *service.CourseService
+			var videos *service.VideoService
+			if handlers != nil && handlers.Course != nil {
+				courses = handlers.Course.Service()
+			}
+			if handlers != nil && handlers.Video != nil {
+				videos = handlers.Video.Service()
+			}
+			frontendServer.SetSEOContent(newSEOContent(courses, videos))
 			r.Use(frontendServer.Middleware())
 		}
 	} else {

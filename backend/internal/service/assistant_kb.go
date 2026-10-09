@@ -283,3 +283,6 @@ func (kb *assistantKB) search(query string, limit int) []assistantHit {
 	}
 	return out
 }
+
+// AssistantFAQ is the site FAQ: each entry's question (Title), reference link (URL) and answer (Text).
+func AssistantFAQ() []AssistantPage { return parseAssistantFAQ(assistantFAQ) }

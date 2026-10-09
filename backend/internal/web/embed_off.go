@@ -55,3 +55,12 @@ func LearnLessonText(lessonID string) (string, string) { return lessonTextFrom(n
 
 // LearnPages: no built site without the embedded frontend.
 func LearnPages() []LearnPage { return learnPagesFrom(nil) }
+
+// SetSEOContent is a no-op for non-embed builds.
+func (s *FrontendServer) SetSEOContent(SEOContent) {}
+
+// The SEO pages (seo.go) are only served by embed builds; this keeps them compiled and linted here.
+var _ = []any{
+	mainPageMeta, videoPageMeta, applyPageMeta, robotsTxt, sitemapXML, mainSitemapPages, videoSitemapPages,
+	mainLLMsTxt, videoLLMsTxt, mainRobotsDisallow, videoRobotsDisallow,
+}
