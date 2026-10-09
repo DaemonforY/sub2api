@@ -32,6 +32,10 @@ export interface Tutor {
   answer_mode: 'guide' | 'answer'
   /** standard: the learning site's model; economy: a cheaper model. */
   model_tier: 'standard' | 'economy'
+  /** 自定义助教: what it does, in the teacher's words. */
+  task: string
+  /** First questions shown to students; empty = the template's. */
+  suggestions: string[]
   rules: string
   greeting: string
   share_code: string
@@ -61,7 +65,7 @@ export interface TutorCost {
 
 export type TutorInput = Pick<
   Tutor,
-  'key_id' | 'name' | 'template' | 'subject' | 'grade' | 'style' | 'answer_mode' | 'model_tier' | 'rules' | 'greeting' | 'pass_code' | 'per_student_day' | 'daily_cap' | 'enabled'
+  'key_id' | 'name' | 'template' | 'subject' | 'grade' | 'style' | 'answer_mode' | 'model_tier' | 'task' | 'suggestions' | 'rules' | 'greeting' | 'pass_code' | 'per_student_day' | 'daily_cap' | 'enabled'
 >
 
 export interface TutorStudent {
@@ -105,6 +109,21 @@ export async function listTemplates(): Promise<TutorTemplate[]> {
 }
 export async function listTutors(): Promise<Tutor[]> {
   const { data } = await apiClient.get('/tutors')
+  return data
+}
+export interface TutorDraft {
+  name: string
+  subject: string
+  grade: string
+  style: string
+  task: string
+  greeting: string
+  suggestions: string[]
+  answer_mode: 'guide' | 'answer'
+}
+/** AI writes settings for a 自定义助教 from a one-line description (nothing is saved). */
+export async function draftTutor(keyId: number, description: string): Promise<TutorDraft> {
+  const { data } = await apiClient.post('/tutors/draft', { key_id: keyId, description }, { timeout: 120000 })
   return data
 }
 export async function getTutor(id: number): Promise<Tutor> {

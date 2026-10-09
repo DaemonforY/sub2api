@@ -16,7 +16,9 @@ func TestTutorRepository(t *testing.T) {
 	ctx := context.Background()
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "tutor-" + suffix + "@tutor.test", Username: "tut" + suffix[len(suffix)-4:]})
-	t.Cleanup(func() { _, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM tutors WHERE user_id = $1`, user.ID) })
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM tutors WHERE user_id = $1`, user.ID)
+	})
 	repo := NewTutorRepository(integrationDB)
 
 	tu := &service.Tutor{UserID: user.ID, KeyID: 9, Name: "数学助教", Template: "qa", AnswerMode: "guide", ModelTier: "standard", ShareCode: "c" + suffix[len(suffix)-7:],
@@ -29,10 +31,13 @@ func TestTutorRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, other)
 
-	tu.Name, tu.Enabled, tu.ModelTier = "改名了", false, "economy"
+	require.Equal(t, []string{}, got.Suggestions)
+	tu.Name, tu.Enabled, tu.ModelTier, tu.Task, tu.Suggestions = "改名了", false, "economy", "- 抽查默写", []string{"考我一首"}
 	require.NoError(t, repo.Update(ctx, tu))
 	got, _ = repo.Get(ctx, user.ID, tu.ID)
 	require.Equal(t, "改名了", got.Name)
+	require.Equal(t, "- 抽查默写", got.Task)
+	require.Equal(t, []string{"考我一首"}, got.Suggestions)
 	require.Equal(t, "economy", got.ModelTier)
 	require.False(t, got.Enabled)
 

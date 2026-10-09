@@ -33,6 +33,37 @@
             {{ templateIcon[picked.id] }} {{ picked.name }}
             <button class="ml-2 text-primary-600 hover:underline" @click="step = 1">{{ t('tutors.changeTemplate') }}</button>
           </div>
+          <template v-if="picked.id === 'custom'">
+            <label class="block text-sm">
+              <span class="input-label">{{ t('tutors.describe') }}</span>
+              <textarea v-model="description" class="input min-h-[4.5rem]" maxlength="500" :placeholder="t('tutors.describePlaceholder')" data-testid="tutor-describe"></textarea>
+            </label>
+            <div class="flex flex-wrap items-center gap-3">
+              <button class="btn btn-secondary" :disabled="drafting || !description.trim() || !form.key_id" data-testid="tutor-draft" @click="draft">
+                {{ drafting ? t('tutors.drafting') : t('tutors.draftRun') }}
+              </button>
+              <span class="text-xs text-gray-400">{{ form.key_id ? t('tutors.draftHint') : t('tutors.draftNeedKey') }}</span>
+            </div>
+            <template v-if="drafted">
+              <label class="block text-sm">
+                <span class="input-label">{{ t('tutors.name') }}</span>
+                <input v-model.trim="custom.name" class="input" maxlength="30" data-testid="tutor-custom-name" />
+              </label>
+              <label class="block text-sm">
+                <span class="input-label">{{ t('tutors.task') }}</span>
+                <textarea v-model="custom.task" class="input min-h-[8rem]" maxlength="3000" data-testid="tutor-custom-task"></textarea>
+                <span class="input-hint">{{ t('tutors.taskHint') }}</span>
+              </label>
+              <label class="block text-sm">
+                <span class="input-label">{{ t('tutors.greeting') }}</span>
+                <textarea v-model="custom.greeting" class="input min-h-[3rem]" maxlength="500"></textarea>
+              </label>
+              <label class="block text-sm">
+                <span class="input-label">{{ t('tutors.suggestions') }}</span>
+                <textarea v-model="custom.suggestions" class="input min-h-[4rem]" :placeholder="t('tutors.suggestionsHint')"></textarea>
+              </label>
+            </template>
+          </template>
           <div class="grid gap-4 md:grid-cols-3">
             <label class="text-sm">
               <span class="input-label">{{ t('tutors.subject') }}</span>
@@ -69,7 +100,7 @@
           </label>
           <div class="flex flex-wrap justify-end gap-2">
             <button v-if="tutors.length" class="btn btn-secondary" @click="creating = false">{{ t('common.cancel') }}</button>
-            <button class="btn btn-primary" :disabled="saving || !form.key_id" data-testid="tutor-create-submit" @click="create">
+            <button class="btn btn-primary" :disabled="saving || !form.key_id || (picked.id === 'custom' && (!drafted || !custom.task.trim()))" data-testid="tutor-create-submit" @click="create">
               {{ saving ? t('tutors.creating') : t('tutors.create') }}
             </button>
           </div>
@@ -110,13 +141,13 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
-import { createTutor, listKeys, listTemplates, listTutors, type KeyOption, type Tutor, type TutorTemplate } from '@/api/tutors'
+import { createTutor, draftTutor, listKeys, listTemplates, listTutors, type KeyOption, type Tutor, type TutorTemplate } from '@/api/tutors'
 
 const { t } = useI18n()
 const router = useRouter()
 const appStore = useAppStore()
 
-const templateIcon: Record<string, string> = { qa: '💬', essay: '✍️', quiz: '📝', oral: '🗣️' }
+const templateIcon: Record<string, string> = { custom: '✨', qa: '💬', essay: '✍️', quiz: '📝', oral: '🗣️' }
 const styles = ['亲切耐心', '简洁直接', '幽默活泼', '严谨专业']
 
 const tutors = ref<Tutor[]>([])
@@ -129,6 +160,28 @@ const step = ref(1)
 const picked = ref<TutorTemplate | null>(null)
 const guide = ref(true)
 const form = reactive({ subject: '', grade: '', style: styles[0], key_id: 0 })
+// 自定义助教: a one-line description, then what AI drafted (all editable).
+const description = ref('')
+const drafting = ref(false)
+const drafted = ref(false)
+const custom = reactive({ name: '', task: '', greeting: '', suggestions: '' })
+
+async function draft() {
+  drafting.value = true
+  try {
+    const d = await draftTutor(form.key_id, description.value.trim())
+    Object.assign(custom, { name: d.name, task: d.task, greeting: d.greeting, suggestions: d.suggestions.join('\n') })
+    form.subject = d.subject || form.subject
+    form.grade = d.grade || form.grade
+    if (d.style) form.style = d.style
+    guide.value = d.answer_mode === 'guide'
+    drafted.value = true
+  } catch (e) {
+    appStore.showError(extractApiErrorMessage(e, t('common.error')))
+  } finally {
+    drafting.value = false
+  }
+}
 
 function templateName(id: string) {
   return templates.value.find((x) => x.id === id)?.name || ''
@@ -150,10 +203,17 @@ async function create() {
   saving.value = true
   try {
     const tpl = picked.value
-    const name = form.subject ? `${form.subject}${tpl.id === 'oral' ? '口语陪练' : tpl.id === 'essay' ? '作文批改' : '助教'}` : tpl.name
+    const isCustom = tpl.id === 'custom'
+    const name = isCustom
+      ? custom.name || tpl.name
+      : form.subject
+        ? `${form.subject}${tpl.id === 'oral' ? '口语陪练' : tpl.id === 'essay' ? '作文批改' : '助教'}`
+        : tpl.name
     const created = await createTutor({
       key_id: form.key_id,
       name,
+      task: isCustom ? custom.task : '',
+      suggestions: isCustom ? custom.suggestions.split('\n').map((x) => x.trim()).filter(Boolean) : [],
       template: tpl.id,
       subject: form.subject,
       grade: form.grade,
@@ -161,7 +221,7 @@ async function create() {
       answer_mode: guide.value ? 'guide' : 'answer',
       model_tier: 'standard',
       rules: '',
-      greeting: '',
+      greeting: isCustom ? custom.greeting : '',
       pass_code: String(Math.floor(1000 + Math.random() * 9000)),
       per_student_day: 20,
       daily_cap: 300,

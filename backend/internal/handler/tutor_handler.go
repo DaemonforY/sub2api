@@ -118,6 +118,23 @@ func (h *TutorHandler) Create(c *gin.Context) {
 	learnReply(c, t, err)
 }
 
+// Draft POST /tutors/draft {key_id, description} — AI writes settings for a 自定义助教 (nothing saved).
+func (h *TutorHandler) Draft(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		KeyID       int64  `json:"key_id"`
+		Description string `json:"description"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	d, err := h.svc.Draft(c.Request.Context(), subject.UserID, in.KeyID, in.Description)
+	learnReply(c, d, err)
+}
+
 // Get GET /tutors/:id
 func (h *TutorHandler) Get(c *gin.Context) {
 	userID, id, ok := h.tutorID(c)

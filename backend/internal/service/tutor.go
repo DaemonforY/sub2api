@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -26,6 +27,8 @@ import (
 const (
 	TutorGuide  = "guide"  // lead students to the answer
 	TutorAnswer = "answer" // explain and give answers
+
+	TutorCustom = "custom" // the teacher writes what it does
 
 	TutorStandard     = "standard" // the learning site's model
 	TutorEconomy      = "economy"  // a cheaper model, about a tenth of the price
@@ -58,6 +61,7 @@ var (
 	ErrTutorKey      = infraerrors.ServiceUnavailable("TUTOR_KEY", "助教暂时用不了，请告诉老师检查助教使用的 Key（Assistant's key unavailable）")
 	ErrTutorInput    = infraerrors.BadRequest("TUTOR_INPUT", "请检查：名称 1–30 字，选择模板和 Key，次数在允许范围内（Invalid settings）")
 	ErrTutorTooMany  = infraerrors.BadRequest("TUTOR_TOO_MANY", fmt.Sprintf("每位老师最多建 %d 个助教（Too many assistants）", tutorMaxPerTeacher))
+	ErrTutorTask     = infraerrors.BadRequest("TUTOR_TASK", "自定义助教要写清楚它做什么，最多 3000 字（Describe what the assistant does）")
 	ErrTutorMaterial = infraerrors.BadRequest("TUTOR_MATERIAL", fmt.Sprintf("每个助教最多 %d 份资料、共 %d 万字（Too many materials）", tutorMaxMaterials, tutorMaxMaterialChars/10000))
 )
 
@@ -72,6 +76,8 @@ type Tutor struct {
 	Style         string          `json:"style"`
 	AnswerMode    string          `json:"answer_mode"`
 	ModelTier     string          `json:"model_tier"`
+	Task          string          `json:"task"`
+	Suggestions   []string        `json:"suggestions"`
 	Rules         string          `json:"rules"`
 	Greeting      string          `json:"greeting"`
 	ShareCode     string          `json:"share_code"`
@@ -261,20 +267,22 @@ func tutorTokenHash(token string) string {
 
 // TutorInput is what the teacher sets.
 type TutorInput struct {
-	KeyID         int64  `json:"key_id"`
-	Name          string `json:"name"`
-	Template      string `json:"template"`
-	Subject       string `json:"subject"`
-	Grade         string `json:"grade"`
-	Style         string `json:"style"`
-	AnswerMode    string `json:"answer_mode"`
-	ModelTier     string `json:"model_tier"`
-	Rules         string `json:"rules"`
-	Greeting      string `json:"greeting"`
-	PassCode      string `json:"pass_code"`
-	PerStudentDay int    `json:"per_student_day"`
-	DailyCap      int    `json:"daily_cap"`
-	Enabled       bool   `json:"enabled"`
+	KeyID         int64    `json:"key_id"`
+	Name          string   `json:"name"`
+	Template      string   `json:"template"`
+	Subject       string   `json:"subject"`
+	Grade         string   `json:"grade"`
+	Style         string   `json:"style"`
+	AnswerMode    string   `json:"answer_mode"`
+	ModelTier     string   `json:"model_tier"`
+	Task          string   `json:"task"`
+	Suggestions   []string `json:"suggestions"`
+	Rules         string   `json:"rules"`
+	Greeting      string   `json:"greeting"`
+	PassCode      string   `json:"pass_code"`
+	PerStudentDay int      `json:"per_student_day"`
+	DailyCap      int      `json:"daily_cap"`
+	Enabled       bool     `json:"enabled"`
 }
 
 func (s *TutorService) apply(ctx context.Context, userID int64, t *Tutor, in TutorInput) error {
@@ -294,6 +302,16 @@ func (s *TutorService) apply(ctx context.Context, userID int64, t *Tutor, in Tut
 	if in.ModelTier != TutorEconomy {
 		in.ModelTier = TutorStandard
 	}
+	in.Task = strings.TrimSpace(in.Task)
+	if in.Template == TutorCustom && (in.Task == "" || utf8.RuneCountInString(in.Task) > 3000) {
+		return ErrTutorTask
+	}
+	suggestions := []string{}
+	for _, q := range in.Suggestions {
+		if q = articleClip(strings.TrimSpace(q), 60); q != "" && len(suggestions) < 4 {
+			suggestions = append(suggestions, q)
+		}
+	}
 	pass := strings.TrimSpace(in.PassCode)
 	if utf8.RuneCountInString(pass) > 20 {
 		return ErrTutorInput
@@ -312,6 +330,8 @@ func (s *TutorService) apply(ctx context.Context, userID int64, t *Tutor, in Tut
 	t.Style = articleClip(strings.TrimSpace(in.Style), 100)
 	t.AnswerMode = in.AnswerMode
 	t.ModelTier = in.ModelTier
+	t.Task = in.Task
+	t.Suggestions = suggestions
 	t.Rules = articleClip(strings.TrimSpace(in.Rules), 2000)
 	t.Greeting = articleClip(strings.TrimSpace(in.Greeting), 500)
 	t.PassCode = pass
@@ -555,7 +575,11 @@ func (s *TutorService) Public(ctx context.Context, code string) (*TutorPublic, e
 		return nil, err
 	}
 	tpl, _ := findTutorTemplate(t.Template)
-	return &TutorPublic{Name: t.Name, Template: t.Template, Subject: t.Subject, Greeting: t.greetingText(), Suggestions: tpl.Suggestions,
+	suggestions := tpl.Suggestions
+	if len(t.Suggestions) > 0 {
+		suggestions = t.Suggestions
+	}
+	return &TutorPublic{Name: t.Name, Template: t.Template, Subject: t.Subject, Greeting: t.greetingText(), Suggestions: suggestions,
 		NeedsPass: t.PassCode != "", Enabled: t.Enabled}, nil
 }
 
@@ -851,4 +875,66 @@ func (s *TutorService) Insights(ctx context.Context, userID, id int64, onDelta f
 	}
 	_, err = s.chat(ctx, key, s.model(ctx), []LearnMessage{{Role: "system", Content: tutorInsightsPrompt}, {Role: "user", Content: b.String()}}, 2000, onDelta)
 	return err
+}
+
+// TutorDraft is what AI suggests for a 自定义助教 from the teacher's one-line description.
+type TutorDraft struct {
+	Name        string   `json:"name"`
+	Subject     string   `json:"subject"`
+	Grade       string   `json:"grade"`
+	Style       string   `json:"style"`
+	Task        string   `json:"task"`
+	Greeting    string   `json:"greeting"`
+	Suggestions []string `json:"suggestions"`
+	AnswerMode  string   `json:"answer_mode"`
+}
+
+var ErrTutorDescription = infraerrors.BadRequest("TUTOR_DESCRIPTION", "用一两句话描述想要的助教，最多 500 字（Description 1–500 characters）")
+
+// Draft asks the model (on the teacher's key) to write settings from a description; nothing is saved.
+func (s *TutorService) Draft(ctx context.Context, userID, keyID int64, description string) (*TutorDraft, error) {
+	description = strings.TrimSpace(description)
+	if n := utf8.RuneCountInString(description); n == 0 || n > 500 {
+		return nil, ErrTutorDescription
+	}
+	if s.learn == nil {
+		return nil, ErrTutorKey
+	}
+	k, err := s.learn.ownKey(ctx, userID, keyID)
+	if err != nil {
+		return nil, err
+	}
+	var out strings.Builder
+	msgs := []LearnMessage{{Role: "system", Content: tutorDraftPrompt}, {Role: "user", Content: "老师的描述：" + description}}
+	if _, err := s.chat(ctx, k.Key, s.model(ctx), msgs, 1500, func(d string) error { _, _ = out.WriteString(d); return nil }); err != nil {
+		return nil, err
+	}
+	text := strings.TrimSpace(out.String())
+	if m := articleJSONFence.FindStringSubmatch(text); m != nil {
+		text = m[1]
+	}
+	if i, j := strings.Index(text, "{"), strings.LastIndex(text, "}"); i >= 0 && j > i {
+		text = text[i : j+1]
+	}
+	var d TutorDraft
+	if json.Unmarshal([]byte(text), &d) != nil || strings.TrimSpace(d.Task) == "" {
+		return nil, errLearnRunFailed("AI 没有生成可用的设置，换个说法再试一次")
+	}
+	d.Name = articleClip(strings.TrimSpace(d.Name), 30)
+	if d.Name == "" {
+		d.Name = "我的助教"
+	}
+	d.Subject, d.Grade, d.Style = articleClip(strings.TrimSpace(d.Subject), 40), articleClip(strings.TrimSpace(d.Grade), 40), articleClip(strings.TrimSpace(d.Style), 100)
+	d.Task, d.Greeting = articleClip(strings.TrimSpace(d.Task), 3000), articleClip(strings.TrimSpace(d.Greeting), 500)
+	qs := []string{}
+	for _, q := range d.Suggestions {
+		if q = articleClip(strings.TrimSpace(q), 60); q != "" && len(qs) < 4 {
+			qs = append(qs, q)
+		}
+	}
+	d.Suggestions = qs
+	if d.AnswerMode != TutorAnswer {
+		d.AnswerMode = TutorGuide
+	}
+	return &d, nil
 }

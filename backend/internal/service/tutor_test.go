@@ -495,7 +495,10 @@ func TestTutorRetriesFailedAnswers(t *testing.T) {
 	}
 	fail := func(func(string) error) error { return errLearnRunFailed("no available accounts") }
 	answer := func(onDelta func(string) error) error { return onDelta("好") }
-	half := func(onDelta func(string) error) error { _ = onDelta("一半"); return errLearnRunFailed("stream interrupted") }
+	half := func(onDelta func(string) error) error {
+		_ = onDelta("一半")
+		return errLearnRunFailed("stream interrupted")
+	}
 
 	tu, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", ModelTier: TutorEconomy, Enabled: true})
 	require.NoError(t, err)
@@ -528,4 +531,65 @@ func TestTutorRetriesFailedAnswers(t *testing.T) {
 	_, err = ask()
 	require.Error(t, err)
 	require.Equal(t, []string{svc.model(ctx), svc.model(ctx)}, models)
+}
+
+func TestTutorCustom(t *testing.T) {
+	ctx := context.Background()
+	svc, _, calls, _ := newTutorForTest(t)
+
+	_, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "古诗文助教", Template: TutorCustom, Enabled: true})
+	require.ErrorIs(t, err, ErrTutorTask, "a custom assistant needs a task")
+	tu, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "古诗文助教", Template: TutorCustom, Task: "- 抽查默写\n- 纠正错别字",
+		Suggestions: []string{" 抽查我《春望》 ", "", "a", "b", "c", "d"}, Enabled: true})
+	require.NoError(t, err)
+	require.Equal(t, []string{"抽查我《春望》", "a", "b", "c"}, tu.Suggestions, "trimmed, empty dropped, at most 4")
+
+	pub, err := svc.Public(ctx, tu.ShareCode)
+	require.NoError(t, err)
+	require.Equal(t, tu.Suggestions, pub.Suggestions, "the teacher's questions replace the template's")
+	require.Contains(t, pub.Greeting, "古诗文助教")
+
+	require.NoError(t, svc.Preview(ctx, 5, tu.ID, TutorChatInput{Messages: []LearnMessage{{Role: "user", Content: "q"}}}, func(string) error { return nil }))
+	system := (*calls)[len(*calls)-1].system
+	require.Contains(t, system, "你的任务（老师写的，按它来做）：\n- 抽查默写\n- 纠正错别字")
+	require.Contains(t, system, "12355", "the safety rules stay")
+
+	// A template assistant keeps its own task; its suggestions can still be changed.
+	qa, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", Task: "ignored", Suggestions: []string{"勾股定理怎么用？"}, Enabled: true})
+	require.NoError(t, err)
+	pub, _ = svc.Public(ctx, qa.ShareCode)
+	require.Equal(t, []string{"勾股定理怎么用？"}, pub.Suggestions)
+	require.NoError(t, svc.Preview(ctx, 5, qa.ID, TutorChatInput{Messages: []LearnMessage{{Role: "user", Content: "q"}}}, func(string) error { return nil }))
+	require.Contains(t, (*calls)[len(*calls)-1].system, "你的任务是课后答疑")
+	require.NotContains(t, (*calls)[len(*calls)-1].system, "老师写的")
+}
+
+func TestTutorDraft(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _, _ := newTutorForTest(t)
+	reply := "好的：\n```json\n" + `{"name":"初三古诗文默写助教，名字很长很长很长很长很长很长很长很长很长很长很长很长","subject":"语文","grade":"初三","style":"耐心","task":"- 抽查默写\n- 纠正错字","greeting":"同学你好","suggestions":["抽查《春望》","","考我一首"],"answer_mode":"weird"}` + "\n```"
+	var system, user, key string
+	svc.chat = func(_ context.Context, k, _ string, msgs []LearnMessage, _ int, onDelta func(string) error) (*LearnTutorResult, error) {
+		key, system, user = k, msgs[0].Content, msgs[1].Content
+		return &LearnTutorResult{}, onDelta(reply)
+	}
+	_, err := svc.Draft(ctx, 5, 8, "帮初三学生背古诗文")
+	require.ErrorIs(t, err, ErrLearnKeyInvalid, "only the teacher's own key")
+	_, err = svc.Draft(ctx, 5, 7, "  ")
+	require.ErrorIs(t, err, ErrTutorDescription)
+
+	d, err := svc.Draft(ctx, 5, 7, "帮初三学生背古诗文，抽查默写并纠正错字")
+	require.NoError(t, err)
+	require.Equal(t, "sk-teacher", key)
+	require.Contains(t, system, "只输出一个 JSON 对象")
+	require.Contains(t, user, "抽查默写并纠正错字")
+	require.Len(t, []rune(d.Name), 30)
+	require.Equal(t, "语文", d.Subject)
+	require.Equal(t, "- 抽查默写\n- 纠正错字", d.Task)
+	require.Equal(t, []string{"抽查《春望》", "考我一首"}, d.Suggestions)
+	require.Equal(t, TutorGuide, d.AnswerMode)
+
+	reply = `{"name":"x","task":""}`
+	_, err = svc.Draft(ctx, 5, 7, "随便")
+	require.Error(t, err, "no task, no draft")
 }

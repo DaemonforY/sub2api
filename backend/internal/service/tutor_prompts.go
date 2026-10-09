@@ -20,6 +20,12 @@ type TutorTemplate struct {
 
 var tutorTemplates = []TutorTemplate{
 	{
+		ID: TutorCustom, Name: "自定义助教", Description: "用一句话描述你想要的助教，AI 帮你写好设置，你再改",
+		Greeting:    "同学你好，我是{name}，有问题随时问我。",
+		Suggestions: []string{"你能帮我做什么？", "我有一个问题想问你"},
+		Materials:   "和这个助教相关的任何资料",
+	},
+	{
 		ID: "qa", Name: "课程答疑助教", Description: "学生课后随时问，按你的讲义和课件讲解",
 		Greeting:    "同学你好，我是{name}。这门{subject}课有哪里没听懂、哪道题不会，都可以问我。",
 		Suggestions: []string{"这节课的重点是什么？", "这个概念能举个例子吗？", "我这道题哪里做错了？"},
@@ -97,7 +103,11 @@ func tutorSystemPrompt(t *Tutor, materials string, partial bool) string {
 	if t.Style != "" {
 		fmt.Fprintf(&b, "说话风格：%s。\n", t.Style)
 	}
-	_, _ = b.WriteString("\n" + tpl.task + "\n")
+	if t.Template == TutorCustom {
+		fmt.Fprintf(&b, "\n你的任务（老师写的，按它来做）：\n%s\n", strings.TrimSpace(t.Task))
+	} else {
+		_, _ = b.WriteString("\n" + tpl.task + "\n")
+	}
 	if t.AnswerMode == TutorGuide && t.Template != "oral" {
 		_, _ = b.WriteString(`
 重要：不要直接给出作业、练习或考试题的最终答案。用提问和提示一步步引导学生自己想出来：先问他的思路，指出下一步该想什么，必要时给出关键公式或方法；学生做对了再肯定他。学生坚持要答案时，可以给出完整的解题思路，但最后一步留给他自己完成。
@@ -154,3 +164,15 @@ func ProvideTutorService(repo TutorRepository, learn *LearnService, quota Assist
 	}
 	return svc
 }
+
+// tutorDraftPrompt turns a teacher's one-line description into settings for a 自定义助教.
+const tutorDraftPrompt = `你帮老师设置一个给学生用的 AI 助教。老师会用一句话描述想要什么样的助教，你据此写出设置。
+要求：
+- name：助教名称，不超过 15 个字，例如「初三古诗文默写助教」。
+- subject、grade：学科和年级，老师没说就根据描述合理推断，实在推断不出留空。
+- style：说话风格，10 个字以内。
+- task：写给助教看的工作说明，3–6 条，每条一行、以「- 」开头，具体说明它怎么帮学生、怎么检查和纠错、什么不做。不要写安全规则（系统已有）。
+- greeting：对学生的开场白，1–2 句，亲切具体。
+- suggestions：学生可能先问的 3 个问题，每个不超过 20 个字。
+- answer_mode：作业、练习类场景用 "guide"（只引导不直接给答案），讲解、陪练类用 "answer"。
+只输出一个 JSON 对象，不要其他文字：{"name":"","subject":"","grade":"","style":"","task":"","greeting":"","suggestions":["","",""],"answer_mode":"guide"}`

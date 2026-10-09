@@ -28,6 +28,7 @@ func RegisterTutorRoutes(
 		t.GET("/templates", h.Tutor.Templates)
 		t.GET("", h.Tutor.List)
 		t.POST("", h.Tutor.Create)
+		t.POST("/draft", panelRateLimiter.Heavy(), h.Tutor.Draft)
 		t.GET("/:id", h.Tutor.Get)
 		t.PUT("/:id", h.Tutor.Update)
 		t.DELETE("/:id", h.Tutor.Delete)

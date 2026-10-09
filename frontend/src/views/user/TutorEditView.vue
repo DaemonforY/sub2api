@@ -65,7 +65,7 @@
       <!-- 试一试 -->
       <div v-if="tab === 'try'" class="card p-5">
         <p class="mb-3 text-sm text-gray-500 dark:text-dark-400">{{ t('tutors.tryIntro') }}</p>
-        <TutorChat :greeting="greeting" :suggestions="template?.suggestions || []" :send="previewSend" data-testid="tutor-preview" />
+        <TutorChat :greeting="greeting" :suggestions="tutor.suggestions?.length ? tutor.suggestions : template?.suggestions || []" :send="previewSend" data-testid="tutor-preview" />
       </div>
 
       <!-- 分享 -->
@@ -171,6 +171,11 @@
             <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t('tutors.guideHint') }}</span>
           </span>
         </label>
+        <label v-if="form.template === 'custom'" class="block text-sm">
+          <span class="input-label">{{ t('tutors.task') }}</span>
+          <textarea v-model="form.task" class="input min-h-[8rem]" maxlength="3000" data-testid="tutor-task"></textarea>
+          <span class="input-hint">{{ t('tutors.taskHint') }}</span>
+        </label>
         <label class="block text-sm">
           <span class="input-label">{{ t('tutors.rules') }}</span>
           <textarea v-model="form.rules" class="input min-h-[5rem]" maxlength="2000" :placeholder="t('tutors.rulesPlaceholder')"></textarea>
@@ -178,6 +183,11 @@
         <label class="block text-sm">
           <span class="input-label">{{ t('tutors.greeting') }}</span>
           <textarea v-model="form.greeting" class="input min-h-[3.5rem]" maxlength="500" :placeholder="defaultGreeting"></textarea>
+        </label>
+        <label class="block text-sm">
+          <span class="input-label">{{ t('tutors.suggestions') }}</span>
+          <textarea v-model="suggestionsText" class="input min-h-[4rem]" :placeholder="(template?.suggestions || []).join('\n')" data-testid="tutor-suggestions"></textarea>
+          <span class="input-hint">{{ t('tutors.suggestionsHint') }}</span>
         </label>
         <div class="grid gap-4 md:grid-cols-3">
           <label class="text-sm">
@@ -295,10 +305,11 @@ const tabs = computed(() => [
   { id: 'settings', label: t('tutors.tabSettings') }
 ])
 const form = reactive<TutorInput>({
-  key_id: 0, name: '', template: 'qa', subject: '', grade: '', style: '', answer_mode: 'guide', model_tier: 'standard', rules: '', greeting: '',
+  key_id: 0, name: '', template: 'qa', subject: '', grade: '', style: '', answer_mode: 'guide', model_tier: 'standard', task: '', suggestions: [], rules: '', greeting: '',
   pass_code: '', per_student_day: 20, daily_cap: 300, enabled: true
 })
 const guide = ref(true)
+const suggestionsText = ref('')
 const saving = ref(false)
 const uploading = ref(false)
 const pasteName = ref('')
@@ -342,9 +353,12 @@ function fill(tu: Tutor) {
   Object.assign(form, {
     key_id: tu.key_id, name: tu.name, template: tu.template, subject: tu.subject, grade: tu.grade, style: tu.style, answer_mode: tu.answer_mode,
     model_tier: tu.model_tier || 'standard',
+    task: tu.task || '',
+    suggestions: tu.suggestions || [],
     rules: tu.rules, greeting: tu.greeting, pass_code: tu.pass_code, per_student_day: tu.per_student_day, daily_cap: tu.daily_cap, enabled: tu.enabled
   })
   guide.value = tu.answer_mode === 'guide'
+  suggestionsText.value = (tu.suggestions || []).join('\n')
 }
 
 async function load() {
@@ -371,7 +385,8 @@ async function loadStats() {
 async function save() {
   saving.value = true
   try {
-    fill(await updateTutor(id, { ...form, answer_mode: guide.value ? 'guide' : 'answer' }))
+    const suggestions = suggestionsText.value.split('\n').map((x) => x.trim()).filter(Boolean)
+    fill(await updateTutor(id, { ...form, suggestions, answer_mode: guide.value ? 'guide' : 'answer' }))
     appStore.showSuccess(t('tutors.saved'))
   } catch (e) {
     appStore.showError(extractApiErrorMessage(e, t('common.error')))
