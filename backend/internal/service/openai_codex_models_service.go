@@ -1425,10 +1425,6 @@ func isRetryableCodexModelsManifestTransportError(err error) bool {
 	if errors.As(err, &dnsErr) {
 		return true
 	}
-	var goAwayErr http2.GoAwayError
-	if errors.As(err, &goAwayErr) {
-		return true
-	}
 	var streamErr http2.StreamError
 	if errors.As(err, &streamErr) {
 		return true
@@ -1443,7 +1439,9 @@ func isRetryableCodexModelsManifestTransportError(err error) bool {
 	}
 
 	// net/http uses unexported HTTP/2 error types, so typed matching is not
-	// possible for errors produced by the standard library transport.
+	// possible for errors produced by the standard library transport. GOAWAY
+	// is matched here too: x/net deprecated http2.GoAwayError with no exported
+	// replacement, and its message has the same "http2: ... GOAWAY" form.
 	message := strings.ToLower(err.Error())
 	if strings.Contains(message, "http2:") &&
 		(strings.Contains(message, "goaway") ||
