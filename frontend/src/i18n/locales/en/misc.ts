@@ -484,6 +484,7 @@ export default {
     selectPlan: 'Select Plan',
     planFeatures: 'Features',
     planCard: {
+      recommended: 'Recommended',
       lockedPrice: 'Your locked price',
       rate: 'Rate',
       peakRate: 'Peak Rate',
@@ -593,6 +594,8 @@ export default {
       validityUnit: 'Validity Unit',
       sortOrder: 'Sort Order',
       forSale: 'For Sale',
+      recommended: 'Recommended',
+      recommendedHint: 'Highlighted on the purchase and pricing pages; recommend one plan at most',
       onSale: 'On Sale',
       offSale: 'Off Sale',
       group: 'Group',

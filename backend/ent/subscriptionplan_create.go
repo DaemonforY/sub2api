@@ -152,6 +152,20 @@ func (_c *SubscriptionPlanCreate) SetNillableForSale(v *bool) *SubscriptionPlanC
 	return _c
 }
 
+// SetRecommended sets the "recommended" field.
+func (_c *SubscriptionPlanCreate) SetRecommended(v bool) *SubscriptionPlanCreate {
+	_c.mutation.SetRecommended(v)
+	return _c
+}
+
+// SetNillableRecommended sets the "recommended" field if the given value is not nil.
+func (_c *SubscriptionPlanCreate) SetNillableRecommended(v *bool) *SubscriptionPlanCreate {
+	if v != nil {
+		_c.SetRecommended(*v)
+	}
+	return _c
+}
+
 // SetSortOrder sets the "sort_order" field.
 func (_c *SubscriptionPlanCreate) SetSortOrder(v int) *SubscriptionPlanCreate {
 	_c.mutation.SetSortOrder(v)
@@ -257,6 +271,10 @@ func (_c *SubscriptionPlanCreate) defaults() {
 		v := subscriptionplan.DefaultForSale
 		_c.mutation.SetForSale(v)
 	}
+	if _, ok := _c.mutation.Recommended(); !ok {
+		v := subscriptionplan.DefaultRecommended
+		_c.mutation.SetRecommended(v)
+	}
 	if _, ok := _c.mutation.SortOrder(); !ok {
 		v := subscriptionplan.DefaultSortOrder
 		_c.mutation.SetSortOrder(v)
@@ -322,6 +340,9 @@ func (_c *SubscriptionPlanCreate) check() error {
 	}
 	if _, ok := _c.mutation.ForSale(); !ok {
 		return &ValidationError{Name: "for_sale", err: errors.New(`ent: missing required field "SubscriptionPlan.for_sale"`)}
+	}
+	if _, ok := _c.mutation.Recommended(); !ok {
+		return &ValidationError{Name: "recommended", err: errors.New(`ent: missing required field "SubscriptionPlan.recommended"`)}
 	}
 	if _, ok := _c.mutation.SortOrder(); !ok {
 		return &ValidationError{Name: "sort_order", err: errors.New(`ent: missing required field "SubscriptionPlan.sort_order"`)}
@@ -402,6 +423,10 @@ func (_c *SubscriptionPlanCreate) createSpec() (*SubscriptionPlan, *sqlgraph.Cre
 	if value, ok := _c.mutation.ForSale(); ok {
 		_spec.SetField(subscriptionplan.FieldForSale, field.TypeBool, value)
 		_node.ForSale = value
+	}
+	if value, ok := _c.mutation.Recommended(); ok {
+		_spec.SetField(subscriptionplan.FieldRecommended, field.TypeBool, value)
+		_node.Recommended = value
 	}
 	if value, ok := _c.mutation.SortOrder(); ok {
 		_spec.SetField(subscriptionplan.FieldSortOrder, field.TypeInt, value)
@@ -626,6 +651,18 @@ func (u *SubscriptionPlanUpsert) SetForSale(v bool) *SubscriptionPlanUpsert {
 // UpdateForSale sets the "for_sale" field to the value that was provided on create.
 func (u *SubscriptionPlanUpsert) UpdateForSale() *SubscriptionPlanUpsert {
 	u.SetExcluded(subscriptionplan.FieldForSale)
+	return u
+}
+
+// SetRecommended sets the "recommended" field.
+func (u *SubscriptionPlanUpsert) SetRecommended(v bool) *SubscriptionPlanUpsert {
+	u.Set(subscriptionplan.FieldRecommended, v)
+	return u
+}
+
+// UpdateRecommended sets the "recommended" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsert) UpdateRecommended() *SubscriptionPlanUpsert {
+	u.SetExcluded(subscriptionplan.FieldRecommended)
 	return u
 }
 
@@ -890,6 +927,20 @@ func (u *SubscriptionPlanUpsertOne) SetForSale(v bool) *SubscriptionPlanUpsertOn
 func (u *SubscriptionPlanUpsertOne) UpdateForSale() *SubscriptionPlanUpsertOne {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdateForSale()
+	})
+}
+
+// SetRecommended sets the "recommended" field.
+func (u *SubscriptionPlanUpsertOne) SetRecommended(v bool) *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetRecommended(v)
+	})
+}
+
+// UpdateRecommended sets the "recommended" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertOne) UpdateRecommended() *SubscriptionPlanUpsertOne {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateRecommended()
 	})
 }
 
@@ -1325,6 +1376,20 @@ func (u *SubscriptionPlanUpsertBulk) SetForSale(v bool) *SubscriptionPlanUpsertB
 func (u *SubscriptionPlanUpsertBulk) UpdateForSale() *SubscriptionPlanUpsertBulk {
 	return u.Update(func(s *SubscriptionPlanUpsert) {
 		s.UpdateForSale()
+	})
+}
+
+// SetRecommended sets the "recommended" field.
+func (u *SubscriptionPlanUpsertBulk) SetRecommended(v bool) *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.SetRecommended(v)
+	})
+}
+
+// UpdateRecommended sets the "recommended" field to the value that was provided on create.
+func (u *SubscriptionPlanUpsertBulk) UpdateRecommended() *SubscriptionPlanUpsertBulk {
+	return u.Update(func(s *SubscriptionPlanUpsert) {
+		s.UpdateRecommended()
 	})
 }
 

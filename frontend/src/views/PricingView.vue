@@ -65,7 +65,10 @@
               <tbody>
                 <tr v-for="p in data.plans" :key="p.id" class="border-t border-gray-100 align-top dark:border-dark-700" :data-testid="`pricing-plan-${p.id}`">
                   <td class="px-4 py-3">
-                    <div class="font-medium text-gray-900 dark:text-white">{{ p.name }}</div>
+                    <div class="font-medium text-gray-900 dark:text-white">
+                      {{ p.name }}
+                      <span v-if="p.recommended" class="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">{{ t('payment.planCard.recommended') }}</span>
+                    </div>
                     <div class="text-xs text-gray-500">{{ p.description || p.group_name }}</div>
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap">

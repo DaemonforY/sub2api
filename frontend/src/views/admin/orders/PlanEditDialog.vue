@@ -80,6 +80,24 @@
           ]" />
         </button>
       </div>
+      <div class="flex items-center gap-3">
+        <label class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.admin.recommended') }}</label>
+        <button
+          type="button"
+          data-testid="plan-recommended-toggle"
+          :class="[
+            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+            planForm.recommended ? 'bg-amber-500' : 'bg-gray-300 dark:bg-dark-600'
+          ]"
+          @click="planForm.recommended = !planForm.recommended"
+        >
+          <span :class="[
+            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+            planForm.recommended ? 'translate-x-5' : 'translate-x-0'
+          ]" />
+        </button>
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ t('payment.admin.recommendedHint') }}</span>
+      </div>
     </form>
     <template #footer>
       <div class="flex justify-end gap-3">
@@ -122,7 +140,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 
 const saving = ref(false)
-const planForm = reactive({ name: '', group_id: null as number | null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+const planForm = reactive({ name: '', group_id: null as number | null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true, recommended: false })
 const planFeaturesText = ref('')
 
 const validityUnitOptions = computed(() => [
@@ -175,10 +193,10 @@ const subscriptionCnyPreview = computed(() => {
 watch(() => props.show, (visible) => {
   if (!visible) return
   if (props.plan) {
-    Object.assign(planForm, { name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, currency: props.plan.currency || '', validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale })
+    Object.assign(planForm, { name: props.plan.name, group_id: props.plan.group_id, description: props.plan.description, price: props.plan.price, original_price: props.plan.original_price || 0, currency: props.plan.currency || '', validity_days: props.plan.validity_days, validity_unit: props.plan.validity_unit || 'days', sort_order: props.plan.sort_order || 0, for_sale: props.plan.for_sale, recommended: props.plan.recommended === true })
     planFeaturesText.value = (props.plan.features || []).join('\n')
   } else {
-    Object.assign(planForm, { name: '', group_id: null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true })
+    Object.assign(planForm, { name: '', group_id: null, description: '', price: 0, original_price: 0, currency: '', validity_days: 30, validity_unit: 'days', sort_order: 0, for_sale: true, recommended: false })
     planFeaturesText.value = ''
   }
 })
@@ -197,6 +215,7 @@ function buildPlanPayload() {
     validity_unit: planForm.validity_unit,
     sort_order: planForm.sort_order,
     for_sale: planForm.for_sale,
+    recommended: planForm.recommended,
     features,
   }
 }

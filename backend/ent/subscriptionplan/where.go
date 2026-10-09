@@ -109,6 +109,11 @@ func ForSale(v bool) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldForSale, v))
 }
 
+// Recommended applies equality check predicate on the "recommended" field. It's identical to RecommendedEQ.
+func Recommended(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldRecommended, v))
+}
+
 // SortOrder applies equality check predicate on the "sort_order" field. It's identical to SortOrderEQ.
 func SortOrder(v int) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldEQ(FieldSortOrder, v))
@@ -692,6 +697,16 @@ func ForSaleEQ(v bool) predicate.SubscriptionPlan {
 // ForSaleNEQ applies the NEQ predicate on the "for_sale" field.
 func ForSaleNEQ(v bool) predicate.SubscriptionPlan {
 	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldForSale, v))
+}
+
+// RecommendedEQ applies the EQ predicate on the "recommended" field.
+func RecommendedEQ(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldEQ(FieldRecommended, v))
+}
+
+// RecommendedNEQ applies the NEQ predicate on the "recommended" field.
+func RecommendedNEQ(v bool) predicate.SubscriptionPlan {
+	return predicate.SubscriptionPlan(sql.FieldNEQ(FieldRecommended, v))
 }
 
 // SortOrderEQ applies the EQ predicate on the "sort_order" field.

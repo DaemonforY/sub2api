@@ -3,14 +3,19 @@
     :class="[
       'group relative flex flex-col overflow-hidden rounded-2xl border transition-all',
       'hover:shadow-xl hover:-translate-y-0.5',
-      borderClass,
+      plan.recommended ? 'border-amber-400 ring-2 ring-amber-300/60 dark:border-amber-500' : borderClass,
       'bg-white dark:bg-dark-800',
     ]"
   >
     <!-- Colored top accent bar -->
     <div :class="['h-1.5', accentClass]" />
+    <span
+      v-if="plan.recommended"
+      class="absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b-lg bg-amber-400 px-2.5 py-0.5 text-[11px] font-bold text-amber-950 shadow"
+      data-testid="plan-recommended"
+    >⭐ {{ t('payment.planCard.recommended') }}</span>
 
-    <div class="flex flex-1 flex-col p-4">
+    <div :class="['flex flex-1 flex-col p-4', plan.recommended ? 'pt-7' : '']">
       <!-- Header: name + badge + price -->
       <div class="mb-3 flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">

@@ -138,6 +138,8 @@ export interface SubscriptionPlan {
   /** Stored as JSON string in backend; API layer should parse before use */
   features: string[]
   for_sale: boolean
+  /** 推荐套餐: highlighted on the purchase and pricing pages */
+  recommended?: boolean
   sort_order: number
   /** Balance cost when paid with account balance (checkout-info only) */
   balance_price?: number

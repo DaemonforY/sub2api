@@ -59,6 +59,9 @@ func (SubscriptionPlan) Fields() []ent.Field {
 			Default(""),
 		field.Bool("for_sale").
 			Default(true),
+		// 推荐套餐: highlighted on the purchase and pricing pages.
+		field.Bool("recommended").
+			Default(false),
 		field.Int("sort_order").
 			Default(0),
 		field.Time("created_at").

@@ -216,6 +216,20 @@ func (_u *SubscriptionPlanUpdate) SetNillableForSale(v *bool) *SubscriptionPlanU
 	return _u
 }
 
+// SetRecommended sets the "recommended" field.
+func (_u *SubscriptionPlanUpdate) SetRecommended(v bool) *SubscriptionPlanUpdate {
+	_u.mutation.SetRecommended(v)
+	return _u
+}
+
+// SetNillableRecommended sets the "recommended" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdate) SetNillableRecommended(v *bool) *SubscriptionPlanUpdate {
+	if v != nil {
+		_u.SetRecommended(*v)
+	}
+	return _u
+}
+
 // SetSortOrder sets the "sort_order" field.
 func (_u *SubscriptionPlanUpdate) SetSortOrder(v int) *SubscriptionPlanUpdate {
 	_u.mutation.ResetSortOrder()
@@ -368,6 +382,9 @@ func (_u *SubscriptionPlanUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.ForSale(); ok {
 		_spec.SetField(subscriptionplan.FieldForSale, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Recommended(); ok {
+		_spec.SetField(subscriptionplan.FieldRecommended, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.SortOrder(); ok {
 		_spec.SetField(subscriptionplan.FieldSortOrder, field.TypeInt, value)
@@ -586,6 +603,20 @@ func (_u *SubscriptionPlanUpdateOne) SetNillableForSale(v *bool) *SubscriptionPl
 	return _u
 }
 
+// SetRecommended sets the "recommended" field.
+func (_u *SubscriptionPlanUpdateOne) SetRecommended(v bool) *SubscriptionPlanUpdateOne {
+	_u.mutation.SetRecommended(v)
+	return _u
+}
+
+// SetNillableRecommended sets the "recommended" field if the given value is not nil.
+func (_u *SubscriptionPlanUpdateOne) SetNillableRecommended(v *bool) *SubscriptionPlanUpdateOne {
+	if v != nil {
+		_u.SetRecommended(*v)
+	}
+	return _u
+}
+
 // SetSortOrder sets the "sort_order" field.
 func (_u *SubscriptionPlanUpdateOne) SetSortOrder(v int) *SubscriptionPlanUpdateOne {
 	_u.mutation.ResetSortOrder()
@@ -768,6 +799,9 @@ func (_u *SubscriptionPlanUpdateOne) sqlSave(ctx context.Context) (_node *Subscr
 	}
 	if value, ok := _u.mutation.ForSale(); ok {
 		_spec.SetField(subscriptionplan.FieldForSale, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.Recommended(); ok {
+		_spec.SetField(subscriptionplan.FieldRecommended, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.SortOrder(); ok {
 		_spec.SetField(subscriptionplan.FieldSortOrder, field.TypeInt, value)

@@ -16,6 +16,7 @@ export interface PricingPlan {
   daily_limit_usd: number | null
   weekly_limit_usd: number | null
   monthly_limit_usd: number | null
+  recommended?: boolean
 }
 
 export interface PricingGroup {

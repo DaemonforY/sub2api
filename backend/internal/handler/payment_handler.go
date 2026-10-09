@@ -70,6 +70,7 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 		Features           string   `json:"features"`
 		ProductName        string   `json:"product_name"`
 		ForSale            bool     `json:"for_sale"`
+		Recommended        bool     `json:"recommended"`
 		SortOrder          int      `json:"sort_order"`
 	}
 	groupInfo := h.configService.GetGroupInfoMap(c.Request.Context(), plans)
@@ -84,7 +85,7 @@ func (h *PaymentHandler) GetPlans(c *gin.Context) {
 			Name: p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			Currency:     p.Currency,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: p.Features,
-			ProductName: p.ProductName, ForSale: p.ForSale, SortOrder: p.SortOrder,
+			ProductName: p.ProductName, ForSale: p.ForSale, Recommended: p.Recommended, SortOrder: p.SortOrder,
 		})
 	}
 	response.Success(c, result)
@@ -157,7 +158,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 			PriceLocked:  detail.Locked,
 			Currency:     p.Currency,
 			ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: parseFeatures(p.Features),
-			ProductName: p.ProductName,
+			ProductName: p.ProductName, Recommended: p.Recommended,
 		})
 	}
 
@@ -223,6 +224,7 @@ type checkoutPlan struct {
 	ValidityUnit       string   `json:"validity_unit"`
 	Features           []string `json:"features"`
 	ProductName        string   `json:"product_name"`
+	Recommended        bool     `json:"recommended,omitempty"`
 	// BalancePrice is what the plan costs when paid with account balance.
 	BalancePrice  float64 `json:"balance_price"`
 	EduDiscounted bool    `json:"edu_discounted"`

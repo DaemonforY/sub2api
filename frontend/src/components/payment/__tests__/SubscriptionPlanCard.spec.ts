@@ -53,6 +53,11 @@ const mountPlanCard = (groupPlatform: string, overrides: Partial<SubscriptionPla
   });
 
 describe("SubscriptionPlanCard", () => {
+  it("flags a recommended plan", () => {
+    expect(mountPlanCard("openai", { recommended: true }).find('[data-testid="plan-recommended"]').exists()).toBe(true);
+    expect(mountPlanCard("openai").find('[data-testid="plan-recommended"]').exists()).toBe(false);
+  });
+
   it("marks a locked early price and strikes through today's price", () => {
     const w = mountPlanCard("openai", { price: 120, original_price: 200, price_locked: true });
     expect(w.get('[data-testid="plan-price-locked"]').text()).toMatch(/Your locked price|payment.planCard.lockedPrice/);

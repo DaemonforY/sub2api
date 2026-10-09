@@ -508,6 +508,7 @@ export default {
     selectPlan: '选择套餐',
     planFeatures: '功能特性',
     planCard: {
+      recommended: '推荐',
       lockedPrice: '你的锁定价',
       rate: '倍率',
       peakRate: '高峰倍率',
@@ -617,6 +618,8 @@ export default {
       validityUnit: '有效期单位',
       sortOrder: '排序',
       forSale: '上架状态',
+      recommended: '推荐套餐',
+      recommendedHint: '在购买页和价格页高亮显示，建议只推荐一个',
       onSale: '上架',
       offSale: '下架',
       group: '分组',

@@ -32,6 +32,7 @@ type PublicPricingPlan struct {
 	DailyLimitUSD   *float64 `json:"daily_limit_usd"`
 	WeeklyLimitUSD  *float64 `json:"weekly_limit_usd"`
 	MonthlyLimitUSD *float64 `json:"monthly_limit_usd"`
+	Recommended     bool     `json:"recommended,omitempty"`
 }
 
 type PublicPricingGroup struct {
@@ -101,7 +102,7 @@ func (s *PaymentConfigService) buildPublicPricing(ctx context.Context) (*PublicP
 		out.Plans = append(out.Plans, PublicPricingPlan{
 			ID: int64(p.ID), Name: p.Name, Description: p.Description, Price: p.Price, OriginalPrice: p.OriginalPrice,
 			Currency: p.Currency, ValidityDays: p.ValidityDays, ValidityUnit: p.ValidityUnit, Features: p.Features,
-			GroupName: gi.Name, Platform: gi.Platform,
+			GroupName: gi.Name, Platform: gi.Platform, Recommended: p.Recommended,
 			DailyLimitUSD: gi.DailyLimitUSD, WeeklyLimitUSD: gi.WeeklyLimitUSD, MonthlyLimitUSD: gi.MonthlyLimitUSD,
 		})
 	}
