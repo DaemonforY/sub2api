@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -124,5 +125,17 @@ func TestBillingErrorDetails_T10_QuotaExhaustedReturns429WithRetryAfter(t *testi
 				t.Errorf("retryAfter = %d, want ~3600", retryAfter)
 			}
 		})
+	}
+}
+
+func TestBillingErrorDetails_RPMMessagesAreChineseWithEnglishKept(t *testing.T) {
+	for err, english := range map[error]string{
+		service.ErrGroupRPMExceeded: "(group requests-per-minute limit exceeded)",
+		service.ErrUserRPMExceeded:  "(user requests-per-minute limit exceeded)",
+	} {
+		_, _, msg, _ := billingErrorDetails(err)
+		require.Contains(t, msg, "每分钟的请求数已达上限")
+		require.Contains(t, msg, "本次请求未扣费")
+		require.Contains(t, msg, strings.Trim(english, "()"), "ops classifiers match the English text")
 	}
 }

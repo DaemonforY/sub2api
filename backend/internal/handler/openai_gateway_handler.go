@@ -372,6 +372,9 @@ func NewOpenAIGatewayHandler(
 	}
 }
 
+// ctxKeyOpenAIHostedWebSearch marks a Responses request whose tools include the hosted web_search tool.
+const ctxKeyOpenAIHostedWebSearch = "openai_hosted_web_search"
+
 // Responses handles OpenAI Responses API endpoint
 // POST /openai/v1/responses
 func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
@@ -637,6 +640,10 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 	// 生图意图只影响能力路由与图片计费，不关门：混合 /v1/responses 请求的
 	// token 计费部分仍受利润门保护，独立图片/视频端点才在门外。
 	pricingCtx, pricingAt := h.gatewayService.WithOpenAIRequestPricingContext(c.Request.Context(), apiKey.GroupID)
+	if service.OpenAIBodyHasHostedWebSearchTool(body) {
+		pricingCtx = service.WithOpenAIHostedWebSearchRequest(pricingCtx)
+		c.Set(ctxKeyOpenAIHostedWebSearch, true)
+	}
 	c.Request = c.Request.WithContext(pricingCtx)
 
 	for {
@@ -728,7 +735,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 				Scope:            service.GatewayFailureScopeRequest,
 				Reason:           service.OpenAIHTTPContinuationUnsupportedReason,
 				ClientStatusCode: http.StatusBadRequest,
-				ClientMessage:    "previous_response_id requires an OpenAI API-key account for HTTP requests",
+				ClientMessage:    msgContinuationUnsupported,
 			}
 			reqLog.Debug("openai.account_skipped_http_continuation_unsupported",
 				zap.Int64("account_id", account.ID),
@@ -3287,10 +3294,15 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 		)
 		return
 	}
+	if failoverErr.StatusCode >= 500 && c.GetBool(ctxKeyOpenAIHostedWebSearch) {
+		service.SetOpsUpstreamError(c, failoverErr.StatusCode, msgHostedWebSearchFailed, "")
+		h.handleStreamingAwareError(c, http.StatusBadRequest, "invalid_request_error", msgHostedWebSearchFailed, streamStarted)
+		return
+	}
 	if failoverErr.Reason == service.OpenAIHTTPContinuationUnsupportedReason {
 		message := strings.TrimSpace(failoverErr.ClientMessage)
 		if message == "" {
-			message = "previous_response_id requires an OpenAI API-key account for HTTP requests"
+			message = msgContinuationUnsupported
 		}
 		h.handleStreamingAwareError(c, http.StatusBadRequest, "invalid_request_error", message, streamStarted)
 		return

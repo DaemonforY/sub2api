@@ -106,6 +106,11 @@ func (s *OpenAIGatewayService) handleOpenAIAccountUpstreamError(ctx context.Cont
 	if account != nil && account.Platform == PlatformOpenAI && isOpenAIRequestScopedCapacityShed("", responseBody) {
 		return false
 	}
+	// A 5xx on a request using the hosted web_search tool is the tool failing upstream; other requests
+	// for this model still work, so leave the account and its model schedulable.
+	if account != nil && account.Platform == PlatformOpenAI && statusCode >= 500 && isOpenAIHostedWebSearchRequest(ctx) {
+		return false
+	}
 	stateCtx, cancel := openAIAccountStateContext(ctx)
 	defer cancel()
 	if account != nil && account.Platform == PlatformOpenAI && isOpenAIHTTPUpstreamAccessStateError(statusCode, "", responseBody) {
