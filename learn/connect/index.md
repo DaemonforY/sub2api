@@ -41,11 +41,13 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | 你想用在 | 看这篇 | 大约用时 |
 |---|---|---|
 | Codex（CLI、IDE 扩展、桌面端） | [Codex 接入 HiveGPT](/codex/hivegpt) | 5 分钟 |
-| OpenCode、CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
+| OpenCode 终端编程助手 | [OpenCode 配置第三方 API](/connect/opencode) | 3 分钟 |
+| CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
 | 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk)，完整代码见 [Python](/connect/python)、[Node.js](/connect/nodejs) | 5 分钟 |
 | LangChain（Python / JS） | [LangChain 接入 HiveGPT](/connect/langchain) | 5 分钟 |
 | Java、Spring AI | [Java 调用 GPT API](/connect/java) | 5 分钟 |
 | Go | [Go 调用 GPT API](/connect/go) | 5 分钟 |
+| 用代码画图、改图（gpt-image-2） | [图片 API 教程](/connect/image-api) | 5 分钟 |
 | 批量处理 Excel 表格 | [用 GPT 批量处理 Excel](/connect/excel) | 10 分钟 |
 | 飞书、企业微信群机器人 | [群机器人接入 GPT](/connect/feishu-wecom-bot) | 10 分钟 |
 | VS Code 里的 Cline / Roo Code | [Cline 配置自定义 API](/connect/cline) | 3 分钟 |
@@ -69,7 +71,7 @@ curl https://hivegpt.cn/v1/models \
   -H "Authorization: Bearer $HIVEGPT_API_KEY"
 ```
 
-返回的 `data[].id` 就是可以填进工具里的模型名。
+返回的 `data[].id` 就是可以填进工具里的模型名。不知道选哪个，看 [GPT 模型怎么选](/connect/models)。
 
 ## 验证 Key 能用
 

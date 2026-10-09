@@ -105,7 +105,7 @@ with open("cat.png", "wb") as f:
     f.write(base64.b64decode(img.data[0].b64_json))
 ```
 
-画图按张计费，比对话贵，建议先用小尺寸试效果。也可以直接用 [无限画布](https://canvas.hivegpt.cn/?utm_source=learn&utm_medium=connect)，不用写代码。
+画图按张计费，比对话贵。改图、流式返回和报错处理见 [图片 API 教程](/connect/image-api)。也可以直接用 [无限画布](https://canvas.hivegpt.cn/?utm_source=learn&utm_medium=connect)，不用写代码。
 
 ## curl
 
