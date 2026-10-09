@@ -60,11 +60,11 @@ OpenCode 是开源的终端编程助手。HiveGPT 的「使用密钥」弹窗能
 
 ## Cherry Studio
 
-Cherry Studio 是桌面端的多模型对话客户端：
+API 地址填 `https://hivegpt.cn`（不加 `/v1`，Cherry Studio 会自动补），类型选 OpenAI。完整步骤见 [Cherry Studio 配置教程](/connect/cherry-studio)。
 
-1. 打开设置里的 **模型服务**，添加一个提供商，类型选 **OpenAI**。
-2. API 地址先填 `https://hivegpt.cn`，API 密钥填你的 Key，点「检查」。如果检查失败，把地址改成 `https://hivegpt.cn/v1` 再试。
-3. 在模型列表里添加模型（可以用「管理」从接口拉取，也可以手动填 `gpt-5.5`），然后回到对话界面选择它。
+## 沉浸式翻译
+
+自定义 API 接口地址要填完整的 `https://hivegpt.cn/v1/chat/completions`。完整步骤见 [沉浸式翻译接入 GPT API](/connect/immersive-translate)。
 
 ## Chatbox
 
@@ -74,6 +74,7 @@ Cherry Studio 是桌面端的多模型对话客户端：
 
 ## 还是不通？
 
-1. 先用 [接入教程首页](/connect/#验证-key-能用) 里的 curl 命令测一下 Key 本身是否可用。curl 能通，问题就在工具的配置上。
-2. 对照 [常见报错](/connect/#常见报错) 排查。最常见的是：地址多了或少了 `/v1`，以及模型名不在你 Key 的分组里。
-3. 到 [使用记录](https://hivegpt.cn/usage) 看请求有没有到达 HiveGPT：有记录说明网络和 Key 都没问题；没有记录说明请求没发过来。
+1. 地址到底加不加 `/v1`，对照 [Base URL 填法对照表](/connect/base-url)。
+2. 先用 [接入教程首页](/connect/#验证-key-能用) 里的 curl 命令测一下 Key 本身是否可用。curl 能通，问题就在工具的配置上。
+3. 对照 [常见报错](/connect/#常见报错) 排查。最常见的是：地址多了或少了 `/v1`，以及模型名不在你 Key 的分组里。
+4. 到 [使用记录](https://hivegpt.cn/usage) 看请求有没有到达 HiveGPT：有记录说明网络和 Key 都没问题；没有记录说明请求没发过来。

@@ -33,7 +33,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | 模型 | 你的分组里可用的模型，例如 `gpt-5.5`，查法见下文 |
 
 ::: warning 有的工具会自己补 /v1
-如果工具提示 404 或「路径不存在」，把 Base URL 换成 `https://hivegpt.cn` 再试（去掉末尾的 `/v1`）；反过来也一样。
+如果工具提示 404 或「路径不存在」，把 Base URL 换成 `https://hivegpt.cn` 再试（去掉末尾的 `/v1`）；反过来也一样。各工具的具体填法见 [Base URL 末尾要不要加 /v1](/connect/base-url)。
 :::
 
 ## 选一个教程
@@ -43,6 +43,8 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | Codex（CLI、IDE 扩展、桌面端） | [Codex 接入 HiveGPT](/codex/hivegpt) | 5 分钟 |
 | OpenCode、CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
 | 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk) | 5 分钟 |
+| Cherry Studio 桌面客户端 | [Cherry Studio 配置教程](/connect/cherry-studio) | 3 分钟 |
+| 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |
 
 最省事的办法：在「API 密钥」页找到你的 Key，点 **「使用密钥」**。弹窗会按你的分组和系统，直接生成 Codex、OpenCode 等客户端的配置，复制粘贴即可。
 
