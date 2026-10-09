@@ -133,7 +133,7 @@ public class Errors {
 Key 无效时会打印：
 
 ```text
-请求失败：401 {code=INVALID_API_KEY, message=API Key 无效或已被删除，请到控制台「API 密钥」复制一个有效的 Key 后重试（Invalid API key）}
+请求失败：401 {code=INVALID_API_KEY, message=API Key 无效或已被删除，请到控制台「API 密钥」复制一个有效的 Key 后重试（Invalid API key）, type=authentication_error}
 ```
 
 ::: tip 只改环境变量
