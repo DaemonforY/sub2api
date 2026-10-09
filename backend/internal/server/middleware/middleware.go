@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/googleapi"
@@ -64,6 +65,16 @@ func GetForcePlatformFromContext(c *gin.Context) (string, bool) {
 type ErrorResponse struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	// Error repeats code and message in the OpenAI / Anthropic error shape on gateway paths, so SDKs
+	// that only read {"error":{...}} (openai-go, many tools) show the message instead of a bare status.
+	Error *CompatErrorBody `json:"error,omitempty"`
+}
+
+// CompatErrorBody is the OpenAI-style error object: {"message","type","code"}.
+type CompatErrorBody struct {
+	Message string `json:"message"`
+	Type    string `json:"type"`
+	Code    string `json:"code"`
 }
 
 // NewErrorResponse 创建错误响应
@@ -76,8 +87,50 @@ func NewErrorResponse(code, message string) ErrorResponse {
 
 // AbortWithError 中断请求并返回JSON错误
 func AbortWithError(c *gin.Context, statusCode int, code, message string) {
-	c.JSON(statusCode, NewErrorResponse(code, message))
+	resp := NewErrorResponse(code, message)
+	if c.Request != nil && IsCompatErrorPath(c.Request.URL.Path) {
+		resp.Error = &CompatErrorBody{Message: message, Type: CompatErrorType(statusCode), Code: code}
+	}
+	c.JSON(statusCode, resp)
 	c.Abort()
+}
+
+// IsCompatErrorPath reports whether path is an OpenAI / Anthropic-style API endpoint, whose clients
+// read errors from {"error":{...}}. Gemini paths (/v1beta) keep their own format, and the panel
+// API (/api/...) keeps {code, message}.
+func IsCompatErrorPath(path string) bool {
+	switch {
+	case path == "/v1" || strings.HasPrefix(path, "/v1/"),
+		strings.HasPrefix(path, "/backend-api/codex/"),
+		strings.HasPrefix(path, "/antigravity/v1/"):
+		return true
+	}
+	for _, p := range []string{"/chat/completions", "/completions", "/embeddings", "/responses", "/models", "/messages", "/images/", "/videos", "/audio/"} {
+		if path == p || strings.HasPrefix(path, strings.TrimSuffix(p, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// CompatErrorType is the OpenAI error type for an HTTP status.
+func CompatErrorType(status int) string {
+	switch {
+	case status == http.StatusUnauthorized:
+		return "authentication_error"
+	case status == http.StatusForbidden:
+		return "permission_error"
+	case status == http.StatusNotFound:
+		return "not_found_error"
+	case status == http.StatusTooManyRequests:
+		return "rate_limit_error"
+	case status == http.StatusRequestEntityTooLarge:
+		return "request_too_large"
+	case status >= 500:
+		return "api_error"
+	default:
+		return "invalid_request_error"
+	}
 }
 
 // abortWithOpenAIQuotaError writes the OpenAI-compatible insufficient quota response.

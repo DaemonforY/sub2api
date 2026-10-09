@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +19,7 @@ var apiPathsWithoutV1 = []string{"/chat/completions", "/completions", "/embeddin
 func RegisterAPINotFound(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
 		code, message := apiNotFoundMessage(c.Request.Method, c.Request.URL.Path, requestOrigin(c.Request))
-		c.JSON(http.StatusNotFound, gin.H{"code": code, "message": message})
+		middleware.AbortWithError(c, http.StatusNotFound, code, message)
 	})
 }
 

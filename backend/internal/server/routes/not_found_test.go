@@ -39,10 +39,16 @@ func TestAPINotFoundMessages(t *testing.T) {
 
 		require.Equal(t, http.StatusNotFound, w.Code, tc.path)
 		require.Contains(t, w.Header().Get("Content-Type"), "application/json", tc.path)
-		var body struct{ Code, Message string }
+		var body struct {
+			Code, Message string
+			Error         *struct{ Message, Type, Code string }
+		}
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body), tc.path)
 		require.Equal(t, tc.code, body.Code, tc.path)
 		require.Contains(t, body.Message, tc.contains, tc.path)
 		require.Contains(t, body.Message, "（", tc.path) // English kept in parentheses
+		require.NotNil(t, body.Error, tc.path) // OpenAI-style error object for SDKs
+		require.Equal(t, body.Message, body.Error.Message, tc.path)
+		require.Equal(t, "not_found_error", body.Error.Type, tc.path)
 	}
 }
