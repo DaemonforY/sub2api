@@ -71,6 +71,7 @@ type VideoSpec struct {
 	Width    int          `json:"width"`
 	Height   int          `json:"height"`
 	Loop     bool         `json:"loop,omitempty"`
+	Poster   float64      `json:"poster,omitempty"` // seconds: the frame cards and the player show before playing
 	Scenes   []VideoScene `json:"scenes"`
 }
 

@@ -143,7 +143,8 @@ function onMessage(e) {
     emit('error', { scene: d.scene, message: d.message, phase: d.phase })
   }
 }
-const posterTime = () => Math.min(props.posterAt, Math.max(0, duration.value * 0.3))
+// A work may name its best frame (spec.poster, seconds); otherwise an early frame.
+const posterTime = () => (props.spec?.poster > 0 ? Math.min(props.spec.poster, duration.value) : Math.min(props.posterAt, Math.max(0, duration.value * 0.3)))
 
 // Reload when scene code / timing changes (not on every poll that returns the same spec).
 const signature = computed(() => (props.spec ? props.spec.scenes.map((sc) => `${sc.id}:${sc.duration}:${(sc.code || '').length}:${hash(sc.code || '')}`).join('|') + `|${props.spec.width}x${props.spec.height}|${props.spec.theme?.bg}` : ''))
