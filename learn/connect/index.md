@@ -48,6 +48,8 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | Java、Spring AI | [Java 调用 GPT API](/connect/java) | 5 分钟 |
 | Go | [Go 调用 GPT API](/connect/go) | 5 分钟 |
 | 用代码画图、改图（gpt-image-2） | [图片 API 教程](/connect/image-api) | 5 分钟 |
+| 识别图片、提取文字、读 PDF | [看图识图 API](/connect/vision) | 5 分钟 |
+| Responses 新接口 | [Responses API 教程](/connect/responses-api) | 10 分钟 |
 | 批量处理 Excel 表格 | [用 GPT 批量处理 Excel](/connect/excel) | 10 分钟 |
 | 飞书、企业微信群机器人 | [群机器人接入 GPT](/connect/feishu-wecom-bot) | 10 分钟 |
 | VS Code 里的 Cline / Roo Code | [Cline 配置自定义 API](/connect/cline) | 3 分钟 |
@@ -56,6 +58,8 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | Zotero 翻译论文、读文献 | [Zotero 接入 GPT API](/connect/zotero) | 5 分钟 |
 | n8n 自动化工作流 | [n8n 接入 OpenAI 兼容接口](/connect/n8n) | 5 分钟 |
 | 自建聊天站（LobeChat、NextChat） | [LobeChat、NextChat 接入](/connect/lobechat-nextchat) | 10 分钟 |
+| 自建聊天站（Open WebUI） | [Open WebUI 接入](/connect/open-webui) | 10 分钟 |
+| Bob、Pot 划词翻译 | [Bob、Pot 接入 GPT API](/connect/bob-pot) | 3 分钟 |
 | Cherry Studio 桌面客户端 | [Cherry Studio 配置教程](/connect/cherry-studio) | 3 分钟 |
 | Chatbox 对话客户端 | [Chatbox 接入第三方 API](/connect/chatbox) | 3 分钟 |
 | 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |

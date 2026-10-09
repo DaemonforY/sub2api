@@ -69,3 +69,5 @@ description: 在沉浸式翻译（Immersive Translate）浏览器插件里接入
 **PDF、视频字幕也能用吗？** 能用。沉浸式翻译的 PDF 翻译、视频双语字幕会使用你设为默认的翻译服务。PDF 一般比网页更长，注意上面的费用提示。
 
 **和网页版 ChatGPT 会员是一回事吗？** 不是。插件调用的是 API 接口，按用量计费，和 ChatGPT Plus 会员无关。
+
+划词翻译、截图翻译用 [Bob、Pot](/connect/bob-pot)。

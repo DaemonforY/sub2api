@@ -89,6 +89,8 @@ resp = client.responses.create(
 print(resp.output_text)
 ```
 
+多轮对话、流式事件、函数调用和结构化输出的写法见 [Responses API 教程](/connect/responses-api)。
+
 ## 生成图片
 
 分组支持画图时，可以调用图片接口（模型名以 `/v1/models` 返回的为准，例如 `gpt-image-2`）：
