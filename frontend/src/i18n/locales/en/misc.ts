@@ -284,6 +284,15 @@ export default {
   },
 
   // Payment System
+  lowBalance: {
+    title: 'Your balance is running low',
+    desc: 'Balance ${balance}; requests and images will fail when it runs out.',
+    cta: 'Top up',
+    trialTitle: 'Your free credit is almost used up',
+    trialDesc: 'Your first top-up gets {percent}% extra, credited automatically.',
+    trialCta: 'Top up, get {percent}% extra',
+    later: 'Not today'
+  },
   payment: {
     title: 'Recharge / Subscription',
     amountLabel: 'Amount',

@@ -308,6 +308,15 @@ export default {
   },
 
   // Payment System
+  lowBalance: {
+    title: '余额快用完了',
+    desc: '当前余额 ${balance}，用完后画图和调用会失败。',
+    cta: '去充值',
+    trialTitle: '体验额度快用完了',
+    trialDesc: '现在首次充值再送 {percent}%，付款后自动到账。',
+    trialCta: '充值送 {percent}%',
+    later: '今天不再提示'
+  },
   payment: {
     title: '充值/订阅',
     amountLabel: '充值金额',
