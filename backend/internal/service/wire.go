@@ -617,7 +617,7 @@ func ProvideAnimationJobService(repo AnimationJobRepository, cfg *config.Config)
 
 // ProvideVideoService wires HiveGPT 视频: the agent calls this server's own gateway on loopback and
 // narrates with Edge TTS. Projects a previous process left running are marked interrupted.
-func ProvideVideoService(repo VideoRepository, cfg *config.Config) *VideoService {
+func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings SettingRepository, groups GroupRepository, apiKeys APIKeyRepository, users UserRepository, keySvc *APIKeyService) *VideoService {
 	port, dir := 8080, "./data/video"
 	if cfg != nil {
 		if cfg.Server.Port > 0 {
@@ -632,6 +632,9 @@ func ProvideVideoService(repo VideoRepository, cfg *config.Config) *VideoService
 		gateway = cfg.Video.GatewayURL
 	}
 	svc := NewVideoService(repo, NewEdgeTTS(), gateway, dir)
+	if store, ok := repo.(VideoKeyStore); ok && keySvc != nil {
+		svc.SetModelBilling(settings, groups, store, apiKeys, users, keySvc.GenerateKey)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	svc.RecoverInterrupted(ctx)

@@ -48,12 +48,29 @@ type VideoService struct {
 	mu   sync.Mutex
 	runs map[string]*videoRun
 	wg   sync.WaitGroup
+
+	// models offered on the site and the per-user keys of their groups (SetModelBilling)
+	settings      SettingRepository
+	groups        GroupRepository
+	keyStore      VideoKeyStore
+	keyMaker      VideoKeyMaker
+	grant         VideoGroupGrant
+	newKey        func() (string, error)
+	keyMu         sync.Mutex
+	settingsCache videoSettingsCache
+}
+
+// SetModelBilling enables the admin-configured model list: each model runs through its own group
+// with a per-user key created on first use.
+func (s *VideoService) SetModelBilling(settings SettingRepository, groups GroupRepository, keys VideoKeyStore, maker VideoKeyMaker, grant VideoGroupGrant, newKey func() (string, error)) {
+	s.settings, s.groups, s.keyStore, s.keyMaker, s.grant, s.newKey = settings, groups, keys, maker, grant, newKey
 }
 
 type videoRun struct {
 	cancel context.CancelFunc
 	userID int64
 	key    string
+	model  string // the model this run calls (set with the key when the run starts)
 
 	mu sync.Mutex // guards p while scenes are built in parallel
 	p  *VideoProject
@@ -136,6 +153,9 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 		return nil, ErrVideoPrompt
 	}
 	normalizeVideoOptions(in.Mode, &in.Options)
+	if m, ok := s.videoModel(ctx, in.Options.Model); ok {
+		in.Options.Model = m.ID
+	}
 	if err := s.checkCapacity(ctx, key.UserID); err != nil {
 		return nil, err
 	}
@@ -198,7 +218,11 @@ func (s *VideoService) start(p *VideoProject, key string, task videoTask) {
 		}
 		err := ctx.Err()
 		if err == nil {
-			err = task(ctx, r)
+			var key, model string
+			if key, model, err = s.runKey(ctx, p, r.key); err == nil {
+				r.key, r.model = key, model
+				err = task(ctx, r)
+			}
 		}
 		s.finish(r, err, ctx)
 	}()
@@ -308,7 +332,11 @@ func videoRetryable(err error) bool {
 
 func (s *VideoService) chatOnce(ctx context.Context, r *videoRun, msgs []LearnMessage, maxTokens int) (string, error) {
 	var out strings.Builder
-	res, err := s.stream(ctx, r.key, r.p.Options.Model, msgs, maxTokens, func(d string) error {
+	model := r.model
+	if model == "" {
+		model = r.p.Options.Model
+	}
+	res, err := s.stream(ctx, r.key, model, msgs, maxTokens, func(d string) error {
 		_, _ = out.WriteString(d)
 		return nil
 	})

@@ -72,7 +72,7 @@
             </button>
           </div>
         </section>
-        <p class="mx-auto mt-2 max-w-5xl text-center text-xs text-ink-400">用 HiveGPT 账号登录，按所选 Key 的分组计费（余额或订阅额度）。一个 1 分钟的视频通常需要 2–5 分钟生成，期间可以关掉页面。</p>
+        <p class="mx-auto mt-2 max-w-5xl text-center text-xs text-ink-400">用 HiveGPT 账号登录，按实际用量从账户余额扣费。一个 1 分钟的视频通常需要 2–5 分钟生成，期间可以关掉页面。</p>
 
         <!-- styles / categories -->
         <section ref="stylesEl" class="mx-auto mt-12 max-w-6xl scroll-mt-24">
@@ -163,10 +163,16 @@ const ratioChoices = computed(() => {
   ]
   return mode.value === 'film' ? all.slice(0, 2) : all
 })
+// The site's own model list (admin settings); without one, the models of the signed-in key's group.
+const siteModels = ref([])
 const modelOptions = computed(() => {
-  const list = models.value.length ? models.value : ['gpt-5.5']
+  if (siteModels.value.length) return siteModels.value.map((m) => ({ value: m.id, label: m.name, hint: m.note }))
+  const list = models.value.length ? [...models.value] : ['gpt-5.5']
   if (!list.includes(model.value)) list.unshift(model.value)
   return list.map((m) => ({ value: m, label: m }))
+})
+watch(siteModels, (list) => {
+  if (list.length && !list.some((m) => m.id === model.value)) model.value = (list.find((m) => m.default) || list[0]).id
 })
 const voiceOptions = computed(() => cat.value.voices.map((v) => ({ value: v.id, label: `${v.name}（${v.gender}）`, hint: v.style })))
 const lengthOptions = [
@@ -257,6 +263,7 @@ onMounted(async () => {
   if (typeof route.query.remix === 'string') loadRemix(route.query.remix)
   if (typeof route.query.style === 'string') style.value = route.query.style
   api('/gallery?category=featured&size=8', { auth: false }).then((r) => (featured.value = r.items)).catch(() => {})
+  api('/models', { auth: false }).then((r) => (siteModels.value = r.items || [])).catch(() => {})
   models.value = await textModels()
 })
 watch(() => session.key, async () => (models.value = await textModels()))

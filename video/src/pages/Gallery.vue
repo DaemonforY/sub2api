@@ -36,7 +36,10 @@
         <RouterLink :to="createLink" class="btn-primary mt-4">去做第一个</RouterLink>
       </div>
       <div v-else class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        <WorkCard v-for="w in items" :key="w.id" :work="w" :categories="cats" />
+        <template v-for="cell in cells" :key="cell.key">
+          <AdCard v-if="cell.ad" :ad="cell.ad" />
+          <WorkCard v-else :work="cell.work" :categories="cats" />
+        </template>
       </div>
       <div v-if="items.length < total" class="mt-8 flex justify-center">
         <button class="btn-ghost" :disabled="loading" @click="more">加载更多</button>
@@ -50,6 +53,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Loader2, Search } from 'lucide-vue-next'
 import WorkCard from '../components/WorkCard.vue'
+import AdCard from '../components/AdCard.vue'
 import { api, catalog } from '../lib/api'
 
 const route = useRoute()
@@ -60,6 +64,21 @@ const page = ref(1)
 const q = ref('')
 const sort = ref('')
 const loading = ref(false)
+const ads = ref([])
+const adEvery = ref(8)
+
+// Works with an ad after every adEvery of them (ads rotate).
+const cells = computed(() => {
+  const out = []
+  items.value.forEach((w, i) => {
+    out.push({ key: w.id, work: w })
+    if (ads.value.length && (i + 1) % adEvery.value === 0) {
+      const n = (i + 1) / adEvery.value - 1
+      out.push({ key: `ad-${n}`, ad: ads.value[n % ads.value.length] })
+    }
+  })
+  return out
+})
 
 const current = computed(() => String(route.params.category || 'featured'))
 const navCats = computed(() => [{ id: 'featured', name: '精选推荐' }, { id: 'all', name: '全部' }, ...cats.value])
@@ -94,6 +113,12 @@ function more() {
 watch(current, reload)
 onMounted(() => {
   catalog().then((c) => (cats.value = c.categories))
+  api('/ads', { auth: false })
+    .then((r) => {
+      ads.value = r.items || []
+      adEvery.value = r.every || 8
+    })
+    .catch(() => {})
   reload()
 })
 </script>

@@ -3,7 +3,7 @@
     <div class="mx-auto grid max-w-[1440px] gap-8 px-6 py-12 sm:grid-cols-2 lg:grid-cols-5">
       <div class="lg:col-span-2">
         <Logo />
-        <p class="mt-3 max-w-sm text-sm leading-6 text-ink-500">输入一个主题，AI 写脚本、配音、做动画，几分钟得到带字幕的讲解视频；也能一句话做出 Logo、图表、流程图等网页动画。用 HiveGPT 账号登录，按余额或订阅计费。</p>
+        <p class="mt-3 max-w-sm text-sm leading-6 text-ink-500">输入一个主题，AI 写脚本、配音、做动画，几分钟得到带字幕的讲解视频；也能一句话做出 Logo、图表、流程图等网页动画。用 HiveGPT 账号登录，按用量从余额扣费。</p>
       </div>
       <div>
         <h3 class="text-sm font-semibold">产品</h3>

@@ -22,6 +22,9 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 		pub.GET("/works/:id", h.Video.Work)
 		pub.GET("/works/:id/audio/:file", h.Video.WorkAudio)
 		pub.POST("/works/:id/view", h.Video.View)
+		pub.GET("/models", h.Video.Models)
+		pub.GET("/ads", h.Video.Ads)
+		pub.GET("/ads/:file", h.Video.AdImage)
 	}
 
 	g := v1.Group("/video")
@@ -51,5 +54,8 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 		g.GET("/admin/works/:id", h.Video.AdminWork)
 		g.POST("/admin/works/:id/review", h.Video.Review)
 		g.POST("/admin/import", h.Video.Import)
+		g.GET("/admin/settings", h.Video.AdminSettings)
+		g.PUT("/admin/settings", h.Video.SaveSettings)
+		g.POST("/admin/ads/image", h.Video.UploadAdImage)
 	}
 }

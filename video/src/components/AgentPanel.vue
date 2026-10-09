@@ -122,7 +122,7 @@ const placeholder = computed(() => {
   if (props.project?.status === 'questions') return '请先回答上面的问题'
   return '继续修改，例如：背景换成深蓝色、第 2 个分镜的图表慢一点、标题再大一些'
 })
-const usageTip = '这个作品累计调用模型的 token 数，按你登录所用 Key 的分组价格计费，明细见 HiveGPT 主站「用量明细」'
+const usageTip = '这个作品累计调用模型的 token 数，按所选模型的价格从余额扣费，明细见 HiveGPT 主站「用量明细」'
 
 // Consecutive step events become one collapsible block, like an agent's tool log.
 const groups = computed(() => {

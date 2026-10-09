@@ -27,7 +27,7 @@
             <div v-if="menu" class="absolute right-0 top-full w-56 pt-1">
               <div class="card overflow-hidden py-1 text-sm">
                 <p class="truncate px-4 py-2 text-xs text-ink-500">Key：{{ session.me.key_name }}<template v-if="session.me.group"> · {{ session.me.group }}</template></p>
-                <a :href="mainSite('/purchase')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">充值 / 订阅</a>
+                <a :href="mainSite('/purchase')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">充值</a>
                 <a :href="mainSite('/usage')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">用量明细</a>
                 <RouterLink v-if="session.me.admin" to="/review" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800" @click="menu = false">案例审核</RouterLink>
                 <button class="block w-full px-4 py-2 text-left text-red-600 hover:bg-ink-50 dark:hover:bg-ink-800" @click="signOut(); menu = false">退出登录</button>

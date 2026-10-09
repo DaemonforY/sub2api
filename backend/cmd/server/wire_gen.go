@@ -370,7 +370,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	animationJobHandler := handler.NewAnimationJobHandler(animationJobService)
 	handlerSiteHostingHandler := handler.NewSiteHostingHandler(siteHostingService)
 	videoRepository := repository.NewVideoRepository(db)
-	videoService := service.ProvideVideoService(videoRepository, configConfig)
+	videoService := service.ProvideVideoService(videoRepository, configConfig, settingRepository, groupRepository, apiKeyRepository, userRepository, apiKeyService)
 	videoHandler := handler.NewVideoHandler(videoService)
 	canvasSessionRepository := repository.NewCanvasSessionRepository(db)
 	canvasSessionService := service.ProvideCanvasSessionService(canvasSessionRepository, userService, userSubscriptionRepository)

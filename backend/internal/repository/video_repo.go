@@ -322,3 +322,19 @@ func videoLooksLikeUUID(s string) bool {
 func videoEscapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
+
+func (r *videoRepository) GetUserKey(ctx context.Context, userID, groupID int64) (int64, error) {
+	var id int64
+	err := r.db.QueryRowContext(ctx, `SELECT api_key_id FROM video_user_keys WHERE user_id = $1 AND group_id = $2`, userID, groupID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	return id, err
+}
+
+func (r *videoRepository) SetUserKey(ctx context.Context, userID, groupID, apiKeyID int64) error {
+	_, err := r.db.ExecContext(ctx, `
+INSERT INTO video_user_keys (user_id, group_id, api_key_id) VALUES ($1, $2, $3)
+ON CONFLICT (user_id, group_id) DO UPDATE SET api_key_id = EXCLUDED.api_key_id, created_at = NOW()`, userID, groupID, apiKeyID)
+	return err
+}

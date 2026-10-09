@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -396,6 +397,97 @@ func (h *VideoHandler) Import(c *gin.Context) {
 	}
 	p, err := h.service.Import(c.Request.Context(), key, in)
 	h.reply(c, p, err)
+}
+
+// Models GET /api/v1/video/models — the models offered on the create page.
+func (h *VideoHandler) Models(c *gin.Context) {
+	c.Header("Cache-Control", "public, max-age=60")
+	response.Success(c, gin.H{"items": h.service.Models(c.Request.Context())})
+}
+
+// Ads GET /api/v1/video/ads — the gallery ad cards.
+func (h *VideoHandler) Ads(c *gin.Context) {
+	items, every := h.service.Ads(c.Request.Context())
+	c.Header("Cache-Control", "public, max-age=60")
+	response.Success(c, gin.H{"items": items, "every": every})
+}
+
+// AdImage GET /api/v1/video/ads/:file
+func (h *VideoHandler) AdImage(c *gin.Context) {
+	path, err := h.service.AdImagePath(c.Param("file"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.File(path)
+}
+
+func (h *VideoHandler) AdminSettings(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	st, err := h.service.AdminSettings(c.Request.Context(), key.User)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	groups, err := h.service.AdminGroups(c.Request.Context(), key.User)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"settings": st, "groups": groups})
+}
+
+func (h *VideoHandler) SaveSettings(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	var in service.VideoSettings
+	if !bindVideo(c, &in) {
+		return
+	}
+	st, err := h.service.SaveSettings(c.Request.Context(), key.User, in)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"settings": st})
+}
+
+// UploadAdImage POST /api/v1/video/admin/ads/image (multipart field "file")
+func (h *VideoHandler) UploadAdImage(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 3<<20)
+	fh, err := c.FormFile("file")
+	if err != nil {
+		response.ErrorFrom(c, service.ErrVideoAdImage)
+		return
+	}
+	f, err := fh.Open()
+	if err != nil {
+		response.ErrorFrom(c, service.ErrVideoAdImage)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	data, err := io.ReadAll(io.LimitReader(f, 2<<20+1))
+	if err != nil {
+		response.ErrorFrom(c, service.ErrVideoAdImage)
+		return
+	}
+	path, err := h.service.SaveAdImage(c.Request.Context(), key.User, data)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"url": path})
 }
 
 func (h *VideoHandler) reply(c *gin.Context, p *service.VideoProject, err error) {
