@@ -61,6 +61,26 @@ func ClassifyImageBillingTier(size string) (string, bool) {
 	}
 }
 
+// imageBillingRequestedTier is the tier and longest edge of a requested size; "" when it has none
+// (auto, empty, unparseable).
+func imageBillingRequestedTier(size string) (string, int) {
+	tier, ok := ClassifyImageBillingTier(size)
+	if !ok {
+		return "", 0
+	}
+	if w, h, ok := parseImageBillingDimensions(strings.TrimSpace(size)); ok {
+		return tier, max(w, h)
+	}
+	switch tier {
+	case ImageBillingSize1K:
+		return tier, 1024
+	case ImageBillingSize2K:
+		return tier, 2048
+	default:
+		return tier, 3840
+	}
+}
+
 func NormalizeImageBillingTierOrDefault(size string) string {
 	if tier, ok := ClassifyImageBillingTier(size); ok {
 		return tier
@@ -75,14 +95,34 @@ func ResolveImageBillingSize(inputSize string, outputSizes []string) ImageBillin
 	breakdown := map[string]int{}
 	outputSize := firstDisplayImageOutputSize(outputSizes)
 	outputTier := ""
+	inputTier, inputEdge := imageBillingRequestedTier(inputSize)
+	capped := false
 	for _, output := range outputSizes {
 		tier, ok := ClassifyImageBillingTier(output)
 		if !ok {
 			continue
 		}
 		breakdown[tier]++
+		// Upstreams return sizes near, not equal to, the request (gpt-image-2 answers 1024x1024 with
+		// 1312x1199). An output at most 1.5× the requested longest edge is the size the client asked
+		// for, so it bills at the requested tier; a real jump (1024 → 3840) still bills as delivered.
+		if inputTier != "" && imageTierRank(tier) > imageTierRank(inputTier) {
+			if w, h, ok := parseImageBillingDimensions(output); ok && 2*max(w, h) <= 3*inputEdge {
+				tier = inputTier
+				capped = true
+			}
+		}
 		if imageTierRank(tier) > imageTierRank(outputTier) {
 			outputTier = tier
+		}
+	}
+	if capped && outputTier == inputTier {
+		return ImageBillingSizeResolution{
+			BillingSize: outputTier,
+			InputSize:   inputSize,
+			OutputSize:  outputSize,
+			Source:      ImageSizeSourceInput,
+			Breakdown:   normalizeImageSizeBreakdown(breakdown),
 		}
 	}
 	if outputTier != "" {
