@@ -10,7 +10,7 @@ vi.mock('@/api/pricing', async () => {
 vi.mock('@/utils/analytics', () => ({ track: vi.fn() }))
 vi.mock('vue-i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('vue-i18n')>()),
-  useI18n: () => ({ t: (k: string, p?: Record<string, unknown>) => (p ? `${k}:${JSON.stringify(p)}` : k) }),
+  useI18n: () => ({ t: (k: string, p?: Record<string, unknown>) => (p ? `${k}:${JSON.stringify(p)}` : k), locale: { value: 'zh' } }),
 }))
 
 const plan = (over: Record<string, unknown>) => ({
@@ -57,5 +57,18 @@ describe('HomePricing', () => {
     const w = mountIt()
     await flushPromises()
     expect(w.find('[data-testid="home-pricing"]').exists()).toBe(false)
+  })
+
+  it('reassures buyers, and shows the request total only once it is large', async () => {
+    getPublicPricing.mockResolvedValue(pricing({ total_requests: 8000 }))
+    const small = mountIt()
+    await flushPromises()
+    expect(small.find('[data-testid="home-trust"]').text()).toContain('home.trust.failures.title')
+    expect(small.find('[data-testid="home-total-requests"]').exists()).toBe(false)
+
+    getPublicPricing.mockResolvedValue(pricing({ total_requests: 16384 }))
+    const big = mountIt()
+    await flushPromises()
+    expect(big.get('[data-testid="home-total-requests"]').text()).toContain('"n":"1.6 万"')
   })
 })

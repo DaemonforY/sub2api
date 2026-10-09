@@ -372,7 +372,7 @@
           </div>
         </div>
 
-        <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" />
+        <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" :contact-info="contactInfo" />
 
         <HomeCommunityWall />
 

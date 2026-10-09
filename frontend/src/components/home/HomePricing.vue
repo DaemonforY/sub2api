@@ -60,6 +60,17 @@
       </div>
     </div>
 
+    <!-- Why it is safe to pay: what a first-time buyer worries about -->
+    <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="home-trust">
+      <div v-for="item in trust" :key="item.key" class="rounded-xl bg-white/60 px-4 py-3 text-sm dark:bg-dark-800/60">
+        <p class="font-medium text-gray-900 dark:text-white">{{ item.icon }} {{ t(`home.trust.${item.key}.title`) }}</p>
+        <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-dark-300">{{ item.desc }}</p>
+      </div>
+    </div>
+    <p v-if="totalRequestsText" class="mt-3 text-center text-sm text-gray-600 dark:text-dark-300" data-testid="home-total-requests">
+      {{ t('home.trust.total', { n: totalRequestsText }) }}
+    </p>
+
     <p class="mt-4 text-center text-xs text-gray-500 dark:text-dark-400">
       {{ t('home.pricing.note') }}
       <router-link to="/pricing" class="text-primary-600 hover:underline dark:text-primary-400">{{ t('home.pricing.more') }} →</router-link>
@@ -75,8 +86,8 @@ import { useI18n } from 'vue-i18n'
 import { getPublicPricing, planDays, planPeriodCapUSD, type PublicPricing } from '@/api/pricing'
 import { track } from '@/utils/analytics'
 
-const props = defineProps<{ isAuthenticated: boolean; signupBonus?: number }>()
-const { t } = useI18n()
+const props = defineProps<{ isAuthenticated: boolean; signupBonus?: number; contactInfo?: string }>()
+const { t, locale } = useI18n()
 const data = ref<PublicPricing | null>(null)
 
 const fmt = (n: number) => String(Math.round(n * 100) / 100)
@@ -107,6 +118,26 @@ const plans = computed(() => {
         perDay: p.daily_limit_usd && avg > 0 && d.avg_sample_requests >= 100 ? Math.floor(p.daily_limit_usd / avg) : 0
       }
     })
+})
+
+const trust = computed(() => [
+  { key: 'metered', icon: '🧾', desc: t('home.trust.metered.desc') },
+  { key: 'failures', icon: '🛡️', desc: t('home.trust.failures.desc') },
+  { key: 'payment', icon: '⚡', desc: t('home.trust.payment.desc') },
+  {
+    key: 'support',
+    icon: '💬',
+    desc: props.contactInfo ? t('home.trust.support.descContact', { info: props.contactInfo }) : t('home.trust.support.desc')
+  }
+])
+
+// Only worth saying once the number is big enough to reassure (members' requests, admins excluded).
+const TOTAL_REQUESTS_MIN = 10000
+const totalRequestsText = computed(() => {
+  const n = data.value?.total_requests || 0
+  if (n < TOTAL_REQUESTS_MIN) return ''
+  if (!String(locale.value).startsWith('zh')) return n.toLocaleString('en-US')
+  return n >= 100000 ? `${Math.floor(n / 10000)} 万` : `${(Math.floor(n / 1000) / 10).toFixed(1)} 万`
 })
 
 function subscribeTarget(id: number): string {

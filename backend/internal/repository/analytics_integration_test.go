@@ -283,6 +283,10 @@ func TestPublicPricing(t *testing.T) {
 	require.Equal(t, sub.Name, plan.GroupName)
 	require.NotNil(t, plan.DailyLimitUSD)
 	require.Equal(t, daily, *plan.DailyLimitUSD)
+	var members int
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM usage_logs l JOIN users u ON u.id = l.user_id WHERE u.role <> 'admin'`).Scan(&members))
+	require.Equal(t, members, out.TotalRequests, "member requests only")
 
 	names := map[string]bool{}
 	for _, g := range out.PayAsYouGo {

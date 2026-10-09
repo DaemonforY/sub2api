@@ -51,9 +51,11 @@ type PublicPricing struct {
 	PayAsYouGo         []PublicPricingGroup `json:"pay_as_you_go"`
 	// Average billed cost of one OpenAI-group request by members over the last 30 days (USD), and
 	// how many requests that is based on — the page only shows an estimate with enough samples.
-	AvgRequestCostUSD float64   `json:"avg_request_cost_usd"`
-	AvgSampleRequests int       `json:"avg_sample_requests"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	AvgRequestCostUSD float64 `json:"avg_request_cost_usd"`
+	AvgSampleRequests int     `json:"avg_sample_requests"`
+	// Requests members have made in total (admins excluded); the home page shows it from 10,000 up.
+	TotalRequests int       `json:"total_requests"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 var publicPricingCache struct {
@@ -147,6 +149,9 @@ func (s *PaymentConfigService) buildPublicPricing(ctx context.Context) (*PublicP
 	if err == nil && len(agg) == 1 && agg[0].Count > 0 {
 		out.AvgRequestCostUSD = agg[0].Sum / float64(agg[0].Count)
 		out.AvgSampleRequests = agg[0].Count
+	}
+	if n, err := s.entClient.UsageLog.Query().Where(usagelog.HasUserWith(user.RoleNEQ(RoleAdmin))).Count(ctx); err == nil {
+		out.TotalRequests = n
 	}
 	return out, nil
 }

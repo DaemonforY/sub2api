@@ -35,6 +35,8 @@ export interface PublicPricing {
   pay_as_you_go: PricingGroup[]
   avg_request_cost_usd: number
   avg_sample_requests: number
+  /** Requests members have made in total (admins excluded). */
+  total_requests?: number
 }
 
 export async function getPublicPricing(): Promise<PublicPricing> {

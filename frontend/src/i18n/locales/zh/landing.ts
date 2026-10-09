@@ -14,6 +14,13 @@ export default {
     login: '登录',
     register: '免费注册',
     signupBonus: '新用户注册即送 ${amount} 体验额度，画图、对话都能用',
+    trust: {
+      metered: { title: '用多少扣多少', desc: '每次调用的模型、Token 和费用都记在「使用记录」里，随时可查。' },
+      failures: { title: '出错不扣费', desc: '上游报错、超时的请求不收钱；流式输出中途断开的，只按已生成的部分计费。' },
+      payment: { title: '付款自动到账', desc: '在线支付，付款完成后余额或订阅自动到账，不用等人工处理。' },
+      support: { title: '有问题随时问', desc: '首页右下角的智能客服随时可以问，账号、充值问题都能答。', descContact: '首页右下角智能客服随时可问；也可以直接联系：{info}' },
+      total: '已累计为用户处理 {n} 次请求'
+    },
     pricing: {
       title: '价格：订阅更划算',
       subtitle: '按量计费 ¥1 = ${rate} 额度，用多少扣多少；常用的话订阅按天给额度，用满比按量便宜得多。',

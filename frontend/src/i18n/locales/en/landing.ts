@@ -14,6 +14,13 @@ export default {
     login: 'Login',
     register: 'Sign up free',
     signupBonus: 'New accounts get ${amount} of free credit for images and chat',
+    trust: {
+      metered: { title: 'Pay for what you use', desc: 'Every call is listed under Usage with its model, tokens and cost.' },
+      failures: { title: 'Errors are free', desc: "Requests that fail upstream or time out aren't charged; a stream cut off midway is billed only for what was generated." },
+      payment: { title: 'Credited automatically', desc: 'Pay online and your balance or subscription is active right after, no manual step.' },
+      support: { title: 'Help when you need it', desc: 'The assistant at the bottom right answers account and payment questions any time.', descContact: 'Ask the assistant at the bottom right any time, or contact us: {info}' },
+      total: '{n} requests served so far'
+    },
     pricing: {
       title: 'Pricing: subscriptions go further',
       subtitle: 'Pay as you go at ¥1 = ${rate} of usage; if you use it daily, a subscription gives a daily allowance for far less.',
