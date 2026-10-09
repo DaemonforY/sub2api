@@ -16,7 +16,7 @@ const (
 	msgUpstreamFailed          = "上游请求失败，请稍后重试；如持续出现请联系客服；本次请求未扣费（Upstream request failed）"
 	msgQueueFull               = "排队的请求太多，请等正在进行的请求完成后再试（Too many pending requests, please retry later）"
 	msgServiceBusyRetry        = "服务繁忙，请稍后重试（Service temporarily unavailable, please retry later）"
-	msgContinuationUnsupported = "当前分组不支持 previous_response_id（服务端不保存上一轮对话）：请去掉这个参数，把之前的对话记录放进 input 一起发送；本次请求未扣费（previous_response_id requires an OpenAI API-key account for HTTP requests）"
+	msgContinuationUnsupported = service.OpenAIContinuationUnsupportedClientMessage
 	msgHostedWebSearchFailed   = "联网搜索工具（web_search）在当前分组暂时不可用：请去掉 tools 里的 web_search 后重试；需要最新信息时，可以先自己搜索，再把结果放进提示词；本次请求未扣费（Hosted web_search tool failed upstream）"
 	msgBillingNoBalance        = "账户余额不足，请到 " + service.RechargeURL + " 充值后重试，或改用订阅分组的 Key；本次请求未扣费（insufficient balance）"
 )

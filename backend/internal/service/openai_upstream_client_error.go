@@ -36,6 +36,11 @@ func isOpenAIDeterministicClientError(statusCode int) bool {
 // upstreamMsg 由调用方传入，调用方已做过 sanitizeUpstreamErrorMessage 与
 // redactAgentIdentitySensitiveBody；这里不重复清洗，也不回落读取原始 body 的
 // message，避免绕开那两道脱敏。
+// OpenAIContinuationUnsupportedClientMessage is the 400 for previous_response_id on accounts that cannot
+// continue a stored response. The English stays in parentheses so a downstream sub2api still
+// recognises it (isOpenAICompatPreviousResponseUnsupported).
+const OpenAIContinuationUnsupportedClientMessage = "当前分组不支持 previous_response_id（服务端不保存上一轮对话）：请去掉这个参数，把之前的对话记录放进 input 一起发送；本次请求未扣费（previous_response_id requires an OpenAI API-key account for HTTP requests）"
+
 func writeOpenAIUpstreamClientError(c *gin.Context, statusCode int, body []byte, upstreamMsg string) {
 	errorPayload := gin.H{"type": openAIUpstreamClientErrorFallbackType}
 	if errType := strings.TrimSpace(gjson.GetBytes(body, "error.type").String()); errType != "" {
@@ -50,6 +55,11 @@ func writeOpenAIUpstreamClientError(c *gin.Context, statusCode int, body []byte,
 	message := strings.TrimSpace(upstreamMsg)
 	if message == "" {
 		message = openAIUpstreamClientErrorFallbackMessage
+	}
+	// An upstream that cannot continue from previous_response_id (e.g. another sub2api on OAuth
+	// accounts) answers in English; tell the user what to do instead.
+	if isOpenAICompatPreviousResponseUnsupported(statusCode, message, body) {
+		message = OpenAIContinuationUnsupportedClientMessage
 	}
 	errorPayload["message"] = message
 
