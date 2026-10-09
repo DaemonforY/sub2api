@@ -13,7 +13,9 @@ description: 调用 HiveGPT 等 OpenAI 兼容接口时常见的报错代码速�
 | 403 | 余额不足、订阅无效、Key 已过期，或分组不可用 | [余额不足 / 额度已用完](/connect/errors/quota)、[401 报错](/connect/errors/401#_403-key-已过期或分组不可用) |
 | 404 | 接口地址不对，或模型不在你的分组里 | [Base URL 要不要加 /v1](/connect/base-url)、[模型不存在 / 分组不支持模型](/connect/errors/model) |
 | 429 | 请求太快、并发太多、上游限流，或 Key 额度用完 | [429 报错：请求太频繁](/connect/errors/429)、[余额不足 / 额度已用完](/connect/errors/quota) |
-| 502 / 503 | 上游模型服务繁忙或故障 | [429 报错](/connect/errors/429#_503-上游繁忙、暂时没有可用账号) |
+| 502 / 503 | 上游模型服务繁忙或故障；长回答没用流式时也会 502 | [429 报错](/connect/errors/429#_503-上游繁忙、暂时没有可用账号)、[请求超时](/connect/errors/timeout) |
+| 504、timeout | 请求超时，或流式输出中途断开 | [请求超时、流式中断](/connect/errors/timeout) |
+| 400 `context_length_exceeded` | 输入加输出超过了模型的上下文上限 | [上下文太长](/connect/errors/context-length) |
 
 > 更新于 2026-10。
 
