@@ -7,8 +7,34 @@
           {{ t('auth.createAccount') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-          {{ t('auth.signUpToStart', { siteName }) }}
+          {{ invitedByFriend ? t('auth.perks.invited', { siteName }) : t('auth.signUpToStart', { siteName }) }}
         </p>
+      </div>
+
+      <!-- What you get: shown before any field, so visitors from a shared link know why to sign up. -->
+      <ul
+        v-if="registrationEnabled && perks.length"
+        class="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100"
+        data-testid="register-perks"
+      >
+        <li v-for="p in perks" :key="p" class="flex items-start gap-2"><span aria-hidden="true">🎁</span><span>{{ p }}</span></li>
+      </ul>
+
+      <!-- Inside WeChat, signing in with WeChat skips the email code: make it the main button. -->
+      <div v-if="registrationEnabled && wechatFirst" class="space-y-3" data-testid="register-wechat-first">
+        <WechatOAuthSection
+          :disabled="registrationActionDisabled"
+          :aff-code="formData.aff_code"
+          :show-divider="false"
+          primary
+          :label="t('auth.perks.wechatOneTap')"
+          @start="handleOAuthStart"
+        />
+        <div class="flex items-center gap-3">
+          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+          <span class="text-xs text-gray-500 dark:text-dark-400">{{ t('auth.perks.orEmail') }}</span>
+          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+        </div>
       </div>
 
       <!-- Registration Disabled Message -->
@@ -50,6 +76,9 @@
               :placeholder="t('auth.emailPlaceholder')"
             />
           </div>
+          <p v-if="emailSuffixHint" class="mt-1 text-xs text-gray-500 dark:text-dark-400" data-testid="register-email-hint">
+            {{ t('auth.perks.emailHint', { list: emailSuffixHint }) }}
+          </p>
         </div>
 
         <!-- Password Input -->
@@ -185,8 +214,17 @@
           </p>
         </div>
 
-        <!-- Promo Code Input (Optional) -->
-        <div v-if="promoCodeEnabled">
+        <!-- Promo Code Input (Optional): folded unless the link carried one -->
+        <button
+          v-if="promoCodeEnabled && !promoOpen && !formData.promo_code"
+          type="button"
+          class="text-sm text-primary-600 hover:underline dark:text-primary-400"
+          data-testid="register-promo-toggle"
+          @click="promoOpen = true"
+        >
+          {{ t('auth.perks.havePromo') }}
+        </button>
+        <div v-else-if="promoCodeEnabled">
           <label for="promo_code" class="input-label">
             {{ t('auth.promoCodeLabel') }}
             <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
@@ -313,7 +351,7 @@
 
       </form>
 
-      <div v-if="showOAuthLogin" class="space-y-3 pt-1">
+      <div v-if="showOAuthLogin && !(wechatFirst && onlyWechatOAuth)" class="space-y-3 pt-1">
         <div class="flex items-center gap-3">
           <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
           <span class="text-xs text-gray-500 dark:text-dark-400">
@@ -341,7 +379,7 @@
           @start="handleOAuthStart"
         />
         <WechatOAuthSection
-          v-if="wechatOAuthEnabled"
+          v-if="wechatOAuthEnabled && !wechatFirst"
           :disabled="registrationActionDisabled"
           :aff-code="formData.aff_code"
           :show-divider="false"
@@ -588,6 +626,42 @@ const postRegisterRedirect = computed(() => {
 const inviteeBonusRate = ref(0)
 const inviteeBonusCap = ref(0)
 const inviteeSignupBonus = ref(0)
+const signupBonus = ref(0)
+const firstTopupPercent = ref(0)
+const promoOpen = ref(false)
+
+// Came from a friend's invite link (?aff=…), whether or not the code checks out yet.
+const invitedByFriend = computed(() => !!resolveAffiliateReferralCode(route.query.aff, route.query.aff_code))
+const fmtMoney = (n: number) => String(Math.round(n * 100) / 100)
+const perks = computed(() => {
+  const out: string[] = []
+  if (signupBonus.value > 0) out.push(t('auth.perks.signupBonus', { amount: fmtMoney(signupBonus.value) }))
+  if (invitedByFriend.value && inviteeSignupBonus.value > 0) out.push(t('auth.perks.inviteBonus', { amount: fmtMoney(inviteeSignupBonus.value) }))
+  if (firstTopupPercent.value > 0) out.push(t('auth.perks.firstTopup', { percent: fmtMoney(firstTopupPercent.value) }))
+  if (out.length) out.push(t('auth.perks.what'))
+  return out
+})
+
+// WeChat's in-app browser can sign in with WeChat directly (no email code to fetch).
+const inWechatBrowser = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')
+const wechatFirst = computed(() => wechatOAuthEnabled.value && inWechatBrowser)
+const onlyWechatOAuth = computed(
+  () => !linuxdoOAuthEnabled.value && !oidcOAuthEnabled.value && !githubOAuthEnabled.value && !googleOAuthEnabled.value
+)
+
+// Which mailboxes are accepted, said before submitting (only when the whitelist is enforced here).
+const EMAIL_SUFFIX_NAMES: Record<string, string> = {
+  'qq.com': 'QQ', 'foxmail.com': 'Foxmail', '163.com': '163', '126.com': '126', 'yeah.net': 'Yeah', '139.com': '139',
+  'gmail.com': 'Gmail', 'outlook.com': 'Outlook', 'hotmail.com': 'Hotmail', 'sina.com': '新浪', 'icloud.com': 'iCloud', 'edu.cn': t('auth.perks.schoolMail')
+}
+const emailSuffixHint = computed(() => {
+  if (emailDomainQuotaEnabled.value || !registrationEmailSuffixWhitelist.value.length) return ''
+  const names = registrationEmailSuffixWhitelist.value.map((raw) => {
+    const d = raw.replace(/^[@*.]+/, '').toLowerCase()
+    return EMAIL_SUFFIX_NAMES[d] || d
+  })
+  return [...new Set(names)].join('、')
+})
 
 onMounted(async () => {
   track('signup_view')
@@ -596,6 +670,7 @@ onMounted(async () => {
     inviteeBonusRate.value = cfg.affiliate_enabled ? cfg.invitee_bonus_rate_percent : 0
     inviteeBonusCap.value = cfg.invitee_bonus_cap
     inviteeSignupBonus.value = cfg.affiliate_enabled ? cfg.invitee_signup_bonus || 0 : 0
+    firstTopupPercent.value = cfg.first_topup_bonus_percent || 0
   }).catch(() => {})
 
   try {
@@ -615,6 +690,7 @@ onMounted(async () => {
     aliyunCaptchaPrefix.value = settings.aliyun_captcha_prefix || ''
     aliyunCaptchaRegion.value = settings.aliyun_captcha_region || 'cn'
     siteName.value = settings.site_name || 'Sub2API'
+    signupBonus.value = Number(settings.signup_bonus || 0)
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled

@@ -265,4 +265,42 @@ describe('RegisterView invitation layout', () => {
     )
     expect(showErrorMock).not.toHaveBeenCalled()
   })
+
+  it('says what a new account gets before any field, and folds the promo code', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, promo_code_enabled: true, signup_bonus: 2 })
+    const wrapper = mountRegister()
+    await flushPromises()
+    const perks = wrapper.get('[data-testid="register-perks"]')
+    expect(perks.text()).toContain('auth.perks.signupBonus')
+    expect(perks.text()).toContain('auth.perks.what')
+    expect(wrapper.find('#promo_code').exists()).toBe(false)
+    await wrapper.get('[data-testid="register-promo-toggle"]').trigger('click')
+    expect(wrapper.find('#promo_code').exists()).toBe(true)
+  })
+
+  it('lists the accepted mailboxes under the email field', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, registration_email_suffix_whitelist: ['@qq.com', '*.edu.cn', '@example.org'] })
+    const wrapper = mountRegister()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="register-email-hint"]').exists()).toBe(true)
+
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, registration_email_suffix_whitelist: ['@qq.com'], registration_email_domain_quota_enabled: true })
+    const quota = mountRegister()
+    await flushPromises()
+    expect(quota.find('[data-testid="register-email-hint"]').exists()).toBe(false)
+  })
+
+  it('makes WeChat sign-up the main button inside WeChat', async () => {
+    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone) MicroMessenger/8.0.50')
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, wechat_oauth_enabled: true, wechat_oauth_mp_enabled: true })
+    const wrapper = mountRegister()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="register-wechat-first"]').exists()).toBe(true)
+    ua.mockRestore()
+
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, wechat_oauth_enabled: true, wechat_oauth_mp_enabled: true })
+    const desktop = mountRegister()
+    await flushPromises()
+    expect(desktop.find('[data-testid="register-wechat-first"]').exists()).toBe(false)
+  })
 })
