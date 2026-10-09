@@ -1011,6 +1011,7 @@ func (s *VideoService) Work(ctx context.Context, id string) (*VideoProject, erro
 		return nil, ErrVideoNotFound
 	}
 	p.Usage = VideoUsage{}
+	p.Options.Model = ""
 	return p, nil
 }
 

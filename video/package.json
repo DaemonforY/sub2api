@@ -5,11 +5,12 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "node scripts/copy-fonts.mjs && vite --port 5176",
-    "build": "node scripts/copy-fonts.mjs && vite build",
+    "dev": "node scripts/copy-fonts.mjs && node scripts/build-three.mjs && vite --port 5176",
+    "build": "node scripts/copy-fonts.mjs && node scripts/build-three.mjs && vite build",
     "preview": "vite preview --port 4176",
     "icons": "node scripts/gen-icons.mjs",
-    "fonts": "node scripts/copy-fonts.mjs"
+    "fonts": "node scripts/copy-fonts.mjs",
+    "three": "node scripts/build-three.mjs"
   },
   "dependencies": {
     "lucide-vue-next": "^0.460.0",
@@ -20,10 +21,12 @@
     "@fontsource/jetbrains-mono": "^5",
     "@vitejs/plugin-vue": "^5.2",
     "autoprefixer": "^10.4",
+    "esbuild": "^0.24",
     "lucide": "^0.460.0",
     "lxgw-wenkai-webfont": "^1.7",
     "postcss": "^8.4",
     "tailwindcss": "^3.4",
+    "three": "0.170.0",
     "vite": "^6"
   }
 }

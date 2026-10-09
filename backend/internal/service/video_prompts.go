@@ -18,7 +18,7 @@ Write the BODY of a JavaScript function that receives S and returns an update fu
 
 The player calls update(t) for every frame, in any order (seeking, export). update(t) must set the
 complete state of the frame from t alone: no state carried between calls, no timers, no
-requestAnimationFrame, no Date, no network, no external libraries. Build all elements once before
+requestAnimationFrame, no Date, no network, no external libraries (except S.three below). Build all elements once before
 returning; inside update only change styles / attributes / text / canvas drawing.
 
 S.root      the scene's <div> (S.width × S.height px, position:relative, overflow:hidden). Put everything in it.
@@ -38,6 +38,11 @@ S.icon(name, {size=48, color, stroke=2}) → SVG icon (Lucide names: brain, cpu,
             arrow-up, arrow-down, refresh-cw, sparkles, eye, hand, thumbs-up, wifi, battery).
 S.canvas()  → { el, ctx } a 2D canvas covering the stage (already scaled; draw in S.width × S.height units).
             Clear and redraw it completely inside update(t).
+S.three     the three.js library (r170; also S.three.RoomEnvironment, S.three.RoundedBoxGeometry) for real 3D.
+            Make a renderer on your own canvas: const c = S.h('canvas'); S.root.appendChild(c);
+            const r = new S.three.WebGLRenderer({ canvas: c, antialias: true }); r.setPixelRatio(1); r.setSize(S.width, S.height, false);
+            c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'. Build meshes once; inside update(t) set
+            positions / rotations / camera from t and call r.render(scene, camera) once. Use it only when 3D adds something.
 S.p(t, start, dur)   progress 0…1 of a segment (clamped).
 S.ease.linear / inQuad / outQuad / inOutQuad / outCubic / inOutCubic / outQuart / outExpo / outBack / outElastic / outBounce / inOutSine
 S.lerp(a, b, k), S.clamp(x, lo, hi)

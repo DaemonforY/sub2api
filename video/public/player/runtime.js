@@ -212,6 +212,7 @@
       set: setT, tween: tween, draw: draw, type: typeText, count: count,
       random: mulberry32(1000 + index * 7919),
       word: words.word, at: words.at,
+      three: window.THREE,
       css: function (text) { var st = document.createElement('style'); st.setAttribute('data-scene', id); st.textContent = String(text); styleHost.appendChild(st); },
       canvas: function () {
         var el = document.createElement('canvas');
@@ -243,7 +244,28 @@
     return scene;
   }
 
+  // three.js is only fetched (from the site — the frame has no network) when a scene uses S.three.
+  var threeLoading = null;
+  function needsThree(project) {
+    return !window.THREE && (project.scenes || []).some(function (sc) { return /\bS\.three\b/.test(sc.code || ''); });
+  }
   function load(project) {
+    if (needsThree(project)) {
+      if (!threeLoading) {
+        threeLoading = new Promise(function (resolve) {
+          var el = document.createElement('script');
+          el.src = '/player/vendor/three.js';
+          el.onload = el.onerror = resolve;
+          document.head.appendChild(el);
+        });
+      }
+      threeLoading.then(function () { if (window.THREE) load(project); else build(project); });
+      return;
+    }
+    build(project);
+  }
+
+  function build(project) {
     stage.innerHTML = '';
     Array.prototype.slice.call(document.head.querySelectorAll('style[data-scene]')).forEach(function (n) { n.remove(); });
     film = { width: project.width || 1920, height: project.height || 1080, theme: project.theme || {}, loop: !!project.loop, scenes: [] };

@@ -382,6 +382,22 @@ func (h *VideoHandler) Review(c *gin.Context) {
 	response.Success(c, gin.H{"ok": true})
 }
 
+// Import POST /api/v1/video/admin/import — an admin adds a finished work (scene code included).
+func (h *VideoHandler) Import(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	var in service.VideoImportInput
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrVideoInvalid)
+		return
+	}
+	p, err := h.service.Import(c.Request.Context(), key, in)
+	h.reply(c, p, err)
+}
+
 func (h *VideoHandler) reply(c *gin.Context, p *service.VideoProject, err error) {
 	if err != nil {
 		response.ErrorFrom(c, err)

@@ -1,2 +1,4 @@
 # Copied from node_modules by scripts/copy-fonts.mjs during the build
 /public/fonts/
+# Bundled from node_modules by scripts/build-three.mjs during the build
+/public/player/vendor/

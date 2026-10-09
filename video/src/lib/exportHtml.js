@@ -55,7 +55,12 @@ const CONTROLLER = `
 
 export async function exportHtml(project, audioUrl, withKey) {
   const spec = project.spec
-  const [runtime, icons] = await Promise.all([fetch('/player/runtime.js').then((r) => r.text()), fetch('/player/icons.js').then((r) => r.text())])
+  const usesThree = spec.scenes.some((sc) => /\bS\.three\b/.test(sc.code || ''))
+  const [runtime, icons, three] = await Promise.all([
+    fetch('/player/runtime.js').then((r) => r.text()),
+    fetch('/player/icons.js').then((r) => r.text()),
+    usesThree ? fetch('/player/vendor/three.js').then((r) => r.text()) : '',
+  ])
   const scenes = await Promise.all(
     spec.scenes.map(async (sc) => {
       let audio = ''
@@ -109,6 +114,7 @@ body:hover #ui{opacity:1}
 <a id="brand" href="${origin}" target="_blank" rel="noopener">HiveGPT 视频</a>
 <script>window.__realNow = performance.now.bind(performance);window.__FILM_DATA__ = ${inline(JSON.stringify(data))};window.__FILM_CUES__ = ${inline(JSON.stringify(cues))};</script>
 <script>${inline(icons)}</script>
+${three ? `<script>${inline(three)}</script>` : ''}
 <script>${inline(runtime)}</script>
 <script>${inline(CONTROLLER)}</script>
 </body>
