@@ -1578,7 +1578,11 @@ onMounted(async () => {
     // Handle renewal navigation: ?tab=subscription&group=123
     if (route.query.tab === 'subscription') {
       activeTab.value = 'subscription'
-      if (route.query.group) {
+      // From the home page / pricing: ?tab=subscription&plan=<id> opens that plan.
+      const wantedPlan = checkout.value.plans.find((p) => p.id === Number(route.query.plan))
+      if (wantedPlan) {
+        selectedPlan.value = wantedPlan
+      } else if (route.query.group) {
         const groupId = Number(route.query.group)
         const groupPlans = checkout.value.plans.filter(p => p.group_id === groupId)
         if (groupPlans.length === 1) {

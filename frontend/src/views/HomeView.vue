@@ -203,6 +203,14 @@
             <Icon name="book" size="sm" />
             <span class="hidden sm:inline">{{ t('courses.navLabel') }}</span>
           </router-link>
+          <!-- Pricing -->
+          <router-link
+            to="/pricing"
+            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+            data-testid="home-pricing-link"
+          >
+            <span>{{ t('pricing.navLabel') }}</span>
+          </router-link>
           <!-- Doc Link -->
           <a
             v-if="docUrl"
@@ -369,6 +377,8 @@
         <HomeScenarios :is-authenticated="isAuthenticated" :show-model-plaza="showModelPlazaEntry" />
 
         <HomeShowcase />
+
+        <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" />
 
         <!-- Why: gateway strengths -->
         <div class="mb-10 text-center">
@@ -636,6 +646,7 @@ import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossS
 import HomePromptBox from '@/components/home/HomePromptBox.vue'
 import HomeScenarios from '@/components/home/HomeScenarios.vue'
 import HomeShowcase from '@/components/home/HomeShowcase.vue'
+import HomePricing from '@/components/home/HomePricing.vue'
 import HomeCommunityWall from '@/components/home/HomeCommunityWall.vue'
 import HomeHeroCollage from '@/components/home/HomeHeroCollage.vue'
 import HomeSteps from '@/components/home/HomeSteps.vue'

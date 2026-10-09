@@ -219,13 +219,13 @@ function oauthOrderFixture() {
   }
 }
 
-async function mountSubscriptionConfirm(options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {}) {
+async function mountSubscriptionConfirm(
+  options: Parameters<typeof checkoutInfoWithPlansFixture>[0] = {},
+  query: Record<string, string> = { tab: 'subscription', group: '3' },
+) {
   vi.useRealTimers()
   routeState.path = '/purchase'
-  routeState.query = {
-    tab: 'subscription',
-    group: '3',
-  }
+  routeState.query = query
   routerReplace.mockReset().mockResolvedValue(undefined)
   routerPush.mockReset().mockResolvedValue(undefined)
   routerResolve.mockClear()
@@ -942,5 +942,16 @@ describe('PaymentView first top-up bonus', () => {
     })
     await flushPromises()
     expect(wrapper.find('[data-testid="first-topup-banner"]').exists()).toBe(false)
+  })
+})
+
+describe('PaymentView plan deep link', () => {
+  it('opens the plan named in ?plan= like a single-plan group does', async () => {
+    const byGroup = await mountSubscriptionConfirm()
+    const byPlan = await mountSubscriptionConfirm({}, { tab: 'subscription', plan: '7' })
+    const buttons = (w: typeof byGroup) => w.findAll('button').map((b) => b.text())
+    expect(buttons(byPlan)).toEqual(buttons(byGroup))
+    const list = await mountSubscriptionConfirm({}, { tab: 'subscription', plan: '999' })
+    expect(buttons(list)).not.toEqual(buttons(byGroup))
   })
 })

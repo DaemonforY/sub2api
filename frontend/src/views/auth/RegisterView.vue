@@ -652,7 +652,7 @@ const onlyWechatOAuth = computed(
 // Which mailboxes are accepted, said before submitting (only when the whitelist is enforced here).
 const EMAIL_SUFFIX_NAMES: Record<string, string> = {
   'qq.com': 'QQ', 'foxmail.com': 'Foxmail', '163.com': '163', '126.com': '126', 'yeah.net': 'Yeah', '139.com': '139',
-  'gmail.com': 'Gmail', 'outlook.com': 'Outlook', 'hotmail.com': 'Hotmail', 'sina.com': '新浪', 'icloud.com': 'iCloud', 'edu.cn': t('auth.perks.schoolMail')
+  'gmail.com': 'Gmail', 'firefox.com': 'Firefox', 'outlook.com': 'Outlook', 'hotmail.com': 'Hotmail', 'sina.com': '新浪', 'icloud.com': 'iCloud', 'edu.cn': t('auth.perks.schoolMail')
 }
 const emailSuffixHint = computed(() => {
   if (emailDomainQuotaEnabled.value || !registrationEmailSuffixWhitelist.value.length) return ''
