@@ -28,6 +28,7 @@ const (
 	NotificationEmailEventBalanceLow                  = "balance.low"
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
 	NotificationEmailEventPaymentOrderAbandoned       = "payment.order_abandoned"
+	NotificationEmailEventGrowthTrialExhausted        = "growth.trial_exhausted"
 	NotificationEmailEventCoursePurchaseSuccess       = "course.purchase_success"
 	NotificationEmailEventCourseDeliveryUpdated       = "course.delivery_updated"
 	NotificationEmailEventAccountQuotaAlert           = "account.quota_alert"
@@ -919,6 +920,8 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"order_item_en":       "balance top-up",
 			"order_amount":        "50.00",
 			"purchase_url":        "https://example.com/purchase",
+			"offer_text":          "现在首次充值再送 20%（最多送 $10），付款后自动到账。",
+			"offer_text_en":       "Your first top-up gets 20% extra (up to $10), credited automatically.",
 			"recharge_amount":     "50.00",
 			"order_id":            "1024",
 			"course_title":        "AI Agent 实战",
@@ -974,6 +977,8 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"order_item_en":       "balance top-up",
 		"order_amount":        "50.00",
 		"purchase_url":        "https://example.com/purchase",
+		"offer_text":          "现在首次充值再送 20%（最多送 $10），付款后自动到账。",
+		"offer_text_en":       "Your first top-up gets 20% extra (up to $10), credited automatically.",
 		"recharge_amount":     "50.00",
 		"order_id":            "1024",
 		"course_title":        "AI Agent in practice",
@@ -1111,6 +1116,14 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Category:     "billing",
 		Optional:     false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "recharge_amount", "current_balance", "order_id"),
+	},
+	NotificationEmailEventGrowthTrialExhausted: {
+		Event:        NotificationEmailEventGrowthTrialExhausted,
+		Label:        "Trial credit used up",
+		Description:  "Optional, once per user: a recent sign-up who used the product has spent the trial credit without paying (推广设置).",
+		Category:     "billing",
+		Optional:     true,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "offer_text", "offer_text_en", "purchase_url", "unsubscribe_url"),
 	},
 	NotificationEmailEventPaymentOrderAbandoned: {
 		Event:        NotificationEmailEventPaymentOrderAbandoned,
@@ -1337,6 +1350,28 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>您的余额充值 <strong>${{recharge_amount}}</strong> 已完成。</p>
 <p>当前余额：<strong>${{current_balance}}</strong></p>
 			<p>订单号：{{order_id}}</p>`),
+		},
+	},
+	NotificationEmailEventGrowthTrialExhausted: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] Your free credit is used up",
+			HTML: notificationEmailCard("#d97706", "Free credit used up", `
+<p>Hello {{recipient_name}},</p>
+<p>You've used up the free credit that came with your account, so new images and requests will fail until you top up.</p>
+<p><strong>{{offer_text_en}}</strong></p>
+<p><a class="button" href="{{purchase_url}}">Top up</a></p>
+<p>Pay as you go: you are only charged for what you use.</p>
+<p class="muted"><a href="{{unsubscribe_url}}">Unsubscribe from these emails</a></p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 你的体验额度用完了",
+			HTML: notificationEmailCard("#d97706", "体验额度用完了", `
+<p>{{recipient_name}}，您好：</p>
+<p>注册送的体验额度已经用完，接下来画图和调用会失败，充值后就能接着用。</p>
+<p><strong>{{offer_text}}</strong></p>
+<p><a class="button" href="{{purchase_url}}">去充值</a></p>
+<p>按量计费，用多少扣多少。</p>
+<p class="muted"><a href="{{unsubscribe_url}}">退订此类提醒</a></p>`),
 		},
 	},
 	NotificationEmailEventPaymentOrderAbandoned: {

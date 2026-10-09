@@ -385,6 +385,11 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "余额充值订单支付完成并入账后发送。",
     categoryLabel: "计费",
   },
+  "growth.trial_exhausted": {
+    label: "体验金用完提醒",
+    timing: "注册 30 天内用过产品、体验额度用完且从未付款的用户，每人发一次；在推广设置中开启。",
+    categoryLabel: "计费",
+  },
   "payment.order_abandoned": {
     label: "未付款订单提醒",
     timing: "充值或订阅订单超时未付款约 1 小时后，若用户之后没有再下单或付款则发送；每人每周最多一封，在推广设置中开启。",
@@ -461,6 +466,11 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   "balance.recharge_success": {
     label: "Balance Recharge Success",
     timing: "Sent after a balance recharge order is paid and credited.",
+    categoryLabel: "Billing",
+  },
+  "growth.trial_exhausted": {
+    label: "Trial Credit Used Up",
+    timing: "Once per user who signed up in the last 30 days, used the product and spent the free credit without paying. Turn it on in growth settings.",
     categoryLabel: "Billing",
   },
   "payment.order_abandoned": {

@@ -102,6 +102,7 @@ func provideCleanup(
 	proxyExpiry *service.ProxyExpiryService,
 	subscriptionExpiry *service.SubscriptionExpiryService,
 	abandonedOrderReminder *service.AbandonedOrderReminderService,
+	trialExhaustedReminder *service.TrialExhaustedReminderService,
 	usageCleanup *service.UsageCleanupService,
 	idempotencyCleanup *service.IdempotencyCleanupService,
 	batchImageCleanup *service.BatchImageCleanupService,
@@ -304,6 +305,10 @@ func provideCleanup(
 			}},
 			{"AbandonedOrderReminderService", func() error {
 				abandonedOrderReminder.Stop()
+				return nil
+			}},
+			{"TrialExhaustedReminderService", func() error {
+				trialExhaustedReminder.Stop()
 				return nil
 			}},
 			{"SubscriptionService", func() error {

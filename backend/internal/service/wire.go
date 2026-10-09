@@ -1200,6 +1200,7 @@ var ProviderSet = wire.NewSet(
 	ProvideAnalyticsService,
 	ProvideActivationReminderService,
 	ProvideAbandonedOrderReminderService,
+	ProvideTrialExhaustedReminderService,
 	NewChannelLinkService,
 	NewAffiliateWithdrawService,
 	NewMarginService,

@@ -15,7 +15,9 @@ type fakeVideoSettingRepo struct {
 	m  map[string]string
 }
 
-func (f *fakeVideoSettingRepo) Get(context.Context, string) (*Setting, error) { return nil, ErrSettingNotFound }
+func (f *fakeVideoSettingRepo) Get(context.Context, string) (*Setting, error) {
+	return nil, ErrSettingNotFound
+}
 func (f *fakeVideoSettingRepo) GetValue(_ context.Context, k string) (string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
