@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,4 +35,21 @@ func TestOpenAIEstimateImageCost(t *testing.T) {
 
 	_, ok = svc.EstimateImageCost(ctx, &APIKey{UserID: 5}, "gpt-image-2", "1536x1024")
 	require.False(t, ok, "no group, no quote")
+}
+
+func TestOpenAIEstimateTextCost(t *testing.T) {
+	ctx := context.Background()
+	svc := &OpenAIGatewayService{billingService: NewBillingService(&config.Config{}, nil)}
+	gid := int64(3)
+	key := &APIKey{UserID: 5, GroupID: &gid, Group: &Group{ID: gid, RateMultiplier: 1}}
+	full, ok := svc.EstimateTextCost(ctx, key, "gpt-5.5", UsageTokens{InputTokens: 10000, OutputTokens: 600})
+	require.True(t, ok, "gpt-5.5 has a built-in price")
+	cached, ok := svc.EstimateTextCost(ctx, key, "gpt-5.5", UsageTokens{InputTokens: 800, CacheReadTokens: 9200, OutputTokens: 600})
+	require.True(t, ok)
+	require.Less(t, cached, full, "cached input is cheaper")
+	key.Group.RateMultiplier = 2
+	double, _ := svc.EstimateTextCost(ctx, key, "gpt-5.5", UsageTokens{InputTokens: 10000, OutputTokens: 600})
+	require.InDelta(t, full*2, double, 1e-9, "the group multiplier applies")
+	_, ok = svc.EstimateTextCost(ctx, &APIKey{UserID: 5}, "gpt-5.5", UsageTokens{InputTokens: 1})
+	require.False(t, ok)
 }

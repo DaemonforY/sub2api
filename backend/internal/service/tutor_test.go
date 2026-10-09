@@ -412,3 +412,38 @@ func TestTutorStudents(t *testing.T) {
 	err = svc.Insights(ctx, 6, other.ID, func(string) error { return nil })
 	require.ErrorIs(t, err, ErrTutorNoQuestions)
 }
+
+type tutorPricerStub struct{ calls []UsageTokens }
+
+func (p *tutorPricerStub) EstimateTextCost(_ context.Context, k *APIKey, model string, tokens UsageTokens) (float64, bool) {
+	p.calls = append(p.calls, tokens)
+	// $5 / M input, $0.5 / M cached, $30 / M output
+	return float64(tokens.InputTokens)*5e-6 + float64(tokens.CacheReadTokens)*5e-7 + float64(tokens.OutputTokens)*3e-5, k.Key == "sk-teacher"
+}
+
+func TestTutorCostEstimate(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _, _ := newTutorForTest(t)
+	tu, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", Enabled: true})
+	require.NoError(t, err)
+	require.Nil(t, tu.Cost, "no pricer, no estimate")
+
+	pricer := &tutorPricerStub{}
+	svc.SetPricer(pricer)
+	got, err := svc.Get(ctx, 5, tu.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.Cost)
+	require.Less(t, got.Cost.Low, got.Cost.High)
+	require.Equal(t, (tutorEstPromptChars+tutorEstHistoryChars)*2/3, got.Cost.InputTokens)
+
+	// More material, a higher quote; long material is capped at the searched passages.
+	_, err = svc.AddMaterial(ctx, 5, tu.ID, "讲义.txt", []byte(strings.Repeat("知识点。", 5000)), "")
+	require.NoError(t, err)
+	mid, _ := svc.Get(ctx, 5, tu.ID)
+	require.Greater(t, mid.Cost.High, got.Cost.High)
+	_, err = svc.AddMaterial(ctx, 5, tu.ID, "题库.txt", []byte(strings.Repeat("例题。", 20000)), "")
+	require.NoError(t, err)
+	long, _ := svc.Get(ctx, 5, tu.ID)
+	require.Equal(t, (tutorEstPromptChars+tutorEstPassageChars+tutorEstHistoryChars)*2/3, long.Cost.InputTokens)
+	require.Less(t, long.Cost.High, mid.Cost.High, "only the best passages are sent for long materials")
+}

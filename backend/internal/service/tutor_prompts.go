@@ -144,3 +144,12 @@ const tutorInsightsPrompt = `你是一位教学顾问。下面是一个班的学
 ## 需要关注的学生
 提问特别多或者明显跟不上的学生（最多 5 个），各写一句原因；没有就写“暂无”。
 只根据这些问题来写，不要编造。`
+
+// ProvideTutorService wires AI 助教 with the gateway's pricing for the cost estimate.
+func ProvideTutorService(repo TutorRepository, learn *LearnService, quota AssistantQuotaCache, openai *OpenAIGatewayService) *TutorService {
+	svc := NewTutorService(repo, learn, quota)
+	if openai != nil {
+		svc.SetPricer(openai)
+	}
+	return svc
+}

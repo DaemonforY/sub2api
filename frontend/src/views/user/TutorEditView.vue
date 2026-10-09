@@ -202,6 +202,15 @@
           </select>
           <span class="input-hint">{{ t('tutors.keyCostHint') }}</span>
         </label>
+        <div v-if="tutor.cost" class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200" data-testid="tutor-cost">
+          <div class="font-medium">{{ t('tutors.costTitle', { low: money(tutor.cost.low), high: money(tutor.cost.high) }) }}</div>
+          <div class="mt-1 text-xs leading-5 opacity-80">
+            {{ t('tutors.costDetail', { model: tutor.cost.model, input: tutor.cost.input_tokens.toLocaleString(), output: tutor.cost.output_tokens }) }}
+          </div>
+          <div class="mt-1 text-xs leading-5 opacity-80">
+            {{ t('tutors.costClass', { students: classSize, n: classQuestions, low: money(tutor.cost.low * classSize * classQuestions), high: money(tutor.cost.high * classSize * classQuestions) }) }}
+          </div>
+        </div>
         <label class="flex items-center gap-2 text-sm">
           <input v-model="form.enabled" type="checkbox" class="h-4 w-4" />
           {{ t('tutors.enabled') }}
@@ -279,6 +288,13 @@ const open = ref(0)
 const qrCanvas = ref<HTMLCanvasElement | null>(null)
 
 const template = computed(() => templates.value.find((x) => x.id === tutor.value?.template))
+// The class in the cost example: 40 students asking up to 10 questions a day (or the daily limit).
+const classSize = 40
+const classQuestions = computed(() => Math.min(10, form.per_student_day || 10))
+
+function money(v: number) {
+  return `$${v >= 1 ? v.toFixed(2) : v >= 0.1 ? v.toFixed(3) : v.toFixed(4)}`
+}
 const defaultGreeting = computed(() =>
   (template.value?.greeting || '').replace('{name}', tutor.value?.name || '').replace('{subject}', tutor.value?.subject || '课')
 )

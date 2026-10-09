@@ -43,6 +43,16 @@ export interface Tutor {
   materials?: TutorMaterial[]
   key_name?: string
   key_problem?: string
+  /** One question on the key with the current materials: low when the prompt is cached, high when not (USD). */
+  cost?: TutorCost
+}
+
+export interface TutorCost {
+  low: number
+  high: number
+  input_tokens: number
+  output_tokens: number
+  model: string
 }
 
 export type TutorInput = Pick<

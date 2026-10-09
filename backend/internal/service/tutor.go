@@ -79,6 +79,23 @@ type Tutor struct {
 	Materials     []TutorMaterial `json:"materials,omitempty"`
 	KeyName       string          `json:"key_name,omitempty"`
 	KeyProblem    string          `json:"key_problem,omitempty"`
+	Cost          *TutorCost      `json:"cost,omitempty"`
+}
+
+// TutorCost estimates one question on the assistant's key with its current materials: Low when the
+// prompt (rules + materials) is read from the provider's prompt cache, as in a run of questions;
+// High when it is not. Tokens are estimates (about 1.5 Chinese characters a token).
+type TutorCost struct {
+	Low          float64 `json:"low"`
+	High         float64 `json:"high"`
+	InputTokens  int     `json:"input_tokens"`
+	OutputTokens int     `json:"output_tokens"`
+	Model        string  `json:"model"`
+}
+
+// TutorPricer prices chat tokens on a key (the gateway's own pricing).
+type TutorPricer interface {
+	EstimateTextCost(ctx context.Context, apiKey *APIKey, model string, tokens UsageTokens) (float64, bool)
 }
 
 type TutorMaterial struct {
@@ -139,6 +156,7 @@ type TutorService struct {
 	quota AssistantQuotaCache
 	chat  tutorChatFunc
 	now   func() time.Time
+	price TutorPricer
 
 	kbMu sync.Mutex
 	kbs  map[int64]tutorKB
@@ -161,6 +179,38 @@ func NewTutorService(repo TutorRepository, learn *LearnService, quota AssistantQ
 		return streamChatCompletion(ctx, client, gateway, "hivegpt-tutor/1", key, model, messages, maxTokens, onDelta)
 	}
 	return s
+}
+
+// SetPricer lets Get quote what a question costs.
+func (s *TutorService) SetPricer(p TutorPricer) { s.price = p }
+
+const (
+	tutorEstPromptChars  = 1500 // the template's task and the rules
+	tutorEstHistoryChars = 1200 // earlier turns and the question
+	tutorEstOutputTokens = 600
+	tutorEstPassageChars = 6000 // what the search puts in when materials are long
+)
+
+// estimate prices a typical question: prompt + materials (all, or the passages) + history in, an answer out.
+func (s *TutorService) estimate(ctx context.Context, key *APIKey, materialChars int) *TutorCost {
+	if s.price == nil || key == nil {
+		return nil
+	}
+	if materialChars > tutorFullContextChars {
+		materialChars = tutorEstPassageChars
+	}
+	prefix := (tutorEstPromptChars + materialChars) * 2 / 3
+	rest := tutorEstHistoryChars * 2 / 3
+	model := s.model(ctx)
+	high, ok := s.price.EstimateTextCost(ctx, key, model, UsageTokens{InputTokens: prefix + rest, OutputTokens: tutorEstOutputTokens})
+	if !ok {
+		return nil
+	}
+	low, ok := s.price.EstimateTextCost(ctx, key, model, UsageTokens{InputTokens: rest, CacheReadTokens: prefix, OutputTokens: tutorEstOutputTokens})
+	if !ok || low > high {
+		low = high
+	}
+	return &TutorCost{Low: low, High: high, InputTokens: prefix + rest, OutputTokens: tutorEstOutputTokens, Model: model}
 }
 
 func (s *TutorService) model(ctx context.Context) string {
@@ -305,6 +355,7 @@ func (s *TutorService) Get(ctx context.Context, userID, id int64) (*Tutor, error
 	if s.learn != nil {
 		if k, err := s.learn.ownKey(ctx, userID, t.KeyID); err == nil {
 			t.KeyName = k.Name
+			t.Cost = s.estimate(ctx, k, t.MaterialChars)
 		} else {
 			t.KeyProblem = infraerrors.Message(err)
 		}

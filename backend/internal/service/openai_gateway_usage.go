@@ -1163,3 +1163,19 @@ func (s *OpenAIGatewayService) EstimateImageCost(ctx context.Context, apiKey *AP
 	}
 	return cost.ActualCost, true
 }
+
+// EstimateTextCost is what a chat request with these tokens would cost on this key, priced the way
+// usage is recorded (group / channel prices, the user's group multiplier, peak hours).
+func (s *OpenAIGatewayService) EstimateTextCost(ctx context.Context, apiKey *APIKey, model string, tokens UsageTokens) (float64, bool) {
+	if s == nil || s.billingService == nil || apiKey == nil || apiKey.GroupID == nil || apiKey.Group == nil {
+		return 0, false
+	}
+	base := s.ResolveUserGroupRateMultiplier(ctx, apiKey.UserID, *apiKey.GroupID, apiKey.Group.RateMultiplier)
+	now := timezone.Now()
+	multiplier, _ := computePeakAwareMultipliers(apiKey, base, now)
+	cost, err := s.calculateOpenAIRecordUsageTokenCost(ctx, apiKey, model, multiplier, now, tokens, "", "", nil)
+	if err != nil || cost == nil || cost.ActualCost <= 0 {
+		return 0, false
+	}
+	return cost.ActualCost, true
+}

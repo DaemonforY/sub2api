@@ -394,7 +394,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	opsAgentService := service.ProvideOpsAgentService(learnService, settingRepository, secretEncryptor, opsAgentRepository, agentRunRepository, opsService, emailService, opsAlertEvaluatorService)
 	opsAgentHandler := handler.NewOpsAgentHandler(opsAgentService)
 	tutorRepository := repository.NewTutorRepository(db)
-	tutorService := service.NewTutorService(tutorRepository, learnService, assistantQuotaCache)
+	tutorService := service.ProvideTutorService(tutorRepository, learnService, assistantQuotaCache, openAIGatewayService)
 	tutorHandler := handler.NewTutorHandler(tutorService)
 	activationReminderRepository := repository.NewActivationReminderRepository(db)
 	activationReminderService := service.ProvideActivationReminderService(activationReminderRepository, settingRepository, emailService)
