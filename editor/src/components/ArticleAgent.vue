@@ -298,9 +298,19 @@ export default {
   mounted() {
     this._timer = setInterval(() => this.tick(), 3000);
     this._ticks = 0;
+    this._title = document.title;
+    // Back on the tab: drop the 写好了 title and check right away.
+    this._onVisible = () => {
+      if (document.hidden) return;
+      document.title = this._title;
+      this._ticks = 3;
+      this.tick();
+    };
+    document.addEventListener('visibilitychange', this._onVisible);
   },
   beforeUnmount() {
     clearInterval(this._timer);
+    document.removeEventListener('visibilitychange', this._onVisible);
     this.dropThumbs();
   },
   methods: {
@@ -481,15 +491,18 @@ export default {
       this.notice = null;
       this.editor.openAgentArticle(p.id, { push: false });
     },
-    /** Every 3 s: refresh the open article while it runs; every 12 s check the others still running. */
+    /**
+     * Every 3 s: refresh the open article while it runs (tab visible). Every 12 s, even with the tab
+     * in the background, check the articles still running so their outcome is announced.
+     */
     async tick() {
-      if (document.hidden || !this.editor.auth.loggedIn) return;
+      if (!this.editor.auth.loggedIn) return;
       this._ticks++;
-      if (this.open && this.view === 'project' && this.active) await this.refresh(this.current.id);
+      if (!document.hidden && this.open && this.view === 'project' && this.active) await this.refresh(this.current.id);
       if (this._ticks % 4 !== 0) return;
       const running = Object.entries(this.watched).filter(([, s]) => ACTIVE.includes(s)).map(([id]) => Number(id));
       for (const id of running) {
-        if (this.open && this.current && this.current.id === id) continue;
+        if (!document.hidden && this.open && this.current && this.current.id === id) continue;
         try {
           const p = await getArticle(id);
           this.watched[id] = p.status;
@@ -501,8 +514,11 @@ export default {
     },
     /** Shows the reminder card, unless the user is already looking at that article. */
     announce(p) {
-      if (this.open && this.current && this.current.id === p.id) return;
+      if (document.hidden) {
+        document.title = (p.status === 'done' ? '✅ 文章写好了 · ' : p.status === 'outline_ready' ? '📝 大纲好了 · ' : '⚠️ ') + this._title;
+      }
       if (this.current && this.current.id === p.id) this.applyProject(p);
+      if (this.open && !document.hidden && this.current && this.current.id === p.id) return;
       this.notice = p;
       const i = this.list.findIndex(x => x.id === p.id);
       if (i >= 0) this.list.splice(i, 1, { ...this.list[i], status: p.status, title: p.title });
