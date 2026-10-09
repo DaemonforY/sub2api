@@ -5,8 +5,10 @@ on:
   push:
     branches:
       - main
+    # Only skip docs that are not built into the image: learn/**/*.md (the learning site) and
+    # backend/internal/service/assistant_faq.md (support assistant) ship in the binary.
     paths-ignore:
-      - '**/*.md'
+      - '*.md'
       - 'docs/**'
 
 permissions:
