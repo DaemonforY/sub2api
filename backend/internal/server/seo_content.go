@@ -69,16 +69,26 @@ func (s *seoContent) Models(ctx context.Context) ([]web.SEOModel, bool) {
 	groups, ok := s.plaza.PublicGroups(ctx)
 	var out []web.SEOModel
 	for _, g := range groups {
+		// Prices paid, as the plaza page shows them: the group multiplier, or for per-image models the
+		// group's independent image multiplier when it has one (resolveImageRateMultiplier).
+		rate := g.RateMultiplier
+		if rate <= 0 {
+			rate = 1
+		}
+		imageRate := rate
+		if g.ImageRateIndependent {
+			imageRate = g.ImageRateMultiplier
+		}
 		for _, m := range g.Models {
 			sm := web.SEOModel{Name: m.Name, Group: g.Name}
 			if p := m.Pricing; p != nil && p.BillingMode == service.BillingModeImage {
 				for _, iv := range p.Intervals {
 					if iv.PerRequestPrice != nil && iv.TierLabel != "" {
-						sm.PerImage = append(sm.PerImage, web.SEOTierPrice{Tier: iv.TierLabel, Price: math.Round(*iv.PerRequestPrice*1e4) / 1e4})
+						sm.PerImage = append(sm.PerImage, web.SEOTierPrice{Tier: iv.TierLabel, Price: math.Round(*iv.PerRequestPrice*imageRate*1e4) / 1e4})
 					}
 				}
 			} else if p != nil {
-				sm.Input, sm.Output, sm.CacheRead = perMillion(p.InputPrice), perMillion(p.OutputPrice), perMillion(p.CacheReadPrice)
+				sm.Input, sm.Output, sm.CacheRead = perMillion(p.InputPrice, rate), perMillion(p.OutputPrice, rate), perMillion(p.CacheReadPrice, rate)
 			}
 			out = append(out, sm)
 		}
@@ -87,12 +97,12 @@ func (s *seoContent) Models(ctx context.Context) ([]web.SEOModel, bool) {
 	return out, ok
 }
 
-// perMillion turns a per-token USD price into the per-1M-token price, rounded to 4 decimals.
-func perMillion(perToken *float64) *float64 {
+// perMillion turns a per-token USD price times rate into the per-1M-token price, rounded to 4 decimals.
+func perMillion(perToken *float64, rate float64) *float64 {
 	if perToken == nil {
 		return nil
 	}
-	v := math.Round(*perToken*1e6*1e4) / 1e4
+	v := math.Round(*perToken*rate*1e6*1e4) / 1e4
 	return &v
 }
 
