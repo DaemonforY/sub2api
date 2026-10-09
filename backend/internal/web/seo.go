@@ -405,7 +405,7 @@ func mainLLMsTxt(ctx context.Context, site seoSite, content SEOContent, learn []
 
 	if content != nil {
 		if models, ok := content.Models(ctx); ok && len(models) > 0 {
-			_, _ = b.WriteString("## 可用模型与价格（每 100 万 token，美元）\n\n")
+			_, _ = b.WriteString("## 可用模型与价格（美元）\n\n")
 			for _, md := range models {
 				_, _ = b.WriteString("- " + modelPriceLine(md) + "\n")
 			}
