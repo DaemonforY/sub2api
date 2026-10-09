@@ -333,7 +333,9 @@ func TestArticleAgentFailuresAndRetry(t *testing.T) {
 	require.ErrorIs(t, err, ErrArticleState, "nothing left to retry")
 
 	// A failed write can be retried; cancel stops a run.
+	writing := make(chan struct{}, 1)
 	svc.chat = func(ctx context.Context, _, _ string, _ []LearnMessage, _ int, _ func(string) error) (*LearnTutorResult, error) {
+		writing <- struct{}{}
 		<-ctx.Done()
 		return nil, ctx.Err()
 	}
@@ -344,10 +346,11 @@ func TestArticleAgentFailuresAndRetry(t *testing.T) {
 	require.NoError(t, err)
 	_, err = svc.Outline(ctx, 5, p2.ID, ArticleOutlineInput{Confirm: true})
 	require.ErrorIs(t, err, ErrArticleState, "already writing")
+	<-writing
 	require.NoError(t, svc.Cancel(ctx, 5, p2.ID))
 	waitArticle(t, svc, p2.ID)
 	got, _ = svc.Get(ctx, 5, p2.ID)
-	require.Equal(t, ArticleCanceled, got.Status)
+	require.Equal(t, ArticleCanceled, got.Status, got.Error)
 	require.Empty(t, got.Markdown)
 
 	svc.chat = func(_ context.Context, _, _ string, _ []LearnMessage, _ int, _ func(string) error) (*LearnTutorResult, error) {
@@ -359,6 +362,30 @@ func TestArticleAgentFailuresAndRetry(t *testing.T) {
 	got, _ = svc.Get(ctx, 5, p2.ID)
 	require.Equal(t, ArticleFailed, got.Status)
 	require.Equal(t, "生成出错了，点「重试」再来一次", got.Error, "raw errors are not shown")
+}
+
+// A run still waiting for a site-wide slot is canceled, not failed as "site busy".
+func TestArticleAgentCancelWhileQueued(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := newArticleForTest(t)
+	svc.agent = func(context.Context, AgentRunInput) (*AgentRunResult, error) {
+		t.Error("a canceled run that never got a slot must not call the model")
+		return nil, errors.New("unexpected")
+	}
+	for i := 0; i < cap(svc.slots); i++ {
+		svc.slots <- struct{}{}
+	}
+	p, err := svc.Create(ctx, 5, ArticleCreateInput{KeyID: 7, ArticleBrief: ArticleBrief{Topic: "排队中"}})
+	require.NoError(t, err)
+	require.NoError(t, svc.Cancel(ctx, 5, p.ID))
+	waitArticle(t, svc, p.ID)
+	got, _ := svc.Get(ctx, 5, p.ID)
+	require.Equal(t, ArticleCanceled, got.Status, got.Error)
+	require.Empty(t, got.Error)
+	require.Equal(t, "已停止", got.Events[len(got.Events)-1].Text)
+	for i := 0; i < cap(svc.slots); i++ {
+		<-svc.slots
+	}
 }
 
 func TestArticleHelpers(t *testing.T) {

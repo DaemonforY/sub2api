@@ -604,20 +604,26 @@ func (s *ArticleAgentService) start(ctx context.Context, p *ArticleProject, key 
 	go func() {
 		defer s.wg.Done()
 		defer cancel()
+		// A Cancel that lands before a slot is taken makes both cases ready and select picks one at
+		// random, so the outcome goes by ctx.Err() either way: a canceled run is 已停止 whether it
+		// was waiting or running; only a wait that timed out is "site busy".
+		var err error
+		queued := false
 		select {
 		case s.slots <- struct{}{}:
 			defer func() { <-s.slots }()
+			err = fn(ctx, p, key.Key)
 		case <-ctx.Done():
-			p.Status, p.Error = ArticleFailed, ErrArticleSiteBusy.Error()
-			s.save(p)
-			return
+			err, queued = ErrArticleSiteBusy, true
 		}
-		err := fn(ctx, p, key.Key)
 		switch {
 		case err == nil:
 		case errors.Is(ctx.Err(), context.Canceled):
 			p.Status, p.Error = ArticleCanceled, ""
 			s.event(p, "error", "已停止")
+		case queued:
+			p.Status, p.Error = ArticleFailed, ErrArticleSiteBusy.Message
+			s.event(p, "error", p.Error)
 		case errors.Is(ctx.Err(), context.DeadlineExceeded):
 			p.Status, p.Error = ArticleFailed, "生成超时（超过 15 分钟），点「重试」接着做"
 			s.event(p, "error", p.Error)
