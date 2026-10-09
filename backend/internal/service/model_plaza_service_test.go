@@ -551,3 +551,29 @@ func TestListGroups_FallsBackToAccountModelsWhenChannelHasNone(t *testing.T) {
 	require.Equal(t, "gpt-priced", byID[6].Models[0].Name)
 	require.NotContains(t, byID, int64(7), "groups with no models stay hidden")
 }
+
+func TestListGroups_AccountImageModelsShowPerImagePrices(t *testing.T) {
+	channels := []Channel{{ID: 1, Name: "empty", Status: StatusActive, GroupIDs: []int64{5}}}
+	price2K := 0.3
+	groups := []Group{{ID: 5, Name: "GPT-按量", Platform: PlatformOpenAI, RateMultiplier: 1, ImagePrice2K: &price2K}}
+	repo := &mockChannelRepository{listAllFn: func(ctx context.Context) ([]Channel, error) { return channels, nil }}
+	lister := stubPlazaModelLister{5: {"gpt-image-2", "gpt-6", "gpt-4o-audio-preview", "gpt-5.3-codex-spark"}}
+	svc := NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, nil, NewBillingService(&config.Config{}, nil), nil, lister)
+
+	out, err := svc.ListGroups(context.Background())
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Len(t, out[0].Models, 1, "retired models and the gpt-6 alias are hidden")
+	m := out[0].Models[0]
+	require.Equal(t, "gpt-image-2", m.Name)
+	require.NotNil(t, m.Pricing)
+	require.Equal(t, BillingModeImage, m.Pricing.BillingMode)
+	got := map[string]float64{}
+	for _, iv := range m.Pricing.Intervals {
+		got[iv.TierLabel] = *iv.PerRequestPrice
+	}
+	// 1K / 4K fall back to the billing default ($0.134, ×2 for 4K); 2K uses the group's price.
+	require.InDelta(t, 0.134, got["1K"], 1e-9)
+	require.InDelta(t, 0.3, got["2K"], 1e-9)
+	require.InDelta(t, 0.268, got["4K"], 1e-9)
+}

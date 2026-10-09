@@ -49,6 +49,14 @@ type SEOModel struct {
 	Input     *float64
 	Output    *float64
 	CacheRead *float64
+	// PerImage lists per-image prices by size tier for models billed per image (token fields unset).
+	PerImage []SEOTierPrice
+}
+
+// SEOTierPrice is a per-image price for one size tier ("1K", "2K", "4K").
+type SEOTierPrice struct {
+	Tier  string
+	Price float64
 }
 
 // SEOContent supplies the dynamic public pages. Implementations should cache: crawlers call it often.
@@ -709,6 +717,13 @@ func modelPriceLine(m SEOModel) string {
 	line := m.Name
 	if m.Group != "" {
 		line += "（" + m.Group + "）"
+	}
+	if len(m.PerImage) > 0 {
+		tiers := make([]string, 0, len(m.PerImage))
+		for _, t := range m.PerImage {
+			tiers = append(tiers, t.Tier+" $"+strconv.FormatFloat(t.Price, 'f', -1, 64))
+		}
+		return line + "：按张计费，" + strings.Join(tiers, " / ") + "（每张）"
 	}
 	var parts []string
 	for _, p := range []struct {

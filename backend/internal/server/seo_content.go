@@ -71,7 +71,13 @@ func (s *seoContent) Models(ctx context.Context) ([]web.SEOModel, bool) {
 	for _, g := range groups {
 		for _, m := range g.Models {
 			sm := web.SEOModel{Name: m.Name, Group: g.Name}
-			if p := m.Pricing; p != nil {
+			if p := m.Pricing; p != nil && p.BillingMode == service.BillingModeImage {
+				for _, iv := range p.Intervals {
+					if iv.PerRequestPrice != nil && iv.TierLabel != "" {
+						sm.PerImage = append(sm.PerImage, web.SEOTierPrice{Tier: iv.TierLabel, Price: math.Round(*iv.PerRequestPrice*1e4) / 1e4})
+					}
+				}
+			} else if p != nil {
 				sm.Input, sm.Output, sm.CacheRead = perMillion(p.InputPrice), perMillion(p.OutputPrice), perMillion(p.CacheReadPrice)
 			}
 			out = append(out, sm)

@@ -177,3 +177,14 @@ func TestModelPlazaFollowsTheSwitch(t *testing.T) {
 	}
 	require.False(t, mainPageMeta(ctx, testSite, nil, "/model-plaza").Index)
 }
+
+func TestModelPriceLinePerImage(t *testing.T) {
+	in, out := 5.0, 30.0
+	if got := modelPriceLine(SEOModel{Name: "gpt-5.5", Group: "G", Input: &in, Output: &out}); got != "gpt-5.5（G）：输入 $5 / 输出 $30（每 100 万 token）" {
+		t.Fatalf("token line = %q", got)
+	}
+	img := SEOModel{Name: "gpt-image-2", Group: "G", PerImage: []SEOTierPrice{{"1K", 0.134}, {"2K", 0.201}, {"4K", 0.268}}}
+	if got := modelPriceLine(img); got != "gpt-image-2（G）：按张计费，1K $0.134 / 2K $0.201 / 4K $0.268（每张）" {
+		t.Fatalf("image line = %q", got)
+	}
+}

@@ -81,6 +81,12 @@ type PlazaModelLister interface {
 // explicitly still shows it, and calls and billing are unaffected.
 var plazaHiddenAccountModels = map[string]bool{
 	"codex-auto-review": true,
+	// Retired by OpenAI; still whitelisted upstream but not worth advertising.
+	"gpt-5.3-codex-spark":     true,
+	"gpt-4o-audio-preview":    true,
+	"gpt-4o-realtime-preview": true,
+	// Not an OpenAI model name — an upstream alias of gpt-6-astra, which is listed itself.
+	"gpt-6": true,
 }
 
 func NewModelPlazaService(
@@ -258,6 +264,12 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 // token 模型取计费阶梯表（单价与档位均由真实计费函数得出），
 // 图片/按次模型（或阶梯表不可用时）沿用渠道定价与分组图片档位价。
 func (s *ModelPlazaService) fillDisplayPricing(ctx context.Context, m *PlazaModel, g *Group) {
+	// A GPT image model no channel prices is billed per image (calculateOpenAIImageCost), not by
+	// the token schedule, so show the per-image tier prices billing would charge.
+	if m.Pricing == nil && s.billingService != nil && m.Platform == PlatformOpenAI && IsGPTImageGenerationModel(m.Name) {
+		m.Pricing = s.plazaDefaultImagePricing(m.Name, g)
+		return
+	}
 	if s.billingService != nil && s.resolver != nil {
 		sched, err := s.billingService.ResolveContextPricingSchedule(ctx, s.resolver, ContextPricingScheduleInput{
 			Model:    m.Name,
@@ -372,6 +384,22 @@ func plazaImageDisplayPricing(p *ChannelModelPricing, g *Group) *ChannelModelPri
 		})
 	}
 	return &clone
+}
+
+// plazaDefaultImagePricing lists the 1K / 2K / 4K per-image prices for a model without channel
+// pricing: the group's image price for the tier, else the model-table / built-in default — the
+// same getImageUnitPrice billing calls.
+func (s *ModelPlazaService) plazaDefaultImagePricing(model string, g *Group) *ChannelModelPricing {
+	var cfg *ImagePriceConfig
+	if g != nil {
+		cfg = &ImagePriceConfig{Price1K: g.ImagePrice1K, Price2K: g.ImagePrice2K, Price4K: g.ImagePrice4K}
+	}
+	out := &ChannelModelPricing{BillingMode: BillingModeImage}
+	for i, tier := range []string{"1K", "2K", "4K"} {
+		v := s.billingService.getImageUnitPrice(model, tier, cfg)
+		out.Intervals = append(out.Intervals, PricingInterval{TierLabel: tier, PerRequestPrice: &v, SortOrder: i})
+	}
+	return out
 }
 
 // lookupOfficialPricing 查询模型的官方参考价（与计费同源：LiteLLM → 内置兜底 → 模型策略），
