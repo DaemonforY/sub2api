@@ -25,6 +25,8 @@ import (
 var (
 	ErrNoUpdateAvailable         = infraerrors.Conflict("ALREADY_UP_TO_DATE", "no update available; current version is latest")
 	ErrRollbackVersionNotAllowed = infraerrors.BadRequest("ROLLBACK_VERSION_NOT_ALLOWED", "version is not in the allowed rollback list")
+	ErrOnlineUpdateDisabled      = infraerrors.Forbidden("ONLINE_UPDATE_DISABLED",
+		"本站是在 Sub2API 基础上改过的版本，通过 Docker 镜像部署更新，不能在线升级或回滚：在线升级会换成官方原版程序，本站自己的功能会消失，数据库也可能被官方迁移改动（Online update is disabled on this build）")
 )
 
 const (
@@ -65,6 +67,10 @@ type UpdateService struct {
 	githubClient   GitHubReleaseClient
 	currentVersion string
 	buildType      string // "source" for manual builds, "release" for CI builds
+	// onlineUpdateDisabled: this fork is deployed as a Docker image. Online update would swap in the
+	// official Wei-Shaw/sub2api release binary (dropping this site's own features) and run its
+	// migrations on this database, so check / update / rollback are switched off.
+	onlineUpdateDisabled bool
 }
 
 // NewUpdateService creates a new UpdateService
@@ -86,6 +92,8 @@ type UpdateInfo struct {
 	Cached         bool         `json:"cached"`
 	Warning        string       `json:"warning,omitempty"`
 	BuildType      string       `json:"build_type"` // "source" or "release"
+	// OnlineUpdateDisabled: no online update on this build; the panel only shows the version.
+	OnlineUpdateDisabled bool `json:"online_update_disabled,omitempty"`
 }
 
 // ReleaseInfo contains GitHub release details
@@ -129,8 +137,15 @@ type GitHubAsset struct {
 	Size               int64  `json:"size"`
 }
 
+// DisableOnlineUpdate turns off online update and rollback (see onlineUpdateDisabled).
+func (s *UpdateService) DisableOnlineUpdate() { s.onlineUpdateDisabled = true }
+
 // CheckUpdate checks for available updates
 func (s *UpdateService) CheckUpdate(ctx context.Context, force bool) (*UpdateInfo, error) {
+	if s.onlineUpdateDisabled {
+		// No call to GitHub: the official releases are not this site's versions.
+		return &UpdateInfo{CurrentVersion: s.currentVersion, LatestVersion: s.currentVersion, BuildType: s.buildType, OnlineUpdateDisabled: true}, nil
+	}
 	// Try cache first
 	if !force {
 		if cached, err := s.getFromCache(ctx); err == nil && cached != nil {
@@ -163,6 +178,9 @@ func (s *UpdateService) CheckUpdate(ctx context.Context, force bool) (*UpdateInf
 // PerformUpdate downloads and applies the update
 // Uses atomic file replacement pattern for safe in-place updates
 func (s *UpdateService) PerformUpdate(ctx context.Context) error {
+	if s.onlineUpdateDisabled {
+		return ErrOnlineUpdateDisabled
+	}
 	info, err := s.CheckUpdate(ctx, true)
 	if err != nil {
 		return err
@@ -281,6 +299,9 @@ func (s *UpdateService) applyReleaseAssets(ctx context.Context, releaseAssets []
 
 // Rollback restores the previous version
 func (s *UpdateService) Rollback() error {
+	if s.onlineUpdateDisabled {
+		return ErrOnlineUpdateDisabled
+	}
 	exePath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
@@ -307,6 +328,9 @@ func (s *UpdateService) Rollback() error {
 // strictly older than the current version (the current version itself is excluded),
 // newest first. Draft and prerelease entries are skipped.
 func (s *UpdateService) ListRollbackVersions(ctx context.Context) ([]RollbackVersion, error) {
+	if s.onlineUpdateDisabled {
+		return nil, ErrOnlineUpdateDisabled
+	}
 	releases, err := s.fetchRollbackCandidates(ctx)
 	if err != nil {
 		return nil, err
@@ -327,6 +351,9 @@ func (s *UpdateService) ListRollbackVersions(ctx context.Context) ([]RollbackVer
 // The target must be one of the versions returned by ListRollbackVersions;
 // anything else (including the current version) is rejected.
 func (s *UpdateService) RollbackToVersion(ctx context.Context, version string) error {
+	if s.onlineUpdateDisabled {
+		return ErrOnlineUpdateDisabled
+	}
 	target := strings.TrimPrefix(strings.TrimSpace(version), "v")
 	if target == "" {
 		return ErrRollbackVersionNotAllowed

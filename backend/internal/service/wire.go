@@ -44,9 +44,12 @@ func ProvidePricingService(cfg *config.Config, remoteClient PricingRemoteClient)
 	return svc, nil
 }
 
-// ProvideUpdateService creates UpdateService with BuildInfo
+// ProvideUpdateService creates UpdateService with BuildInfo. Online update is off on this fork:
+// it is deployed as a Docker image, and the official releases would replace its own code.
 func ProvideUpdateService(cache UpdateCache, githubClient GitHubReleaseClient, buildInfo BuildInfo) *UpdateService {
-	return NewUpdateService(cache, githubClient, buildInfo.Version, buildInfo.BuildType)
+	svc := NewUpdateService(cache, githubClient, buildInfo.Version, buildInfo.BuildType)
+	svc.DisableOnlineUpdate()
+	return svc
 }
 
 // ProvideEmailQueueService creates EmailQueueService with default worker count

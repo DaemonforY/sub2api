@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { getPublicSettings } from '@/api/auth'
+import { checkUpdates } from '@/api/admin/system'
 import type { PublicSettings } from '@/types'
 
 function createDeferred<T>() {
@@ -474,6 +475,25 @@ describe('useAppStore', () => {
       expect((window as any).__APP_CONFIG__.table_page_size_options).toEqual([20, 100, 1000])
       expect(localStorage.getItem('table-page-size')).toBeNull()
       expect(localStorage.getItem('table-page-size-source')).toBeNull()
+    })
+  })
+  describe('版本信息', () => {
+    it('记录本站关闭了在线升级，缓存的结果也带上这个标记', async () => {
+      vi.mocked(checkUpdates).mockResolvedValue({
+        current_version: '0.2.1',
+        latest_version: '0.2.1',
+        has_update: false,
+        build_type: 'release',
+        cached: false,
+        online_update_disabled: true
+      })
+      const store = useAppStore()
+      await store.fetchVersion(true)
+      expect(store.onlineUpdateDisabled).toBe(true)
+      expect(store.hasUpdate).toBe(false)
+      const cached = await store.fetchVersion()
+      expect(cached?.online_update_disabled).toBe(true)
+      expect(checkUpdates).toHaveBeenCalledTimes(1)
     })
   })
 })

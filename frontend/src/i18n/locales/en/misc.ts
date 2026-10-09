@@ -22,6 +22,7 @@ export default {
     currentVersion: 'Current Version',
     latestVersion: 'Latest Version',
     upToDate: "You're running the latest version.",
+    onlineUpdateDisabled: 'This site is updated by deploying its Docker image; online update and rollback are off (they would install the official release and drop this site\'s own features).',
     updateAvailable: 'A new version is available!',
     releaseNotes: 'Release Notes',
     noReleaseNotes: 'No release notes',

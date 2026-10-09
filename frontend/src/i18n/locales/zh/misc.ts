@@ -22,6 +22,7 @@ export default {
     currentVersion: '当前版本',
     latestVersion: '最新版本',
     upToDate: '已是最新版本',
+    onlineUpdateDisabled: '本站通过 Docker 镜像部署更新，不支持在线升级或回滚（在线升级会换成官方原版，本站自己的功能会消失）',
     updateAvailable: '有新版本可用！',
     releaseNotes: '更新日志',
     noReleaseNotes: '暂无更新日志',

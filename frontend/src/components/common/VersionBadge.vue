@@ -2,7 +2,17 @@
   <div class="relative">
     <!-- Admin: Full version badge with dropdown -->
     <template v-if="isAdmin">
+      <!-- Online update off (this site deploys by Docker image): the version only -->
+      <span
+        v-if="updatesDisabled"
+        class="flex cursor-default items-center gap-1.5 rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-dark-800 dark:text-dark-400"
+        :title="t('version.onlineUpdateDisabled')"
+        data-testid="version-badge-static"
+      >
+        <span class="font-medium">v{{ currentVersion }}</span>
+      </span>
       <button
+        v-else
         @click="toggleDropdown"
         class="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs transition-colors"
         :class="[
@@ -676,6 +686,7 @@ const latestVersion = computed(() => appStore.latestVersion)
 const hasUpdate = computed(() => appStore.hasUpdate)
 const releaseInfo = computed(() => appStore.releaseInfo)
 const buildType = computed(() => appStore.buildType)
+const updatesDisabled = computed(() => appStore.onlineUpdateDisabled)
 
 // Update process states (local to this component)
 const updating = ref(false)

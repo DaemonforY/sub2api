@@ -19,6 +19,8 @@ export interface VersionInfo {
   cached: boolean
   warning?: string
   build_type: string // "source" for manual builds, "release" for CI builds
+  /** This build is deployed as a Docker image: no online update or rollback, only the version is shown. */
+  online_update_disabled?: boolean
 }
 
 /**

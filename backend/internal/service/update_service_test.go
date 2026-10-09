@@ -185,3 +185,28 @@ func TestUpdateServiceRollbackToVersionAcceptsVPrefix(t *testing.T) {
 	require.NotErrorIs(t, err, ErrRollbackVersionNotAllowed)
 	require.Contains(t, err.Error(), "no compatible release found")
 }
+
+// The provider switches online update off for this fork: nothing reaches GitHub (the stub panics on
+// any download) and update / rollback are refused even when an official release is newer.
+func TestUpdateServiceOnlineUpdateDisabled(t *testing.T) {
+	gh := &updateServiceGitHubClientStub{
+		release:        &GitHubRelease{TagName: "v0.2.15", Name: "v0.2.15"},
+		recentReleases: []*GitHubRelease{{TagName: "v0.2.0"}},
+	}
+	svc := ProvideUpdateService(&updateServiceCacheStub{}, gh, BuildInfo{Version: "0.2.1", BuildType: "release"})
+	ctx := context.Background()
+
+	info, err := svc.CheckUpdate(ctx, true)
+	require.NoError(t, err)
+	require.True(t, info.OnlineUpdateDisabled)
+	require.False(t, info.HasUpdate, "the official 0.2.15 is not offered")
+	require.Equal(t, "0.2.1", info.CurrentVersion)
+	require.Equal(t, "0.2.1", info.LatestVersion)
+	require.Nil(t, info.ReleaseInfo)
+
+	require.ErrorIs(t, svc.PerformUpdate(ctx), ErrOnlineUpdateDisabled)
+	require.ErrorIs(t, svc.Rollback(), ErrOnlineUpdateDisabled)
+	require.ErrorIs(t, svc.RollbackToVersion(ctx, "0.2.0"), ErrOnlineUpdateDisabled)
+	_, err = svc.ListRollbackVersions(ctx)
+	require.ErrorIs(t, err, ErrOnlineUpdateDisabled)
+}
