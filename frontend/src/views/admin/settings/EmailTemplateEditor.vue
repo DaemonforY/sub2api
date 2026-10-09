@@ -385,6 +385,11 @@ const eventDisplayMeta: Record<string, EventDisplayMeta> = {
     timing: "余额充值订单支付完成并入账后发送。",
     categoryLabel: "计费",
   },
+  "growth.winback": {
+    label: "老用户召回",
+    timing: "最近一次调用在 14～60 天前的用户，每人每季度最多一封；在推广设置中开启。有新功能时记得更新邮件里的「最近更新」列表。",
+    categoryLabel: "计费",
+  },
   "growth.trial_exhausted": {
     label: "体验金用完提醒",
     timing: "注册 30 天内用过产品、体验额度用完且从未付款的用户，每人发一次；在推广设置中开启。",
@@ -466,6 +471,11 @@ const eventDisplayMetaEn: Record<string, EventDisplayMeta> = {
   "balance.recharge_success": {
     label: "Balance Recharge Success",
     timing: "Sent after a balance recharge order is paid and credited.",
+    categoryLabel: "Billing",
+  },
+  "growth.winback": {
+    label: "Win-back",
+    timing: "Users whose last API call was 14–60 days ago, at most once a quarter. Turn it on in growth settings; keep the list of updates current.",
     categoryLabel: "Billing",
   },
   "growth.trial_exhausted": {

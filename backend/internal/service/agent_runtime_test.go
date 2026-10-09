@@ -183,7 +183,9 @@ func TestRunAgentEdges(t *testing.T) {
 	res, err = RunAgent(ctx, srv.Client(), AgentRunInput{GatewayURL: srv.URL, Model: "m", Messages: []AgentMessage{agentText("user", "q")},
 		Tools: []AgentTool{
 			{Name: "boom", Run: func(context.Context, json.RawMessage) (any, error) { panic("x") }},
-			{Name: "big", Run: func(context.Context, json.RawMessage) (any, error) { return strings.Repeat("长", agentMaxToolResult*2), nil }},
+			{Name: "big", Run: func(context.Context, json.RawMessage) (any, error) {
+				return strings.Repeat("长", agentMaxToolResult*2), nil
+			}},
 		}})
 	require.NoError(t, err)
 	require.Equal(t, "工具内部错误", res.Steps[0].Error)

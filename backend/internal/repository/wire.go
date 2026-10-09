@@ -110,6 +110,7 @@ var ProviderSet = wire.NewSet(
 	NewActivationReminderRepository,
 	NewAbandonedOrderRepository,
 	NewTrialExhaustedRepository,
+	NewWinbackRepository,
 	NewChannelLinkRepository,
 	NewAffiliateWithdrawRepository,
 	NewMarginRepository,

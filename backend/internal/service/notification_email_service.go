@@ -29,6 +29,7 @@ const (
 	NotificationEmailEventBalanceRechargeSuccess      = "balance.recharge_success"
 	NotificationEmailEventPaymentOrderAbandoned       = "payment.order_abandoned"
 	NotificationEmailEventGrowthTrialExhausted        = "growth.trial_exhausted"
+	NotificationEmailEventGrowthWinback               = "growth.winback"
 	NotificationEmailEventCoursePurchaseSuccess       = "course.purchase_success"
 	NotificationEmailEventCourseDeliveryUpdated       = "course.delivery_updated"
 	NotificationEmailEventAccountQuotaAlert           = "account.quota_alert"
@@ -920,6 +921,13 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 			"order_item_en":       "balance top-up",
 			"order_amount":        "50.00",
 			"purchase_url":        "https://example.com/purchase",
+			"days_away":           "21",
+			"balance":             "1.37",
+			"dashboard_url":       "https://example.com/dashboard",
+			"canvas_url":          "https://example.com/canvas",
+			"prompts_url":         "https://example.com/learn/prompts/",
+			"connect_url":         "https://example.com/learn/connect/",
+			"pricing_url":         "https://example.com/pricing",
 			"offer_text":          "现在首次充值再送 20%（最多送 $10），付款后自动到账。",
 			"offer_text_en":       "Your first top-up gets 20% extra (up to $10), credited automatically.",
 			"recharge_amount":     "50.00",
@@ -977,6 +985,13 @@ func notificationEmailSampleVariables(locale string) map[string]string {
 		"order_item_en":       "balance top-up",
 		"order_amount":        "50.00",
 		"purchase_url":        "https://example.com/purchase",
+		"days_away":           "21",
+		"balance":             "1.37",
+		"dashboard_url":       "https://example.com/dashboard",
+		"canvas_url":          "https://example.com/canvas",
+		"prompts_url":         "https://example.com/learn/prompts/",
+		"connect_url":         "https://example.com/learn/connect/",
+		"pricing_url":         "https://example.com/pricing",
 		"offer_text":          "现在首次充值再送 20%（最多送 $10），付款后自动到账。",
 		"offer_text_en":       "Your first top-up gets 20% extra (up to $10), credited automatically.",
 		"recharge_amount":     "50.00",
@@ -1116,6 +1131,14 @@ var notificationEmailEventDefinitions = map[string]NotificationEmailEventInfo{
 		Category:     "billing",
 		Optional:     false,
 		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "recharge_amount", "current_balance", "order_id"),
+	},
+	NotificationEmailEventGrowthWinback: {
+		Event:        NotificationEmailEventGrowthWinback,
+		Label:        "Win-back",
+		Description:  "Optional, at most once a quarter: users whose last API call was 14–60 days ago hear what's new (推广设置). Keep the list of updates current.",
+		Category:     "billing",
+		Optional:     true,
+		Placeholders: append(append([]string{}, notificationEmailCommonPlaceholders...), "days_away", "balance", "dashboard_url", "canvas_url", "prompts_url", "connect_url", "pricing_url", "offer_text", "offer_text_en", "unsubscribe_url"),
 	},
 	NotificationEmailEventGrowthTrialExhausted: {
 		Event:        NotificationEmailEventGrowthTrialExhausted,
@@ -1350,6 +1373,38 @@ var notificationEmailOfficialTemplates = map[string]map[string]notificationEmail
 <p>您的余额充值 <strong>${{recharge_amount}}</strong> 已完成。</p>
 <p>当前余额：<strong>${{current_balance}}</strong></p>
 			<p>订单号：{{order_id}}</p>`),
+		},
+	},
+	NotificationEmailEventGrowthWinback: {
+		notificationEmailDefaultLocale: {
+			Subject: "[{{site_name}}] It's been a while — here's what's new",
+			HTML: notificationEmailCard("#4f46e5", "What's new", `
+<p>Hello {{recipient_name}},</p>
+<p>You last used {{site_name}} {{days_away}} days ago, and you still have <strong>${{balance}}</strong> in your account. Here is what changed since:</p>
+<ul>
+<li>🎨 <a href="{{canvas_url}}">The canvas</a> draws with gpt-image-2, including posters and covers with Chinese text.</li>
+<li>📚 <a href="{{prompts_url}}">Image prompt library</a>: posters, product shots, social covers, ready to copy.</li>
+<li>🔌 <a href="{{connect_url}}">Setup guides</a> for Cherry Studio, Chatbox, n8n, Python, Node.js and more.</li>
+<li>💰 <a href="{{pricing_url}}">Subscription prices</a> are on the home page; for daily use they cost far less than pay-as-you-go.</li>
+</ul>
+<p>{{offer_text_en}}</p>
+<p><a class="button" href="{{dashboard_url}}">Open the dashboard</a></p>
+<p class="muted"><a href="{{unsubscribe_url}}">Unsubscribe from these emails</a></p>`),
+		},
+		notificationEmailLocaleChinese: {
+			Subject: "[{{site_name}}] 好久不见，最近更新了这些",
+			HTML: notificationEmailCard("#4f46e5", "最近更新", `
+<p>{{recipient_name}}，您好：</p>
+<p>你上次用 {{site_name}} 是 {{days_away}} 天前，账户里还有 <strong>${{balance}}</strong> 余额。这段时间我们更新了这些：</p>
+<ul>
+<li>🎨 <a href="{{canvas_url}}">无限画布</a>用 gpt-image-2 出图，带中文字的海报、封面也能直接画。</li>
+<li>📚 <a href="{{prompts_url}}">生图提示词大全</a>：海报、电商图、小红书封面，复制就能用。</li>
+<li>🔌 <a href="{{connect_url}}">接入教程</a>：Cherry Studio、Chatbox、n8n、Python、Node.js 等。</li>
+<li>💰 <a href="{{pricing_url}}">订阅价格</a>放到了首页，天天用的话订阅比按量便宜得多。</li>
+</ul>
+<p>{{offer_text}}</p>
+<p><a class="button" href="{{dashboard_url}}">回到控制台</a></p>
+<p class="muted"><a href="{{unsubscribe_url}}">退订此类邮件</a></p>`),
 		},
 	},
 	NotificationEmailEventGrowthTrialExhausted: {

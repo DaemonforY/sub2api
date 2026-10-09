@@ -141,6 +141,7 @@ export interface GrowthSettings {
   first_topup_min_amount: number
   abandoned_order_reminder: boolean
   trial_exhausted_email: boolean
+  winback_email: boolean
 }
 
 export const growthAPI = {

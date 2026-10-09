@@ -89,6 +89,8 @@ type GrowthSettings struct {
 	AbandonedOrderReminder bool `json:"abandoned_order_reminder"`
 	// 体验金用完提醒: one email when a recent sign-up spends the trial credit without paying.
 	TrialExhaustedEmail bool `json:"trial_exhausted_email"`
+	// 老用户召回: one email a quarter to users who stopped calling the API 14–60 days ago.
+	WinbackEmail bool `json:"winback_email"`
 	// 返利提现规则（字段平铺在 JSON 里：withdraw_enabled / withdraw_min_cny / withdraw_monthly_limit）
 	WithdrawSettings
 }
@@ -207,7 +209,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
-		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail,
+		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -237,6 +239,7 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		FirstTopupMinAmount:     math.Max(0, parseFloatOr(vals[SettingKeyGrowthFirstTopupMin], 0)),
 		AbandonedOrderReminder:  vals[SettingKeyGrowthAbandonedOrderReminder] == "true",
 		TrialExhaustedEmail:     vals[SettingKeyGrowthTrialExhaustedEmail] == "true",
+		WinbackEmail:            vals[SettingKeyGrowthWinbackEmail] == "true",
 		WithdrawSettings: WithdrawSettings{
 			Enabled:      vals[SettingKeyGrowthWithdrawEnabled] == "true",
 			MinCNY:       clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMinCNY], withdrawMinCNYDefault), withdrawMinCNYFloor, 100000),
@@ -314,6 +317,7 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthFirstTopupMin:          strconv.FormatFloat(in.FirstTopupMinAmount, 'f', -1, 64),
 		SettingKeyGrowthAbandonedOrderReminder: strconv.FormatBool(in.AbandonedOrderReminder),
 		SettingKeyGrowthTrialExhaustedEmail:    strconv.FormatBool(in.TrialExhaustedEmail),
+		SettingKeyGrowthWinbackEmail:           strconv.FormatBool(in.WinbackEmail),
 	}); err != nil {
 		return nil, fmt.Errorf("save growth settings: %w", err)
 	}
