@@ -67,6 +67,22 @@ ON CONFLICT (user_id) DO NOTHING`,
 	return err
 }
 
+func (r *analyticsRepository) SaveLateAttribution(ctx context.Context, a service.UserAttribution, createdAfter time.Time) error {
+	res, err := r.db.ExecContext(ctx, `
+INSERT INTO user_attributions (user_id, visitor_id, source, medium, campaign, aff_code, referrer_host, landing_path, first_seen_at)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+WHERE EXISTS (SELECT 1 FROM users WHERE id = $1 AND created_at >= $10)
+ON CONFLICT (user_id) DO NOTHING`,
+		a.UserID, a.VisitorID, a.Source, a.Medium, a.Campaign, a.AffCode, a.ReferrerHost, a.LandingPath, a.FirstSeenAt, createdAfter)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 && a.VisitorID != "" {
+		_, err = r.db.ExecContext(ctx, `UPDATE analytics_events SET user_id = $1 WHERE visitor_id = $2 AND user_id IS NULL`, a.UserID, a.VisitorID)
+	}
+	return err
+}
+
 func (r *analyticsRepository) DeleteEventsBefore(ctx context.Context, before time.Time) (int64, error) {
 	res, err := r.db.ExecContext(ctx, `DELETE FROM analytics_events WHERE created_at < $1`, before)
 	if err != nil {
@@ -345,6 +361,25 @@ FROM su GROUP BY 1 ORDER BY 1`, func(rows *sql.Rows) error {
 		out.Devices[d] = n
 		return nil
 	}); err != nil {
+		return nil, err
+	}
+
+	// Why sign-ups stop, and which home-page buttons send people to sign up.
+	breakdown := func(event, prop string, dst *[]service.AnalyticsBreakdown) error {
+		return q(`SELECT COALESCE(NULLIF(props->>$3::text, ''), '-'), COUNT(*), COUNT(DISTINCT visitor_id)
+FROM analytics_events WHERE created_at >= $1 AND event = $2 GROUP BY 1 ORDER BY 2 DESC LIMIT 20`, func(rows *sql.Rows) error {
+			var b service.AnalyticsBreakdown
+			if err := rows.Scan(&b.Key, &b.Count, &b.Visitors); err != nil {
+				return err
+			}
+			*dst = append(*dst, b)
+			return nil
+		}, event, prop)
+	}
+	if err := breakdown("signup_error", "reason", &out.SignupErrors); err != nil {
+		return nil, err
+	}
+	if err := breakdown("cta_click", "where", &out.CTAClicks); err != nil {
 		return nil, err
 	}
 	return out, nil

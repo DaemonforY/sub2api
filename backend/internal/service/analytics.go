@@ -37,6 +37,7 @@ var AnalyticsEventNames = map[string]bool{
 	"signup_view":       true, // register form shown
 	"signup_code_sent":  true, // email code sent
 	"signup_success":    true,
+	"signup_error":      true, // sign-up stopped: props.reason = field or API error code, props.step
 	"login_success":     true,
 	"key_created":       true,
 	"key_config_copied": true, // copied a key / client config from the "use key" dialog
@@ -127,12 +128,16 @@ type UserAttribution struct {
 type AnalyticsRepository interface {
 	InsertEvents(ctx context.Context, rows []AnalyticsEventRow) error
 	SaveAttribution(ctx context.Context, a UserAttribution) error
+	// SaveLateAttribution saves a.UserID's first touch only if that user signed up after
+	// createdAfter and has none yet (OAuth sign-ups never send it with the register call).
+	SaveLateAttribution(ctx context.Context, a UserAttribution, createdAfter time.Time) error
 	DeleteEventsBefore(ctx context.Context, before time.Time) (int64, error)
 	Overview(ctx context.Context, since time.Time, days int) (*AnalyticsOverview, error)
 }
 
 type AnalyticsService struct {
 	repo     AnalyticsRepository
+	lateDone sync.Map // user IDs already given a chance at a late attribution
 	stopOnce sync.Once
 	stop     chan struct{}
 	now      func() time.Time
@@ -216,7 +221,31 @@ func (s *AnalyticsService) Ingest(ctx context.Context, b AnalyticsBatch, meta An
 	if err := s.repo.InsertEvents(ctx, rows); err != nil {
 		return 0, err
 	}
+	s.recordLateSignup(ctx, b, meta.UserID)
 	return len(rows), nil
+}
+
+// analyticsLateSignupWindow: how soon after sign-up a signed-in batch may still set the user's source.
+const analyticsLateSignupWindow = time.Hour
+
+// recordLateSignup gives OAuth sign-ups (LinuxDo, WeChat, GitHub…), which never send attribution with
+// a register call, their first touch from the first signed-in batch after they land on the site. The
+// repository only writes it for accounts created within the window that have none yet, so e-mail
+// sign-ups and older users are untouched; each user is tried once per process.
+func (s *AnalyticsService) recordLateSignup(ctx context.Context, b AnalyticsBatch, userID int64) {
+	if userID <= 0 {
+		return
+	}
+	if _, seen := s.lateDone.LoadOrStore(userID, struct{}{}); seen {
+		return
+	}
+	a := normalizeAttribution(b.Attr)
+	a.UserID = userID
+	a.VisitorID = b.VisitorID
+	if err := s.repo.SaveLateAttribution(ctx, a, s.now().Add(-analyticsLateSignupWindow)); err != nil {
+		s.lateDone.Delete(userID)
+		logger.LegacyPrintf("service.analytics", "[Analytics] late attribution for user %d failed: %v", userID, err)
+	}
 }
 
 // RecordSignup saves where a new user came from. Errors are logged, never shown to the user.
@@ -379,6 +408,15 @@ type AnalyticsOverview struct {
 	Features  []AnalyticsFeature    `json:"features"`
 	Retention []AnalyticsCohort     `json:"retention"`
 	Devices   map[string]int64      `json:"devices"`
+	// Breakdowns of one event by one prop: signup_error by reason, cta_click by where.
+	SignupErrors []AnalyticsBreakdown `json:"signup_errors"`
+	CTAClicks    []AnalyticsBreakdown `json:"cta_clicks"`
+}
+
+type AnalyticsBreakdown struct {
+	Key      string `json:"key"`
+	Count    int64  `json:"count"`
+	Visitors int64  `json:"visitors"`
 }
 
 type AnalyticsTotals struct {

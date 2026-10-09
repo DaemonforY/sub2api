@@ -88,6 +88,7 @@ func TestAnalyticsRepositoryOverview(t *testing.T) {
 		_, err := svc.Ingest(ctx, service.AnalyticsBatch{VisitorID: v, App: "main", Attr: attr, Events: []service.AnalyticsBatchEvent{
 			{Name: "page_view", Path: "/home-" + sfx + "?token=secret"},
 			{Name: "signup_view", Path: "/register"},
+			{Name: "signup_error", Path: "/register", Props: map[string]any{"reason": "why-" + sfx[len(sfx)-8:]}},
 		}}, service.AnalyticsRequestMeta{IP: "203.0.113.77", UserAgent: ua})
 		require.NoError(t, err)
 	}
@@ -176,6 +177,15 @@ func TestAnalyticsRepositoryOverview(t *testing.T) {
 	require.GreaterOrEqual(t, ov.Funnel[2].Count, int64(2))
 	require.NotEmpty(t, ov.Retention)
 	require.GreaterOrEqual(t, ov.Devices["mobile"], int64(2))
+	var why *service.AnalyticsBreakdown
+	for i := range ov.SignupErrors {
+		if ov.SignupErrors[i].Key == "why-"+sfx[len(sfx)-8:] {
+			why = &ov.SignupErrors[i]
+		}
+	}
+	require.NotNil(t, why, "signup_error broken down by reason")
+	require.Equal(t, int64(2), why.Count)
+	require.Equal(t, int64(2), why.Visitors)
 	require.GreaterOrEqual(t, ov.Totals.PaidUsers, int64(1))
 
 	// Old events are cleaned up.
@@ -452,4 +462,37 @@ func TestMarginRepositoryLoad(t *testing.T) {
 	require.InDelta(t, 170, users[payer.ID].UsageUSD, 1e-9)
 	require.InDelta(t, 12, users[payer.ID].BilledUSD, 1e-9)
 	require.InDelta(t, 170, users[payer.ID].Paid, 1e-9)
+}
+
+func TestAnalyticsRepositorySaveLateAttribution(t *testing.T) {
+	ctx := context.Background()
+	rows := trackCommitted(t)
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	repo := NewAnalyticsRepository(integrationDB)
+	mk := func(tag string) *service.User {
+		return rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "late-" + tag + "-" + sfx + "@test.local", Username: "late" + tag + sfx[len(sfx)-6:]}))
+	}
+	source := func(id int64) string {
+		var s string
+		err := integrationDB.QueryRowContext(ctx, `SELECT source FROM user_attributions WHERE user_id = $1`, id).Scan(&s)
+		if err != nil {
+			return ""
+		}
+		return s
+	}
+	hourAgo := time.Now().Add(-time.Hour)
+
+	// A fresh OAuth sign-up gets its source.
+	fresh := mk("fresh")
+	require.NoError(t, repo.SaveLateAttribution(ctx, service.UserAttribution{UserID: fresh.ID, Source: "oauth-src"}, hourAgo))
+	require.Equal(t, "oauth-src", source(fresh.ID))
+
+	// An e-mail sign-up already has one: kept.
+	require.NoError(t, repo.SaveLateAttribution(ctx, service.UserAttribution{UserID: fresh.ID, Source: "later"}, hourAgo))
+	require.Equal(t, "oauth-src", source(fresh.ID))
+
+	// Someone who signed up before the window is left alone.
+	old := mk("old")
+	require.NoError(t, repo.SaveLateAttribution(ctx, service.UserAttribution{UserID: old.ID, Source: "oauth-src"}, time.Now().Add(time.Hour)))
+	require.Empty(t, source(old.ID))
 }

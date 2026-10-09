@@ -81,6 +81,27 @@
 
           <!-- Devices + retention -->
           <div class="card space-y-4 p-4">
+            <div v-for="b in breakdowns" :key="b.key" :data-testid="`analytics-breakdown-${b.key}`">
+              <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t(`admin.analytics.breakdown.${b.key}.title`) }}</h3>
+              <p class="mb-2 text-xs text-gray-500">{{ t(`admin.analytics.breakdown.${b.key}.hint`) }}</p>
+              <table v-if="b.rows.length" class="w-full text-sm">
+                <thead>
+                  <tr class="text-left text-xs text-gray-500">
+                    <th class="py-1">{{ t(`admin.analytics.breakdown.${b.key}.col`) }}</th>
+                    <th>{{ t('admin.analytics.breakdown.count') }}</th>
+                    <th>{{ t('admin.analytics.breakdown.visitors') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in b.rows" :key="r.key" class="border-t border-gray-100 dark:border-dark-700">
+                    <td class="py-1 font-mono text-xs">{{ r.key }}</td>
+                    <td>{{ r.count }}</td>
+                    <td>{{ r.visitors }}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-else class="text-sm text-gray-500">{{ t('admin.analytics.empty') }}</p>
+            </div>
             <div>
               <h3 class="mb-2 text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.analytics.devices') }}</h3>
               <div v-if="deviceRows.length" class="flex flex-wrap gap-4 text-sm">
@@ -319,6 +340,10 @@ const deviceRows = computed(() =>
     .map(([name, n]) => ({ name, n }))
     .sort((a, b) => b.n - a.n)
 )
+const breakdowns = computed(() => [
+  { key: 'signupErrors', rows: data.value?.signup_errors || [] },
+  { key: 'ctaClicks', rows: data.value?.cta_clicks || [] }
+])
 const deviceTotal = computed(() => deviceRows.value.reduce((s, d) => s + d.n, 0))
 
 function pct(n: number, of: number): string {

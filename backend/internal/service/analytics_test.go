@@ -12,8 +12,10 @@ import (
 )
 
 type memAnalyticsRepo struct {
-	rows  []AnalyticsEventRow
-	attrs []UserAttribution
+	rows      []AnalyticsEventRow
+	attrs     []UserAttribution
+	late      []UserAttribution
+	lateAfter time.Time
 }
 
 func (m *memAnalyticsRepo) InsertEvents(_ context.Context, rows []AnalyticsEventRow) error {
@@ -22,6 +24,11 @@ func (m *memAnalyticsRepo) InsertEvents(_ context.Context, rows []AnalyticsEvent
 }
 func (m *memAnalyticsRepo) SaveAttribution(_ context.Context, a UserAttribution) error {
 	m.attrs = append(m.attrs, a)
+	return nil
+}
+func (m *memAnalyticsRepo) SaveLateAttribution(_ context.Context, a UserAttribution, after time.Time) error {
+	m.late = append(m.late, a)
+	m.lateAfter = after
 	return nil
 }
 func (m *memAnalyticsRepo) DeleteEventsBefore(context.Context, time.Time) (int64, error) {
@@ -119,4 +126,33 @@ func TestAnalyticsIPPrefix(t *testing.T) {
 	require.Equal(t, "10.1.2.0", analyticsIPPrefix("10.1.2.3"))
 	require.Equal(t, "2001:db8:1::", analyticsIPPrefix("2001:db8:1:2::3"))
 	require.Empty(t, analyticsIPPrefix("nope"))
+}
+
+func TestAnalyticsLateSignupAttributionForOAuthUsers(t *testing.T) {
+	repo := &memAnalyticsRepo{}
+	s := NewAnalyticsService(repo)
+	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	s.now = func() time.Time { return now }
+	ctx := context.Background()
+	batch := AnalyticsBatch{
+		VisitorID: "visitor-123456",
+		Attr:      AnalyticsAttribution{Source: "poster", Medium: "edu"},
+		Events:    []AnalyticsBatchEvent{{Name: "page_view", Path: "/dashboard"}},
+	}
+
+	_, err := s.Ingest(ctx, batch, AnalyticsRequestMeta{UserAgent: browserUA})
+	require.NoError(t, err)
+	require.Empty(t, repo.late, "anonymous batches never set a user's source")
+
+	_, err = s.Ingest(ctx, batch, AnalyticsRequestMeta{UserID: 9, UserAgent: browserUA})
+	require.NoError(t, err)
+	require.Len(t, repo.late, 1)
+	require.Equal(t, int64(9), repo.late[0].UserID)
+	require.Equal(t, "poster", repo.late[0].Source)
+	require.Equal(t, "visitor-123456", repo.late[0].VisitorID)
+	require.Equal(t, now.Add(-time.Hour), repo.lateAfter, "only accounts created in the last hour")
+
+	_, err = s.Ingest(ctx, batch, AnalyticsRequestMeta{UserID: 9, UserAgent: browserUA})
+	require.NoError(t, err)
+	require.Len(t, repo.late, 1, "tried once per user")
 }

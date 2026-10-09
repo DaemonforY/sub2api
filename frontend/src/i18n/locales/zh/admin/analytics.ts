@@ -207,12 +207,27 @@ export default {
     retention: '留存（按注册周）',
     retentionHint: '回访 = 当天登录后有操作或有 API 调用。',
     devices: '设备',
+    breakdown: {
+      count: '次数',
+      visitors: '访客',
+      signupErrors: {
+        title: '注册失败原因',
+        hint: '提交注册时被拦下的原因：表单字段（email_suffix 邮箱后缀不允许、captcha 人机验证、agreement 未同意协议…）或后端错误码；step 为 send_code / verify 的来自邮箱验证码页。',
+        col: '原因'
+      },
+      ctaClicks: {
+        title: '首页按钮点击',
+        hint: '首页上去注册 / 登录的按钮各被点了多少次：nav-register 导航注册、hero-bonus 送额度提示、hero-key 获取 API Key、final-cta 页底立即开始、nav-login 登录。',
+        col: '按钮'
+      }
+    },
     device: { desktop: '电脑', mobile: '手机', tablet: '平板', '': '未知' },
     apps: { main: '主站', learn: '学习站', editor: '排版' },
     events: {
       signup_view: '打开注册页',
       signup_code_sent: '发送注册验证码',
       signup_success: '注册成功',
+      signup_error: '注册失败',
       login_success: '登录成功',
       key_created: '创建 API Key',
       key_config_copied: '复制接入配置',

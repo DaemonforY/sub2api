@@ -43,6 +43,14 @@ export interface AnalyticsOverview {
   features: { event: string; count: number; visitors: number; users: number }[] | null
   retention: { week: string; signups: number; day1: number; day2_7: number; day8_30: number; activated: number }[] | null
   devices: Record<string, number>
+  signup_errors?: AnalyticsBreakdown[] | null
+  cta_clicks?: AnalyticsBreakdown[] | null
+}
+
+export interface AnalyticsBreakdown {
+  key: string
+  count: number
+  visitors: number
 }
 
 export async function getOverview(days: number): Promise<AnalyticsOverview> {

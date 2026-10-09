@@ -1097,6 +1097,7 @@ async function handleRegister(): Promise<void> {
 
   // Validate form
   if (!validateForm()) {
+    track('signup_error', { reason: formErrorReason() })
     return
   }
 
@@ -1110,6 +1111,7 @@ async function handleRegister(): Promise<void> {
     // If promo code is invalid, block submission
     if (promoValidation.invalid) {
       errorMessage.value = t('auth.promoCodeInvalidCannotRegister')
+      track('signup_error', { reason: 'promo_code' })
       return
     }
   }
@@ -1123,6 +1125,7 @@ async function handleRegister(): Promise<void> {
     if (affiliateValidation.invalid) {
       errorMessage.value = t('auth.affiliateCodeInvalidCannotRegister')
       appStore.showError(errorMessage.value)
+      track('signup_error', { reason: 'aff_code' })
       return
     }
   }
@@ -1137,6 +1140,7 @@ async function handleRegister(): Promise<void> {
     // If invitation code is invalid, block submission
     if (invitationValidation.invalid) {
       errorMessage.value = t('auth.invitationCodeInvalidCannotRegister')
+      track('signup_error', { reason: 'invitation_code' })
       return
     }
     // If invitation code is required but not validated yet
@@ -1217,6 +1221,7 @@ async function handleRegister(): Promise<void> {
   } catch (error: unknown) {
     // Handle registration error
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.registrationFailed'))
+    track('signup_error', { reason: extractApiErrorCode(error) || 'unknown', step: 'register' })
 
     // Also show error toast
     appStore.showError(errorMessage.value)
@@ -1233,6 +1238,16 @@ async function handleRegister(): Promise<void> {
     }
     isLoading.value = false
   }
+}
+
+// Which field stopped the form, for the signup_error event (no field values are sent).
+function formErrorReason(): string {
+  if (agreementGateActive.value) return 'agreement'
+  if (errors.email) return errors.email === buildEmailSuffixNotAllowedMessage() ? 'email_suffix' : 'email'
+  if (errors.password) return 'password'
+  if (errors.invitation_code) return 'invitation_code'
+  if (errors.turnstile) return 'captcha'
+  return 'form'
 }
 
 function buildRegistrationErrorMessage(error: unknown, fallback: string): string {

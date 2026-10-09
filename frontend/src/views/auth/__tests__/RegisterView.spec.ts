@@ -2,8 +2,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RegisterView from '@/views/auth/RegisterView.vue'
 
-const { getPublicSettingsMock, registerMock, showErrorMock, validateAffiliateCodeMock, validateInvitationCodeMock } = vi.hoisted(() => ({
+const { getPublicSettingsMock, registerMock, showErrorMock, trackMock, validateAffiliateCodeMock, validateInvitationCodeMock } = vi.hoisted(() => ({
   getPublicSettingsMock: vi.fn(),
+  trackMock: vi.fn(),
   registerMock: vi.fn(),
   showErrorMock: vi.fn(),
   validateAffiliateCodeMock: vi.fn(),
@@ -56,6 +57,11 @@ vi.mock('@/stores', () => ({
   })
 }))
 
+vi.mock('@/utils/analytics', async () => {
+  const actual = await vi.importActual<typeof import('@/utils/analytics')>('@/utils/analytics')
+  return { ...actual, track: (...args: unknown[]) => trackMock(...args) }
+})
+
 vi.mock('@/api/auth', async () => {
   const actual = await vi.importActual<typeof import('@/api/auth')>('@/api/auth')
   return {
@@ -90,6 +96,7 @@ describe('RegisterView invitation layout', () => {
     getPublicSettingsMock.mockReset()
     registerMock.mockReset()
     showErrorMock.mockReset()
+    trackMock.mockReset()
     getPublicSettingsMock.mockResolvedValue(publicSettings)
     registerMock.mockResolvedValue({})
     validateAffiliateCodeMock.mockReset()
@@ -214,6 +221,7 @@ describe('RegisterView invitation layout', () => {
     expect(showErrorMock).toHaveBeenCalledWith(
       '该邮箱域名无法注册新账户。请使用主流邮箱注册；如需使用企业邮箱，请联系客服添加域名白名单。'
     )
+    expect(trackMock).toHaveBeenCalledWith('signup_error', { reason: 'EMAIL_DOMAIN_REGISTRATION_LIMIT', step: 'register' })
   })
 
   // 域名限量注册开关默认关闭：恢复 PR5423 之前的客户端白名单预检，非白名单域名不发起注册请求。
@@ -235,6 +243,7 @@ describe('RegisterView invitation layout', () => {
     // 校验失败通过 validationToastMessage watcher 弹 toast
     expect(showErrorMock).toHaveBeenCalledWith('auth.emailSuffixNotAllowedWithAllowed')
     expect(wrapper.get('#email').classes()).toContain('input-error')
+    expect(trackMock).toHaveBeenCalledWith('signup_error', { reason: 'email_suffix' })
   })
 
   it('still submits whitelisted email domains when the domain quota switch is disabled', async () => {

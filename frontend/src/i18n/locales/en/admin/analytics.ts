@@ -207,12 +207,27 @@ export default {
     retention: 'Retention (by sign-up week)',
     retentionHint: 'Back = signed-in activity or an API call that day.',
     devices: 'Devices',
+    breakdown: {
+      count: 'Count',
+      visitors: 'Visitors',
+      signupErrors: {
+        title: 'Why sign-ups fail',
+        hint: 'What stopped a sign-up: a form field (email_suffix, captcha, agreement…) or the API error code; step send_code / verify comes from the email code page.',
+        col: 'Reason'
+      },
+      ctaClicks: {
+        title: 'Home page buttons',
+        hint: 'Clicks on the home page sign-up / login buttons: nav-register, hero-bonus, hero-key, final-cta, nav-login.',
+        col: 'Button'
+      }
+    },
     device: { desktop: 'Desktop', mobile: 'Mobile', tablet: 'Tablet', '': 'Unknown' },
     apps: { main: 'Main', learn: 'Learn', editor: 'Editor' },
     events: {
       signup_view: 'Opened sign-up',
       signup_code_sent: 'Sent sign-up code',
       signup_success: 'Signed up',
+      signup_error: 'Sign-up failed',
       login_success: 'Signed in',
       key_created: 'Created an API key',
       key_config_copied: 'Copied client config',

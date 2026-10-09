@@ -611,6 +611,7 @@ async function sendCode(): Promise<void> {
     showResendTurnstile.value = false
   } catch (error: unknown) {
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.sendCodeFailed'))
+    track('signup_error', { reason: extractApiErrorCode(error) || 'unknown', step: 'send_code' })
 
     appStore.showError(errorMessage.value)
     if (extractApiErrorMetadata(error)?.captcha_required === 'true') {
@@ -790,6 +791,7 @@ async function handleVerify(): Promise<void> {
     await router.push(pendingRedirect.value || '/dashboard')
   } catch (error: unknown) {
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.verifyFailed'))
+    track('signup_error', { reason: extractApiErrorCode(error) || 'unknown', step: 'verify' })
 
     appStore.showError(errorMessage.value)
   } finally {
