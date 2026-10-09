@@ -13,7 +13,7 @@ import (
 )
 
 // Activation reminder: one email, once, to people who signed up 24–72 hours ago and haven't made
-// an API call yet — the three steps to get going, with links. Off until an admin turns it on in
+// an API call yet — two ways to get going (draw on the canvas, or set up Codex), with links. Off until an admin turns it on in
 // 后台「数据看板」.
 const (
 	SettingKeyActivationReminderEnabled = "activation_reminder_enabled"
@@ -22,7 +22,8 @@ const (
 	activationReminderUntil    = 72 * time.Hour
 	activationReminderBatch    = 50
 	activationReminderInterval = time.Hour
-	activationReminderSubject  = "3 分钟在 Codex / Claude Code 里用上 HiveGPT"
+	activationReminderSubject  = "3 分钟用上 HiveGPT：画第一张图，或接入 Codex"
+	activationReminderCanvas   = "https://canvas.hivegpt.cn/"
 )
 
 // ActivationReminderUser is someone the reminder may go to.
@@ -203,17 +204,20 @@ func ActivationReminderBody(base, username string) string {
 <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">
   <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;padding:24px 28px">
     <div style="font-size:20px;font-weight:700">HiveGPT</div>
-    <div style="font-size:14px;opacity:.9;margin-top:4px">3 分钟接入你的编程工具</div>
+    <div style="font-size:14px;opacity:.9;margin-top:4px">3 分钟用上第一次</div>
   </div>
   <div style="padding:24px 28px;font-size:15px;line-height:1.75">
     <p>%s：</p>
-    <p>你前两天注册了 HiveGPT，还没有发出第一次请求。很多人是卡在配置这一步，下面三步大约 3 分钟：</p>
-    <ol style="padding-left:20px">
+    <p>你前两天注册了 HiveGPT，还没有用过。按你想做的事选一条，大约 3 分钟：</p>
+    <p style="margin-bottom:4px"><b>🎨 想用 AI 画图</b></p>
+    <p style="margin-top:0">打开<a href="%s" style="color:#4f46e5">无限画布</a>，用 HiveGPT 账号一键连接，输入一句话就能出图，不用配置任何东西。</p>
+    <p style="margin-bottom:4px"><b>💻 想在 Codex 里写代码</b></p>
+    <ol style="padding-left:20px;margin-top:0">
       <li><b>创建一个 API Key</b>：<a href="%s" style="color:#4f46e5">去创建</a></li>
-      <li><b>复制接入配置</b>：在 Key 的「使用」里选 Codex 或 Claude Code，按步骤复制到电脑上。<a href="%s" style="color:#4f46e5">查看接入配置</a></li>
-      <li><b>发出第一次请求</b>：在终端运行 codex 或 claude，随便问一句；控制台的「三步开始使用」会自动打勾。</li>
+      <li><b>复制接入配置</b>：在 Key 的「使用」里选 Codex，按步骤复制到电脑上。<a href="%s" style="color:#4f46e5">查看接入配置</a></li>
+      <li><b>发出第一次请求</b>：在终端运行 codex，随便问一句；控制台的「三步开始使用」会自动打勾。详细步骤见 <a href="%s" style="color:#4f46e5">Codex 接入教程</a>。</li>
     </ol>
-    <p>详细步骤见 <a href="%s" style="color:#4f46e5">Codex 接入教程</a>。账户余额为 0 且没有订阅时调用会失败，可以先在控制台充值或购买订阅。</p>
+    <p>账户余额为 0 且没有订阅时，画图和调用都会失败，可以先<a href="%s" style="color:#4f46e5">充值或购买订阅</a>。</p>
     <p>遇到问题，可以在首页右下角问智能客服。</p>
     <p style="text-align:center;margin:28px 0 8px"><a href="%s" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-weight:600">打开控制台</a></p>
   </div>
@@ -221,7 +225,9 @@ func ActivationReminderBody(base, username string) string {
     你收到这封邮件，是因为用这个邮箱注册了 HiveGPT。上手提醒只发这一封，不会再发。
   </div>
 </div>
-</body></html>`, hello, link("/keys?action=create", "key"), link("/keys?action=use", "config"), link("/learn/codex/hivegpt", "tutorial"), link("/dashboard", "dashboard"))
+</body></html>`, hello, html.EscapeString(activationReminderCanvas+"?utm_source=email&utm_medium=activation&utm_campaign=canvas"),
+		link("/keys?action=create", "key"), link("/keys?action=use", "config"), link("/learn/codex/hivegpt", "tutorial"),
+		link("/purchase", "purchase"), link("/dashboard", "dashboard"))
 }
 
 func sepFor(path string) string {

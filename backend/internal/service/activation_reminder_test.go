@@ -109,6 +109,10 @@ func TestActivationReminderBodyAndStatus(t *testing.T) {
 	require.Contains(t, body, `href="https://hivegpt.cn/keys?action=create&amp;utm_source=email&amp;utm_medium=activation&amp;utm_campaign=key"`)
 	require.Contains(t, body, "/learn/codex/hivegpt?utm_source=email")
 	require.Contains(t, body, "只发这一封")
+	require.Contains(t, body, `href="https://canvas.hivegpt.cn/?utm_source=email&amp;utm_medium=activation&amp;utm_campaign=canvas"`)
+	require.Contains(t, body, "/purchase?utm_source=email")
+	require.NotContains(t, body, "Claude Code", "Claude Code cannot use HiveGPT's groups yet")
+	require.NotContains(t, activationReminderSubject, "Claude Code")
 	require.False(t, strings.Contains(ActivationReminderBody("https://x", ""), "你好，"))
 
 	s, _, _, _ := newReminderFixture()
