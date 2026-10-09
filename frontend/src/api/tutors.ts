@@ -30,6 +30,8 @@ export interface Tutor {
   grade: string
   style: string
   answer_mode: 'guide' | 'answer'
+  /** standard: the learning site's model; economy: a cheaper model. */
+  model_tier: 'standard' | 'economy'
   rules: string
   greeting: string
   share_code: string
@@ -45,6 +47,8 @@ export interface Tutor {
   key_problem?: string
   /** One question on the key with the current materials: low when the prompt is cached, high when not (USD). */
   cost?: TutorCost
+  /** Both tiers, for comparison. */
+  costs?: Partial<Record<'standard' | 'economy', TutorCost>>
 }
 
 export interface TutorCost {
@@ -57,7 +61,7 @@ export interface TutorCost {
 
 export type TutorInput = Pick<
   Tutor,
-  'key_id' | 'name' | 'template' | 'subject' | 'grade' | 'style' | 'answer_mode' | 'rules' | 'greeting' | 'pass_code' | 'per_student_day' | 'daily_cap' | 'enabled'
+  'key_id' | 'name' | 'template' | 'subject' | 'grade' | 'style' | 'answer_mode' | 'model_tier' | 'rules' | 'greeting' | 'pass_code' | 'per_student_day' | 'daily_cap' | 'enabled'
 >
 
 export interface TutorStudent {

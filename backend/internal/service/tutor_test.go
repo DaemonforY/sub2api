@@ -417,8 +417,12 @@ type tutorPricerStub struct{ calls []UsageTokens }
 
 func (p *tutorPricerStub) EstimateTextCost(_ context.Context, k *APIKey, model string, tokens UsageTokens) (float64, bool) {
 	p.calls = append(p.calls, tokens)
-	// $5 / M input, $0.5 / M cached, $30 / M output
-	return float64(tokens.InputTokens)*5e-6 + float64(tokens.CacheReadTokens)*5e-7 + float64(tokens.OutputTokens)*3e-5, k.Key == "sk-teacher"
+	// $5 / M input, $0.5 / M cached, $30 / M output; the economy model a tenth of that
+	f := 1.0
+	if model == tutorEconomyModel {
+		f = 0.1
+	}
+	return f * (float64(tokens.InputTokens)*5e-6 + float64(tokens.CacheReadTokens)*5e-7 + float64(tokens.OutputTokens)*3e-5), k.Key == "sk-teacher"
 }
 
 func TestTutorCostEstimate(t *testing.T) {
@@ -446,4 +450,32 @@ func TestTutorCostEstimate(t *testing.T) {
 	long, _ := svc.Get(ctx, 5, tu.ID)
 	require.Equal(t, (tutorEstPromptChars+tutorEstPassageChars+tutorEstHistoryChars)*2/3, long.Cost.InputTokens)
 	require.Less(t, long.Cost.High, mid.Cost.High, "only the best passages are sent for long materials")
+
+	// Both tiers are quoted; Cost follows the chosen one.
+	require.Equal(t, long.Costs[TutorStandard], long.Cost)
+	require.InDelta(t, long.Costs[TutorStandard].High/10, long.Costs[TutorEconomy].High, 1e-12)
+	require.Equal(t, tutorEconomyModel, long.Costs[TutorEconomy].Model)
+}
+
+func TestTutorModelTier(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _, _ := newTutorForTest(t)
+	var models []string
+	svc.chat = func(_ context.Context, _, model string, _ []LearnMessage, _ int, onDelta func(string) error) (*LearnTutorResult, error) {
+		models = append(models, model)
+		return &LearnTutorResult{}, onDelta("好")
+	}
+	tu, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", ModelTier: "weird", Enabled: true})
+	require.NoError(t, err)
+	require.Equal(t, TutorStandard, tu.ModelTier, "unknown tiers fall back to standard")
+	ask := func() {
+		require.NoError(t, svc.Preview(ctx, 5, tu.ID, TutorChatInput{Messages: []LearnMessage{{Role: "user", Content: "q"}}}, func(string) error { return nil }))
+	}
+	ask()
+	tu, err = svc.Update(ctx, 5, tu.ID, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", ModelTier: TutorEconomy, PerStudentDay: 20, Enabled: true})
+	require.NoError(t, err)
+	require.Equal(t, TutorEconomy, tu.ModelTier)
+	ask()
+	require.Equal(t, []string{svc.model(ctx), tutorEconomyModel}, models)
+	require.NotEqual(t, tutorEconomyModel, svc.model(ctx))
 }

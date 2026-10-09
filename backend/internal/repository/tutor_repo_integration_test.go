@@ -19,7 +19,7 @@ func TestTutorRepository(t *testing.T) {
 	t.Cleanup(func() { _, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM tutors WHERE user_id = $1`, user.ID) })
 	repo := NewTutorRepository(integrationDB)
 
-	tu := &service.Tutor{UserID: user.ID, KeyID: 9, Name: "数学助教", Template: "qa", AnswerMode: "guide", ShareCode: "c" + suffix[len(suffix)-7:],
+	tu := &service.Tutor{UserID: user.ID, KeyID: 9, Name: "数学助教", Template: "qa", AnswerMode: "guide", ModelTier: "standard", ShareCode: "c" + suffix[len(suffix)-7:],
 		PassCode: "8023", PerStudentDay: 20, DailyCap: 300, Enabled: true}
 	require.NoError(t, repo.Create(ctx, tu))
 	got, err := repo.GetByCode(ctx, tu.ShareCode)
@@ -29,10 +29,11 @@ func TestTutorRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, other)
 
-	tu.Name, tu.Enabled = "改名了", false
+	tu.Name, tu.Enabled, tu.ModelTier = "改名了", false, "economy"
 	require.NoError(t, repo.Update(ctx, tu))
 	got, _ = repo.Get(ctx, user.ID, tu.ID)
 	require.Equal(t, "改名了", got.Name)
+	require.Equal(t, "economy", got.ModelTier)
 	require.False(t, got.Enabled)
 
 	m, err := repo.AddMaterial(ctx, tu.ID, "讲义.docx", "勾股定理：a²+b²=c²")

@@ -26,6 +26,10 @@ const (
 	TutorGuide  = "guide"  // lead students to the answer
 	TutorAnswer = "answer" // explain and give answers
 
+	TutorStandard     = "standard" // the learning site's model
+	TutorEconomy      = "economy"  // a cheaper model, about a tenth of the price
+	tutorEconomyModel = "gpt-5.6-luna"
+
 	tutorMaxPerTeacher    = 20
 	tutorMaxMaterials     = 20
 	tutorMaxMaterialChars = 300000 // all materials of one assistant
@@ -66,6 +70,7 @@ type Tutor struct {
 	Grade         string          `json:"grade"`
 	Style         string          `json:"style"`
 	AnswerMode    string          `json:"answer_mode"`
+	ModelTier     string          `json:"model_tier"`
 	Rules         string          `json:"rules"`
 	Greeting      string          `json:"greeting"`
 	ShareCode     string          `json:"share_code"`
@@ -80,6 +85,8 @@ type Tutor struct {
 	KeyName       string          `json:"key_name,omitempty"`
 	KeyProblem    string          `json:"key_problem,omitempty"`
 	Cost          *TutorCost      `json:"cost,omitempty"`
+	// Costs quotes both tiers (standard, economy) so the teacher can compare.
+	Costs map[string]*TutorCost `json:"costs,omitempty"`
 }
 
 // TutorCost estimates one question on the assistant's key with its current materials: Low when the
@@ -192,7 +199,7 @@ const (
 )
 
 // estimate prices a typical question: prompt + materials (all, or the passages) + history in, an answer out.
-func (s *TutorService) estimate(ctx context.Context, key *APIKey, materialChars int) *TutorCost {
+func (s *TutorService) estimate(ctx context.Context, key *APIKey, model string, materialChars int) *TutorCost {
 	if s.price == nil || key == nil {
 		return nil
 	}
@@ -201,7 +208,6 @@ func (s *TutorService) estimate(ctx context.Context, key *APIKey, materialChars 
 	}
 	prefix := (tutorEstPromptChars + materialChars) * 2 / 3
 	rest := tutorEstHistoryChars * 2 / 3
-	model := s.model(ctx)
 	high, ok := s.price.EstimateTextCost(ctx, key, model, UsageTokens{InputTokens: prefix + rest, OutputTokens: tutorEstOutputTokens})
 	if !ok {
 		return nil
@@ -211,6 +217,14 @@ func (s *TutorService) estimate(ctx context.Context, key *APIKey, materialChars 
 		low = high
 	}
 	return &TutorCost{Low: low, High: high, InputTokens: prefix + rest, OutputTokens: tutorEstOutputTokens, Model: model}
+}
+
+// tierModel is the model behind a tier: 经济 is a fixed cheaper model, 标准 the learning site's.
+func (s *TutorService) tierModel(ctx context.Context, tier string) string {
+	if tier == TutorEconomy {
+		return tutorEconomyModel
+	}
+	return s.model(ctx)
 }
 
 func (s *TutorService) model(ctx context.Context) string {
@@ -249,6 +263,7 @@ type TutorInput struct {
 	Grade         string `json:"grade"`
 	Style         string `json:"style"`
 	AnswerMode    string `json:"answer_mode"`
+	ModelTier     string `json:"model_tier"`
 	Rules         string `json:"rules"`
 	Greeting      string `json:"greeting"`
 	PassCode      string `json:"pass_code"`
@@ -271,6 +286,9 @@ func (s *TutorService) apply(ctx context.Context, userID int64, t *Tutor, in Tut
 	if in.AnswerMode != TutorAnswer {
 		in.AnswerMode = TutorGuide
 	}
+	if in.ModelTier != TutorEconomy {
+		in.ModelTier = TutorStandard
+	}
 	pass := strings.TrimSpace(in.PassCode)
 	if utf8.RuneCountInString(pass) > 20 {
 		return ErrTutorInput
@@ -288,6 +306,7 @@ func (s *TutorService) apply(ctx context.Context, userID int64, t *Tutor, in Tut
 	t.Grade = articleClip(strings.TrimSpace(in.Grade), 40)
 	t.Style = articleClip(strings.TrimSpace(in.Style), 100)
 	t.AnswerMode = in.AnswerMode
+	t.ModelTier = in.ModelTier
 	t.Rules = articleClip(strings.TrimSpace(in.Rules), 2000)
 	t.Greeting = articleClip(strings.TrimSpace(in.Greeting), 500)
 	t.PassCode = pass
@@ -355,7 +374,13 @@ func (s *TutorService) Get(ctx context.Context, userID, id int64) (*Tutor, error
 	if s.learn != nil {
 		if k, err := s.learn.ownKey(ctx, userID, t.KeyID); err == nil {
 			t.KeyName = k.Name
-			t.Cost = s.estimate(ctx, k, t.MaterialChars)
+			t.Costs = map[string]*TutorCost{}
+			for _, tier := range []string{TutorStandard, TutorEconomy} {
+				if c := s.estimate(ctx, k, s.tierModel(ctx, tier), t.MaterialChars); c != nil {
+					t.Costs[tier] = c
+				}
+			}
+			t.Cost = t.Costs[t.ModelTier]
 		} else {
 			t.KeyProblem = infraerrors.Message(err)
 		}
@@ -725,7 +750,7 @@ func (s *TutorService) answer(ctx context.Context, t *Tutor, key string, in Tuto
 		return err
 	}
 	msgs := append([]LearnMessage{{Role: "system", Content: tutorSystemPrompt(t, materials, partial)}}, in.Messages...)
-	_, err = s.chat(ctx, key, s.model(ctx), msgs, tutorMaxOutputTokens, onDelta)
+	_, err = s.chat(ctx, key, s.tierModel(ctx, t.ModelTier), msgs, tutorMaxOutputTokens, onDelta)
 	return err
 }
 

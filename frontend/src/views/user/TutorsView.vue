@@ -159,6 +159,7 @@ async function create() {
       grade: form.grade,
       style: form.style,
       answer_mode: guide.value ? 'guide' : 'answer',
+      model_tier: 'standard',
       rules: '',
       greeting: '',
       pass_code: String(Math.floor(1000 + Math.random() * 9000)),

@@ -202,13 +202,35 @@
           </select>
           <span class="input-hint">{{ t('tutors.keyCostHint') }}</span>
         </label>
-        <div v-if="tutor.cost" class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200" data-testid="tutor-cost">
-          <div class="font-medium">{{ t('tutors.costTitle', { low: money(tutor.cost.low), high: money(tutor.cost.high) }) }}</div>
+        <div class="text-sm">
+          <span class="input-label">{{ t('tutors.model') }}</span>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label
+              v-for="tier in tiers"
+              :key="tier"
+              class="flex cursor-pointer items-start gap-2 rounded-xl border p-3"
+              :class="form.model_tier === tier ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-900/20' : 'border-gray-200 dark:border-dark-600'"
+              :data-testid="`tutor-tier-${tier}`"
+            >
+              <input v-model="form.model_tier" type="radio" :value="tier" class="mt-1" />
+              <span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ t(`tutors.tier.${tier}`) }}</span>
+                <span v-if="tutor.costs?.[tier]" class="ml-1 text-xs text-gray-500">{{ tutor.costs[tier]!.model }}</span>
+                <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t(`tutors.tier.${tier}Hint`) }}</span>
+                <span v-if="tutor.costs?.[tier]" class="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-300">
+                  {{ t('tutors.tierPrice', { low: money(tutor.costs[tier]!.low), high: money(tutor.costs[tier]!.high) }) }}
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div v-if="cost" class="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200" data-testid="tutor-cost">
+          <div class="font-medium">{{ t('tutors.costTitle', { low: money(cost.low), high: money(cost.high) }) }}</div>
           <div class="mt-1 text-xs leading-5 opacity-80">
-            {{ t('tutors.costDetail', { model: tutor.cost.model, input: tutor.cost.input_tokens.toLocaleString(), output: tutor.cost.output_tokens }) }}
+            {{ t('tutors.costDetail', { model: cost.model, input: cost.input_tokens.toLocaleString(), output: cost.output_tokens }) }}
           </div>
           <div class="mt-1 text-xs leading-5 opacity-80">
-            {{ t('tutors.costClass', { students: classSize, n: classQuestions, low: money(tutor.cost.low * classSize * classQuestions), high: money(tutor.cost.high * classSize * classQuestions) }) }}
+            {{ t('tutors.costClass', { students: classSize, n: classQuestions, low: money(cost.low * classSize * classQuestions), high: money(cost.high * classSize * classQuestions) }) }}
           </div>
         </div>
         <label class="flex items-center gap-2 text-sm">
@@ -273,7 +295,7 @@ const tabs = computed(() => [
   { id: 'settings', label: t('tutors.tabSettings') }
 ])
 const form = reactive<TutorInput>({
-  key_id: 0, name: '', template: 'qa', subject: '', grade: '', style: '', answer_mode: 'guide', rules: '', greeting: '',
+  key_id: 0, name: '', template: 'qa', subject: '', grade: '', style: '', answer_mode: 'guide', model_tier: 'standard', rules: '', greeting: '',
   pass_code: '', per_student_day: 20, daily_cap: 300, enabled: true
 })
 const guide = ref(true)
@@ -290,6 +312,9 @@ const qrCanvas = ref<HTMLCanvasElement | null>(null)
 const template = computed(() => templates.value.find((x) => x.id === tutor.value?.template))
 // The class in the cost example: 40 students asking up to 10 questions a day (or the daily limit).
 const classSize = 40
+const tiers = ['standard', 'economy'] as const
+// The quote follows the tier picked on the page, before it is saved.
+const cost = computed(() => tutor.value?.costs?.[form.model_tier] || tutor.value?.cost || null)
 const classQuestions = computed(() => Math.min(10, form.per_student_day || 10))
 
 function money(v: number) {
@@ -316,6 +341,7 @@ function fill(tu: Tutor) {
   tutor.value = tu
   Object.assign(form, {
     key_id: tu.key_id, name: tu.name, template: tu.template, subject: tu.subject, grade: tu.grade, style: tu.style, answer_mode: tu.answer_mode,
+    model_tier: tu.model_tier || 'standard',
     rules: tu.rules, greeting: tu.greeting, pass_code: tu.pass_code, per_student_day: tu.per_student_day, daily_cap: tu.daily_cap, enabled: tu.enabled
   })
   guide.value = tu.answer_mode === 'guide'

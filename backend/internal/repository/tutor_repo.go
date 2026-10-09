@@ -18,12 +18,12 @@ func NewTutorRepository(db *sql.DB) service.TutorRepository {
 	return &tutorRepository{db: db}
 }
 
-const tutorColumns = `id, user_id, api_key_id, name, template, subject, grade, style, answer_mode, rules, greeting, share_code,
+const tutorColumns = `id, user_id, api_key_id, name, template, subject, grade, style, answer_mode, model_tier, rules, greeting, share_code,
 pass_code, per_student_day, daily_cap, enabled, created_at, updated_at`
 
 func scanTutor(row rowScanner, extra ...any) (*service.Tutor, error) {
 	var t service.Tutor
-	dest := []any{&t.ID, &t.UserID, &t.KeyID, &t.Name, &t.Template, &t.Subject, &t.Grade, &t.Style, &t.AnswerMode, &t.Rules,
+	dest := []any{&t.ID, &t.UserID, &t.KeyID, &t.Name, &t.Template, &t.Subject, &t.Grade, &t.Style, &t.AnswerMode, &t.ModelTier, &t.Rules,
 		&t.Greeting, &t.ShareCode, &t.PassCode, &t.PerStudentDay, &t.DailyCap, &t.Enabled, &t.CreatedAt, &t.UpdatedAt}
 	if err := row.Scan(append(dest, extra...)...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -36,20 +36,20 @@ func scanTutor(row rowScanner, extra ...any) (*service.Tutor, error) {
 
 func (r *tutorRepository) Create(ctx context.Context, t *service.Tutor) error {
 	return r.db.QueryRowContext(ctx, `
-INSERT INTO tutors (user_id, api_key_id, name, template, subject, grade, style, answer_mode, rules, greeting, share_code, pass_code, per_student_day, daily_cap, enabled)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO tutors (user_id, api_key_id, name, template, subject, grade, style, answer_mode, rules, greeting, share_code, pass_code, per_student_day, daily_cap, enabled, model_tier)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 RETURNING id, created_at, updated_at`,
 		t.UserID, t.KeyID, t.Name, t.Template, t.Subject, t.Grade, t.Style, t.AnswerMode, t.Rules, t.Greeting, t.ShareCode, t.PassCode,
-		t.PerStudentDay, t.DailyCap, t.Enabled).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
+		t.PerStudentDay, t.DailyCap, t.Enabled, t.ModelTier).Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 }
 
 func (r *tutorRepository) Update(ctx context.Context, t *service.Tutor) error {
 	_, err := r.db.ExecContext(ctx, `
 UPDATE tutors SET api_key_id = $3, name = $4, template = $5, subject = $6, grade = $7, style = $8, answer_mode = $9, rules = $10,
-       greeting = $11, pass_code = $12, per_student_day = $13, daily_cap = $14, enabled = $15, updated_at = NOW()
+       greeting = $11, pass_code = $12, per_student_day = $13, daily_cap = $14, enabled = $15, model_tier = $16, updated_at = NOW()
 WHERE id = $1 AND user_id = $2`,
 		t.ID, t.UserID, t.KeyID, t.Name, t.Template, t.Subject, t.Grade, t.Style, t.AnswerMode, t.Rules, t.Greeting, t.PassCode,
-		t.PerStudentDay, t.DailyCap, t.Enabled)
+		t.PerStudentDay, t.DailyCap, t.Enabled, t.ModelTier)
 	return err
 }
 
