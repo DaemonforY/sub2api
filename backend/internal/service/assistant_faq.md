@@ -5,7 +5,7 @@
 
 ## HiveGPT 是什么
 链接：/
-HiveGPT（hivegpt.cn）是一个 AI 服务聚合平台：注册一个账号、创建一个 API Key，就能调用 GPT、Codex 等模型，在无限画布里画图，接入 Codex、Claude Code、OpenCode 等编程工具。站内还有 AI 学习站、公众号排版工具、创作比赛和付费课程。
+HiveGPT（hivegpt.cn）是一个 AI 服务聚合平台：注册一个账号、创建一个 API Key，就能调用 GPT、Codex 等模型，在无限画布里画图，接入 Codex、OpenCode 等编程工具（暂不支持 Claude Code）。站内还有 AI 学习站、公众号排版工具、创作比赛和付费课程。
 
 ## 怎么注册和登录
 链接：/register
@@ -22,6 +22,10 @@ HiveGPT（hivegpt.cn）是一个 AI 服务聚合平台：注册一个账号、�
 ## 怎么在 Codex 等编程工具或自己的代码里使用（接入教程）
 链接：/learn/connect/
 在「API 密钥」页点某个 Key 的「使用密钥」，会生成 Codex、OpenCode 等工具的配置，复制粘贴即可。各种用法的教程在 AI 学习站「接入教程」（/learn/connect/）：Codex 看「接入 HiveGPT」（/learn/codex/hivegpt）；OpenCode、CodeBuddy、Cherry Studio、Chatbox 等支持 OpenAI 兼容接口的工具看「在常用工具里配置」（/learn/connect/tools）；Python、Node.js、curl 看「用 SDK 调用」（/learn/connect/sdk）。Codex 要用 GPT 分组的 Key。
+
+## 能用 Claude Code 吗
+链接：/learn/connect/
+暂不支持 Claude Code。编程工具请用 Codex（教程 /learn/codex/hivegpt）或 OpenCode（/learn/connect/tools），对话客户端可以用 Cherry Studio（/learn/connect/cherry-studio）、Chatbox（/learn/connect/chatbox）。以后开放会在首页和学习站说明。
 
 ## 网关地址（Base URL）是什么
 链接：/keys

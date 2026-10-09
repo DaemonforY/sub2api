@@ -116,7 +116,7 @@ func normalizeSEOPath(p string) string {
 
 func homeDescription(name string) string {
 	return name + " 是一站式 AI 服务平台：一个账号、一个 API Key 即可调用 GPT、Codex 等大模型，兼容 OpenAI 接口，按实际 token 用量计费；" +
-		"可接入 Codex、Claude Code、OpenCode 等 AI 编程工具，还有无限画布 AI 生图、AI 学习站、公众号排版和付费课程。"
+		"可接入 Codex、OpenCode、Cherry Studio 等 AI 工具，还有无限画布 AI 生图、AI 学习站、公众号排版和付费课程。"
 }
 
 func mainNavLinks() []seoLink {
@@ -125,7 +125,7 @@ func mainNavLinks() []seoLink {
 		{"/pricing", "价格与套餐"},
 		{"/model-plaza", "模型广场"},
 		{"/learn/", "AI 学习站（教程）"},
-		{"/learn/connect/", "接入教程：Codex、Claude Code、OpenCode、SDK"},
+		{"/learn/connect/", "接入教程：Codex、OpenCode、Cherry Studio、SDK"},
 		{"/courses", "AI 课程"},
 		{"/contests", "创作比赛"},
 		{"/editor/", "公众号排版"},
@@ -160,7 +160,7 @@ func mainPageMeta(ctx context.Context, site seoSite, content SEOContent, path st
 		}
 		m.Index = true
 		if p == "/" {
-			m.Title = site.Name + " - AI 模型 API 平台 · 兼容 OpenAI 接口 · 接入 Codex / Claude Code"
+			m.Title = site.Name + " - AI 模型 API 平台 · 兼容 OpenAI 接口 · 接入 Codex / OpenCode"
 			m.Description = homeDescription(site.Name)
 			m.H1 = site.Name + "：AI 模型 API 平台"
 			m.Paragraphs = []string{m.Description}

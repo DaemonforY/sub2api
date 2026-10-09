@@ -32,8 +32,8 @@ description: 不会编程也能用的 AI 自动化：Codex 能在你的电脑上
    安装步骤见 [安装 Codex CLI 并接入 HiveGPT](/c/c1)，桌面应用见 [桌面应用与界面](/codex/app)。
 3. **接入 HiveGPT**：在 API 密钥页点你的 Key 的「使用密钥」，选 Codex，把生成的配置复制到电脑上。详细步骤见 [Codex 接入 HiveGPT](/codex/hivegpt)。
 
-::: tip Claude Code 等其他工具
-Claude Code、OpenCode 等同类工具的思路一样：给它一个文件夹和一段中文指令。能用哪些工具，取决于你的 Key 所在分组里有哪些模型，配置同样在「使用密钥」弹窗里复制。本栏以 Codex 为例。
+::: tip OpenCode 等其他工具
+OpenCode 等同类工具的思路一样：给它一个文件夹和一段中文指令。能用哪些工具，取决于你的 Key 所在分组里有哪些模型，配置同样在「使用密钥」弹窗里复制。本栏以 Codex 为例。
 :::
 
 ## 第一次让它动手

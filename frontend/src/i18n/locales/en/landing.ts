@@ -168,7 +168,7 @@ export default {
         coding: {
           title: 'AI coding assistants',
           badge: 'Dev',
-          points: 'One-click setup for Claude Code / Codex / OpenCode,Copy-ready env vars and config files,Precise per-token billing'
+          points: 'One-click setup for Codex / OpenCode,Copy-ready env vars and config files,Precise per-token billing'
         },
         image: {
           title: 'AI images',
@@ -228,7 +228,7 @@ export default {
         },
         use: {
           title: 'Start creating',
-          desc: 'Draw on the canvas, or plug the key into Claude Code / Codex'
+          desc: 'Draw on the canvas, or plug the key into Codex / OpenCode'
         },
         registerCta: 'Sign up free',
         keyCta: 'Manage API keys',
@@ -264,11 +264,11 @@ export default {
         items: {
           what: {
             q: 'What is {site}?',
-            a: '{site} is an AI service hub. With one account and one API key you can make images and videos on the canvas and plug coding tools like Claude Code and Codex into it.'
+            a: '{site} is an AI service hub. With one account and one API key you can make images and videos on the canvas and plug coding tools like Codex and OpenCode into it.'
           },
           models: {
             q: 'Which models and tools are supported?',
-            a: 'See the model plaza and the supported list on this page; more are added over time. Coding tools include Claude Code, Codex CLI and OpenCode, with copy-ready configs under "Use key" in the console.'
+            a: 'See the model plaza and the supported list on this page; more are added over time. Coding tools include Codex CLI and OpenCode, with copy-ready configs under "Use key" in the console.'
           },
           billing: {
             q: 'How does billing work?',

@@ -168,7 +168,7 @@ export default {
         coding: {
           title: 'AI 编程助手',
           badge: '开发者',
-          points: 'Claude Code / Codex / OpenCode 一键配置,复制即用的环境变量与配置文件,按 Token 精确计费'
+          points: 'Codex / OpenCode 一键配置,复制即用的环境变量与配置文件,按 Token 精确计费'
         },
         image: {
           title: 'AI 绘画',
@@ -228,7 +228,7 @@ export default {
         },
         use: {
           title: '开始创作',
-          desc: '在无限画布里画图，或把 Key 配置到 Claude Code / Codex'
+          desc: '在无限画布里画图，或把 Key 配置到 Codex / OpenCode'
         },
         registerCta: '免费注册',
         keyCta: '管理 API Key',
@@ -264,11 +264,11 @@ export default {
         items: {
           what: {
             q: '{site} 是什么？',
-            a: '{site} 是一个 AI 服务聚合平台。你只需要一个账号和一个 API Key，就能在画布里画图、生成视频，也能接入 Claude Code、Codex 等编程工具。'
+            a: '{site} 是一个 AI 服务聚合平台。你只需要一个账号和一个 API Key，就能在画布里画图、生成视频，也能接入 Codex、OpenCode 等编程工具。'
           },
           models: {
             q: '支持哪些模型和工具？',
-            a: '已开放的模型以「模型广场」和首页的支持列表为准，并会持续增加。编程工具支持 Claude Code、Codex CLI、OpenCode 等，控制台「使用密钥」里有一键复制的配置。'
+            a: '已开放的模型以「模型广场」和首页的支持列表为准，并会持续增加。编程工具支持 Codex CLI、OpenCode 等，控制台「使用密钥」里有一键复制的配置。'
           },
           billing: {
             q: '如何收费？',

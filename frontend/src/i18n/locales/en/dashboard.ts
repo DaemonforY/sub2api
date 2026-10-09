@@ -1091,7 +1091,7 @@ export default {
       copied: 'Copied',
       drop: 'Drag the downloaded config.toml (usually in Downloads) into that folder and choose Replace if asked. If it was saved as config (1).toml, rename it to config.toml first.',
       restart: 'Quit Codex completely and open it again — it now uses HiveGPT.',
-      notes: 'The file contains your key; keep it to yourself. Using Claude Code, Cherry Studio or another tool?',
+      notes: 'The file contains your key; keep it to yourself. Using OpenCode, Cherry Studio or another tool?',
       otherTools: 'Copy its config from "Use" on your key'
     }
   },

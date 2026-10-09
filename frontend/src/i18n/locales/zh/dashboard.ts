@@ -1095,7 +1095,7 @@ export default {
       copied: '已复制',
       drop: '把刚下载的 config.toml（一般在「下载」文件夹里）拖进这个文件夹；提示已有同名文件就选「替换」。如果下载后变成了 config (1).toml，先改名为 config.toml。',
       restart: '完全退出 Codex 再打开，就会用 HiveGPT 了。',
-      notes: '配置文件里有你的 Key，不要发给别人。用 Claude Code、Cherry Studio 等其他工具？',
+      notes: '配置文件里有你的 Key，不要发给别人。用 OpenCode、Cherry Studio 等其他工具？',
       otherTools: '去 Key 的「使用」里复制对应配置'
     }
   },
