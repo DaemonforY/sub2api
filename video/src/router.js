@@ -7,6 +7,7 @@ export const router = createRouter({
     { path: '/', name: 'home', component: () => import('./pages/Home.vue') },
     { path: '/create', redirect: (to) => ({ path: '/', query: to.query }) },
     { path: '/p/:id', name: 'project', component: () => import('./pages/Project.vue'), meta: { full: true } },
+    { path: '/upload', name: 'upload', component: () => import('./pages/Upload.vue') },
     { path: '/gallery/:category?', name: 'gallery', component: () => import('./pages/Gallery.vue') },
     { path: '/w/:id', name: 'work', component: () => import('./pages/Work.vue') },
     { path: '/tools', name: 'tools', component: () => import('./pages/Tools.vue') },

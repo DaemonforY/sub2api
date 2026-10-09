@@ -42,12 +42,14 @@ type VideoService struct {
 	tts      VideoTTS
 	stream   animationStreamFunc
 	audioDir string
+	mediaKey []byte // signs links to private uploaded files
 	now      func() time.Time
 	slots    chan struct{}
 
-	mu   sync.Mutex
-	runs map[string]*videoRun
-	wg   sync.WaitGroup
+	mu      sync.Mutex
+	runs    map[string]*videoRun
+	uploads map[int64][]time.Time // upload times per user, so deleting does not reset the daily limit
+	wg      sync.WaitGroup
 
 	// models offered on the site and the per-user keys of their groups (SetModelBilling)
 	settings      SettingRepository
@@ -86,7 +88,7 @@ func NewVideoService(repo VideoRepository, tts VideoTTS, gatewayURL, audioDir st
 }
 
 func newVideoService(repo VideoRepository, tts VideoTTS, stream animationStreamFunc, audioDir string) *VideoService {
-	return &VideoService{repo: repo, tts: tts, stream: stream, audioDir: audioDir, now: time.Now, slots: make(chan struct{}, videoMaxRunsSiteWide), runs: map[string]*videoRun{}}
+	return &VideoService{repo: repo, tts: tts, stream: stream, audioDir: audioDir, mediaKey: newVideoMediaKey(), now: time.Now, slots: make(chan struct{}, videoMaxRunsSiteWide), runs: map[string]*videoRun{}}
 }
 
 // RecoverInterrupted marks projects a previous process left running; the user can resume them.
@@ -643,7 +645,7 @@ func (s *VideoService) own(ctx context.Context, userID int64, id string) (*Video
 	if p == nil || p.UserID != userID {
 		return nil, ErrVideoNotFound
 	}
-	return p, nil
+	return s.withMedia(p), nil
 }
 
 func (s *VideoService) running(id string) bool {
@@ -658,7 +660,8 @@ func (s *VideoService) Get(ctx context.Context, userID int64, id string) (*Video
 }
 
 func (s *VideoService) List(ctx context.Context, userID int64) ([]VideoCard, error) {
-	return s.repo.ListByUser(ctx, userID, 100)
+	cards, err := s.repo.ListByUser(ctx, userID, 100)
+	return s.cardsWithMedia(cards), err
 }
 
 func (s *VideoService) Events(ctx context.Context, userID int64, id string, after int64) ([]VideoEvent, error) {
@@ -676,6 +679,9 @@ func (s *VideoService) startOn(ctx context.Context, key *APIKey, id string, prep
 	p, err := s.own(ctx, key.UserID, id)
 	if err != nil {
 		return nil, err
+	}
+	if p.Mode == VideoModeUpload {
+		return nil, ErrVideoUploadAgent
 	}
 	if s.running(id) || p.Status == VideoStatusRunning {
 		return nil, ErrVideoBusy
@@ -947,6 +953,9 @@ func (s *VideoService) Restore(ctx context.Context, userID int64, id string, ver
 	if err != nil {
 		return nil, err
 	}
+	if p.Mode == VideoModeUpload {
+		return nil, ErrVideoUploadAgent
+	}
 	if s.running(id) {
 		return nil, ErrVideoBusy
 	}
@@ -1026,7 +1035,8 @@ func (s *VideoService) Gallery(ctx context.Context, q VideoGalleryQuery) ([]Vide
 	q.PageSize = max(1, min(q.PageSize, 48))
 	q.Page = max(1, q.Page)
 	q.Search = clipRunes(q.Search, 40)
-	return s.repo.Gallery(ctx, q)
+	cards, total, err := s.repo.Gallery(ctx, q)
+	return s.cardsWithMedia(cards), total, err
 }
 
 // Work returns a public work for the gallery player.
@@ -1040,7 +1050,7 @@ func (s *VideoService) Work(ctx context.Context, id string) (*VideoProject, erro
 	}
 	p.Usage = VideoUsage{}
 	p.Options.Model = ""
-	return p, nil
+	return s.withMedia(p), nil
 }
 
 func (s *VideoService) View(ctx context.Context, id string) {
@@ -1059,14 +1069,15 @@ func (s *VideoService) AdminWork(ctx context.Context, admin *User, id string) (*
 	if p == nil {
 		return nil, ErrVideoNotFound
 	}
-	return p, nil
+	return s.withMedia(p), nil
 }
 
 func (s *VideoService) Pending(ctx context.Context, admin *User) ([]VideoCard, error) {
 	if admin == nil || admin.Role != RoleAdmin {
 		return nil, ErrVideoForbidden
 	}
-	return s.repo.Pending(ctx, 100)
+	cards, err := s.repo.Pending(ctx, 100)
+	return s.cardsWithMedia(cards), err
 }
 
 // Review approves / rejects a submitted work or changes a public one (feature, category, hide).

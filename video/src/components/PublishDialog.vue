@@ -1,6 +1,7 @@
 <template>
   <Modal title="发布到案例库" @close="$emit('close')">
-    <p class="text-sm leading-6 text-ink-600 dark:text-ink-300">发布后经过审核会出现在案例库，所有人都能观看和「制作同款」（会看到你的描述，看不到你的 Key 和用量）。可以随时撤回。</p>
+    <p v-if="project.mode === 'upload'" class="text-sm leading-6 text-ink-600 dark:text-ink-300">发布后经过审核会出现在案例库，所有人都能观看（会看到标题和作品介绍）。可以随时撤回。</p>
+    <p v-else class="text-sm leading-6 text-ink-600 dark:text-ink-300">发布后经过审核会出现在案例库，所有人都能观看和「制作同款」（会看到你的描述，看不到你的 Key 和用量）。可以随时撤回。</p>
     <label class="mt-4 block text-sm font-medium">标题</label>
     <input v-model="title" maxlength="60" class="input mt-1" />
     <label class="mt-4 block text-sm font-medium">分类</label>

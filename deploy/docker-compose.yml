@@ -134,6 +134,9 @@ services:
       # HiveGPT 视频: served when the host is <VIDEO_DOMAIN> (e.g. video.hivegpt.cn; Caddy proxies
       # it here like the main site). Empty hides the app; its API keeps working.
       - VIDEO_DOMAIN=${VIDEO_DOMAIN:-}
+      # Narration audio and users' uploaded videos / SVG animations. Keep it under /app/data (the
+      # sub2api_data volume) so files survive container updates.
+      - VIDEO_DIR=${VIDEO_DIR:-/app/data/video}
 
       # =======================================================================
       # Gemini OAuth Configuration (for Gemini accounts)

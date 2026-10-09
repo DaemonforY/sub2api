@@ -17,6 +17,7 @@ import (
 const (
 	VideoModeFilm   = "film"
 	VideoModeMotion = "motion"
+	// VideoModeUpload (video_upload.go) is a work the user made elsewhere and uploaded.
 
 	VideoStatusQuestions = "questions" // waiting for the user's answers
 	VideoStatusRunning   = "running"
@@ -73,6 +74,7 @@ type VideoSpec struct {
 	Loop     bool         `json:"loop,omitempty"`
 	Poster   float64      `json:"poster,omitempty"` // seconds: the frame cards and the player show before playing
 	Scenes   []VideoScene `json:"scenes"`
+	Upload   *VideoUpload `json:"upload,omitempty"` // mode "upload": the user's own file instead of scenes
 }
 
 type VideoScene struct {
@@ -109,53 +111,56 @@ type VideoUsage struct {
 }
 
 type VideoProject struct {
-	ID          string       `json:"id"`
-	UserID      int64        `json:"-"`
-	APIKeyID    int64        `json:"-"`
-	Mode        string       `json:"mode"`
-	Title       string       `json:"title"`
-	Prompt      string       `json:"prompt"`
-	Options     VideoOptions `json:"options"`
-	Status      string       `json:"status"`
-	Stage       string       `json:"stage,omitempty"`
-	Error       string       `json:"error,omitempty"`
-	Spec        *VideoSpec   `json:"spec,omitempty"`
-	Duration    float64      `json:"duration"`
-	Width       int          `json:"width"`
-	Height      int          `json:"height"`
-	Visibility  string       `json:"visibility"`
-	Category    string       `json:"category,omitempty"`
-	Featured    bool         `json:"featured,omitempty"`
-	Views       int          `json:"views"`
-	Remixes     int          `json:"remixes"`
-	RemixOf     string       `json:"remix_of,omitempty"`
-	Usage       VideoUsage   `json:"usage"`
-	Author      string       `json:"author,omitempty"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
-	PublishedAt *time.Time   `json:"published_at,omitempty"`
+	ID          string           `json:"id"`
+	UserID      int64            `json:"-"`
+	APIKeyID    int64            `json:"-"`
+	Mode        string           `json:"mode"`
+	Title       string           `json:"title"`
+	Prompt      string           `json:"prompt"`
+	Options     VideoOptions     `json:"options"`
+	Status      string           `json:"status"`
+	Stage       string           `json:"stage,omitempty"`
+	Error       string           `json:"error,omitempty"`
+	Spec        *VideoSpec       `json:"spec,omitempty"`
+	Duration    float64          `json:"duration"`
+	Width       int              `json:"width"`
+	Height      int              `json:"height"`
+	Visibility  string           `json:"visibility"`
+	Category    string           `json:"category,omitempty"`
+	Featured    bool             `json:"featured,omitempty"`
+	Views       int              `json:"views"`
+	Remixes     int              `json:"remixes"`
+	RemixOf     string           `json:"remix_of,omitempty"`
+	Usage       VideoUsage       `json:"usage"`
+	Media       *VideoMediaLinks `json:"media,omitempty"` // uploaded works
+	Author      string           `json:"author,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	PublishedAt *time.Time       `json:"published_at,omitempty"`
 }
 
 // VideoCard is a project in lists (history, gallery) — no scene code.
 type VideoCard struct {
-	ID         string    `json:"id"`
-	Mode       string    `json:"mode"`
-	Title      string    `json:"title"`
-	Prompt     string    `json:"prompt"`
-	Status     string    `json:"status"`
-	Stage      string    `json:"stage,omitempty"`
-	Visibility string    `json:"visibility"`
-	Category   string    `json:"category,omitempty"`
-	Featured   bool      `json:"featured,omitempty"`
-	Views      int       `json:"views"`
-	Remixes    int       `json:"remixes"`
-	Duration   float64   `json:"duration"`
-	Width      int       `json:"width"`
-	Height     int       `json:"height"`
-	Style      string    `json:"style,omitempty"`
-	Author     string    `json:"author,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID         string           `json:"id"`
+	Mode       string           `json:"mode"`
+	Title      string           `json:"title"`
+	Prompt     string           `json:"prompt"`
+	Status     string           `json:"status"`
+	Stage      string           `json:"stage,omitempty"`
+	Visibility string           `json:"visibility"`
+	Category   string           `json:"category,omitempty"`
+	Featured   bool             `json:"featured,omitempty"`
+	Views      int              `json:"views"`
+	Remixes    int              `json:"remixes"`
+	Duration   float64          `json:"duration"`
+	Width      int              `json:"width"`
+	Height     int              `json:"height"`
+	Style      string           `json:"style,omitempty"`
+	Media      *VideoMediaLinks `json:"media,omitempty"`
+	Upload     *VideoUpload     `json:"-"`
+	Author     string           `json:"author,omitempty"`
+	CreatedAt  time.Time        `json:"created_at"`
+	UpdatedAt  time.Time        `json:"updated_at"`
 }
 
 // VideoEvent is one line of the agent panel: the user's messages, the agent's steps, its questions
@@ -203,6 +208,8 @@ type VideoRepository interface {
 	Pending(ctx context.Context, limit int) ([]VideoCard, error)
 	AddView(ctx context.Context, id string) error
 	AddRemix(ctx context.Context, id string) error
+	// UploadStats counts the user's uploads since a time and the bytes all their uploads take.
+	UploadStats(ctx context.Context, userID int64, since time.Time) (int, int64, error)
 }
 
 // VideoAuthorName shows a user in the gallery without exposing their email.

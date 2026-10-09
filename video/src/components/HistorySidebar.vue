@@ -16,7 +16,7 @@
       >
         <span class="block truncate text-sm font-medium">{{ p.title || p.prompt }}</span>
         <span class="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-500">
-          <span class="rounded px-1 py-px" :class="p.mode === 'film' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' : 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'">{{ p.mode === 'film' ? 'HTML 视频' : '动画' }}</span>
+          <span class="rounded px-1 py-px" :class="badge(p)">{{ modeLabel(p) }}</span>
           <span v-if="p.status === 'running'" class="text-brand-600">生成中…</span>
           <span v-else-if="p.status === 'questions'" class="text-brand-600">待确认</span>
           <span v-else-if="p.status === 'failed'" class="text-red-500">失败</span>
@@ -31,6 +31,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { api, session } from '../lib/api'
+import { modeLabel } from '../lib/media'
 
 defineProps({ current: { type: String, default: '' } })
 const items = ref([])
@@ -53,6 +54,11 @@ defineExpose({ load })
 onMounted(load)
 watch(() => session.key, load)
 
+function badge(p) {
+  if (p.mode === 'film') return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
+  if (p.mode === 'upload') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+  return 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+}
 function when(iso) {
   const d = new Date(iso)
   const diff = (Date.now() - d.getTime()) / 1000

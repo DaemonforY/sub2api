@@ -172,6 +172,24 @@ func (r *fakeVideoRepo) Gallery(context.Context, VideoGalleryQuery) ([]VideoCard
 func (r *fakeVideoRepo) Pending(context.Context, int) ([]VideoCard, error) { return nil, nil }
 func (r *fakeVideoRepo) AddView(context.Context, string) error             { return nil }
 func (r *fakeVideoRepo) AddRemix(context.Context, string) error            { return nil }
+func (r *fakeVideoRepo) UploadStats(_ context.Context, userID int64, since time.Time) (int, int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var n int
+	var size int64
+	for _, p := range r.projects {
+		if p.UserID != userID || p.Mode != VideoModeUpload {
+			continue
+		}
+		if !p.CreatedAt.Before(since) {
+			n++
+		}
+		if p.Spec != nil && p.Spec.Upload != nil {
+			size += p.Spec.Upload.Size + p.Spec.Upload.PosterSize
+		}
+	}
+	return n, size, nil
+}
 
 type fakeTTS struct {
 	mu    sync.Mutex

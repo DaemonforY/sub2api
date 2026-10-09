@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
@@ -80,7 +81,8 @@ func (r *videoRepository) Delete(ctx context.Context, userID int64, id string) (
 }
 
 const videoCardColumns = `p.id, p.mode, p.title, LEFT(p.prompt, 300), p.status, p.stage, p.visibility, p.category, p.featured, p.views, p.remixes,
-p.duration, p.width, p.height, COALESCE(p.options->>'style', ''), COALESCE(u.username, ''), COALESCE(u.email, ''), p.created_at, p.updated_at`
+p.duration, p.width, p.height, COALESCE(p.options->>'style', ''), COALESCE(u.username, ''), COALESCE(u.email, ''), p.created_at, p.updated_at,
+COALESCE(p.spec->'upload', 'null'::jsonb)`
 
 func (r *videoRepository) ListByUser(ctx context.Context, userID int64, limit int) ([]service.VideoCard, error) {
 	return r.cards(ctx, `SELECT `+videoCardColumns+` FROM video_projects p LEFT JOIN users u ON u.id = p.user_id WHERE p.user_id = $1 ORDER BY p.updated_at DESC LIMIT $2`, userID, limit)
@@ -252,6 +254,16 @@ func (r *videoRepository) AddRemix(ctx context.Context, id string) error {
 	return err
 }
 
+func (r *videoRepository) UploadStats(ctx context.Context, userID int64, since time.Time) (int, int64, error) {
+	var count int
+	var bytes int64
+	err := r.db.QueryRowContext(ctx, `
+SELECT COUNT(*) FILTER (WHERE created_at >= $2),
+       COALESCE(SUM(COALESCE((spec->'upload'->>'size')::bigint, 0) + COALESCE((spec->'upload'->>'poster_size')::bigint, 0)), 0)
+FROM video_projects WHERE user_id = $1 AND mode = 'upload'`, userID, since).Scan(&count, &bytes)
+	return count, bytes, err
+}
+
 func (r *videoRepository) cards(ctx context.Context, query string, args ...any) ([]service.VideoCard, error) {
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -262,9 +274,16 @@ func (r *videoRepository) cards(ctx context.Context, query string, args ...any) 
 	for rows.Next() {
 		var c service.VideoCard
 		var username, email string
+		var upload []byte
 		if err := rows.Scan(&c.ID, &c.Mode, &c.Title, &c.Prompt, &c.Status, &c.Stage, &c.Visibility, &c.Category, &c.Featured, &c.Views, &c.Remixes,
-			&c.Duration, &c.Width, &c.Height, &c.Style, &username, &email, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			&c.Duration, &c.Width, &c.Height, &c.Style, &username, &email, &c.CreatedAt, &c.UpdatedAt, &upload); err != nil {
 			return nil, err
+		}
+		if len(upload) > 0 && string(upload) != "null" {
+			c.Upload = &service.VideoUpload{}
+			if err := json.Unmarshal(upload, c.Upload); err != nil {
+				c.Upload = nil
+			}
 		}
 		c.Author = service.VideoAuthorName(username, email)
 		out = append(out, c)

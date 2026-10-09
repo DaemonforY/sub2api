@@ -47,6 +47,36 @@ export async function api(path, { method = 'GET', body, auth = true, signal } = 
   throw new ApiError(message, res.status, data?.reason)
 }
 
+/**
+ * Sends a multipart form (uploads) with progress: onProgress gets 0–1 while the body is sent.
+ * Errors keep the server's English in parentheses so a failed upload can be looked up.
+ */
+export function apiUpload(path, form, { onProgress, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `/api/v1/video${path}`)
+    if (session.key) xhr.setRequestHeader('Authorization', `Bearer ${session.key}`)
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total)
+    xhr.onload = () => {
+      let data = null
+      try {
+        data = JSON.parse(xhr.responseText)
+      } catch {
+        // not JSON (e.g. a proxy error page)
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data?.code === 0) return resolve(data.data)
+      if (xhr.status === 401) signOut()
+      const fallback =
+        xhr.status === 413 ? '文件太大，视频不能超过 100 MB（File too large）' : xhr.status === 429 ? '请求太频繁，请稍后再试（Too many requests）' : `上传失败，请重试（HTTP ${xhr.status}）`
+      reject(new ApiError(data?.message || fallback, xhr.status, data?.reason))
+    }
+    xhr.onerror = () => reject(new ApiError('网络中断，上传没有完成，请检查网络后重试（Network error）', 0))
+    xhr.onabort = () => reject(new DOMException('aborted', 'AbortError'))
+    signal?.addEventListener('abort', () => xhr.abort())
+    xhr.send(form)
+  })
+}
+
 /** Fetches a narration file with the key (own projects) or anonymously (public works) as a blob URL. */
 export async function audioBlob(url, withKey) {
   const res = await fetch(url, { headers: withKey && session.key ? { Authorization: `Bearer ${session.key}` } : {} })

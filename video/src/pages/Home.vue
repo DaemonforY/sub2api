@@ -73,6 +73,7 @@
           </div>
         </section>
         <p class="mx-auto mt-2 max-w-5xl text-center text-xs text-ink-400">用 HiveGPT 账号登录，按实际用量从账户余额扣费。一个 1 分钟的视频通常需要 2–5 分钟生成，期间可以关掉页面。</p>
+        <p class="mx-auto mt-1 max-w-5xl text-center text-xs text-ink-500">已经有做好的视频或 SVG 动画？<RouterLink to="/upload" class="font-medium text-brand-600 hover:underline" data-testid="home-upload">上传作品 →</RouterLink></p>
 
         <!-- styles / categories -->
         <section ref="stylesEl" class="mx-auto mt-12 max-w-6xl scroll-mt-24">

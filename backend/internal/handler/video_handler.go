@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -488,6 +491,133 @@ func (h *VideoHandler) UploadAdImage(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"url": path})
+}
+
+// The multipart limits: a video, a cover and the text fields, with room for the multipart framing.
+const (
+	videoUploadBodyLimit = service.VideoUploadMaxVideoBytes + service.VideoUploadMaxPosterBytes + 1<<20
+	videoUploadMemory    = 4 << 20 // larger parts go to temporary files
+)
+
+func videoFormFile(form *multipart.Form, field string) (*service.VideoUploadFile, func(), error) {
+	files := form.File[field]
+	if len(files) == 0 {
+		return nil, func() {}, nil
+	}
+	fh := files[0]
+	f, err := fh.Open()
+	if err != nil {
+		return nil, func() {}, err
+	}
+	return &service.VideoUploadFile{Name: fh.Filename, Size: fh.Size, Reader: f}, func() { _ = f.Close() }, nil
+}
+
+// parseVideoUpload reads a multipart upload; it answers the request itself when that fails.
+func parseVideoUpload(c *gin.Context) (*multipart.Form, bool) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, videoUploadBodyLimit)
+	if err := c.Request.ParseMultipartForm(videoUploadMemory); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			response.ErrorFrom(c, service.ErrVideoUploadVideoBig)
+		} else {
+			response.ErrorFrom(c, service.ErrVideoInvalid)
+		}
+		return nil, false
+	}
+	return c.Request.MultipartForm, true
+}
+
+// Upload POST /api/v1/video/uploads — multipart: file (MP4 / WebM / SVG), poster (optional JPEG /
+// WebP / PNG for videos), title, description, category.
+func (h *VideoHandler) Upload(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	form, ok := parseVideoUpload(c)
+	if !ok {
+		return
+	}
+	defer func() { _ = form.RemoveAll() }()
+	file, closeFile, err := videoFormFile(form, "file")
+	defer closeFile()
+	if err != nil || file == nil {
+		response.ErrorFrom(c, service.ErrVideoUploadType)
+		return
+	}
+	poster, closePoster, err := videoFormFile(form, "poster")
+	defer closePoster()
+	if err != nil {
+		response.ErrorFrom(c, service.ErrVideoUploadPoster)
+		return
+	}
+	value := func(name string) string {
+		if v := form.Value[name]; len(v) > 0 {
+			return v[0]
+		}
+		return ""
+	}
+	p, err := h.service.Upload(c.Request.Context(), key, service.VideoUploadInput{
+		Title: value("title"), Description: value("description"), Category: value("category"), File: *file, Poster: poster,
+	})
+	h.reply(c, p, err)
+}
+
+// SetPoster POST /api/v1/video/projects/:id/poster — multipart: poster.
+func (h *VideoHandler) SetPoster(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	form, ok := parseVideoUpload(c)
+	if !ok {
+		return
+	}
+	defer func() { _ = form.RemoveAll() }()
+	poster, closePoster, err := videoFormFile(form, "poster")
+	defer closePoster()
+	if err != nil || poster == nil {
+		response.ErrorFrom(c, service.ErrVideoUploadPoster)
+		return
+	}
+	p, err := h.service.SetPoster(c.Request.Context(), key.UserID, c.Param("id"), poster)
+	h.reply(c, p, err)
+}
+
+// Media GET /api/v1/video/works/:id/media/:file — an uploaded work's file or cover, for public works
+// or with a signed link (the owner's and the reviewer's copies). Range requests are supported.
+func (h *VideoHandler) Media(c *gin.Context) {
+	m, err := h.service.MediaFile(c.Request.Context(), c.Param("id"), c.Param("file"), c.Query("exp"), c.Query("sig"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	f, err := os.Open(m.Path)
+	if err != nil {
+		response.ErrorFrom(c, service.ErrVideoNotFound)
+		return
+	}
+	defer func() { _ = f.Close() }()
+	st, err := f.Stat()
+	if err != nil {
+		response.ErrorFrom(c, service.ErrVideoNotFound)
+		return
+	}
+	hd := c.Writer.Header()
+	hd.Set("Content-Type", m.Mime)
+	hd.Set("X-Content-Type-Options", "nosniff")
+	if m.SVG {
+		// Opened on its own, the SVG may not run script or load anything.
+		hd.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:")
+	}
+	// File names carry a hash of their content; a work's visibility can change, so public copies are
+	// cached for an hour.
+	if m.Public {
+		hd.Set("Cache-Control", "public, max-age=3600")
+	} else {
+		hd.Set("Cache-Control", "private, max-age=3600")
+	}
+	http.ServeContent(c.Writer, c.Request, "", st.ModTime(), f)
 }
 
 func (h *VideoHandler) reply(c *gin.Context, p *service.VideoProject, err error) {

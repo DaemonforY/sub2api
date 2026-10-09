@@ -5,8 +5,8 @@
     <!-- centre: preview / script / code -->
     <section class="flex min-w-0 flex-1 flex-col">
       <div class="flex flex-wrap items-center gap-2 border-b border-ink-200 bg-white px-4 py-2.5 dark:border-ink-800 dark:bg-ink-900">
-        <h1 class="mr-2 truncate text-[15px] font-semibold">{{ p?.mode === 'motion' ? '动画预览' : 'HTML 视频预览' }}</h1>
-        <div class="flex rounded-xl bg-ink-100 p-0.5 dark:bg-ink-800">
+        <h1 class="mr-2 truncate text-[15px] font-semibold">{{ isUpload ? '上传的作品' : p?.mode === 'motion' ? '动画预览' : 'HTML 视频预览' }}</h1>
+        <div v-if="!isUpload" class="flex rounded-xl bg-ink-100 p-0.5 dark:bg-ink-800">
           <button v-for="tb in tabs" :key="tb.id" class="flex items-center gap-1 rounded-lg px-3 py-1 text-sm" :class="tab === tb.id ? 'bg-white text-brand-600 shadow-sm dark:bg-ink-900' : 'text-ink-600 dark:text-ink-300'" @click="tab = tb.id">
             <component :is="tb.icon" class="h-3.5 w-3.5" />{{ tb.label }}
           </button>
@@ -16,9 +16,12 @@
           <span v-if="p.visibility === 'pending'" class="rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">案例库审核中</span>
           <a v-else-if="p.visibility === 'public'" :href="`/w/${p.id}`" target="_blank" class="rounded-lg bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">已公开</a>
           <button class="btn-ghost btn-sm" :disabled="!isReady" title="复制分享链接" @click="share"><Link2 class="h-3.5 w-3.5" /></button>
-          <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
-          <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
-          <button class="btn-ghost btn-sm" disabled title="视频导出（MP4）即将上线"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
+          <button v-if="isUpload && p.media?.kind === 'video'" class="btn-ghost btn-sm" title="更换封面" @click="posterOpen = true"><ImageIcon class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">更换封面</span></button>
+          <template v-if="!isUpload">
+            <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
+            <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
+            <button class="btn-ghost btn-sm" disabled title="视频导出（MP4）即将上线"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
+          </template>
           <button v-if="p.visibility === 'private' || p.visibility === 'rejected'" class="btn-primary btn-sm" :disabled="!isReady" @click="publishOpen = true"><Send class="h-3.5 w-3.5" />发布</button>
           <button v-else class="btn-ghost btn-sm" @click="unpublish">撤回</button>
         </template>
@@ -26,6 +29,24 @@
 
       <div class="thin-scroll min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <div v-if="!p" class="flex h-full items-center justify-center text-ink-400"><Loader2 class="h-6 w-6 animate-spin" /></div>
+
+        <!-- an uploaded work -->
+        <div v-else-if="isUpload" class="mx-auto" :style="{ maxWidth: previewMax }">
+          <div class="relative w-full overflow-hidden rounded-xl bg-ink-900 shadow-soft" :style="{ aspectRatio: `${p.width} / ${p.height}` }">
+            <UploadedMedia v-if="p.media" :media="p.media" />
+          </div>
+          <div class="card mt-4 p-4 text-sm">
+            <div class="flex flex-wrap gap-x-5 gap-y-1 text-ink-500">
+              <span class="font-medium text-ink-800 dark:text-ink-100">{{ p.title }}</span>
+              <span>{{ modeLabel(p) }}</span>
+              <span v-if="upload.name" class="truncate">{{ upload.name }}</span>
+              <span v-if="upload.size">{{ fmtBytes(upload.size) }}</span>
+              <span v-if="p.duration">{{ fmtTime(p.duration) }}</span>
+            </div>
+            <p v-if="p.prompt" class="mt-2 whitespace-pre-wrap leading-6 text-ink-600 dark:text-ink-300">{{ p.prompt }}</p>
+            <p class="mt-3 text-xs leading-5 text-ink-400">上传的作品不能让 AI 修改；可以分享链接，或点右上角「发布」提交到案例库（审核通过后公开）。想做新的作品，<RouterLink to="/" class="text-brand-600 hover:underline">用一句话生成</RouterLink>。</p>
+          </div>
+        </div>
 
         <!-- preview -->
         <template v-else-if="tab === 'preview'">
@@ -50,6 +71,7 @@
             </div>
 
             <AgentPanel
+              v-if="!isUpload"
               class="mt-4 flex h-[560px] overflow-hidden rounded-2xl border border-ink-200 lg:hidden dark:border-ink-800"
               :project="p"
               :events="events"
@@ -106,6 +128,7 @@
 
     <!-- right: the agent -->
     <AgentPanel
+      v-if="!isUpload"
       class="hidden w-[400px] shrink-0 border-l border-ink-200 lg:flex dark:border-ink-800"
       :project="p"
       :events="events"
@@ -120,6 +143,13 @@
     />
 
     <PublishDialog v-if="publishOpen && p" :project="p" :categories="categories" @close="publishOpen = false" @published="(x) => ((p = x), (publishOpen = false))" />
+    <Modal v-if="posterOpen && p?.media" title="更换封面" @close="posterOpen = false">
+      <PosterPicker :src="p.media.url" @poster="(x) => (newPoster = x.blob)" @error="toastError" />
+      <div class="mt-5 flex justify-end gap-2">
+        <button class="btn-ghost" @click="posterOpen = false">取消</button>
+        <button class="btn-primary" :disabled="!newPoster || savingPoster" @click="savePoster"><Loader2 v-if="savingPoster" class="h-4 w-4 animate-spin" />保存封面</button>
+      </div>
+    </Modal>
     <VersionsDialog v-if="versionsOpen && p" :project-id="p.id" :busy="busy" @close="versionsOpen = false" @restored="onRestored" />
   </div>
 </template>
@@ -127,14 +157,18 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertCircle, Code2, Download, FileCode2, FileText, Film, History, Link2, Loader2, MessageCircleQuestion, Play, Send } from 'lucide-vue-next'
+import { AlertCircle, Code2, Download, FileCode2, FileText, Film, History, Image as ImageIcon, Link2, Loader2, MessageCircleQuestion, Play, Send } from 'lucide-vue-next'
 import AgentPanel from '../components/AgentPanel.vue'
 import FilmPlayer from '../components/FilmPlayer.vue'
 import HistorySidebar from '../components/HistorySidebar.vue'
 import PublishDialog from '../components/PublishDialog.vue'
 import ScriptTab from '../components/ScriptTab.vue'
 import VersionsDialog from '../components/VersionsDialog.vue'
-import { api, catalog, session, signIn } from '../lib/api'
+import Modal from '../components/Modal.vue'
+import PosterPicker from '../components/PosterPicker.vue'
+import UploadedMedia from '../components/UploadedMedia.vue'
+import { api, apiUpload, catalog, session, signIn } from '../lib/api'
+import { fmtBytes, fmtTime, modeLabel } from '../lib/media'
 import { exportHtml } from '../lib/exportHtml'
 import { toast, toastError } from '../lib/toast'
 
@@ -161,6 +195,27 @@ const tabs = [
   { id: 'code', label: '代码', icon: Code2 }
 ]
 const busy = computed(() => p.value?.status === 'running')
+const isUpload = computed(() => p.value?.mode === 'upload')
+const upload = computed(() => p.value?.spec?.upload || {})
+const posterOpen = ref(false)
+const newPoster = ref(null)
+const savingPoster = ref(false)
+async function savePoster() {
+  if (!newPoster.value) return
+  savingPoster.value = true
+  try {
+    const form = new FormData()
+    form.append('poster', newPoster.value, 'poster.jpg')
+    p.value = await apiUpload(`/projects/${id.value}/poster`, form)
+    toast('封面已更新', 'success')
+    posterOpen.value = false
+    newPoster.value = null
+  } catch (err) {
+    toastError(err)
+  } finally {
+    savingPoster.value = false
+  }
+}
 const isReady = computed(() => p.value?.status === 'ready')
 const hasCode = computed(() => p.value?.spec?.scenes?.some((sc) => sc.code))
 // Play the scenes that already have code (a project can be previewed while the rest is being made).

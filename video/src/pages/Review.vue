@@ -17,7 +17,7 @@
           <div class="min-w-0 flex-1">
             <a :href="`/w/${w.id}`" target="_blank" class="font-medium hover:text-brand-600">{{ w.title }}</a>
             <p class="mt-1 line-clamp-2 text-sm text-ink-500">{{ w.prompt }}</p>
-            <p class="mt-1 text-xs text-ink-400">{{ w.author }} · {{ w.mode === 'film' ? 'HTML 视频' : '动画' }} · {{ Math.round(w.duration) }} 秒</p>
+            <p class="mt-1 text-xs text-ink-400">{{ w.author }} · {{ modeLabel(w) }}<template v-if="w.duration"> · {{ Math.round(w.duration) }} 秒</template></p>
           </div>
           <select v-model="w.category" class="input w-32">
             <option v-for="c in cats" :key="c.id" :value="c.id">{{ c.name }}</option>
@@ -29,8 +29,9 @@
         </div>
       </div>
       <div v-if="previewing" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6" @click.self="previewing = null">
-        <div class="w-full max-w-4xl overflow-hidden rounded-2xl bg-black" :style="{ aspectRatio: `${previewing.width} / ${previewing.height}` }">
-          <FilmPlayer :spec="previewing.spec" :audio-url="(sc) => (sc.audio?.file ? `/api/v1/video/projects/${previewing.id}/audio/${sc.audio.file}` : '')" with-key />
+        <div class="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-black" :style="{ aspectRatio: `${previewing.width} / ${previewing.height}`, maxWidth: previewing.height > previewing.width ? '420px' : undefined }">
+          <UploadedMedia v-if="previewing.mode === 'upload' && previewing.media" :media="previewing.media" />
+          <FilmPlayer v-else :spec="previewing.spec" :audio-url="(sc) => (sc.audio?.file ? `/api/v1/video/projects/${previewing.id}/audio/${sc.audio.file}` : '')" with-key />
         </div>
       </div>
     </template>
@@ -41,6 +42,8 @@
 import { onMounted, ref, watch } from 'vue'
 import FilmPlayer from '../components/FilmPlayer.vue'
 import AdminSettings from '../components/AdminSettings.vue'
+import UploadedMedia from '../components/UploadedMedia.vue'
+import { modeLabel } from '../lib/media'
 import { api, catalog, session } from '../lib/api'
 import { toast, toastError } from '../lib/toast'
 

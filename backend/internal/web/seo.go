@@ -245,7 +245,7 @@ var mainRobotsDisallow = []string{
 	"/key-usage", "/email-verify", "/reset-password", "/forgot-password", "/custom/", "/monitor", "/batch-image",
 }
 
-var videoRobotsDisallow = []string{"/api/", "/p/", "/review"}
+var videoRobotsDisallow = []string{"/api/", "/p/", "/review", "/upload"}
 
 // seoCrawlers are named in robots.txt so it is explicit that search and AI crawlers are welcome.
 var seoCrawlers = []string{

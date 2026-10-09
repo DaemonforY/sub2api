@@ -1,9 +1,10 @@
 <template>
   <article ref="el" class="group overflow-hidden rounded-2xl border border-ink-200/80 bg-white transition hover:-translate-y-0.5 hover:shadow-soft dark:border-ink-800 dark:bg-ink-900" @mouseenter="onEnter" @mouseleave="active = false">
     <RouterLink :to="`/w/${work.id}`" class="relative block bg-ink-900" :style="{ aspectRatio: ratio }">
-      <FilmPlayer v-if="visible && spec" card :spec="spec" :active="active" />
+      <UploadedMedia v-if="work.mode === 'upload' && work.media" card :media="work.media" :active="active" />
+      <FilmPlayer v-else-if="visible && spec" card :spec="spec" :active="active" />
       <div v-else class="absolute inset-0 flex items-center justify-center text-ink-500"><Clapperboard class="h-8 w-8 opacity-40" /></div>
-      <span class="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] text-white">{{ work.mode === 'film' ? 'HTML 视频' : categoryName }}</span>
+      <span class="absolute left-2 top-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] text-white">{{ work.mode === 'motion' ? categoryName : modeLabel(work) }}</span>
       <span v-if="work.duration" class="absolute bottom-2 right-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] tabular-nums text-white">{{ fmt(work.duration) }}</span>
       <span v-if="active" class="absolute bottom-2 left-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] text-white">移开即停止</span>
     </RouterLink>
@@ -13,7 +14,7 @@
         <span class="flex items-center gap-1"><Eye class="h-3.5 w-3.5" />{{ work.views }}</span>
         <span class="truncate">{{ work.author }}</span>
         <span class="flex-1"></span>
-        <RouterLink :to="{ path: '/', query: { remix: work.id } }" class="rounded-lg bg-brand-50 px-2 py-1 font-medium text-brand-700 opacity-0 transition group-hover:opacity-100 dark:bg-brand-900/30 dark:text-brand-300">制作同款</RouterLink>
+        <RouterLink v-if="work.mode !== 'upload'" :to="{ path: '/', query: { remix: work.id } }" class="rounded-lg bg-brand-50 px-2 py-1 font-medium text-brand-700 opacity-0 transition group-hover:opacity-100 dark:bg-brand-900/30 dark:text-brand-300">制作同款</RouterLink>
       </div>
     </div>
   </article>
@@ -23,7 +24,9 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Clapperboard, Eye } from 'lucide-vue-next'
 import FilmPlayer from './FilmPlayer.vue'
+import UploadedMedia from './UploadedMedia.vue'
 import { api } from '../lib/api'
+import { modeLabel } from '../lib/media'
 
 const props = defineProps({ work: { type: Object, required: true }, categories: { type: Array, default: () => [] } })
 const active = ref(false)
@@ -37,6 +40,7 @@ const categoryName = computed(() => props.categories.find((c) => c.id === props.
 // Cards load their scene code only when scrolled into view (each one runs a sandboxed player).
 let observer = null
 onMounted(() => {
+  if (props.work.mode === 'upload') return // the card has its media links
   observer = new IntersectionObserver(
     (entries) => {
       if (entries.some((e) => e.isIntersecting)) {

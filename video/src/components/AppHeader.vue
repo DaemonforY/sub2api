@@ -8,6 +8,9 @@
         </RouterLink>
       </nav>
       <div class="ml-auto flex items-center gap-2 md:ml-0">
+        <RouterLink to="/upload" class="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-ink-600 hover:bg-ink-100 hover:text-brand-600 sm:flex dark:text-ink-300 dark:hover:bg-ink-800" :class="{ '!text-brand-600': route.name === 'upload' }" data-testid="nav-upload">
+          <UploadCloud class="h-4 w-4" />上传作品
+        </RouterLink>
         <button class="rounded-lg p-2 text-ink-500 hover:bg-ink-100 dark:hover:bg-ink-800" :aria-label="dark ? '浅色模式' : '深色模式'" @click="toggleTheme">
           <Sun v-if="dark" class="h-5 w-5" />
           <Moon v-else class="h-5 w-5" />
@@ -43,6 +46,7 @@
     </div>
     <nav v-if="mobile" class="border-t border-ink-200 px-4 py-2 md:hidden dark:border-ink-800">
       <RouterLink v-for="item in nav" :key="item.to" :to="item.to" class="block rounded-lg px-3 py-2" @click="mobile = false">{{ item.label }}</RouterLink>
+      <RouterLink to="/upload" class="block rounded-lg px-3 py-2" @click="mobile = false">上传作品</RouterLink>
     </nav>
   </header>
 </template>
@@ -50,7 +54,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { LogIn, Menu, Moon, Sun } from 'lucide-vue-next'
+import { LogIn, Menu, Moon, Sun, UploadCloud } from 'lucide-vue-next'
 import Logo from './Logo.vue'
 import { MAIN_SITE_URL, session, signIn, signOut } from '../lib/api'
 import { dark, toggleTheme } from '../lib/theme'
