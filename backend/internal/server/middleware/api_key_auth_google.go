@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -25,7 +24,7 @@ func APIKeyAuthGoogle(apiKeyService *service.APIKeyService, cfg *config.Config) 
 func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if rejectInvalidAuthAbuse(c, apiKeyService) {
-			abortWithGoogleError(c, 429, "Too many invalid authentication attempts; retry later")
+			abortWithGoogleError(c, 429, msgAuthRateLimited)
 			return
 		}
 		if apiKeyHeadersTooLarge(c) {
@@ -37,7 +36,7 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 		if v := strings.TrimSpace(c.Query("api_key")); v != "" {
 			recordInvalidAuthFailure(c, apiKeyService)
 			MarkIngressRejected(c, IngressRejectQueryAPIKeyDeprecated)
-			abortWithGoogleError(c, 400, "Query parameter api_key is deprecated. Use Authorization header or key instead.")
+			abortWithGoogleError(c, 400, msgAPIKeyQueryParam)
 			return
 		}
 		apiKeyString := extractAPIKeyForGoogle(c)
@@ -48,7 +47,7 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			} else {
 				MarkIngressRejected(c, IngressRejectAPIKeyRequired)
 			}
-			abortWithGoogleError(c, 401, "API key is required")
+			abortWithGoogleError(c, 401, msgAPIKeyRequired)
 			return
 		}
 		if len(apiKeyString) > service.MaxAPIKeyCredentialBytes {
@@ -68,10 +67,10 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			}
 			if errors.Is(err, service.ErrAPIKeyAuthOverloaded) {
 				MarkIngressRejected(c, IngressRejectAPIKeyAuthOverloaded)
-				abortWithGoogleError(c, 503, "API key authentication is temporarily unavailable")
+				abortWithGoogleError(c, 503, msgAuthOverloaded)
 				return
 			}
-			abortWithGoogleError(c, 500, "Failed to validate API key")
+			abortWithGoogleError(c, 500, msgAuthFailed)
 			return
 		}
 
@@ -99,13 +98,13 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 				}
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonIPRestriction)
 				MarkIngressRejected(c, IngressRejectIPRestricted)
-				abortWithGoogleError(c, 403, fmt.Sprintf("Access denied. Your IP is %s", clientIP))
+				abortWithGoogleError(c, 403, ipDeniedMessage(clientIP))
 				return
 			}
 		}
 
 		if apiKey.User == nil {
-			abortWithGoogleError(c, 401, "User associated with API key not found")
+			abortWithGoogleError(c, 401, msgKeyUserNotFound)
 			return
 		}
 		if !apiKey.User.IsActive() {
@@ -148,20 +147,20 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 		// Key 状态检查（状态字段可能因后台异步刷新而滞后，故显式拦截）。
 		switch apiKey.Status {
 		case service.StatusAPIKeyQuotaExhausted:
-			abortWithGoogleError(c, 429, "API key 额度已用完")
+			abortWithGoogleError(c, 429, msgAPIKeyQuotaExhausted)
 			return
 		case service.StatusAPIKeyExpired:
-			abortWithGoogleError(c, 403, "API key 已过期")
+			abortWithGoogleError(c, 403, msgAPIKeyExpired)
 			return
 		}
 
 		// 运行时过期/配额检查（即使状态是 active，也要检查时间和用量，与主中间件一致）。
 		if apiKey.IsExpired() {
-			abortWithGoogleError(c, 403, "API key 已过期")
+			abortWithGoogleError(c, 403, msgAPIKeyExpired)
 			return
 		}
 		if apiKey.IsQuotaExhausted() {
-			abortWithGoogleError(c, 429, "API key 额度已用完")
+			abortWithGoogleError(c, 429, msgAPIKeyQuotaExhausted)
 			return
 		}
 
@@ -181,7 +180,7 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			if needsMaintenance {
 				refreshed, maintenanceErr := subscriptionService.EnsureWindowMaintenance(c.Request.Context(), subscription)
 				if maintenanceErr != nil {
-					abortWithGoogleError(c, 500, "Failed to maintain subscription usage windows")
+					abortWithGoogleError(c, 500, msgSubscriptionWindows)
 					return
 				}
 				subscription = refreshed

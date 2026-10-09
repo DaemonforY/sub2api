@@ -23,8 +23,8 @@ import (
 var errBillingCacheUnavailable = fmt.Errorf("billing cache unavailable")
 
 var (
-	ErrSubscriptionInvalid       = infraerrors.Forbidden("SUBSCRIPTION_INVALID", "subscription is invalid or expired")
-	ErrBillingServiceUnavailable = infraerrors.ServiceUnavailable("BILLING_SERVICE_ERROR", "Billing service temporarily unavailable. Please retry later.")
+	ErrSubscriptionInvalid       = infraerrors.Forbidden("SUBSCRIPTION_INVALID", "订阅无效或已到期，请到 "+RechargeURL+" 续费，或换一个按量计费分组的 Key（subscription is invalid or expired）")
+	ErrBillingServiceUnavailable = infraerrors.ServiceUnavailable("BILLING_SERVICE_ERROR", "计费服务暂时不可用，请稍后重试；本次请求未扣费（Billing service temporarily unavailable. Please retry later.）")
 	// RPM 超限错误。gateway_handler 负责映射为 HTTP 429。
 	ErrGroupRPMExceeded = infraerrors.TooManyRequests("GROUP_RPM_EXCEEDED", "这个分组每分钟的请求数已达上限，请过一会儿再试；批量任务请降低并发或在请求之间加间隔；本次请求未扣费（group requests-per-minute limit exceeded）")
 	ErrUserRPMExceeded  = infraerrors.TooManyRequests("USER_RPM_EXCEEDED", "你的账号每分钟的请求数已达上限，请过一会儿再试；批量任务请降低并发或在请求之间加间隔；本次请求未扣费（user requests-per-minute limit exceeded）")
@@ -33,9 +33,9 @@ var (
 	// 选用 429 而非 403：限额耗尽属于"暂时性资源用尽，重试可恢复"的场景（RFC 6585），
 	// 大量 SDK（如 OpenAI 兼容客户端）只对 429 触发自动退避并读取 Retry-After，
 	// 用 403 会被视为"权限不足，重试无意义"导致客户端直接报错且不退避。
-	ErrUserPlatformDailyQuotaExhausted   = infraerrors.TooManyRequests("USER_PLATFORM_DAILY_QUOTA_EXHAUSTED", "Daily usage quota exhausted for this platform.")
-	ErrUserPlatformWeeklyQuotaExhausted  = infraerrors.TooManyRequests("USER_PLATFORM_WEEKLY_QUOTA_EXHAUSTED", "Weekly usage quota exhausted for this platform.")
-	ErrUserPlatformMonthlyQuotaExhausted = infraerrors.TooManyRequests("USER_PLATFORM_MONTHLY_QUOTA_EXHAUSTED", "Monthly usage quota exhausted for this platform.")
+	ErrUserPlatformDailyQuotaExhausted   = infraerrors.TooManyRequests("USER_PLATFORM_DAILY_QUOTA_EXHAUSTED", "你在这个平台的今日用量额度已用完，请等额度重置后再试（响应头 Retry-After 是需要等待的秒数），如需提高额度请联系客服；本次请求未扣费（Daily usage quota exhausted for this platform.）")
+	ErrUserPlatformWeeklyQuotaExhausted  = infraerrors.TooManyRequests("USER_PLATFORM_WEEKLY_QUOTA_EXHAUSTED", "你在这个平台的本周用量额度已用完，请等额度重置后再试（响应头 Retry-After 是需要等待的秒数），如需提高额度请联系客服；本次请求未扣费（Weekly usage quota exhausted for this platform.）")
+	ErrUserPlatformMonthlyQuotaExhausted = infraerrors.TooManyRequests("USER_PLATFORM_MONTHLY_QUOTA_EXHAUSTED", "你在这个平台的本月用量额度已用完，请等额度重置后再试（响应头 Retry-After 是需要等待的秒数），如需提高额度请联系客服；本次请求未扣费（Monthly usage quota exhausted for this platform.）")
 )
 
 // subscriptionCacheData 订阅缓存数据结构（内部使用）

@@ -305,7 +305,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_MissingKey(t *testing.T) {
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusUnauthorized, resp.Error.Code)
-	require.Equal(t, "API key is required", resp.Error.Message)
+	require.Equal(t, msgAPIKeyRequired, resp.Error.Message)
 	require.Equal(t, "UNAUTHENTICATED", resp.Error.Status)
 }
 
@@ -329,7 +329,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_QueryApiKeyRejected(t *testing.T) {
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusBadRequest, resp.Error.Code)
-	require.Equal(t, "Query parameter api_key is deprecated. Use Authorization header or key instead.", resp.Error.Message)
+	require.Equal(t, msgAPIKeyQueryParam, resp.Error.Message)
 	require.Equal(t, "INVALID_ARGUMENT", resp.Error.Status)
 }
 
@@ -547,7 +547,7 @@ func TestApiKeyAuthWithSubscriptionGoogle_RepoError(t *testing.T) {
 	var resp googleErrorResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, http.StatusInternalServerError, resp.Error.Code)
-	require.Equal(t, "Failed to validate API key", resp.Error.Message)
+	require.Equal(t, msgAuthFailed, resp.Error.Message)
 	require.Equal(t, "INTERNAL", resp.Error.Status)
 }
 

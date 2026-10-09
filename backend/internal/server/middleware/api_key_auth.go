@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,7 +41,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 	return func(c *gin.Context) {
 		// ── 1. 提取 API Key ──────────────────────────────────────────
 		if rejectInvalidAuthAbuse(c, apiKeyService) {
-			AbortWithError(c, http.StatusTooManyRequests, "INVALID_AUTH_RATE_LIMITED", "Too many invalid authentication attempts; retry later")
+			AbortWithError(c, http.StatusTooManyRequests, "INVALID_AUTH_RATE_LIMITED", msgAuthRateLimited)
 			return
 		}
 
@@ -114,10 +113,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			}
 			if errors.Is(err, service.ErrAPIKeyAuthOverloaded) {
 				MarkIngressRejected(c, IngressRejectAPIKeyAuthOverloaded)
-				AbortWithError(c, http.StatusServiceUnavailable, "API_KEY_AUTH_OVERLOADED", "API key authentication is temporarily unavailable")
+				AbortWithError(c, http.StatusServiceUnavailable, "API_KEY_AUTH_OVERLOADED", msgAuthOverloaded)
 				return
 			}
-			AbortWithError(c, 500, "INTERNAL_ERROR", "Failed to validate API key")
+			AbortWithError(c, 500, "INTERNAL_ERROR", msgAuthFailed)
 			return
 		}
 
@@ -147,14 +146,14 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				}
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonIPRestriction)
 				MarkIngressRejected(c, IngressRejectIPRestricted)
-				AbortWithError(c, 403, "ACCESS_DENIED", fmt.Sprintf("Access denied. Your IP is %s", clientIP))
+				AbortWithError(c, 403, "ACCESS_DENIED", ipDeniedMessage(clientIP))
 				return
 			}
 		}
 
 		// 检查关联的用户
 		if apiKey.User == nil {
-			AbortWithError(c, 401, "USER_NOT_FOUND", "User associated with API key not found")
+			AbortWithError(c, 401, "USER_NOT_FOUND", msgKeyUserNotFound)
 			return
 		}
 
@@ -259,13 +258,13 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				abortWithAPIKeyQuotaError(c)
 				return
 			case service.StatusAPIKeyExpired:
-				AbortWithError(c, 403, "API_KEY_EXPIRED", "API key 已过期")
+				AbortWithError(c, 403, "API_KEY_EXPIRED", msgAPIKeyExpired)
 				return
 			}
 
 			// 运行时过期/配额检查（即使状态是 active，也要检查时间和用量）
 			if apiKey.IsExpired() {
-				AbortWithError(c, 403, "API_KEY_EXPIRED", "API key 已过期")
+				AbortWithError(c, 403, "API_KEY_EXPIRED", msgAPIKeyExpired)
 				return
 			}
 			if apiKey.IsQuotaExhausted() {
@@ -279,7 +278,7 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 				if needsMaintenance {
 					refreshed, maintenanceErr := subscriptionService.EnsureWindowMaintenance(c.Request.Context(), subscription)
 					if maintenanceErr != nil {
-						AbortWithError(c, 500, "SUBSCRIPTION_MAINTENANCE_FAILED", "Failed to maintain subscription usage windows")
+						AbortWithError(c, 500, "SUBSCRIPTION_MAINTENANCE_FAILED", msgSubscriptionWindows)
 						return
 					}
 					subscription = refreshed
@@ -349,7 +348,7 @@ func hasAPIKeyCredentialInput(c *gin.Context) bool {
 }
 
 func abortWithAPIKeyQuotaError(c *gin.Context) {
-	const message = "API key 额度已用完"
+	const message = msgAPIKeyQuotaExhausted
 	if isOpenAICompatibleAPIKeyRequest(c) {
 		abortWithOpenAIQuotaError(c, http.StatusTooManyRequests, message)
 		return

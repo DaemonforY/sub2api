@@ -921,7 +921,7 @@ func TestAPIKeyAuthIPRestrictionUsesTrustedPathWhenSwitchDisabled(t *testing.T) 
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusForbidden, w.Code)
-	requireAPIKeyAuthError(t, w, "ACCESS_DENIED", "Access denied. Your IP is 9.9.9.9")
+	requireAPIKeyAuthError(t, w, "ACCESS_DENIED", ipDeniedMessage("9.9.9.9"))
 	require.True(t, markedBusinessLimited)
 	require.Equal(t, service.OpsClientBusinessLimitedReasonIPRestriction, businessLimitedReason)
 }
@@ -971,7 +971,7 @@ func TestAPIKeyAuthIPRestrictionIncludesClientIPForBlacklistDenial(t *testing.T)
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusForbidden, w.Code)
-	requireAPIKeyAuthError(t, w, "ACCESS_DENIED", "Access denied. Your IP is 9.9.9.9")
+	requireAPIKeyAuthError(t, w, "ACCESS_DENIED", ipDeniedMessage("9.9.9.9"))
 }
 
 func TestAPIKeyAuthIPRestrictionUsesConfiguredTrustedProxy(t *testing.T) {
@@ -1074,7 +1074,7 @@ func TestAPIKeyAuthIPRestrictionUsesForwardedClientIPInDenialWhenTrusted(t *test
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusForbidden, w.Code)
-	requireAPIKeyAuthError(t, w, "ACCESS_DENIED", "Access denied. Your IP is 1.2.3.4")
+	requireAPIKeyAuthError(t, w, "ACCESS_DENIED", ipDeniedMessage("1.2.3.4"))
 }
 
 func TestAPIKeyAuthTouchesLastUsedOnSuccess(t *testing.T) {
@@ -1506,7 +1506,7 @@ func TestAPIKeyAuthOpenAIQuotaErrorFormat(t *testing.T) {
 		} `json:"error"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
-	require.Equal(t, "API key 额度已用完", response.Error.Message)
+	require.Equal(t, msgAPIKeyQuotaExhausted, response.Error.Message)
 	require.Equal(t, "insufficient_quota", response.Error.Type)
 	require.Nil(t, response.Error.Param)
 	require.Equal(t, "insufficient_quota", response.Error.Code)
@@ -1539,7 +1539,7 @@ func TestAPIKeyAuthQuotaErrorKeepsLegacyFormatOutsideResponses(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusTooManyRequests, w.Code)
-	requireAPIKeyAuthError(t, w, "API_KEY_QUOTA_EXHAUSTED", "API key 额度已用完")
+	requireAPIKeyAuthError(t, w, "API_KEY_QUOTA_EXHAUSTED", msgAPIKeyQuotaExhausted)
 }
 
 func newAuthTestRouter(apiKeyService *service.APIKeyService, subscriptionService *service.SubscriptionService, cfg *config.Config) *gin.Engine {
@@ -1835,4 +1835,17 @@ func (r *stubUserSubscriptionRepo) IncrementUsage(ctx context.Context, id int64,
 
 func (r *stubUserSubscriptionRepo) BatchUpdateExpiredStatus(ctx context.Context) (int64, error) {
 	return 0, errors.New("not implemented")
+}
+
+// The ops classifier lowercases messages and matches these substrings; the localized texts must keep them.
+func TestUserFacingAuthMessagesKeepClassifierSubstrings(t *testing.T) {
+	for msg, want := range map[string]string{
+		msgAPIKeyQuotaExhausted: "api key 额度已用完",
+		msgAPIKeyExpired:        "api key 已过期",
+		msgAPIKeyQueryParam:     "query parameter api_key is deprecated",
+		msgAPIKeyRequired:       "api key is required",
+	} {
+		require.Contains(t, strings.ToLower(msg), want)
+	}
+	require.Contains(t, ipDeniedMessage("9.9.9.9"), "9.9.9.9")
 }
