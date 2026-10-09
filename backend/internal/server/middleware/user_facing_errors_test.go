@@ -44,4 +44,5 @@ func TestInsufficientBalanceMessage(t *testing.T) {
 	msg := insufficientBalanceMessage(0.123)
 	require.Contains(t, msg, "当前余额 0.12")
 	require.Contains(t, msg, "Insufficient account balance")
+	require.Contains(t, msg, "https://hivegpt.cn/purchase")
 }

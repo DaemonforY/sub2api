@@ -1,5 +1,7 @@
 package handler
 
+import "github.com/Wei-Shaw/sub2api/internal/service"
+
 // Client-visible texts for gateway-side failures. End users read these in their client, so the
 // Chinese part says what happened and what to do; the original English stays in parentheses because
 // clients, tests and the ops classifiers match on it. Failed requests are not billed.
@@ -14,6 +16,7 @@ const (
 	msgUpstreamFailed      = "上游请求失败，请稍后重试；如持续出现请联系客服；本次请求未扣费（Upstream request failed）"
 	msgQueueFull           = "排队的请求太多，请等正在进行的请求完成后再试（Too many pending requests, please retry later）"
 	msgServiceBusyRetry    = "服务繁忙，请稍后重试（Service temporarily unavailable, please retry later）"
+	msgBillingNoBalance    = "账户余额不足，请到 " + service.RechargeURL + " 充值后重试，或改用订阅分组的 Key；本次请求未扣费（insufficient balance）"
 )
 
 func concurrencyLimitMessage(slotType string) string {

@@ -24,6 +24,9 @@ var (
 	ErrRedeemCodeLocked    = infraerrors.Conflict("REDEEM_CODE_LOCKED", "redeem code is being processed, please try again")
 )
 
+// RechargeURL is where gateway errors send users who are out of balance or subscription quota.
+const RechargeURL = "https://hivegpt.cn/purchase"
+
 const (
 	redeemMaxErrorsPerHour  = 20
 	redeemRateLimitDuration = time.Hour
