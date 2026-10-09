@@ -95,6 +95,7 @@ func SetupRouter(
 				videos = handlers.Video.Service()
 			}
 			frontendServer.SetSEOContent(newSEOContent(courses, videos))
+			frontendServer.SetVideoPlayer(newVideoPlayerSource(videos))
 			r.Use(frontendServer.Middleware())
 		}
 	} else {

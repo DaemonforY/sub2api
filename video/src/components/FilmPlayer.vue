@@ -3,7 +3,7 @@
     <!-- The scene code runs in a sandboxed frame: scripts only, no same-origin, no network (see player.html CSP). -->
     <iframe
       ref="frame"
-      src="/player.html"
+      :src="src || '/player.html'"
       sandbox="allow-scripts"
       referrerpolicy="no-referrer"
       title="视频画面"
@@ -65,7 +65,9 @@ const props = defineProps({
   /** Gallery card: no controls, muted, plays while `active`. */
   card: { type: Boolean, default: false },
   active: { type: Boolean, default: false },
-  posterAt: { type: Number, default: 1.6 }
+  posterAt: { type: Number, default: 1.6 },
+  /** A self-contained player page (/play/<id>: the work's data inlined); without it the spec is posted to /player.html. */
+  src: { type: String, default: '' }
 })
 const emit = defineEmits(['error', 'time', 'ready'])
 
@@ -79,7 +81,9 @@ const subtitlesOn = ref(true)
 const boxWidth = ref(800)
 
 const scenes = computed(() => props.spec?.scenes || [])
-const duration = computed(() => scenes.value.reduce((s, sc) => s + (sc.duration || 0), 0))
+// From the ready message when the frame loads its own data (src), else from the spec.
+const frameInfo = ref({ duration: 0, poster: 0 })
+const duration = computed(() => scenes.value.reduce((s, sc) => s + (sc.duration || 0), 0) || frameInfo.value.duration)
 const starts = computed(() => {
   let at = 0
   return scenes.value.map((sc) => {
@@ -123,7 +127,7 @@ function payload() {
 }
 let booted = false
 function sendProject() {
-  if (!booted || !props.spec?.scenes?.length) return
+  if (props.src || !booted || !props.spec?.scenes?.length) return
   ready.value = false
   post({ type: 'load', project: JSON.parse(JSON.stringify(payload())) })
 }
@@ -135,6 +139,7 @@ function onMessage(e) {
     sendProject()
   } else if (d.type === 'ready') {
     ready.value = true
+    frameInfo.value = { duration: d.duration || 0, poster: d.poster || 0 }
     // Until playback starts, show a frame from a third of the way in (the very first frame is often empty).
     post({ type: 'seek', t: (props.card && !props.active) || (!playing.value && t.value === 0) ? posterTime() : t.value })
     emit('ready', d.duration)
@@ -144,7 +149,11 @@ function onMessage(e) {
   }
 }
 // A work may name its best frame (spec.poster, seconds); otherwise an early frame.
-const posterTime = () => (props.spec?.poster > 0 ? Math.min(props.spec.poster, duration.value) : Math.min(props.posterAt, Math.max(0, duration.value * 0.3)))
+const posterTime = () => {
+  if (props.spec?.poster > 0) return Math.min(props.spec.poster, duration.value)
+  if (props.src) return frameInfo.value.poster
+  return Math.min(props.posterAt, Math.max(0, duration.value * 0.3))
+}
 
 // Reload when scene code / timing changes (not on every poll that returns the same spec).
 const signature = computed(() => (props.spec ? props.spec.scenes.map((sc) => `${sc.id}:${sc.duration}:${(sc.code || '').length}:${hash(sc.code || '')}`).join('|') + `|${props.spec.width}x${props.spec.height}|${props.spec.theme?.bg}` : ''))
@@ -226,7 +235,7 @@ async function play() {
     if (!playing.value) return
     let next = now()
     if (next >= duration.value) {
-      if (props.spec?.loop || props.card) {
+      if (props.spec?.loop || props.card || props.src) {
         next = 0
         wallStart = performance.now()
         startSources(0)

@@ -57,6 +57,9 @@ type FrontendServer struct {
 	learnOnce  sync.Once
 	learn      []SEOLearnPage
 	textCache  sync.Map // robots / sitemap / llms bodies: key -> seoCachedText
+
+	player     VideoPlayerSource // public works for /play/<id>; may be nil
+	playAssets playerAssets
 }
 
 // seoSiteInfo is the site name and logo from the public settings.
@@ -255,6 +258,10 @@ func (s *FrontendServer) serveEditor(c *gin.Context, cleanPath string) {
 // scene code inside a sandboxed iframe, so it gets its own policy: scripts may run but nothing may
 // reach the network.
 func (s *FrontendServer) serveVideo(c *gin.Context, cleanPath string) {
+	if m := playPath.FindStringSubmatch(cleanPath); m != nil {
+		s.servePlay(c, m[1])
+		return
+	}
 	name := "video/" + cleanPath
 	if cleanPath == "index.html" || !s.isFile(name) {
 		name = "video/index.html"
@@ -276,11 +283,11 @@ func (s *FrontendServer) serveVideo(c *gin.Context, cleanPath string) {
 		c.Abort()
 		return
 	case name == "video/player.html":
-		origin := requestOrigin(c.Request)
-		c.Header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' "+origin+"; style-src 'unsafe-inline' "+origin+
-			"; img-src data: blob: "+origin+"; font-src data: "+origin+"; media-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors "+origin)
-		c.Header("X-Frame-Options", "SAMEORIGIN")
+		setPlayerHeaders(c)
 		c.Header("Cache-Control", "no-cache")
+	case strings.HasPrefix(name, "video/player/") && c.Query("v") != "":
+		// Versioned by content hash (see playShell), so it never changes under this URL.
+		c.Header("Cache-Control", staticAssetsCacheControl)
 	case strings.HasPrefix(name, "video/fonts/"):
 		// Loaded from the sandboxed player (an opaque origin), so fonts need CORS.
 		c.Header("Access-Control-Allow-Origin", "*")

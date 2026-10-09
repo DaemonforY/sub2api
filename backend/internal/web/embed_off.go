@@ -25,6 +25,9 @@ func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer
 	return nil, errors.New("frontend not embedded")
 }
 
+// SetVideoPlayer is a no-op for non-embed builds.
+func (s *FrontendServer) SetVideoPlayer(VideoPlayerSource) {}
+
 // SetVideoHost is a no-op for non-embed builds.
 func (s *FrontendServer) SetVideoHost(string) {}
 

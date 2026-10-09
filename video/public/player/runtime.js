@@ -254,7 +254,7 @@
       if (!threeLoading) {
         threeLoading = new Promise(function (resolve) {
           var el = document.createElement('script');
-          el.src = '/player/vendor/three.js';
+          el.src = window.__PLAYER_THREE__ || '/player/vendor/three.js';
           el.onload = el.onerror = resolve;
           document.head.appendChild(el);
         });
@@ -283,9 +283,11 @@
       film.scenes.push(scene);
     });
     film.duration = at;
+    // The cover frame: the work's own (spec.poster) or a third of the way in, at most 1.6 s.
+    var poster = project.poster > 0 ? Math.min(project.poster, at) : Math.min(1.6, at * 0.3);
     fit();
-    render(0);
-    post({ type: 'ready', duration: at });
+    render(poster);
+    post({ type: 'ready', duration: at, poster: poster });
   }
 
   function render(t) {

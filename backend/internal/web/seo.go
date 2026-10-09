@@ -49,6 +49,11 @@ type SEOContent interface {
 	FAQ() []SEOFAQ
 }
 
+// VideoPlayerSource returns the player data (JSON) of a public work for /play/<id>, or ok=false.
+type VideoPlayerSource interface {
+	PlayerData(ctx context.Context, id string) (data []byte, ok bool)
+}
+
 // SEOTool is a video tool landing page (video/src/lib/tools.json, built to dist/video/seo-tools.json).
 type SEOTool struct {
 	Slug     string   `json:"slug"`
