@@ -282,8 +282,11 @@ func (s *SiteHostingService) allowUnlockAttempt(key string) bool {
 // resolveSiteFile maps a URL path to a file: /a/ → a/index.html, /a → a, a.html or (redirect) a/.
 func resolveSiteFile(root, reqPath string, trailingSlash bool) (file string, redirect bool) {
 	rel := filepath.FromSlash(strings.TrimPrefix(reqPath, "/"))
+	if rel != "" && !filepath.IsLocal(rel) {
+		return "", false
+	}
 	isFile := func(p string) bool {
-		info, err := os.Lstat(p)
+		info, err := os.Lstat(p) //nolint:gosec // G703: reqPath 经 path.Clean("/"+…) 且 rel 已过 filepath.IsLocal，p 不会越出站点根目录
 		return err == nil && info.Mode().IsRegular()
 	}
 	if trailingSlash || reqPath == "/" {
