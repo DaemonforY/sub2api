@@ -86,6 +86,7 @@
             </div>
           </div>
         </div>
+        <InviteAfterPurchaseCard v-if="showInvite" />
         <!-- Actions -->
         <div v-if="isMembershipOrder" class="space-y-3">
           <p v-if="isSuccess" class="text-center text-sm text-gray-600 dark:text-gray-300" data-testid="result-membership-done">{{ t('canvasMembership.result.done') }}</p>
@@ -113,6 +114,8 @@ import { useI18n } from 'vue-i18n'
 import { canvasUrl } from '@/constants/crossSites'
 import { useRoute, useRouter } from 'vue-router'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
+import InviteAfterPurchaseCard from '@/components/payment/InviteAfterPurchaseCard.vue'
+import { useAppStore } from '@/stores/app'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
   clearPaymentRecoverySnapshot,
@@ -181,6 +184,10 @@ const localeCode = computed(() => {
   return undefined
 })
 
+const appStore = useAppStore()
+const showInvite = computed(
+  () => isSuccess.value && authStore.isAuthenticated && appStore.cachedPublicSettings?.affiliate_enabled === true
+)
 const isSuccess = computed(() => {
   return isSuccessStatus(order.value?.status)
 })

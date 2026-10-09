@@ -11,6 +11,9 @@ const verifyOrder = vi.hoisted(() => vi.fn())
 const verifyOrderPublic = vi.hoisted(() => vi.fn())
 const resolveOrderPublicByResumeToken = vi.hoisted(() => vi.fn())
 const refreshUser = vi.hoisted(() => vi.fn())
+const authState = vi.hoisted(() => ({ isAuthenticated: false }))
+const appState = vi.hoisted(() => ({ cachedPublicSettings: { affiliate_enabled: false } as Record<string, unknown> }))
+const getAffiliateDetail = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -40,8 +43,17 @@ vi.mock('@/stores/payment', () => ({
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
     refreshUser,
+    get isAuthenticated() {
+      return authState.isAuthenticated
+    },
   }),
 }))
+
+vi.mock('@/stores/app', () => ({
+  useAppStore: () => ({ ...appState, showSuccess: vi.fn(), showError: vi.fn() }),
+}))
+
+vi.mock('@/api/user', () => ({ default: { getAffiliateDetail } }))
 
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
@@ -534,5 +546,21 @@ describe('PaymentResultView', () => {
 
     expect(wrapper.text()).toContain('payment.methods.alipay')
     expect(wrapper.text()).not.toContain('payment.methods.alipay_direct')
+  })
+
+  it('invites friends after a successful payment when the invite program is on', async () => {
+    authState.isAuthenticated = true
+    appState.cachedPublicSettings = { affiliate_enabled: true }
+    getAffiliateDetail.mockResolvedValue({ aff_code: 'ABC123', effective_rebate_rate_percent: 20 })
+    routeState.query = { resume_token: 'resume-inv' }
+    resolveOrderPublicByResumeToken.mockResolvedValue({ data: orderFactory('COMPLETED') })
+
+    const wrapper = mount(PaymentResultView, { global: { stubs: { OrderStatusBadge: true, RouterLink: true } } })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="invite-after-purchase"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('payment.result.invite.descRate')
+
+    authState.isAuthenticated = false
+    appState.cachedPublicSettings = { affiliate_enabled: false }
   })
 })

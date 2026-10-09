@@ -388,6 +388,13 @@ export default {
       subscriptionSuccess: 'Subscription Successful',
       processing: 'Payment Processing',
       processingHint: 'Payment confirmation is still pending. This page will refresh automatically.',
+      invite: {
+        title: 'Enjoying it? Tell a friend',
+        desc: 'Share your invite link with classmates and colleagues.',
+        descRate: 'When friends sign up with your link, you get {rate}% of every top-up they make.',
+        copy: 'Copy invite link',
+        more: 'Invite details'
+      },
       failed: 'Payment Failed',
       backToRecharge: 'Back to Recharge',
       viewOrders: 'View Orders',

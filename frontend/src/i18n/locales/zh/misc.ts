@@ -412,6 +412,13 @@ export default {
       subscriptionSuccess: '订阅成功',
       processing: '支付处理中',
       processingHint: '支付结果仍在确认中，页面会自动刷新。',
+      invite: {
+        title: '好用就推荐给朋友吧',
+        desc: '把你的邀请链接发给同学、同事，他们注册后用起来更方便。',
+        descRate: '朋友通过你的链接注册后，每次充值你都能拿到 {rate}% 返利。',
+        copy: '复制邀请链接',
+        more: '查看邀请详情'
+      },
       failed: '支付失败',
       backToRecharge: '返回充值',
       viewOrders: '查看订单',
