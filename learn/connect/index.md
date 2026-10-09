@@ -44,6 +44,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | OpenCode、CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
 | 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk) | 5 分钟 |
 | Cherry Studio 桌面客户端 | [Cherry Studio 配置教程](/connect/cherry-studio) | 3 分钟 |
+| Chatbox 对话客户端 | [Chatbox 接入第三方 API](/connect/chatbox) | 3 分钟 |
 | 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |
 
 最省事的办法：在「API 密钥」页找到你的 Key，点 **「使用密钥」**。弹窗会按你的分组和系统，直接生成 Codex、OpenCode 等客户端的配置，复制粘贴即可。
@@ -74,14 +75,14 @@ curl https://hivegpt.cn/v1/chat/completions \
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 提示 Key 无效、未授权（401） | Key 复制不全、已删除或已停用 | 到「API 密钥」页确认状态，重新复制完整的 Key |
-| 提示某个模型不支持或不存在 | 这个模型不在你 Key 的分组里 | 用上面的 `/v1/models` 查可用模型，或换一个分组的 Key |
-| 提示余额不足、额度已用完 | 余额为 0，或订阅的每日 / 每周 / 每月额度用完 | 充值，或等额度恢复；充值后同一个 Key 会自动改用余额继续 |
-| 提示限流、请稍后再试（429） | 请求太快，或上游临时限流 | 过 1–2 分钟再试；这类失败不扣费 |
+| 提示 Key 无效、未授权（401） | Key 复制不全、已删除或已停用 | 到「API 密钥」页确认状态，重新复制完整的 Key，见 [401 报错](/connect/errors/401) |
+| 提示某个模型不支持或不存在 | 这个模型不在你 Key 的分组里 | 用上面的 `/v1/models` 查可用模型，或换一个分组的 Key，见 [模型不存在](/connect/errors/model) |
+| 提示余额不足、额度已用完 | 余额为 0，或订阅的每日 / 每周 / 每月额度用完 | 充值，或等额度恢复；充值后同一个 Key 会自动改用余额继续，见 [余额 / 额度](/connect/errors/quota) |
+| 提示限流、请稍后再试（429） | 请求太快，或上游临时限流 | 过 1–2 分钟再试；这类失败不扣费，见 [429 报错](/connect/errors/429) |
 | 上游暂时不可用（502 / 503） | 模型服务临时故障 | 稍后重试；这类失败不扣费 |
 | 一直转圈、回复很慢 | 上游繁忙，或者上下文太长 | 换一个较快的模型，或开新会话减少上下文 |
 
-每次请求的模型、用量和费用都能在 [使用记录](https://hivegpt.cn/usage) 里查到。还有问题，可以问首页右下角的智能客服。
+按报错代码查原因，看 [报错速查](/connect/errors/)。每次请求的模型、用量和费用都能在 [使用记录](https://hivegpt.cn/usage) 里查到。还有问题，可以问首页右下角的智能客服。
 
 ::: danger 保护好你的 Key
 Key 等同于余额。不要发到群里、截图里或提交到 Git 仓库。如果泄露了，立刻在「API 密钥」页删除，再建一个新的。

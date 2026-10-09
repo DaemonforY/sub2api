@@ -68,13 +68,11 @@ API 地址填 `https://hivegpt.cn`（不加 `/v1`，Cherry Studio 会自动补�
 
 ## Chatbox
 
-1. 打开设置里的模型提供方，添加一个自定义提供方，API 模式选 **OpenAI API 兼容**。
-2. API 地址填 `https://hivegpt.cn`；如果有单独的「API 路径」，填 `/v1/chat/completions`。
-3. 填入 API Key 和模型名 `gpt-5.5`，保存后新建对话测试。
+API 模式选 **OpenAI API 兼容**，API 主机填 `https://hivegpt.cn/v1`，API 路径保持 `/chat/completions`。完整步骤见 [Chatbox 接入第三方 API](/connect/chatbox)。
 
 ## 还是不通？
 
 1. 地址到底加不加 `/v1`，对照 [Base URL 填法对照表](/connect/base-url)。
 2. 先用 [接入教程首页](/connect/#验证-key-能用) 里的 curl 命令测一下 Key 本身是否可用。curl 能通，问题就在工具的配置上。
-3. 对照 [常见报错](/connect/#常见报错) 排查。最常见的是：地址多了或少了 `/v1`，以及模型名不在你 Key 的分组里。
+3. 对照 [报错速查](/connect/errors/) 排查。最常见的是：地址多了或少了 `/v1`，以及模型名不在你 Key 的分组里。
 4. 到 [使用记录](https://hivegpt.cn/usage) 看请求有没有到达 HiveGPT：有记录说明网络和 Key 都没问题；没有记录说明请求没发过来。
