@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -754,7 +755,27 @@ func (s *TutorService) answer(ctx context.Context, t *Tutor, key string, in Tuto
 		return err
 	}
 	msgs := append([]LearnMessage{{Role: "system", Content: tutorSystemPrompt(t, materials, partial)}}, in.Messages...)
-	_, err = s.chat(ctx, key, s.tierModel(ctx, t.ModelTier), msgs, tutorMaxOutputTokens, onDelta)
+
+	// A call that fails before any text reached the student is tried again (the single upstream
+	// account is briefly unavailable now and then, more often for the cheaper model): once on the
+	// same model, then, for 经济, once on the standard model. Once text has been sent it is not
+	// repeated; the error goes to the student.
+	models := []string{s.tierModel(ctx, t.ModelTier), s.tierModel(ctx, t.ModelTier)}
+	if t.ModelTier == TutorEconomy {
+		models = append(models, s.model(ctx))
+	}
+	sent := false
+	stream := func(d string) error {
+		sent = true
+		return onDelta(d)
+	}
+	for i, model := range models {
+		_, err = s.chat(ctx, key, model, msgs, tutorMaxOutputTokens, stream)
+		if err == nil || sent || ctx.Err() != nil || i == len(models)-1 {
+			return err
+		}
+		slog.Info("tutor: retrying an answer", "tutor", t.ID, "model", model, "next", models[i+1], "err", err)
+	}
 	return err
 }
 

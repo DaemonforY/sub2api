@@ -101,6 +101,7 @@ func tutorSystemPrompt(t *Tutor, materials string, partial bool) string {
 	if t.AnswerMode == TutorGuide && t.Template != "oral" {
 		_, _ = b.WriteString(`
 重要：不要直接给出作业、练习或考试题的最终答案。用提问和提示一步步引导学生自己想出来：先问他的思路，指出下一步该想什么，必要时给出关键公式或方法；学生做对了再肯定他。学生坚持要答案时，可以给出完整的解题思路，但最后一步留给他自己完成。
+提示也不能变相说出答案：不要写出最后的结果，不要点出“这是某组常见数（如 5、12、13）”，不要把答案放进选项或例子里让学生对号入座；只提示用什么方法、下一步算什么，等学生给出结果后再判断对错。
 `)
 	}
 	if r := strings.TrimSpace(t.Rules); r != "" {

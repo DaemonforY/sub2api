@@ -164,7 +164,9 @@ func (r *tutorRepoStub) CountMessages(ctx context.Context, tutorID int64, since 
 	l, _ := r.ListMessages(ctx, tutorID, since, 1<<30)
 	return len(l), nil
 }
-func (r *tutorRepoStub) DeleteMessagesBefore(context.Context, time.Time) (int64, error) { return 0, nil }
+func (r *tutorRepoStub) DeleteMessagesBefore(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
 
 type tutorChatCall struct {
 	key, system string
@@ -478,4 +480,52 @@ func TestTutorModelTier(t *testing.T) {
 	ask()
 	require.Equal(t, []string{svc.model(ctx), tutorEconomyModel}, models)
 	require.NotEqual(t, tutorEconomyModel, svc.model(ctx))
+}
+
+func TestTutorRetriesFailedAnswers(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _, _ := newTutorForTest(t)
+	var models []string
+	var script []func(onDelta func(string) error) error
+	svc.chat = func(_ context.Context, _, model string, _ []LearnMessage, _ int, onDelta func(string) error) (*LearnTutorResult, error) {
+		models = append(models, model)
+		step := script[0]
+		script = script[1:]
+		return &LearnTutorResult{}, step(onDelta)
+	}
+	fail := func(func(string) error) error { return errLearnRunFailed("no available accounts") }
+	answer := func(onDelta func(string) error) error { return onDelta("好") }
+	half := func(onDelta func(string) error) error { _ = onDelta("一半"); return errLearnRunFailed("stream interrupted") }
+
+	tu, err := svc.Create(ctx, 5, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", ModelTier: TutorEconomy, Enabled: true})
+	require.NoError(t, err)
+	ask := func() (string, error) {
+		var out strings.Builder
+		err := svc.Preview(ctx, 5, tu.ID, TutorChatInput{Messages: []LearnMessage{{Role: "user", Content: "q"}}}, func(d string) error { out.WriteString(d); return nil })
+		return out.String(), err
+	}
+
+	// Economy fails twice before any text: the third try runs on the standard model.
+	script = []func(func(string) error) error{fail, fail, answer}
+	text, err := ask()
+	require.NoError(t, err)
+	require.Equal(t, "好", text)
+	require.Equal(t, []string{tutorEconomyModel, tutorEconomyModel, svc.model(ctx)}, models)
+
+	// Text already sent: no retry, the error goes to the student.
+	models = nil
+	script = []func(func(string) error) error{half}
+	text, err = ask()
+	require.Error(t, err)
+	require.Equal(t, "一半", text)
+	require.Len(t, models, 1)
+
+	// Standard: one retry on the same model, then the error.
+	_, err = svc.Update(ctx, 5, tu.ID, TutorInput{KeyID: 7, Name: "数学助教", Template: "qa", ModelTier: TutorStandard, PerStudentDay: 20, Enabled: true})
+	require.NoError(t, err)
+	models = nil
+	script = []func(func(string) error) error{fail, fail}
+	_, err = ask()
+	require.Error(t, err)
+	require.Equal(t, []string{svc.model(ctx), svc.model(ctx)}, models)
 }
