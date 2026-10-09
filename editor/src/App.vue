@@ -9,6 +9,7 @@
     <div class="header-actions">
       <nav class="header-links">
         <button class="header-link" type="button" @click="openImport">导入文章</button>
+        <button class="header-link highlight" type="button" @click="toggleArticles">AI 写文章</button>
         <button class="header-link" type="button" @click="toggleAiPanel">AI 助手</button>
         <button class="header-link" type="button" @click="showSettings = true">设置</button>
         <a class="header-link" :href="tutorialUrl" target="_blank" rel="noopener">使用教程</a>
@@ -326,6 +327,7 @@
 
   <!-- AI 助手 -->
   <AiPanel :open="showAiPanel" @close="showAiPanel = false" @open-settings="showSettings = true" />
+  <ArticleAgent :open="showArticles" @close="showArticles = false" @open="openArticles" @open-settings="showSettings = true" />
 
   <!-- 弹窗 -->
   <SettingsDialog v-if="showSettings" @close="showSettings = false" />
@@ -345,7 +347,7 @@
     </div>
   </aside>
   <ImportDialog v-if="showImport" @close="showImport = false" />
-  <DraftDialog v-if="showDraft" @close="showDraft = false" @open-settings="showSettings = true" />
+  <DraftDialog v-if="showDraft" :auto="draftAuto" @close="closeDraft" @sent="draftSent" @open-settings="showSettings = true" />
 
   <!-- Toast 提示 -->
   <div v-if="toast.show" class="toast" :class="toast.type">
@@ -363,7 +365,7 @@ import { ImageStore } from './lib/imageStore.js';
 import { ImageCompressor } from './lib/imageCompressor.js';
 import { ImageHostManager } from './lib/imageHostManager.js';
 import { EMPHASIS_MARKERS, isCjkLetter, isCjkPunctuation, withTimeout } from './lib/helpers.js';
-import { token, currentUser, loginUrl, isWechatImageUrl, fetchProxiedImage } from './lib/api.js';
+import { token, currentUser, loginUrl, isWechatImageUrl, fetchProxiedImage, getArticle, fetchArticleImage, articlePushed } from './lib/api.js';
 import { loadAiKey, loadDraftMeta, saveDraftMeta } from './lib/settings.js';
 import { TUTORIAL_URL } from './lib/guide.js';
 import { dataUrlToBlob, loadImageCrossOrigin, imageElementToBlob } from './lib/imageTools.js';
@@ -371,11 +373,12 @@ import SettingsDialog from './components/SettingsDialog.vue';
 import ImportDialog from './components/ImportDialog.vue';
 import DraftDialog from './components/DraftDialog.vue';
 import AiPanel from './components/AiPanel.vue';
+import ArticleAgent from './components/ArticleAgent.vue';
 
 const WELCOME_KEY = 'editor_welcome_done';
 
 export default {
-  components: { SettingsDialog, ImportDialog, DraftDialog, AiPanel },
+  components: { SettingsDialog, ImportDialog, DraftDialog, AiPanel, ArticleAgent },
 
   // 子组件（设置 / 导入 / 草稿箱 / AI 助手）通过 inject('editor') 使用编辑器的状态和方法
   provide() {
@@ -394,6 +397,9 @@ export default {
       showImport: false,
       showDraft: false,
       showAiPanel: false,
+      showArticles: false,              // AI 写文章面板
+      draftAuto: false,                 // 草稿箱弹窗打开后直接发送（AI 写文章的「一键推送」）
+      agentArticleId: null,             // 编辑器里是哪篇 AI 文章（推送后回报给服务器）
       showWelcome: !localStorage.getItem(WELCOME_KEY),
       tutorialUrl: TUTORIAL_URL,
 
@@ -616,7 +622,74 @@ export default {
     toggleAiPanel() {
       this.refreshAuth();
       this.showAiPanel = !this.showAiPanel;
-      if (this.showAiPanel) this.showHistoryPanel = false;
+      if (this.showAiPanel) {
+        this.showHistoryPanel = false;
+        this.showArticles = false;
+      }
+    },
+
+    toggleArticles() {
+      if (this.showArticles) this.showArticles = false;
+      else this.openArticles();
+    },
+
+    openArticles() {
+      this.refreshAuth();
+      this.showArticles = true;
+      this.showAiPanel = false;
+      this.showHistoryPanel = false;
+    },
+
+    /**
+     * Loads a finished AI article into the editor: pictures go into IndexedDB (img://), the title,
+     * digest and cover into the draft fields. With push, the draft-box dialog opens and sends at once.
+     * What was in the editor is saved to 历史 first.
+     */
+    async openAgentArticle(id, { push = false } = {}) {
+      this.refreshAuth();
+      this.showToast(push ? '正在载入文章和配图，准备推送…' : '正在载入文章和配图…', 'success');
+      try {
+        const p = await getArticle(id);
+        if (p.status !== 'done' || !p.markdown) throw new Error('这篇文章还没写好');
+        if (this.markdownInput.trim()) this.saveToHistory();
+        const ids = {};
+        for (const im of p.images) {
+          if (im.status !== 'ok') continue;
+          const blob = await fetchArticleImage(p.id, im.n);
+          ids[im.n] = await this.storeImageBlob(blob, im.kind === 'cover' ? 'AI 封面' : (im.alt || 'AI 配图'));
+        }
+        const md = p.markdown.replace(/!\[([^\]]*)\]\(img:(\d+)\)/g, (m, alt, n) => (ids[n] ? `![${alt}](img://${ids[n]})` : ''));
+        this.currentArticleId = null;
+        this.markdownInput = md;
+        this.setDraftTitle(p.title, 'ai');
+        this.draftMeta.digest = ((p.outline && p.outline.digest) || '').slice(0, 120);
+        this.draftMeta.coverImageId = ids[0] || '';
+        this.agentArticleId = p.id;
+        this.showArticles = false;
+        await this.renderMarkdown();
+        if (push) {
+          this.draftAuto = true;
+          this.showDraft = true;
+        } else {
+          this.showToast('文章已载入编辑器，检查后点「发送到草稿箱」', 'success');
+        }
+      } catch (error) {
+        this.noteApiError(error);
+        this.showToast(error.message || '载入文章失败', 'error');
+      }
+    },
+
+    closeDraft() {
+      this.showDraft = false;
+      this.draftAuto = false;
+    },
+
+    /** The draft box got the article: tell the server if it was an AI article. */
+    draftSent() {
+      if (this.agentArticleId) {
+        articlePushed(this.agentArticleId).catch(() => {});
+        this.agentArticleId = null;
+      }
     },
 
     trackSelection() {

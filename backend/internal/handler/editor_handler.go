@@ -16,11 +16,12 @@ import (
 // EditorHandler serves the 公众号 editor's API (/api/v1/editor): WeChat draft box, article import,
 // the image proxy and AI. All routes need a signed-in user.
 type EditorHandler struct {
-	svc *service.EditorService
+	svc      *service.EditorService
+	articles *service.ArticleAgentService // AI 写文章 (editor_article_handler.go)
 }
 
-func NewEditorHandler(svc *service.EditorService) *EditorHandler {
-	return &EditorHandler{svc: svc}
+func NewEditorHandler(svc *service.EditorService, articles *service.ArticleAgentService) *EditorHandler {
+	return &EditorHandler{svc: svc, articles: articles}
 }
 
 const editorUploadMax = 10<<20 + 1<<20

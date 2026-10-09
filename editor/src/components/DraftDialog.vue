@@ -190,7 +190,11 @@ export default {
   name: 'DraftDialog',
   components: { WechatSetupGuide },
   inject: ['editor'],
-  emits: ['close', 'open-settings'],
+  props: {
+    // 打开后直接发送（AI 写文章的「一键推送」）；表单不完整时停在表单上
+    auto: { type: Boolean, default: false }
+  },
+  emits: ['close', 'open-settings', 'sent'],
   data() {
     const acc = loadAccounts();
     return {
@@ -260,11 +264,12 @@ export default {
       this.candidates = await this.editor.articleImageCandidates();
       const preset = meta.coverImageId ? this.candidates.find(c => c.imageId === meta.coverImageId) : null;
       if (preset) {
-        this.pickCandidate(preset);
+        await this.useCoverFrom(() => this.editor.getImageBlobBySrc(preset.src), preset.key);
       } else if (meta.coverImageId) {
         // 设为封面的 AI 配图已不在正文里，也照样用
-        this.useCoverFrom(() => this.editor.getImageBlobBySrc(`img://${meta.coverImageId}`), `img://${meta.coverImageId}`);
+        await this.useCoverFrom(() => this.editor.getImageBlobBySrc(`img://${meta.coverImageId}`), `img://${meta.coverImageId}`);
       }
+      if (this.auto && this.accounts.length) this.send();
     }
   },
   beforeUnmount() {
@@ -466,6 +471,7 @@ export default {
         this.setStep('draft', 'done');
         this.mediaId = draft && draft.media_id ? draft.media_id : '';
         this.phase = 'done';
+        this.$emit('sent');
         this.editor.saveToHistory();
         this.editor.showToast('已保存到草稿箱', 'success');
       } catch (error) {

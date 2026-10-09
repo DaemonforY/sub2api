@@ -630,17 +630,30 @@ func (s *EditorService) AIImage(ctx context.Context, userID int64, in EditorAIIm
 	if err != nil {
 		return nil, err
 	}
-	body, _ := json.Marshal(map[string]any{"model": editorImageModel, "prompt": prompt + "\n画面里不要出现任何文字、字母、Logo 和水印。",
-		"size": in.Size, "quality": "medium", "n": 1})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.learn.gatewayURL+"/v1/images/generations", bytes.NewReader(body))
+	data, err := gatewayImage(ctx, s.aiClient, s.learn.gatewayURL, "hivegpt-editor/1", key, prompt+"\n画面里不要出现任何文字、字母、Logo 和水印。", in.Size)
+	if err != nil {
+		return nil, err
+	}
+	b64 := base64.StdEncoding.EncodeToString(data)
+	return &EditorAIImage{B64JSON: b64, Mime: http.DetectContentType(data)}, nil
+}
+
+// gatewayImage draws one picture with gpt-image-2 through this site's gateway on the given key
+// (billed as usual) and returns the image bytes.
+func gatewayImage(ctx context.Context, client *http.Client, gatewayURL, userAgent, key, prompt, size string) ([]byte, error) {
+	body, _ := json.Marshal(map[string]any{"model": editorImageModel, "prompt": prompt, "size": size, "quality": "medium", "n": 1})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, gatewayURL+"/v1/images/generations", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+key)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "hivegpt-editor/1")
-	resp, err := s.aiClient.Do(req)
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := client.Do(req)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, errLearnRunFailed("连接画图服务超时")
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -660,17 +673,33 @@ func (s *EditorService) AIImage(ctx context.Context, userID int64, in EditorAIIm
 	if json.Unmarshal(raw, &r) != nil || len(r.Data) == 0 {
 		return nil, errLearnRunFailed("画图服务没有返回图片")
 	}
-	b64 := r.Data[0].B64JSON
-	if b64 == "" && r.Data[0].URL != "" {
-		img, _, err := s.get(ctx, r.Data[0].URL, 40<<20)
-		if err != nil {
-			return nil, err
-		}
-		b64 = base64.StdEncoding.EncodeToString(img)
+	if r.Data[0].B64JSON == "" && r.Data[0].URL != "" {
+		return gatewayImageURL(ctx, client, r.Data[0].URL)
 	}
-	data, err := base64.StdEncoding.DecodeString(b64)
+	data, err := base64.StdEncoding.DecodeString(r.Data[0].B64JSON)
 	if err != nil || len(data) == 0 {
 		return nil, errLearnRunFailed("画图服务返回的图片无法识别")
 	}
-	return &EditorAIImage{B64JSON: b64, Mime: http.DetectContentType(data)}, nil
+	return data, nil
+}
+
+// gatewayImageURL fetches a picture the image service returned as a link (https only).
+func gatewayImageURL(ctx context.Context, client *http.Client, link string) ([]byte, error) {
+	if !strings.HasPrefix(link, "https://") {
+		return nil, errLearnRunFailed("画图服务返回的图片地址无效")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, link, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errLearnRunFailed("下载图片超时")
+	}
+	defer func() { _ = resp.Body.Close() }()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 40<<20))
+	if err != nil || resp.StatusCode != http.StatusOK || len(data) == 0 {
+		return nil, errLearnRunFailed("下载图片失败")
+	}
+	return data, nil
 }

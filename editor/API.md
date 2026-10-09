@@ -56,3 +56,40 @@ action：`polish` 润色 · `shorten` 精简 · `expand` 扩写 · `title` 拟 5
 ### POST /ai/image
 `{"key_id":7,"prompt":"画面描述","size":"1536x1024"}`（size：`1536x1024` 横图 / `1024x1536` 竖图 / `1024x1024`）
 → `{"b64_json":"...","mime":"image/png"}`。模型 gpt-image-2，费用记在所选 Key 上。
+
+## AI 写文章（后台任务，用用户自己的 Key 计费）
+
+服务器在后台搜资料（后台「联网搜索模拟」里配了 Tavily / Brave 时）、出大纲，用户确认后写全文、画封面和配图；关掉页面也继续。
+推送到草稿箱仍在浏览器里做（AppSecret 不经过这些接口）：把文章载入编辑器，再走上面的 `/wechat/upload` + `/wechat/draft`。
+每人同时最多 2 篇在生成，每次运行最长 15 分钟，文章和图片保存 30 天。模型用学习站设置的模型，图片 gpt-image-2。
+
+状态：`outlining` 出大纲中 → `outline_ready` 待确认 → `writing` 写作中 → `drawing` 画图中 → `done`；出错 `failed`、停止 `canceled`。
+
+### GET /articles/config
+→ `{"search":true,"max_images":4}`（search：联网搜索是否可用）
+
+### GET /articles
+→ 最近 30 篇，不含正文、进度和图片：`[{id,status,title,error,created_at,updated_at,brief,pushed_at}]`
+
+### POST /articles
+`{"key_id":7,"topic":"主题（≤200 字）","materials":"参考资料（≤8000 字，可空）","audience":"读者","tone":"风格","length":"short|standard|long","images":2,"search":true}`
+→ 文章（status=outlining）。images 是正文配图数（0–4），另外总有一张封面。
+
+### GET /articles/:id
+→ `{id,key_id,status,title,error,created_at,updated_at,brief,sources:[{title,url,snippet}],outline,markdown,images:[{n,kind,prompt,alt,status,error}],events:[{at,kind,text}],model,prompt_tokens,completion_tokens,images_drawn,searches,pushed_at}`
+
+outline：`{titles:[3 个备选],title,digest,cover_prompt,sections:[{heading,points:[...],image?:{prompt,alt}}]}`。
+markdown 里配图写成 `![说明](img:N)`，N 从 1 开始，对应 images 里 kind=body 的 n；n=0 是封面。
+
+### POST /articles/:id/outline
+只在 `outline_ready` 时可用。`{"outline":{...可选，用户改过的大纲},"feedback":"修改意见"}` 按意见重写大纲；
+`{"outline":{...},"confirm":true}` 确认并开始写全文。
+
+### POST /articles/:id/retry
+`failed` / `canceled` 从中断处继续；`done` 但有图没画成时只补画失败的图。
+
+### POST /articles/:id/cancel · POST /articles/:id/pushed · DELETE /articles/:id
+停止运行 / 记录已推送到草稿箱 / 删除文章和图片（运行中不能删）。
+
+### GET /articles/:id/images/:n
+图片本身（JPEG，正文图 ≤ 900KB）。前端带 Authorization 取 Blob，存进 IndexedDB 换成 `img://` 链接。

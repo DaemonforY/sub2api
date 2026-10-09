@@ -32,5 +32,18 @@ func RegisterEditorRoutes(
 		g.GET("/image", h.Editor.Image)
 		g.POST("/ai/text", panelRateLimiter.Heavy(), h.Editor.AIText)
 		g.POST("/ai/image", panelRateLimiter.Heavy(), h.Editor.AIImage)
+
+		// AI 写文章: background runs (outline → article + pictures) on the user's own key.
+		a := g.Group("/articles")
+		a.GET("/config", h.Editor.ArticleConfig)
+		a.GET("", h.Editor.ArticleList)
+		a.POST("", panelRateLimiter.Heavy(), h.Editor.ArticleCreate)
+		a.GET("/:id", h.Editor.ArticleGet)
+		a.POST("/:id/outline", panelRateLimiter.Heavy(), h.Editor.ArticleOutline)
+		a.POST("/:id/retry", panelRateLimiter.Heavy(), h.Editor.ArticleRetry)
+		a.POST("/:id/cancel", h.Editor.ArticleCancel)
+		a.POST("/:id/pushed", h.Editor.ArticlePushed)
+		a.DELETE("/:id", h.Editor.ArticleDelete)
+		a.GET("/:id/images/:n", h.Editor.ArticleImage)
 	}
 }

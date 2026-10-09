@@ -217,3 +217,58 @@ export async function aiImage(keyId, prompt, size) {
   track('editor_ai_use', { kind: 'image' });
   return res;
 }
+
+// --- AI 写文章（后台任务：搜资料 → 大纲 → 全文 → 配图） ---------------------------------------------
+
+export function articleConfig() {
+  return api('/editor/articles/config');
+}
+
+export function listArticles() {
+  return api('/editor/articles');
+}
+
+export async function createArticle(body) {
+  const res = await api('/editor/articles', { method: 'POST', json: body });
+  track('editor_article_create', { search: !!body.search, images: body.images });
+  return res;
+}
+
+export function getArticle(id) {
+  return api(`/editor/articles/${id}`);
+}
+
+/** {feedback} redoes the outline; {outline, confirm: true} confirms it and starts writing. */
+export function articleOutline(id, body) {
+  return api(`/editor/articles/${id}/outline`, { method: 'POST', json: body });
+}
+
+export function retryArticle(id) {
+  return api(`/editor/articles/${id}/retry`, { method: 'POST', json: {} });
+}
+
+export function cancelArticle(id) {
+  return api(`/editor/articles/${id}/cancel`, { method: 'POST', json: {} });
+}
+
+export async function articlePushed(id) {
+  const res = await api(`/editor/articles/${id}/pushed`, { method: 'POST', json: {} });
+  track('editor_article_pushed');
+  return res;
+}
+
+export function deleteArticle(id) {
+  return api(`/editor/articles/${id}`, { method: 'DELETE' });
+}
+
+/** One of the article's pictures (n 0 is the cover) as a Blob. */
+export async function fetchArticleImage(id, n) {
+  let res;
+  try {
+    res = await fetch(`/api/v1/editor/articles/${id}/images/${n}`, { headers: authHeaders() });
+  } catch {
+    throw new ApiError('网络连接失败，请稍后再试', 0);
+  }
+  if (!res.ok) throw await errorFrom(res);
+  return res.blob();
+}
