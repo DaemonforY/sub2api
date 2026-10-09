@@ -416,3 +416,46 @@ func TestGrowthPlanPriceLock(t *testing.T) {
 	_, locked = off.LockedPrice(e.ctx, early.ID, plan.ID, grp.ID, 260)
 	require.False(t, locked)
 }
+
+func TestGrowthFirstTopupBonus(t *testing.T) {
+	e := newGrowthTestEnv(t)
+	e.set(t, map[string]string{
+		service.SettingKeyGrowthFirstTopupRate: "20",
+		service.SettingKeyGrowthFirstTopupCap:  "15",
+		service.SettingKeyGrowthFirstTopupMin:  "10",
+	})
+	t.Cleanup(func() { e.set(t, map[string]string{service.SettingKeyGrowthFirstTopupRate: "0"}) })
+	now := time.Now().UTC()
+	u, small := e.user(t, "topup"), e.user(t, "small")
+	require.True(t, e.svc.FirstTopupEligible(e.ctx, u.ID))
+
+	// Paying from balance is not a top-up.
+	balanceOrder := e.paidOrder(t, u, 50, payment.TypeBalance, now.Add(-30*time.Minute))
+	amount, err := e.svc.GrantFirstTopupBonus(e.ctx, u.ID, balanceOrder, 50)
+	require.NoError(t, err)
+	require.Zero(t, amount)
+
+	first := e.paidOrder(t, u, 50, payment.TypeAlipay, now.Add(-20*time.Minute))
+	before := e.balance(t, u.ID)
+	amount, err = e.svc.GrantFirstTopupBonus(e.ctx, u.ID, first, 50)
+	require.NoError(t, err)
+	require.InDelta(t, 10, amount, 1e-9, "20% of 50")
+	require.InDelta(t, before+10, e.balance(t, u.ID), 1e-9)
+	require.False(t, e.svc.FirstTopupEligible(e.ctx, u.ID))
+
+	// A retry of the same order and a later top-up never grant again.
+	amount, err = e.svc.GrantFirstTopupBonus(e.ctx, u.ID, first, 50)
+	require.NoError(t, err)
+	require.Zero(t, amount)
+	second := e.paidOrder(t, u, 500, payment.TypeAlipay, now.Add(-10*time.Minute))
+	amount, err = e.svc.GrantFirstTopupBonus(e.ctx, u.ID, second, 500)
+	require.NoError(t, err)
+	require.Zero(t, amount)
+	require.InDelta(t, before+10, e.balance(t, u.ID), 1e-9)
+
+	// Below the minimum top-up there is no bonus.
+	tiny := e.paidOrder(t, small, 5, payment.TypeWxpay, now)
+	amount, err = e.svc.GrantFirstTopupBonus(e.ctx, small.ID, tiny, 5)
+	require.NoError(t, err)
+	require.Zero(t, amount)
+}

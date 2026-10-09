@@ -344,6 +344,7 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 			return err
 		}
 		s.applyInviteeFirstOrderBonus(ctx, o)
+		s.applyFirstTopupBonus(ctx, o)
 		// Code already created and redeemed — just mark completed
 		return s.markCompleted(ctx, o, lease, "RECHARGE_SUCCESS")
 	case redeemActionCreate:
@@ -361,6 +362,7 @@ func (s *PaymentService) doBalance(ctx context.Context, o *dbent.PaymentOrder, l
 		return err
 	}
 	s.applyInviteeFirstOrderBonus(ctx, o)
+	s.applyFirstTopupBonus(ctx, o)
 	return s.markCompleted(ctx, o, lease, "RECHARGE_SUCCESS")
 }
 
@@ -820,6 +822,28 @@ func (s *PaymentService) applyInviteeFirstOrderBonus(ctx context.Context, o *dbe
 	if amount > 0 {
 		s.writeAuditLog(ctx, o.ID, "INVITEE_BONUS_GRANTED", "system", map[string]any{"amount": amount})
 	}
+}
+
+// applyFirstTopupBonus grants 首充奖励 for the user's first gateway-paid balance top-up. Like the
+// invitee bonus it is idempotent (unique index) and never blocks fulfillment.
+func (s *PaymentService) applyFirstTopupBonus(ctx context.Context, o *dbent.PaymentOrder) {
+	if s.growthService == nil || o == nil || isBalancePaidOrder(o) || o.OrderType != payment.OrderTypeBalance {
+		return
+	}
+	amount, err := s.growthService.GrantFirstTopupBonus(ctx, o.UserID, o.ID, o.Amount)
+	if err != nil {
+		slog.Warn("first top-up bonus failed", "orderID", o.ID, "userID", o.UserID, "error", err)
+		s.writeAuditLog(ctx, o.ID, "FIRST_TOPUP_BONUS_FAILED", "system", map[string]any{"error": err.Error()})
+		return
+	}
+	if amount > 0 {
+		s.writeAuditLog(ctx, o.ID, "FIRST_TOPUP_BONUS_GRANTED", "system", map[string]any{"amount": amount})
+	}
+}
+
+// FirstTopupEligible: userID would get 首充奖励 on their next gateway-paid top-up.
+func (s *PaymentService) FirstTopupEligible(ctx context.Context, userID int64) bool {
+	return s != nil && s.growthService != nil && s.growthService.FirstTopupEligible(ctx, userID)
 }
 
 func affiliateRebateBaseAmount(o *dbent.PaymentOrder) float64 {

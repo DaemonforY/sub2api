@@ -22,6 +22,10 @@ export interface GrowthPublicConfig {
   /** 返利提现是否开放（人工打款） */
   withdraw_enabled?: boolean
   withdraw_min_cny?: number
+  /** 首充奖励: % of the first gateway-paid top-up given back as balance (0 = off). */
+  first_topup_bonus_percent?: number
+  first_topup_bonus_cap?: number
+  first_topup_min_amount?: number
 }
 
 export type WithdrawMethod = 'alipay' | 'wechat'
@@ -132,6 +136,9 @@ export interface GrowthSettings {
   withdraw_min_cny: number
   /** 0 = 不限 */
   withdraw_monthly_limit: number
+  first_topup_bonus_percent: number
+  first_topup_bonus_cap: number
+  first_topup_min_amount: number
 }
 
 export const growthAPI = {

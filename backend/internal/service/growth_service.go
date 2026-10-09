@@ -37,6 +37,9 @@ const (
 	SettingKeyEduVerifyEnabled          = "edu_verify_enabled"                // 是否开放教育邮箱认证
 	SettingKeyEduEmailSuffixes          = "edu_email_suffixes"                // 教育邮箱后缀（JSON 数组，如 ["edu.cn"]）
 	SettingKeyEduSubscriptionDiscount   = "edu_subscription_discount_percent" // 认证用户订阅折扣（百分比，0=无折扣）
+	SettingKeyGrowthFirstTopupRate      = "growth_first_topup_bonus_rate"     // 首充奖励比例（百分比，0=关闭）
+	SettingKeyGrowthFirstTopupCap       = "growth_first_topup_bonus_cap"      // 首充奖励上限（0=不限）
+	SettingKeyGrowthFirstTopupMin       = "growth_first_topup_min_amount"     // 首充奖励起充金额（到账余额）
 	growthSettingsCacheTTL              = 5 * time.Second
 	growthInviteeBonusRateMax           = 100.0
 	growthEduDiscountMax                = 90.0
@@ -77,6 +80,11 @@ type GrowthSettings struct {
 	EduVerifyEnabled   bool     `json:"edu_verify_enabled"`
 	EduEmailSuffixes   []string `json:"edu_email_suffixes"`
 	EduDiscountPercent float64  `json:"edu_discount_percent"`
+	// 首充奖励: the first balance top-up paid through a gateway gets this % back as balance (0 = off),
+	// at most FirstTopupBonusCap (0 = no cap), for top-ups of at least FirstTopupMinAmount.
+	FirstTopupBonusPercent float64 `json:"first_topup_bonus_percent"`
+	FirstTopupBonusCap     float64 `json:"first_topup_bonus_cap"`
+	FirstTopupMinAmount    float64 `json:"first_topup_min_amount"`
 	// 返利提现规则（字段平铺在 JSON 里：withdraw_enabled / withdraw_min_cny / withdraw_monthly_limit）
 	WithdrawSettings
 }
@@ -146,6 +154,11 @@ type GrowthRepository interface {
 	// GrantInviteeBonus credits amount to the invitee's balance for orderID when the invitee has an
 	// inviter, no earlier paid gateway order and no previous bonus. Returns the inviter and whether it was granted.
 	GrantInviteeBonus(ctx context.Context, inviteeID, orderID int64, amount float64, bindingNotBefore *time.Time) (granted bool, inviterID int64, err error)
+	// GrantFirstTopupBonus credits amount to userID's balance for orderID when it is their first
+	// balance top-up paid through a gateway and no first top-up bonus was granted before.
+	GrantFirstTopupBonus(ctx context.Context, userID, orderID int64, amount float64) (bool, error)
+	// HasPaidTopup: userID already has a paid gateway balance top-up.
+	HasPaidTopup(ctx context.Context, userID int64) (bool, error)
 	// InviteLeaderboard ranks inviters by invitees who paid (gateway orders) within [start, end).
 	InviteLeaderboard(ctx context.Context, start, end *time.Time, limit int) ([]InviteLeaderboardEntry, error)
 	InviteLeaderboardEntryFor(ctx context.Context, userID int64, start, end *time.Time) (*InviteLeaderboardEntry, error)
@@ -189,6 +202,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyGrowthSignupBonus, SettingKeyGrowthSignupDailyLimit, SettingKeyPriceLockEnabled, SettingKeyPriceLockGraceDays,
 		SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
+		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -213,6 +227,9 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		EduVerifyEnabled:        vals[SettingKeyEduVerifyEnabled] == "true",
 		EduDiscountPercent:      clampFloat(parseFloatOr(vals[SettingKeyEduSubscriptionDiscount], 0), 0, growthEduDiscountMax),
 		EduEmailSuffixes:        defaultEduEmailSuffixes,
+		FirstTopupBonusPercent:  clampFloat(parseFloatOr(vals[SettingKeyGrowthFirstTopupRate], 0), 0, growthInviteeBonusRateMax),
+		FirstTopupBonusCap:      math.Max(0, parseFloatOr(vals[SettingKeyGrowthFirstTopupCap], 0)),
+		FirstTopupMinAmount:     math.Max(0, parseFloatOr(vals[SettingKeyGrowthFirstTopupMin], 0)),
 		WithdrawSettings: WithdrawSettings{
 			Enabled:      vals[SettingKeyGrowthWithdrawEnabled] == "true",
 			MinCNY:       clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMinCNY], withdrawMinCNYDefault), withdrawMinCNYFloor, 100000),
@@ -253,6 +270,12 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if !finite(in.EduDiscountPercent) || in.EduDiscountPercent < 0 || in.EduDiscountPercent > growthEduDiscountMax {
 		return nil, infraerrors.BadRequest("INVALID_EDU_DISCOUNT", "education discount must be between 0 and 90")
 	}
+	if !finite(in.FirstTopupBonusPercent) || in.FirstTopupBonusPercent < 0 || in.FirstTopupBonusPercent > growthInviteeBonusRateMax {
+		return nil, infraerrors.BadRequest("INVALID_FIRST_TOPUP_RATE", "首充奖励比例需在 0 到 100 之间（First top-up bonus rate must be between 0 and 100）")
+	}
+	if !finite(in.FirstTopupBonusCap) || in.FirstTopupBonusCap < 0 || !finite(in.FirstTopupMinAmount) || in.FirstTopupMinAmount < 0 {
+		return nil, infraerrors.BadRequest("INVALID_FIRST_TOPUP_LIMITS", "首充奖励上限和起充金额不能为负数（First top-up cap and minimum must be >= 0）")
+	}
 	suffixes := normalizeEduSuffixes(in.EduEmailSuffixes)
 	if len(suffixes) == 0 {
 		return nil, infraerrors.BadRequest("INVALID_EDU_SUFFIXES", "at least one school email suffix is required")
@@ -279,6 +302,9 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthWithdrawEnabled:    strconv.FormatBool(withdraw.Enabled),
 		SettingKeyGrowthWithdrawMinCNY:     strconv.FormatFloat(withdraw.MinCNY, 'f', -1, 64),
 		SettingKeyGrowthWithdrawMonthly:    strconv.Itoa(withdraw.MonthlyLimit),
+		SettingKeyGrowthFirstTopupRate:     strconv.FormatFloat(in.FirstTopupBonusPercent, 'f', -1, 64),
+		SettingKeyGrowthFirstTopupCap:      strconv.FormatFloat(in.FirstTopupBonusCap, 'f', -1, 64),
+		SettingKeyGrowthFirstTopupMin:      strconv.FormatFloat(in.FirstTopupMinAmount, 'f', -1, 64),
 	}); err != nil {
 		return nil, fmt.Errorf("save growth settings: %w", err)
 	}
@@ -657,6 +683,62 @@ func (s *GrowthService) GrantInviteeFirstOrderBonus(ctx context.Context, invitee
 		if err := s.billingCache.InvalidateUserBalance(ctx, inviteeID); err != nil {
 			return amount, nil
 		}
+	}
+	return amount, nil
+}
+
+// ---------------------------------------------------------------------------
+// First top-up bonus (首充奖励)
+// ---------------------------------------------------------------------------
+
+// FirstTopupBonusFor is what a top-up of orderAmount earns as first top-up bonus (0 when off or too small).
+func (s *GrowthSettings) FirstTopupBonusFor(orderAmount float64) float64 {
+	if s == nil || s.FirstTopupBonusPercent <= 0 || !finite(orderAmount) || orderAmount <= 0 || orderAmount < s.FirstTopupMinAmount {
+		return 0
+	}
+	amount := math.Round(orderAmount*s.FirstTopupBonusPercent) / 100
+	if s.FirstTopupBonusCap > 0 && amount > s.FirstTopupBonusCap {
+		amount = s.FirstTopupBonusCap
+	}
+	return amount
+}
+
+// FirstTopupEligible: the program is on and userID hasn't paid for a top-up yet.
+func (s *GrowthService) FirstTopupEligible(ctx context.Context, userID int64) bool {
+	if s == nil || userID <= 0 {
+		return false
+	}
+	settings, err := s.GetSettings(ctx)
+	if err != nil || settings.FirstTopupBonusPercent <= 0 {
+		return false
+	}
+	paid, err := s.repo.HasPaidTopup(ctx, userID)
+	return err == nil && !paid
+}
+
+// GrantFirstTopupBonus credits the bonus for a user's first gateway-paid balance top-up.
+// Idempotent: one per user, enforced by a unique index, so fulfillment retries are safe.
+func (s *GrowthService) GrantFirstTopupBonus(ctx context.Context, userID, orderID int64, orderAmount float64) (float64, error) {
+	if s == nil || userID <= 0 || orderID <= 0 {
+		return 0, nil
+	}
+	settings, err := s.GetSettings(ctx)
+	if err != nil {
+		return 0, err
+	}
+	amount := settings.FirstTopupBonusFor(orderAmount)
+	if amount <= 0 {
+		return 0, nil
+	}
+	granted, err := s.repo.GrantFirstTopupBonus(ctx, userID, orderID, amount)
+	if err != nil || !granted {
+		return 0, err
+	}
+	if s.authInvalidator != nil {
+		s.authInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
+	}
+	if s.billingCache != nil {
+		_ = s.billingCache.InvalidateUserBalance(ctx, userID)
 	}
 	return amount, nil
 }

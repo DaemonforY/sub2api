@@ -31,6 +31,28 @@
           </div>
         </section>
 
+        <section class="card space-y-4 p-6" data-testid="growth-first-topup">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">💰 {{ t('growth.admin.settings.firstTopupTitle') }}</h2>
+          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('growth.admin.settings.firstTopupDesc') }}</p>
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label class="input-label" for="growth-topup-rate">{{ t('growth.admin.settings.firstTopupRate') }}</label>
+              <input id="growth-topup-rate" v-model.number="form.first_topup_bonus_percent" type="number" min="0" max="100" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.firstTopupRateHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-topup-cap">{{ t('growth.admin.settings.firstTopupCap') }}</label>
+              <input id="growth-topup-cap" v-model.number="form.first_topup_bonus_cap" type="number" min="0" step="0.01" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.firstTopupCapHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-topup-min">{{ t('growth.admin.settings.firstTopupMin') }}</label>
+              <input id="growth-topup-min" v-model.number="form.first_topup_min_amount" type="number" min="0" step="0.01" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.firstTopupMinHint') }}</p>
+            </div>
+          </div>
+        </section>
+
         <section class="card space-y-4 p-6" data-testid="growth-signup-bonus">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🎟️ {{ t('growth.admin.settings.signupBonusTitle') }}</h2>
           <div class="grid gap-4 sm:grid-cols-2">
@@ -289,6 +311,9 @@ async function save() {
       invitee_bonus_rate_percent: Number(form.value.invitee_bonus_rate_percent) || 0,
       invitee_bonus_cap: Number(form.value.invitee_bonus_cap) || 0,
       invitee_signup_bonus: Number(form.value.invitee_signup_bonus) || 0,
+      first_topup_bonus_percent: Number(form.value.first_topup_bonus_percent) || 0,
+      first_topup_bonus_cap: Number(form.value.first_topup_bonus_cap) || 0,
+      first_topup_min_amount: Number(form.value.first_topup_min_amount) || 0,
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       price_lock_grace_days: Math.max(0, Math.round(Number(form.value.price_lock_grace_days) || 0)),
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,

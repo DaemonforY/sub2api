@@ -176,6 +176,10 @@
               <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
             </div>
             <template v-else>
+            <div v-if="firstTopup" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100" data-testid="first-topup-banner">
+              <span class="font-semibold">🎁 {{ t('payment.firstTopup.title', { percent: firstTopup.percent }) }}</span>
+              <span class="ml-1 text-xs text-amber-800/80 dark:text-amber-200/80">{{ firstTopupTerms }}</span>
+            </div>
             <div class="card p-6">
               <AmountInput
                 v-model="amount"
@@ -209,6 +213,10 @@
                 <div v-if="balanceRechargeMultiplier !== 1" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': feeRate <= 0 }">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
                   <span class="text-gray-900 dark:text-white">${{ creditedAmount.toFixed(2) }}</span>
+                </div>
+                <div v-if="firstTopupBonus > 0" class="flex justify-between" data-testid="first-topup-bonus">
+                  <span class="text-amber-700 dark:text-amber-300">🎁 {{ t('payment.firstTopup.bonus') }}</span>
+                  <span class="font-medium text-amber-700 dark:text-amber-300">+${{ firstTopupBonus.toFixed(2) }}</span>
                 </div>
                 <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
                   {{ t('payment.rechargeRatePreview', { currency: selectedCurrency, usd: balanceRechargeMultiplier.toFixed(2) }) }}
@@ -1492,10 +1500,37 @@ async function resumeWechatPaymentFromQuery() {
 // 老用户锁价 rule shown above the plans (null when the program is off).
 const priceLockGraceDays = ref<number | null>(null)
 
+// 首充奖励: shown while the user hasn't paid for a top-up yet and the program is on.
+const firstTopupRule = ref<{ percent: number; cap: number; min: number } | null>(null)
+const firstTopup = computed(() => (checkout.value.first_topup_eligible ? firstTopupRule.value : null))
+const firstTopupTerms = computed(() => {
+  const r = firstTopup.value
+  if (!r) return ''
+  const parts: string[] = []
+  if (r.min > 0) parts.push(t('payment.firstTopup.min', { min: r.min }))
+  if (r.cap > 0) parts.push(t('payment.firstTopup.cap', { cap: r.cap }))
+  parts.push(t('payment.firstTopup.once'))
+  return parts.join('，')
+})
+const firstTopupBonus = computed(() => {
+  const r = firstTopup.value
+  const credited = creditedAmount.value
+  if (!r || credited <= 0 || credited < r.min) return 0
+  const bonus = Math.round(credited * r.percent) / 100
+  return r.cap > 0 ? Math.min(bonus, r.cap) : bonus
+})
+
 onMounted(async () => {
   track('pricing_view')
   growthAPI.getPublicConfig().then((cfg) => {
     priceLockGraceDays.value = cfg.price_lock_enabled ? cfg.price_lock_grace_days : null
+    if ((cfg.first_topup_bonus_percent ?? 0) > 0) {
+      firstTopupRule.value = {
+        percent: cfg.first_topup_bonus_percent ?? 0,
+        cap: cfg.first_topup_bonus_cap ?? 0,
+        min: cfg.first_topup_min_amount ?? 0
+      }
+    }
   }).catch(() => {})
   try {
     const res = await paymentAPI.getCheckoutInfo()

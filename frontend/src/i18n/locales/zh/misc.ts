@@ -507,6 +507,13 @@ export default {
     renewNow: '续费',
     selectPlan: '选择套餐',
     planFeatures: '功能特性',
+    firstTopup: {
+      title: '首次充值送 {percent}%',
+      min: '到账满 ${min} 可得',
+      cap: '最多送 ${cap}',
+      once: '每人一次，付款后自动到账',
+      bonus: '首充奖励'
+    },
     planCard: {
       recommended: '推荐',
       lockedPrice: '你的锁定价',

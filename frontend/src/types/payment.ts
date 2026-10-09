@@ -82,6 +82,8 @@ export interface CheckoutInfoResponse {
   balance_subscription_enabled?: boolean
   /** The current user is education-verified; plan prices already include the discount */
   edu_discount_active?: boolean
+  /** The user's next gateway-paid top-up earns 首充奖励 (rule in the growth config). */
+  first_topup_eligible?: boolean
 }
 
 // ==================== Orders ====================

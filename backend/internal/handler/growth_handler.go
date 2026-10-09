@@ -45,6 +45,10 @@ type growthPublicConfig struct {
 	EduEmailSuffixes   []string `json:"edu_email_suffixes"`
 	WithdrawEnabled    bool     `json:"withdraw_enabled"`
 	WithdrawMinCNY     float64  `json:"withdraw_min_cny,omitempty"`
+	// 首充奖励 (0 = off); whether a user still qualifies comes with the checkout info.
+	FirstTopupBonusPercent float64 `json:"first_topup_bonus_percent"`
+	FirstTopupBonusCap     float64 `json:"first_topup_bonus_cap"`
+	FirstTopupMinAmount    float64 `json:"first_topup_min_amount"`
 }
 
 // PublicConfig GET /api/v1/growth/config — what the register, referral and purchase pages advertise.
@@ -64,6 +68,11 @@ func (h *GrowthHandler) PublicConfig(c *gin.Context) {
 		PriceLockEnabled:   settings.PriceLockEnabled,
 		PriceLockGraceDays: settings.PriceLockGraceDays,
 		SmartBilling:       h.billingRoute.Enabled(ctx),
+	}
+	if settings.FirstTopupBonusPercent > 0 {
+		cfg.FirstTopupBonusPercent = settings.FirstTopupBonusPercent
+		cfg.FirstTopupBonusCap = settings.FirstTopupBonusCap
+		cfg.FirstTopupMinAmount = settings.FirstTopupMinAmount
 	}
 	if affiliateEnabled {
 		cfg.InviteeBonusRatePercent = settings.InviteeBonusRatePercent

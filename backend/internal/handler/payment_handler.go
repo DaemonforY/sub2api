@@ -178,6 +178,7 @@ func (h *PaymentHandler) GetCheckoutInfo(c *gin.Context) {
 		AlipayMobilePrecreateDeepLink: alipayMobilePrecreateDeepLink,
 		BalanceSubscriptionEnabled:    !cfg.SubscriptionBalancePayDisabled,
 		EduDiscountActive:             eduDiscountActive,
+		FirstTopupEligible:            userID > 0 && h.paymentService.FirstTopupEligible(ctx, userID),
 	})
 }
 
@@ -199,6 +200,8 @@ type checkoutInfoResponse struct {
 	BalanceSubscriptionEnabled bool `json:"balance_subscription_enabled"`
 	// EduDiscountActive: the current user is education-verified and plan prices include the discount.
 	EduDiscountActive bool `json:"edu_discount_active"`
+	// FirstTopupEligible: the user's next gateway-paid top-up earns 首充奖励 (see growth config).
+	FirstTopupEligible bool `json:"first_topup_eligible"`
 }
 
 type checkoutPlan struct {

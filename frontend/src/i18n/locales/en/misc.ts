@@ -483,6 +483,13 @@ export default {
     renewNow: 'Renew',
     selectPlan: 'Select Plan',
     planFeatures: 'Features',
+    firstTopup: {
+      title: 'First top-up: get {percent}% extra',
+      min: 'top-ups of ${min}+',
+      cap: 'up to ${cap}',
+      once: 'once per account, credited automatically',
+      bonus: 'First top-up bonus'
+    },
     planCard: {
       recommended: 'Recommended',
       lockedPrice: 'Your locked price',

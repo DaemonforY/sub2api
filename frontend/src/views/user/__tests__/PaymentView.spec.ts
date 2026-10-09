@@ -25,6 +25,7 @@ const showError = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const getGrowthConfig = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 const purchaseSubscriptionWithBalance = vi.hoisted(() => vi.fn())
 const showSuccess = vi.hoisted(() => vi.fn())
 const authUser = vi.hoisted(() => ({ username: 'demo-user', balance: 0 }))
@@ -32,6 +33,8 @@ const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
 const getCourse = vi.hoisted(() => vi.fn())
 const getCanvasMembership = vi.hoisted(() => vi.fn())
+
+vi.mock('@/api/growth', () => ({ growthAPI: { getPublicConfig: (...a: unknown[]) => getGrowthConfig(...a) } }))
 
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
@@ -907,3 +910,37 @@ describe('PaymentView 创作会员 checkout', () => {
   })
 })
 
+describe('PaymentView first top-up bonus', () => {
+  it('advertises the bonus and previews it for eligible users', async () => {
+    routeState.path = '/purchase'
+    routeState.query = {}
+    getGrowthConfig.mockResolvedValueOnce({ first_topup_bonus_percent: 20, first_topup_bonus_cap: 15, first_topup_min_amount: 10 })
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({ first_topup_eligible: true }))
+
+    const wrapper = shallowMount(PaymentView, {
+      global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Teleport: true, Transition: false } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="first-topup-banner"]').exists()).toBe(true)
+
+    wrapper.getComponent(AmountInput).vm.$emit('update:modelValue', 50)
+    await flushPromises()
+    expect(wrapper.get('[data-testid="first-topup-bonus"]').text()).toContain('+$10.00')
+
+    wrapper.getComponent(AmountInput).vm.$emit('update:modelValue', 500)
+    await flushPromises()
+    expect(wrapper.get('[data-testid="first-topup-bonus"]').text()).toContain('+$15.00')
+  })
+
+  it('stays hidden once the user has topped up', async () => {
+    routeState.path = '/purchase'
+    routeState.query = {}
+    getGrowthConfig.mockResolvedValueOnce({ first_topup_bonus_percent: 20 })
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({ first_topup_eligible: false }))
+    const wrapper = shallowMount(PaymentView, {
+      global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, Teleport: true, Transition: false } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="first-topup-banner"]').exists()).toBe(false)
+  })
+})

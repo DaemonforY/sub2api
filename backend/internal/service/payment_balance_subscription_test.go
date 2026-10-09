@@ -164,3 +164,31 @@ func TestApplyInviteeFirstOrderBonus_GatewayOrdersOnly(t *testing.T) {
 	svc.applyInviteeFirstOrderBonus(ctx, &dbent.PaymentOrder{ID: 2, UserID: 2, Amount: 120, PaymentType: payment.TypeWxpay})
 	require.Equal(t, []float64{12}, repo.grants)
 }
+
+func (r *growthRepoBonusRecorder) GrantFirstTopupBonus(_ context.Context, _, _ int64, amount float64) (bool, error) {
+	r.grants = append(r.grants, amount)
+	return true, nil
+}
+
+func TestApplyFirstTopupBonus_GatewayTopupsOnly(t *testing.T) {
+	repo := &growthRepoBonusRecorder{}
+	settings := &paymentConfigSettingRepoStub{values: map[string]string{SettingKeyGrowthFirstTopupRate: "20", SettingKeyGrowthFirstTopupCap: "15"}}
+	ctx := context.Background()
+	client := newPaymentConfigServiceTestClient(t)
+	svc := &PaymentService{entClient: client, growthService: NewGrowthService(settings, repo, nil, nil, nil, nil)}
+
+	svc.applyFirstTopupBonus(ctx, &dbent.PaymentOrder{ID: 1, UserID: 2, Amount: 100, PaymentType: payment.TypeBalance, OrderType: payment.OrderTypeBalance})
+	svc.applyFirstTopupBonus(ctx, &dbent.PaymentOrder{ID: 2, UserID: 2, Amount: 100, PaymentType: payment.TypeWxpay, OrderType: payment.OrderTypeSubscription})
+	require.Empty(t, repo.grants, "balance-paid orders and subscriptions are not top-ups")
+
+	svc.applyFirstTopupBonus(ctx, &dbent.PaymentOrder{ID: 3, UserID: 2, Amount: 100, PaymentType: payment.TypeWxpay, OrderType: payment.OrderTypeBalance})
+	require.Equal(t, []float64{15}, repo.grants, "20% of 100, capped at 15")
+}
+
+func TestFirstTopupBonusFor(t *testing.T) {
+	s := &GrowthSettings{FirstTopupBonusPercent: 20, FirstTopupBonusCap: 0, FirstTopupMinAmount: 10}
+	require.InDelta(t, 2, s.FirstTopupBonusFor(10), 1e-9)
+	require.Zero(t, s.FirstTopupBonusFor(9.99), "below the minimum")
+	require.InDelta(t, 200, s.FirstTopupBonusFor(1000), 1e-9, "no cap")
+	require.Zero(t, (&GrowthSettings{}).FirstTopupBonusFor(100), "off by default")
+}

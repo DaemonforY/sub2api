@@ -367,6 +367,80 @@ RETURNING id`, inviteeID, amount, inviterID.Int64, orderID).Scan(&ledgerID)
 	return true, inviterID.Int64, nil
 }
 
+// paidTopupWhere matches gateway-paid balance top-ups (balance-paid orders never count).
+const paidTopupWhere = `order_type = 'balance' AND payment_type <> 'balance' AND paid_at IS NOT NULL`
+
+func (r *growthRepository) HasPaidTopup(ctx context.Context, userID int64) (bool, error) {
+	var paid bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM payment_orders WHERE user_id = $1 AND `+paidTopupWhere+`)`, userID).Scan(&paid)
+	return paid, err
+}
+
+func (r *growthRepository) GrantFirstTopupBonus(ctx context.Context, userID, orderID int64, amount float64) (bool, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("begin first top-up bonus tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var (
+		orderUserID int64
+		orderType   string
+		paymentType string
+		paidAt      sql.NullTime
+	)
+	if err := tx.QueryRowContext(ctx,
+		`SELECT user_id, order_type, payment_type, paid_at FROM payment_orders WHERE id = $1`, orderID,
+	).Scan(&orderUserID, &orderType, &paymentType, &paidAt); err != nil {
+		return false, fmt.Errorf("load top-up order: %w", err)
+	}
+	if orderUserID != userID || orderType != payment.OrderTypeBalance || paymentType == payment.TypeBalance || !paidAt.Valid {
+		return false, nil
+	}
+	var hasEarlier bool
+	if err := tx.QueryRowContext(ctx, `
+SELECT EXISTS (
+    SELECT 1 FROM payment_orders
+    WHERE user_id = $1 AND id <> $2 AND `+paidTopupWhere+`
+      AND (paid_at < $3 OR (paid_at = $3 AND id < $2))
+)`, userID, orderID, paidAt.Time).Scan(&hasEarlier); err != nil {
+		return false, fmt.Errorf("check earlier top-ups: %w", err)
+	}
+	if hasEarlier {
+		return false, nil
+	}
+
+	var ledgerID int64
+	err = tx.QueryRowContext(ctx, `
+INSERT INTO user_affiliate_ledger (user_id, action, amount, source_order_id, created_at, updated_at)
+VALUES ($1, 'first_topup_bonus', $2, $3, NOW(), NOW())
+ON CONFLICT (user_id) WHERE action = 'first_topup_bonus' DO NOTHING
+RETURNING id`, userID, amount, orderID).Scan(&ledgerID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil // already granted
+	}
+	if err != nil {
+		return false, fmt.Errorf("record first top-up bonus: %w", err)
+	}
+	var balanceAfter float64
+	if err := tx.QueryRowContext(ctx,
+		`UPDATE users SET balance = balance + $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL RETURNING balance`,
+		amount, userID,
+	).Scan(&balanceAfter); err != nil {
+		return false, fmt.Errorf("credit first top-up bonus: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE user_affiliate_ledger SET balance_after = $1 WHERE id = $2`, balanceAfter, ledgerID,
+	); err != nil {
+		return false, fmt.Errorf("record first top-up balance snapshot: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("commit first top-up bonus: %w", err)
+	}
+	return true, nil
+}
+
 // ---------------------------------------------------------------------------
 // Invite leaderboard
 // ---------------------------------------------------------------------------
