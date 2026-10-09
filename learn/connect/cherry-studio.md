@@ -49,7 +49,7 @@ description: 在 Cherry Studio 里添加自定义服务商、填写 API 地址�
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 404 | API 地址多写了 `/v1` | 改成 `https://hivegpt.cn` |
+| 404，提示「接口地址多了一个 /v1」 | API 地址多写了 `/v1` | 改成 `https://hivegpt.cn` |
 | 401、提示 API Key 无效 | Key 复制不全，或已删除 / 停用 | 到 [API 密钥](https://hivegpt.cn/keys) 页重新复制完整的 Key |
 | 提示模型不存在、分组不支持 | 这个模型不在你 Key 的分组里 | 用「获取模型列表」重新选，或换一个分组的 Key |
 | 提示余额不足 | 余额为 0，或订阅额度用完 | [充值或订阅](https://hivegpt.cn/purchase) 后重试，同一个 Key 继续用 |

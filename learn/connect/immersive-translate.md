@@ -29,7 +29,7 @@ description: 在沉浸式翻译（Immersive Translate）浏览器插件里接入
 | 模型 | 选「自定义模型」，填 `gpt-5.5` 等你分组里的模型名 |
 
 ::: warning 地址要写到 /chat/completions
-大多数工具只填 `https://hivegpt.cn/v1`，会自己补后面的路径，沉浸式翻译不会。只填到 `/v1` 时，请求会发到网站首页，测试时会报错或提示返回内容不是 JSON。
+大多数工具只填 `https://hivegpt.cn/v1`，会自己补后面的路径，沉浸式翻译不会。只填到 `/v1` 时，测试会提示「这是接口的 Base URL，不能直接打开」；只填 `https://hivegpt.cn` 时，请求会发到网站首页，提示返回内容不是 JSON。
 :::
 
 模型名以 [`/v1/models`](/connect/#查看可用模型) 的返回为准。翻译不需要最强的模型，分组里有更便宜、更快的模型时优先选它。
@@ -46,8 +46,8 @@ description: 在沉浸式翻译（Immersive Translate）浏览器插件里接入
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 提示返回的不是 JSON，或报错里有一段 HTML | 地址只填到了 `/v1` 或 `https://hivegpt.cn` | 改成完整的 `https://hivegpt.cn/v1/chat/completions` |
-| 404 | 地址拼写错了，例如多了一个 `/v1` | 对照上面的表格重新填 |
+| 提示「这是接口的 Base URL」、返回的不是 JSON，或报错里有一段 HTML | 地址只填到了 `/v1` 或 `https://hivegpt.cn` | 改成完整的 `https://hivegpt.cn/v1/chat/completions` |
+| 404，提示「接口地址多了一个 /v1」或「接口不存在」 | 地址拼写错了，例如多了一个 `/v1` | 按报错里给出的地址，或对照上面的表格重新填 |
 | 401、提示 API Key 无效 | Key 复制不全，或已删除 / 停用 | 到 [API 密钥](https://hivegpt.cn/keys) 页重新复制完整的 Key |
 | 提示模型不存在、分组不支持 | 模型名不在你 Key 的分组里 | 用 `/v1/models` 查可用模型，填准确的模型名 |
 | 429、提示请求太频繁 | 整页翻译时并发请求太多 | 在服务的高级设置里调低「每秒最大请求数」，过 1–2 分钟再试 |

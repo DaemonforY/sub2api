@@ -988,3 +988,12 @@ func TestFrontendServer_ServesEditor(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "<svg/>")
 }
+
+func TestEmbeddedFrontendBypassesAPIPathsWithoutV1(t *testing.T) {
+	for _, path := range []string{"/v1", "/chat/completions", "/completions", "/embeddings", "/messages", "/messages/count_tokens", "/audio/speech"} {
+		require.True(t, shouldBypassEmbeddedFrontend(path), "path=%s", path)
+	}
+	for _, path := range []string{"/", "/home", "/pricing", "/courses/ai-coding", "/v1beta-docs"} {
+		require.False(t, shouldBypassEmbeddedFrontend(path), "path=%s", path)
+	}
+}

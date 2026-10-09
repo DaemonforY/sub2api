@@ -1,6 +1,6 @@
 ---
 title: Base URL 末尾要不要加 /v1？各工具填法对照表
-description: OpenAI 兼容接口的 Base URL（API 地址）到底填 https://hivegpt.cn 还是 https://hivegpt.cn/v1，还是要写到 /v1/chat/completions？按工具列出正确填法，以及填错时会看到的 404、返回 HTML、Unexpected token 等报错怎么判断。
+description: OpenAI 兼容接口的 Base URL（API 地址）到底填 https://hivegpt.cn 还是 https://hivegpt.cn/v1，还是要写到 /v1/chat/completions？按工具列出正确填法，以及填错时看到的「接口地址少了 /v1」「接口地址多了一个 /v1」等报错怎么判断。
 ---
 
 # Base URL 末尾要不要加 /v1？
@@ -34,13 +34,17 @@ description: OpenAI 兼容接口的 Base URL（API 地址）到底填 https://hi
 
 | 你看到的 | 实际请求到了 | 怎么改 |
 |---|---|---|
-| `404 page not found` | `https://hivegpt.cn/v1/v1/chat/completions`（`/v1` 重复了） | 去掉你填的 `/v1`，改成 `https://hivegpt.cn` |
-| `Unexpected token '<'`、「返回的不是合法 JSON」、提示收到了一段 HTML | `https://hivegpt.cn/chat/completions`（少了 `/v1`），服务器返回的是网站页面 | 加上 `/v1`，改成 `https://hivegpt.cn/v1` |
-| `404` 且地址里有两段 `chat/completions` | 你填了完整地址，工具又补了一遍 | 只填到 `https://hivegpt.cn/v1` |
+| 404，「接口地址多了一个 /v1」（`API_PATH_DUPLICATED_V1`） | `https://hivegpt.cn/v1/v1/chat/completions` | 去掉你填的 `/v1`，改成 `https://hivegpt.cn` |
+| 404，「接口地址少了 /v1」（`API_PATH_MISSING_V1`） | 例如 `https://hivegpt.cn/messages`、`https://hivegpt.cn/completions` | 加上 `/v1`，改成 `https://hivegpt.cn/v1` |
+| 404，「这是接口的 Base URL，不能直接打开」（`API_BASE_URL`） | 请求正好发到了 `https://hivegpt.cn/v1`，工具没有补路径 | 这个工具要填完整地址 `https://hivegpt.cn/v1/chat/completions` |
+| 404，「接口不存在」（`API_NOT_FOUND`） | 地址里有两段 `chat/completions`，或请求方法不对 | 只填到 `https://hivegpt.cn/v1`，具体看报错里给出的地址 |
+| `Unexpected token '<'`、「返回的不是合法 JSON」、提示收到了一段 HTML | 请求发到了网站页面，例如只填了 `https://hivegpt.cn` 而工具不会补 `/v1` | 改成 `https://hivegpt.cn/v1` |
 | `401`，提示「缺少 API Key」或「API Key 无效」 | 地址是对的，Key 有问题 | 地址不用改，重新复制完整的 Key，见 [常见报错](/connect/#常见报错) |
 | 「模型不存在」「分组不支持该模型」 | 地址和 Key 都对，模型名不在你 Key 的分组里 | 用 [`/v1/models`](/connect/#查看可用模型) 查可用的模型名 |
 
 看到 401 或「模型不存在」反而是好消息：说明请求已经到达 HiveGPT，地址填对了。
+
+对话（`/chat/completions`）和嵌入（`/embeddings`）接口少写 `/v1` 也能用，HiveGPT 会照常处理；其他接口少了 `/v1` 会返回上面的提示。为了在各种工具里都不出错，还是建议按对照表填。
 
 ## 还有几个容易填错的地方
 

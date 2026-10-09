@@ -33,7 +33,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | 模型 | 你的分组里可用的模型，例如 `gpt-5.5`，查法见下文 |
 
 ::: warning 有的工具会自己补 /v1
-如果工具提示 404 或「路径不存在」，把 Base URL 换成 `https://hivegpt.cn` 再试（去掉末尾的 `/v1`）；反过来也一样。各工具的具体填法见 [Base URL 末尾要不要加 /v1](/connect/base-url)。
+如果工具提示「接口地址多了一个 /v1」，把 Base URL 换成 `https://hivegpt.cn` 再试（去掉末尾的 `/v1`）；提示「少了 /v1」就反过来。各工具的具体填法见 [Base URL 末尾要不要加 /v1](/connect/base-url)。
 :::
 
 ## 选一个教程

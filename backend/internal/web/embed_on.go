@@ -655,6 +655,7 @@ func tryServeOverrideFile(c *gin.Context, overrideDir, cleanPath string) bool {
 func shouldBypassEmbeddedFrontend(path string) bool {
 	trimmed := strings.TrimSpace(path)
 	return strings.HasPrefix(trimmed, "/api/") ||
+		trimmed == "/v1" ||
 		strings.HasPrefix(trimmed, "/v1/") ||
 		strings.HasPrefix(trimmed, "/v1beta/") ||
 		strings.HasPrefix(trimmed, "/backend-api/") ||
@@ -667,7 +668,16 @@ func shouldBypassEmbeddedFrontend(path string) bool {
 		strings.HasPrefix(trimmed, "/responses/") ||
 		trimmed == "/alpha/search" ||
 		strings.HasPrefix(trimmed, "/images/") ||
-		strings.HasPrefix(trimmed, "/videos/")
+		strings.HasPrefix(trimmed, "/videos/") ||
+		// OpenAI / Anthropic endpoints without /v1 (a base URL missing /v1): the gateway serves the
+		// aliases it has and answers the rest with a JSON hint (routes.RegisterAPINotFound).
+		trimmed == "/chat/completions" ||
+		trimmed == "/completions" ||
+		trimmed == "/embeddings" ||
+		trimmed == "/messages" ||
+		strings.HasPrefix(trimmed, "/messages/") ||
+		strings.HasPrefix(trimmed, "/audio/") ||
+		strings.HasPrefix(trimmed, "/chat/")
 }
 
 func serveIndexHTML(c *gin.Context, fsys fs.FS) {
