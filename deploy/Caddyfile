@@ -30,7 +30,7 @@ api.sub2api.com {
 	reverse_proxy localhost:8080 {
 		# 健康检查
 		health_uri /health
-		health_interval 30s
+		health_interval 5s
 		health_timeout 10s
 		health_status 200
 
