@@ -44,6 +44,10 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | OpenCode、CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
 | 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk)，完整代码见 [Python](/connect/python)、[Node.js](/connect/nodejs) | 5 分钟 |
 | LangChain（Python / JS） | [LangChain 接入 HiveGPT](/connect/langchain) | 5 分钟 |
+| VS Code 里的 Cline / Roo Code | [Cline 配置自定义 API](/connect/cline) | 3 分钟 |
+| Dify 应用和工作流 | [Dify 接入 OpenAI 兼容模型](/connect/dify) | 5 分钟 |
+| Obsidian 笔记 | [Obsidian Copilot 接入](/connect/obsidian) | 3 分钟 |
+| Zotero 翻译论文、读文献 | [Zotero 接入 GPT API](/connect/zotero) | 5 分钟 |
 | Cherry Studio 桌面客户端 | [Cherry Studio 配置教程](/connect/cherry-studio) | 3 分钟 |
 | Chatbox 对话客户端 | [Chatbox 接入第三方 API](/connect/chatbox) | 3 分钟 |
 | 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |
@@ -83,7 +87,7 @@ curl https://hivegpt.cn/v1/chat/completions \
 | 上游暂时不可用（502 / 503） | 模型服务临时故障 | 稍后重试；这类失败不扣费 |
 | 一直转圈、回复很慢 | 上游繁忙，或者上下文太长 | 换一个较快的模型，或开新会话减少上下文 |
 
-按报错代码查原因，看 [报错速查](/connect/errors/)。每次请求的模型、用量和费用都能在 [使用记录](https://hivegpt.cn/usage) 里查到。还有问题，可以问首页右下角的智能客服。
+按报错代码查原因，看 [报错速查](/connect/errors/)；费用怎么算看 [token 怎么算钱](/connect/tokens)。每次请求的模型、用量和费用都能在 [使用记录](https://hivegpt.cn/usage) 里查到。还有问题，可以问首页右下角的智能客服。
 
 ::: danger 保护好你的 Key
 Key 等同于余额。不要发到群里、截图里或提交到 Git 仓库。如果泄露了，立刻在「API 密钥」页删除，再建一个新的。
