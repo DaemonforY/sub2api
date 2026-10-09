@@ -133,6 +133,7 @@ func (s *PaymentConfigService) ListPlansForSale(ctx context.Context) ([]*dbent.S
 }
 
 func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanRequest) (*dbent.SubscriptionPlan, error) {
+	defer invalidatePublicPricing()
 	if err := validatePlanRequired(req.Name, req.GroupID, req.Price, req.ValidityDays, req.ValidityUnit, req.OriginalPrice); err != nil {
 		return nil, err
 	}
@@ -155,6 +156,7 @@ func (s *PaymentConfigService) CreatePlan(ctx context.Context, req CreatePlanReq
 // NOTE: This function exceeds 30 lines due to per-field nil-check patch update boilerplate
 // plus a validation guard for non-nil fields.
 func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req UpdatePlanRequest) (*dbent.SubscriptionPlan, error) {
+	defer invalidatePublicPricing()
 	if err := validatePlanPatch(req); err != nil {
 		return nil, err
 	}
@@ -206,6 +208,7 @@ func (s *PaymentConfigService) UpdatePlan(ctx context.Context, id int64, req Upd
 }
 
 func (s *PaymentConfigService) DeletePlan(ctx context.Context, id int64) error {
+	defer invalidatePublicPricing()
 	count, err := s.countPendingOrdersByPlan(ctx, id)
 	if err != nil {
 		return fmt.Errorf("check pending orders: %w", err)

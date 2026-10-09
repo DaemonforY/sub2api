@@ -14,8 +14,9 @@ import (
 
 // Public pricing for the /pricing page (no login): the plans on sale with their usage limits,
 // the pay-as-you-go groups, how much balance one yuan buys, and the recent average cost of one
-// request so visitors can estimate a month. Read live, cached for a few minutes.
-const publicPricingTTL = 10 * time.Minute
+// request so visitors can estimate a month. Read live, cached for two minutes; editing a plan or the
+// payment settings clears the cache so the home and pricing pages show the change right away.
+const publicPricingTTL = 2 * time.Minute
 
 type PublicPricingPlan struct {
 	ID              int64    `json:"id"`
@@ -59,6 +60,13 @@ var publicPricingCache struct {
 	sync.Mutex
 	at  time.Time
 	val *PublicPricing
+}
+
+// invalidatePublicPricing drops the cached public pricing (after a plan or payment setting changes).
+func invalidatePublicPricing() {
+	publicPricingCache.Lock()
+	publicPricingCache.val = nil
+	publicPricingCache.Unlock()
 }
 
 func (s *PaymentConfigService) PublicPricing(ctx context.Context) (*PublicPricing, error) {

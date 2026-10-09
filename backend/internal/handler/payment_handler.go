@@ -769,6 +769,6 @@ func (h *PaymentHandler) GetPublicPricing(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
-	c.Header("Cache-Control", "public, max-age=300")
+	c.Header("Cache-Control", "public, max-age=60")
 	response.Success(c, out)
 }
