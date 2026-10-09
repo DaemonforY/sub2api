@@ -102,6 +102,9 @@ export default defineConfig({
             { text: '沉浸式翻译', link: '/connect/immersive-translate' },
             { text: 'Base URL 要不要加 /v1', link: '/connect/base-url' },
             { text: '用 SDK 调用', link: '/connect/sdk' },
+            { text: 'Python 完整示例', link: '/connect/python' },
+            { text: 'Node.js 完整示例', link: '/connect/nodejs' },
+            { text: 'LangChain', link: '/connect/langchain' },
           ],
         },
         {

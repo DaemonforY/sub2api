@@ -7,6 +7,8 @@ description: 用 OpenAI 官方 Python / Node.js SDK 或 curl 调用 HiveGPT：�
 
 HiveGPT 的接口和 OpenAI 一致，直接用 OpenAI 官方 SDK，只改两处：`base_url` 和 API Key。
 
+这页是速览。多轮对话、JSON 输出、函数调用、并发、错误处理的完整代码见 [Python 完整示例](/connect/python)、[Node.js 完整示例](/connect/nodejs)；用框架的看 [LangChain 接入](/connect/langchain)。
+
 先把 Key 放进环境变量，不要写死在代码里：
 
 ::: code-group
@@ -118,4 +120,4 @@ curl https://hivegpt.cn/v1/chat/completions \
 
 - 想系统地学怎么用 API 做应用：看 [A 路线 · AI 应用开发入门](/a/)，课里的例子可以在页面上直接运行。
 - 每次调用的模型、Token 和费用，都在 [使用记录](https://hivegpt.cn/usage) 里。
-- 报错排查见 [常见报错](/connect/#常见报错)。
+- 报错排查见 [报错速查](/connect/errors/)。

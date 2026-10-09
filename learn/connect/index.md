@@ -42,7 +42,8 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 |---|---|---|
 | Codex（CLI、IDE 扩展、桌面端） | [Codex 接入 HiveGPT](/codex/hivegpt) | 5 分钟 |
 | OpenCode、CodeBuddy、Cherry Studio、Chatbox 等工具 | [在常用工具里配置](/connect/tools) | 3 分钟 |
-| 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk) | 5 分钟 |
+| 自己写代码（Python、Node.js、curl） | [用 SDK 调用](/connect/sdk)，完整代码见 [Python](/connect/python)、[Node.js](/connect/nodejs) | 5 分钟 |
+| LangChain（Python / JS） | [LangChain 接入 HiveGPT](/connect/langchain) | 5 分钟 |
 | Cherry Studio 桌面客户端 | [Cherry Studio 配置教程](/connect/cherry-studio) | 3 分钟 |
 | Chatbox 对话客户端 | [Chatbox 接入第三方 API](/connect/chatbox) | 3 分钟 |
 | 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |
