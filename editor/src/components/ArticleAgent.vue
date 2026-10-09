@@ -81,8 +81,14 @@
           联网搜索最新资料
           <span v-if="!config.search" class="ed-counter">（本站暂未开启联网搜索）</span>
         </label>
-        <div class="ed-hint">
-          费用记在 Key「{{ editor.aiKey.name }}」上：出大纲和写全文各约 1 次对话，另画 {{ form.images + 1 }} 张图（gpt-image-2）。
+        <div class="ed-hint art-cost">
+          <template v-if="config.image_price">
+            配图每张约 <b>{{ money(config.image_price) }}</b>（Key「{{ editor.aiKey.name }}」所在分组的价格），这篇共 {{ form.images + 1 }} 张（含封面）约 <b>{{ money(config.image_price * (form.images + 1)) }}</b>。
+            另有出大纲、写全文的对话费用，按实际用量扣费。
+          </template>
+          <template v-else>
+            费用记在 Key「{{ editor.aiKey.name }}」上：出大纲和写全文各约 1 次对话，另画 {{ form.images + 1 }} 张图（gpt-image-2，含封面）。
+          </template>
         </div>
         <div v-if="formError" class="ed-msg err">{{ formError }}</div>
         <div class="ed-row end" style="margin-top: 12px;">
@@ -242,12 +248,12 @@ export default {
   emits: ['close', 'open-settings', 'open'],
   data() {
     return {
-      config: { search: false, max_images: 4 },
+      config: { search: false, max_images: 4, default_images: 1, image_price: null },
       view: 'list',
       list: [],
       listLoading: false,
       listError: '',
-      form: { topic: '', materials: '', audience: '', tone: '', length: 'standard', images: 2, search: false },
+      form: { topic: '', materials: '', audience: '', tone: '', length: 'standard', images: 1, search: false },
       lengths: [{ id: 'short', label: '短 · 约 1000 字' }, { id: 'standard', label: '中 · 约 2000 字' }, { id: 'long', label: '长 · 约 3000 字' }],
       formError: '',
       creating: false,
@@ -287,6 +293,9 @@ export default {
         this.loadConfig();
         if (this.view === 'list') this.loadList();
       }
+    },
+    'editor.aiKey.id'() {
+      if (this.open) this.loadConfig();
     },
     'editor.auth.loggedIn': {
       immediate: true,
@@ -329,9 +338,12 @@ export default {
       const pad = n => String(n).padStart(2, '0');
       return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     },
+    money(v) {
+      return `$${v >= 1 ? v.toFixed(2) : v.toFixed(3).replace(/0$/, '')}`;
+    },
     async loadConfig() {
       try {
-        this.config = await articleConfig();
+        this.config = await articleConfig(this.editor.aiKey && this.editor.aiKey.id);
         if (!this.config.search) this.form.search = false;
       } catch {
         // keep defaults

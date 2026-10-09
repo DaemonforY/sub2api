@@ -1088,3 +1088,8 @@ a.ed-btn {
   min-width: 0;
   width: auto;
 }
+
+.art-cost b {
+  color: var(--color-primary);
+  font-weight: 600;
+}

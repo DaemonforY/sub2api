@@ -390,3 +390,28 @@ func TestArticleHelpers(t *testing.T) {
 	_, err = articleJPEG([]byte("not an image"))
 	require.Error(t, err)
 }
+
+type articlePricerStub struct{ keys []int64 }
+
+func (p *articlePricerStub) EstimateImageCost(_ context.Context, k *APIKey, model, size string) (float64, bool) {
+	p.keys = append(p.keys, k.ID)
+	return 0.20104, model == "gpt-image-2" && size == articleImageSize
+}
+
+func TestArticleConfig(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := newArticleForTest(t)
+	cfg := svc.Config(ctx, 5, 7)
+	require.True(t, cfg.Search)
+	require.Equal(t, 1, cfg.DefaultImages)
+	require.Nil(t, cfg.ImagePrice, "no pricer, no quote")
+
+	pricer := &articlePricerStub{}
+	svc.SetPricer(pricer)
+	cfg = svc.Config(ctx, 5, 7)
+	require.NotNil(t, cfg.ImagePrice)
+	require.InDelta(t, 0.201, *cfg.ImagePrice, 0.00001)
+	require.Nil(t, svc.Config(ctx, 5, 8).ImagePrice, "another user's key is not quoted")
+	require.Nil(t, svc.Config(ctx, 5, 0).ImagePrice)
+	require.Equal(t, []int64{7}, pricer.keys)
+}

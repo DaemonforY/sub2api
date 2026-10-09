@@ -383,7 +383,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	handlerLearnHandler := handler.NewLearnHandler(learnService)
 	editorService := service.NewEditorService(learnService)
 	articleProjectRepository := repository.NewArticleProjectRepository(db)
-	articleAgentService := service.ProvideArticleAgentService(articleProjectRepository, learnService, settingService, configConfig)
+	articleAgentService := service.ProvideArticleAgentService(articleProjectRepository, learnService, settingService, openAIGatewayService, configConfig)
 	editorHandler := handler.NewEditorHandler(editorService, articleAgentService)
 	assistantQuotaCache := repository.NewAssistantQuotaCache(redisClient)
 	agentRunRepository := repository.NewAgentRunRepository(db)

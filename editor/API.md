@@ -65,8 +65,10 @@ action：`polish` 润色 · `shorten` 精简 · `expand` 扩写 · `title` 拟 5
 
 状态：`outlining` 出大纲中 → `outline_ready` 待确认 → `writing` 写作中 → `drawing` 画图中 → `done`；出错 `failed`、停止 `canceled`。
 
-### GET /articles/config
-→ `{"search":true,"max_images":4}`（search：联网搜索是否可用）
+### GET /articles/config?key_id=7
+→ `{"search":true,"max_images":4,"default_images":1,"image_price":0.201}`（search：联网搜索是否可用；
+image_price：在这个 Key 上画一张 1536×1024 图的价格（美元，和实际扣费同一套算法：分组图片价、用户分组倍率、独立图片倍率），
+算不出来时没有这个字段）
 
 ### GET /articles
 → 最近 30 篇，不含正文、进度和图片：`[{id,status,title,error,created_at,updated_at,brief,pushed_at}]`

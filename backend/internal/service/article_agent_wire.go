@@ -46,7 +46,7 @@ func (g gatewayArticleSearcher) Search(ctx context.Context, query string, max in
 
 // ProvideArticleAgentService wires AI 写文章: pictures are kept next to the video files
 // (<data dir>/articles), and runs a previous process left behind are marked failed.
-func ProvideArticleAgentService(repo ArticleProjectRepository, learn *LearnService, settings *SettingService, cfg *config.Config) *ArticleAgentService {
+func ProvideArticleAgentService(repo ArticleProjectRepository, learn *LearnService, settings *SettingService, openai *OpenAIGatewayService, cfg *config.Config) *ArticleAgentService {
 	dir := "./data/articles"
 	if cfg != nil && cfg.Video.Dir != "" {
 		dir = filepath.Join(filepath.Dir(filepath.Clean(cfg.Video.Dir)), "articles")
@@ -56,6 +56,9 @@ func ProvideArticleAgentService(repo ArticleProjectRepository, learn *LearnServi
 		search = gatewayArticleSearcher{settings: settings}
 	}
 	svc := NewArticleAgentService(repo, learn, search, dir)
+	if openai != nil {
+		svc.SetPricer(openai)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	svc.RecoverInterrupted(ctx)

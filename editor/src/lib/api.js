@@ -220,8 +220,9 @@ export async function aiImage(keyId, prompt, size) {
 
 // --- AI 写文章（后台任务：搜资料 → 大纲 → 全文 → 配图） ---------------------------------------------
 
-export function articleConfig() {
-  return api('/editor/articles/config');
+/** {search, max_images, default_images, image_price?}; with a key, image_price is one picture on it (USD). */
+export function articleConfig(keyId) {
+  return api(`/editor/articles/config${keyId ? `?key_id=${encodeURIComponent(keyId)}` : ''}`);
 }
 
 export function listArticles() {

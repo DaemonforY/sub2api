@@ -1144,3 +1144,22 @@ func (s *OpenAIGatewayService) UpdateCodexUsageSnapshotFromHeaders(ctx context.C
 		s.updateCodexUsageSnapshot(ctx, accountID, snapshot)
 	}
 }
+
+// EstimateImageCost is what one picture of the given size would cost on this key, priced the way
+// usage is recorded (group / channel image prices, the user's group multiplier, an independent
+// image multiplier). ok is false when the key's group bills images by tokens or has no group.
+func (s *OpenAIGatewayService) EstimateImageCost(ctx context.Context, apiKey *APIKey, model, size string) (float64, bool) {
+	if s == nil || s.billingService == nil || apiKey == nil || apiKey.GroupID == nil || apiKey.Group == nil {
+		return 0, false
+	}
+	base := s.ResolveUserGroupRateMultiplier(ctx, apiKey.UserID, *apiKey.GroupID, apiKey.Group.RateMultiplier)
+	_, imageMultiplier := computePeakAwareMultipliers(apiKey, base, timezone.Now())
+	if resolved := s.resolveOpenAIChannelPricing(ctx, model, apiKey); resolved != nil && resolved.Mode == BillingModeToken {
+		return 0, false
+	}
+	cost := s.calculateOpenAIImageCost(ctx, model, apiKey, &OpenAIForwardResult{ImageCount: 1, ImageSize: size}, imageMultiplier)
+	if cost == nil || cost.ActualCost <= 0 {
+		return 0, false
+	}
+	return cost.ActualCost, true
+}

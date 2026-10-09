@@ -10,6 +10,7 @@ import (
 	"image/jpeg"
 	_ "image/png" // gpt-image returns PNG
 	"log/slog"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -55,6 +56,7 @@ const (
 	articleMaxMaterials     = 8000
 	articleMaxFeedback      = 500
 	articleMaxImages        = 4
+	articleDefaultImages    = 1
 	articleMaxSearches      = 4
 	articleOutlineTokens    = 3000
 	articleWriteTokens      = 8000
@@ -170,6 +172,11 @@ type ArticleProjectRepository interface {
 	DeleteBefore(ctx context.Context, before time.Time) ([]int64, error)
 }
 
+// ArticleImagePricer estimates what one picture costs on a key (the gateway's own pricing).
+type ArticleImagePricer interface {
+	EstimateImageCost(ctx context.Context, apiKey *APIKey, model, size string) (float64, bool)
+}
+
 // ArticleSearcher searches the web (the gateway's 联网搜索 providers).
 type ArticleSearcher interface {
 	Available(ctx context.Context) bool
@@ -184,6 +191,7 @@ type ArticleAgentService struct {
 	repo     ArticleProjectRepository
 	learn    *LearnService
 	search   ArticleSearcher
+	pricer   ArticleImagePricer
 	dir      string
 	chat     articleChatFunc
 	agent    articleAgentFunc
@@ -229,14 +237,30 @@ func (s *ArticleAgentService) RecoverInterrupted(ctx context.Context) {
 // Wait blocks until running articles stop (shutdown).
 func (s *ArticleAgentService) Wait() { s.wg.Wait() }
 
-// ArticleConfig is what the editor shows before starting.
+// SetPricer lets Config quote the price of a picture on the user's key.
+func (s *ArticleAgentService) SetPricer(p ArticleImagePricer) { s.pricer = p }
+
+// ArticleConfig is what the editor shows before starting. ImagePrice is what one picture costs on
+// the chosen key (USD, as it will be billed), when it can be worked out.
 type ArticleConfig struct {
-	Search    bool `json:"search"`
-	MaxImages int  `json:"max_images"`
+	Search        bool     `json:"search"`
+	MaxImages     int      `json:"max_images"`
+	DefaultImages int      `json:"default_images"`
+	ImagePrice    *float64 `json:"image_price,omitempty"`
 }
 
-func (s *ArticleAgentService) Config(ctx context.Context) ArticleConfig {
-	return ArticleConfig{Search: s.search != nil && s.search.Available(ctx), MaxImages: articleMaxImages}
+func (s *ArticleAgentService) Config(ctx context.Context, userID, keyID int64) ArticleConfig {
+	out := ArticleConfig{Search: s.search != nil && s.search.Available(ctx), MaxImages: articleMaxImages, DefaultImages: articleDefaultImages}
+	if s.pricer == nil || keyID <= 0 {
+		return out
+	}
+	if key, err := s.key(ctx, userID, keyID); err == nil {
+		if price, ok := s.pricer.EstimateImageCost(ctx, key, editorImageModel, articleImageSize); ok {
+			price = math.Round(price*10000) / 10000
+			out.ImagePrice = &price
+		}
+	}
+	return out
 }
 
 // ArticleCreateInput starts an article.

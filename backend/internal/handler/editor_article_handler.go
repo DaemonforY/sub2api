@@ -25,12 +25,14 @@ func (h *EditorHandler) articleID(c *gin.Context) (int64, int64, bool) {
 	return subject.UserID, id, true
 }
 
-// ArticleConfig GET /editor/articles/config
+// ArticleConfig GET /editor/articles/config?key_id= — with a key, also the price of one picture on it.
 func (h *EditorHandler) ArticleConfig(c *gin.Context) {
-	if _, ok := requireAuth(c); !ok {
+	subject, ok := requireAuth(c)
+	if !ok {
 		return
 	}
-	response.Success(c, h.articles.Config(c.Request.Context()))
+	keyID, _ := strconv.ParseInt(c.Query("key_id"), 10, 64)
+	response.Success(c, h.articles.Config(c.Request.Context(), subject.UserID, keyID))
 }
 
 // ArticleList GET /editor/articles
