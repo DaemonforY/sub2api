@@ -9,6 +9,8 @@ export interface AssistantConfig {
   logged_in: boolean
   /** What signing in would give a visitor. */
   user_per_day: number
+  /** 账户诊断: this user's questions can look up their own account, keys and errors. */
+  tools: boolean
 }
 
 export interface AssistantMessage {
@@ -31,11 +33,15 @@ export async function getAssistantConfig(): Promise<AssistantConfig> {
   return data
 }
 
-/** Asks the last question of messages; the answer streams to onDelta. Errors carry the server's message. */
+/**
+ * Asks the last question of messages; the answer streams to onDelta. With 账户诊断 on, onTool gets a
+ * label (正在查你最近的报错…) each time the assistant looks something up. Errors carry the server's message.
+ */
 export async function streamAssistant(
   messages: AssistantMessage[],
   onDelta: (text: string) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onTool?: (label: string) => void
 ): Promise<AssistantDone> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'text/event-stream' }
   const token = localStorage.getItem('auth_token')
@@ -66,8 +72,16 @@ export async function streamAssistant(
       buffer = buffer.slice(i + 2)
       const line = event.split('\n').find((l) => l.startsWith('data: '))
       if (!line) continue
-      const msg = JSON.parse(line.slice(6)) as { delta?: string; done?: boolean; error?: string; sources?: AssistantSource[]; left?: number }
+      const msg = JSON.parse(line.slice(6)) as {
+        delta?: string
+        tool?: string
+        done?: boolean
+        error?: string
+        sources?: AssistantSource[]
+        left?: number
+      }
       if (msg.error) throw new Error(msg.error)
+      if (msg.tool) onTool?.(msg.tool)
       if (msg.delta) onDelta(msg.delta)
       if (msg.done) done = { sources: msg.sources || [], left: msg.left ?? 0 }
     }

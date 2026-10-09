@@ -13,6 +13,8 @@ export interface AssistantSettings {
   user_per_day: number
   guest_per_day: number
   daily_cap: number
+  /** 账户诊断: signed-in users' questions may look up their own account, keys, errors and usage. */
+  tools: boolean
   /** Questions answered today, site-wide. */
   today: number
   /** Learning-site pages in the knowledge base. */
@@ -23,6 +25,38 @@ export interface AssistantKeyOption {
   id: number
   name: string
   group: string
+}
+
+/** One tool call in a run. */
+export interface AgentStep {
+  tool: string
+  args?: string
+  result?: string
+  error?: string
+  ms: number
+}
+
+/** One question the assistant answered, with what it looked up. */
+export interface AgentRun {
+  id: number
+  user_id: number | null
+  user_email?: string
+  question: string
+  answer: string
+  steps: AgentStep[]
+  model: string
+  model_calls: number
+  prompt_tokens: number
+  completion_tokens: number
+  status: 'ok' | 'error'
+  error?: string
+  duration_ms: number
+  created_at: string
+}
+
+export async function listRuns(page = 1): Promise<{ items: AgentRun[]; total: number }> {
+  const { data } = await apiClient.get('/admin/assistant/runs', { params: { page } })
+  return data
 }
 
 export async function getSettings(): Promise<AssistantSettings> {

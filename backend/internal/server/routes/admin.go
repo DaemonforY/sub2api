@@ -276,6 +276,7 @@ func registerAssistantAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/settings", h.Assistant.AdminSettings)
 		g.PUT("/settings", h.Assistant.AdminSaveSettings)
 		g.GET("/keys", h.Assistant.AdminKeys)
+		g.GET("/runs", h.Assistant.AdminRuns)
 	}
 }
 

@@ -11,6 +11,13 @@
           <input v-model="form.enabled" type="checkbox" class="h-4 w-4" data-testid="assistant-enabled" />
           {{ t('admin.assistant.enabled') }}
         </label>
+        <label class="flex items-start gap-2 text-sm">
+          <input v-model="form.tools" type="checkbox" class="mt-0.5 h-4 w-4" data-testid="assistant-tools" />
+          <span>
+            {{ t('admin.assistant.tools') }}
+            <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t('admin.assistant.toolsHint') }}</span>
+          </span>
+        </label>
         <div class="grid gap-4 md:grid-cols-2">
           <label class="text-sm">
             <span class="input-label">{{ t('admin.assistant.key') }}</span>
@@ -63,6 +70,51 @@
           <div class="mt-1 text-xs text-gray-400">{{ t('admin.assistant.pagesHint') }}</div>
         </div>
       </div>
+
+      <div class="card p-5" data-testid="assistant-runs">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ t('admin.assistant.runsTitle') }}</h3>
+            <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.assistant.runsHint') }}</p>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <button class="btn btn-secondary btn-sm" :disabled="runsPage <= 1 || runsLoading" @click="loadRuns(runsPage - 1)">‹</button>
+            <span class="text-gray-500">{{ runsPage }} / {{ runsPages }}</span>
+            <button class="btn btn-secondary btn-sm" :disabled="runsPage >= runsPages || runsLoading" @click="loadRuns(runsPage + 1)">›</button>
+          </div>
+        </div>
+        <p v-if="!runs.length && !runsLoading" class="py-6 text-center text-sm text-gray-400">{{ t('admin.assistant.runsEmpty') }}</p>
+        <ul class="divide-y divide-gray-100 dark:divide-dark-700">
+          <li v-for="run in runs" :key="run.id" class="py-2.5">
+            <button type="button" class="flex w-full items-start gap-3 text-left" @click="toggle(run.id)">
+              <span class="w-28 flex-shrink-0 text-xs text-gray-400">{{ formatTime(run.created_at) }}</span>
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm text-gray-900 dark:text-white">{{ run.question }}</span>
+                <span class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-dark-400">
+                  <span>{{ run.user_email || t('admin.assistant.guest') }}</span>
+                  <span
+                    v-for="(s, i) in run.steps"
+                    :key="i"
+                    class="rounded px-1.5 py-0.5"
+                    :class="s.error ? 'bg-red-50 text-red-600 dark:bg-red-900/20' : 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'"
+                  >{{ s.tool }}</span>
+                  <span>{{ t('admin.assistant.runUsage', { calls: run.model_calls, tokens: run.prompt_tokens + run.completion_tokens, s: (run.duration_ms / 1000).toFixed(1) }) }}</span>
+                  <span v-if="run.status === 'error'" class="text-red-600">{{ run.error }}</span>
+                </span>
+              </span>
+            </button>
+            <div v-if="expanded === run.id" class="mt-2 space-y-2 pl-0 text-xs sm:pl-[7.75rem]">
+              <div v-for="(s, i) in run.steps" :key="i" class="rounded-lg bg-gray-50 p-2 dark:bg-dark-800">
+                <div class="font-medium text-gray-700 dark:text-dark-200">
+                  {{ s.tool }} <span class="font-normal text-gray-400">{{ s.args }} · {{ s.ms }} ms</span>
+                </div>
+                <pre class="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-all text-gray-600 dark:text-dark-300">{{ s.error || s.result }}</pre>
+              </div>
+              <div class="whitespace-pre-wrap rounded-lg border border-gray-100 p-2 text-sm text-gray-800 dark:border-dark-700 dark:text-dark-100">{{ run.answer || '—' }}</div>
+            </div>
+          </li>
+        </ul>
+      </div>
     </div>
   </AppLayout>
 </template>
@@ -74,7 +126,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAppStore, useAuthStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import * as assistantAPI from '@/api/admin/assistant'
-import type { AssistantKeyOption, AssistantSettings } from '@/api/admin/assistant'
+import type { AgentRun, AssistantKeyOption, AssistantSettings } from '@/api/admin/assistant'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -87,6 +139,7 @@ const form = reactive<AssistantSettings>({
   user_per_day: 20,
   guest_per_day: 5,
   daily_cap: 300,
+  tools: false,
   today: 0,
   pages: 0
 })
@@ -124,5 +177,39 @@ async function save() {
   }
 }
 
-onMounted(load)
+const runs = ref<AgentRun[]>([])
+const runsTotal = ref(0)
+const runsPage = ref(1)
+const runsLoading = ref(false)
+const expanded = ref<number | null>(null)
+const runsPages = computed(() => Math.max(1, Math.ceil(runsTotal.value / 20)))
+
+async function loadRuns(page = 1) {
+  runsLoading.value = true
+  try {
+    const out = await assistantAPI.listRuns(page)
+    runs.value = out.items
+    runsTotal.value = out.total
+    runsPage.value = page
+  } catch (e) {
+    appStore.showError(extractApiErrorMessage(e, t('common.error')))
+  } finally {
+    runsLoading.value = false
+  }
+}
+
+function toggle(id: number) {
+  expanded.value = expanded.value === id ? null : id
+}
+
+function formatTime(iso: string) {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+onMounted(() => {
+  load()
+  loadRuns()
+})
 </script>

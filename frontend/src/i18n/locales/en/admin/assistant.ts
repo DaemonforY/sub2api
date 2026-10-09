@@ -23,6 +23,13 @@ export default {
     today: 'Answered today',
     pages: 'Knowledge pages',
     pagesHint: 'AI learning pages + site FAQ',
+    tools: 'Account diagnosis (agent mode)',
+    toolsHint: "Signed-in users' questions may look up their own balance, plans, API keys, recent errors and usage, and which models a key can call, before the answer. Read-only, own data only, key secrets are never returned. Up to 4 model calls per question, still counted as one question.",
+    runsTitle: 'Recent conversations',
+    runsHint: 'Each question, the lookups it made and their results, and usage. Kept for 30 days. Click to expand.',
+    runsEmpty: 'Nothing yet',
+    guest: 'Visitor',
+    runUsage: '{calls} model calls · {tokens} tokens · {s} s',
     saved: 'Saved'
   }
 }

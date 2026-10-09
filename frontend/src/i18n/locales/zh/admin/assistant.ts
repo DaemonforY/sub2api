@@ -23,6 +23,13 @@ export default {
     today: '今天已回答',
     pages: '知识库页面',
     pagesHint: 'AI 学习站页面 + 站点常见问题',
+    tools: '账户诊断（Agent 模式）',
+    toolsHint: '登录用户提问时，客服可以查询他自己的余额、套餐、API Key、最近的报错和用量，以及某个 Key 能用哪些模型，再给出排查建议。只读，查不到别人的数据，不会返回 Key 本身。一个问题最多调用 4 次模型，仍只算一次提问，费用略高于普通回答。',
+    runsTitle: '最近的对话',
+    runsHint: '每个问题、调用了哪些查询和结果、用量，保留 30 天。点开看详情。',
+    runsEmpty: '还没有记录',
+    guest: '访客',
+    runUsage: '{calls} 次模型调用 · {tokens} tokens · {s} 秒',
     saved: '已保存'
   }
 }

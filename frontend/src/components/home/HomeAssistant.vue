@@ -37,7 +37,7 @@
 
       <div ref="scroller" class="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm">
         <div class="max-w-[90%] rounded-2xl rounded-tl-sm bg-gray-100 px-3 py-2 text-gray-800 dark:bg-dark-800 dark:text-dark-100">
-          {{ t('supportAssistant.greeting', { site: siteName }) }}
+          {{ t('supportAssistant.greeting', { site: siteName }) }}<template v-if="config.tools">{{ t('supportAssistant.greetingTools') }}</template>
         </div>
         <div v-if="!messages.length" class="flex flex-wrap gap-2">
           <button
@@ -60,8 +60,18 @@
               class="assistant-md break-words rounded-2xl rounded-tl-sm bg-gray-100 px-3 py-2 text-gray-800 dark:bg-dark-800 dark:text-dark-100"
               v-html="renderMarkdown(m.content)"
             ></div>
-            <div v-else-if="busy && i === messages.length - 1" class="inline-flex items-center gap-2 rounded-2xl rounded-tl-sm bg-gray-100 px-3 py-2 text-gray-500 dark:bg-dark-800 dark:text-dark-400">
-              <span class="h-2 w-2 animate-pulse rounded-full bg-primary-500"></span>{{ t('supportAssistant.thinking') }}
+            <div
+              v-if="m.steps?.length && !(busy && i === messages.length - 1)"
+              class="mt-1 text-[11px] text-gray-400"
+              data-testid="home-assistant-steps"
+            >
+              {{ t('supportAssistant.checked', { list: m.steps.join('、') }) }}
+            </div>
+            <div
+              v-if="busy && i === messages.length - 1 && (!m.content || working)"
+              class="mt-1 inline-flex items-center gap-2 rounded-2xl rounded-tl-sm bg-gray-100 px-3 py-2 text-gray-500 dark:bg-dark-800 dark:text-dark-400"
+            >
+              <span class="h-2 w-2 animate-pulse rounded-full bg-primary-500"></span>{{ working || t('supportAssistant.thinking') }}
             </div>
             <div v-if="m.sources?.length" class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
               <span class="text-gray-400">{{ t('supportAssistant.sources') }}</span>
@@ -120,7 +130,7 @@
             {{ t('supportAssistant.send') }}
           </button>
         </div>
-        <p class="mt-1.5 text-[11px] leading-4 text-gray-400">{{ t('supportAssistant.disclaimer') }}</p>
+        <p class="mt-1.5 text-[11px] leading-4 text-gray-400">{{ t(config.tools ? 'supportAssistant.disclaimerTools' : 'supportAssistant.disclaimer') }}</p>
       </footer>
     </section>
   </div>
@@ -140,11 +150,12 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   sources?: AssistantSource[]
+  /** What the assistant looked up for this answer (账户诊断). */
+  steps?: string[]
 }
 
 const STORE_KEY = 'support_assistant_chat'
 const maxChars = 500
-const suggestionKeys = ['q1', 'q2', 'q3', 'q4']
 
 const config = ref<AssistantConfig | null>(null)
 const open = ref(false)
@@ -153,15 +164,30 @@ const draft = ref('')
 const busy = ref(false)
 const error = ref('')
 const left = ref(0)
+/** The lookup running now (正在查你最近的报错…); cleared when text arrives. */
+const working = ref('')
 const scroller = ref<HTMLElement | null>(null)
 const input = ref<HTMLTextAreaElement | null>(null)
 let controller: AbortController | null = null
 
 const siteName = computed(() => props.siteName || 'HiveGPT')
+// Signed-in users with 账户诊断 get a lookup question first.
+const suggestionKeys = computed(() => (config.value?.tools ? ['diagnose', 'q1', 'q2', 'q3'] : ['q1', 'q2', 'q3', 'q4']))
+
+// Who the kept chat belongs to: answers can hold the user's own account details (账户诊断), so a chat
+// is only shown again to the same user — not after logging out or switching accounts in this tab.
+function owner(): number {
+  try {
+    return Number(JSON.parse(localStorage.getItem('auth_user') || 'null')?.id) || 0
+  } catch {
+    return 0
+  }
+}
 
 onMounted(async () => {
   try {
-    messages.value = JSON.parse(sessionStorage.getItem(STORE_KEY) || '[]')
+    const kept = JSON.parse(sessionStorage.getItem(STORE_KEY) || 'null')
+    messages.value = kept?.owner === owner() && Array.isArray(kept.messages) ? kept.messages : []
   } catch {
     messages.value = []
   }
@@ -175,7 +201,7 @@ onMounted(async () => {
 
 function persist() {
   try {
-    sessionStorage.setItem(STORE_KEY, JSON.stringify(messages.value.slice(-20)))
+    sessionStorage.setItem(STORE_KEY, JSON.stringify({ owner: owner(), messages: messages.value.slice(-20) }))
   } catch {
     // storage full or disabled: the chat just isn't kept
   }
@@ -229,10 +255,18 @@ async function ask(text: string) {
     const done = await streamAssistant(
       [...history, { role: 'user', content: question }],
       (delta) => {
+        working.value = ''
         reply.content += delta
         scrollDown()
       },
-      controller.signal
+      controller.signal,
+      (label) => {
+        working.value = label
+        // 正在查你最近的报错 → 你最近的报错, shown as 已查看：… under the answer.
+        const what = label.replace(/^正在(查看|查)/, '')
+        if (!reply.steps?.includes(what)) reply.steps = [...(reply.steps || []), what]
+        scrollDown()
+      }
     )
     reply.sources = done.sources
     left.value = done.left
@@ -246,6 +280,7 @@ async function ask(text: string) {
   } finally {
     if (!reply.content && messages.value[messages.value.length - 1] === reply) messages.value.pop()
     busy.value = false
+    working.value = ''
     controller = null
     persist()
     scrollDown()

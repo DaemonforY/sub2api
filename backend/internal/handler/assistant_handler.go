@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
@@ -39,7 +40,8 @@ func (h *AssistantHandler) Config(c *gin.Context) {
 	response.Success(c, h.svc.Config(c.Request.Context(), assistantAsker(c)))
 }
 
-// Chat POST /assistant/chat {messages} — streams {"delta"} events, then {"done":true,"sources","left"} or {"error"}.
+// Chat POST /assistant/chat {messages} — streams {"delta"} and {"tool": label} (an account lookup
+// starting) events, then {"done":true,"sources","left"} or {"error"}.
 func (h *AssistantHandler) Chat(c *gin.Context) {
 	var in service.AssistantChatInput
 	if !bindLearn(c, &in) {
@@ -57,7 +59,7 @@ func (h *AssistantHandler) Chat(c *gin.Context) {
 		c.Writer.Flush()
 		return nil
 	}
-	out, err := h.svc.Chat(c.Request.Context(), assistantAsker(c), in, func(delta string) error {
+	start := func() {
 		if !started {
 			started = true
 			c.Header("Content-Type", "text/event-stream; charset=utf-8")
@@ -65,7 +67,13 @@ func (h *AssistantHandler) Chat(c *gin.Context) {
 			c.Header("X-Accel-Buffering", "no")
 			c.Status(http.StatusOK)
 		}
+	}
+	out, err := h.svc.Chat(c.Request.Context(), assistantAsker(c), in, func(delta string) error {
+		start()
 		return send(gin.H{"delta": delta})
+	}, func(label string) error {
+		start()
+		return send(gin.H{"tool": label})
 	})
 	if !started {
 		if err != nil {
@@ -109,4 +117,15 @@ func (h *AssistantHandler) AdminKeys(c *gin.Context) {
 	}
 	keys, err := h.svc.AdminKeys(c.Request.Context(), subject.UserID)
 	learnReply(c, keys, err)
+}
+
+// AdminRuns GET /admin/assistant/runs?page= — the latest questions with the lookups they made.
+func (h *AssistantHandler) AdminRuns(c *gin.Context) {
+	page, _ := strconv.Atoi(c.Query("page"))
+	runs, total, err := h.svc.Runs(c.Request.Context(), page)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"items": runs, "total": total})
 }
