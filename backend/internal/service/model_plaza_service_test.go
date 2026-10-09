@@ -531,7 +531,7 @@ func TestListGroups_FallsBackToAccountModelsWhenChannelHasNone(t *testing.T) {
 		{ID: 7, Name: "no-accounts", Platform: PlatformOpenAI, RateMultiplier: 1},
 	}
 	repo := &mockChannelRepository{listAllFn: func(ctx context.Context) ([]Channel, error) { return channels, nil }}
-	lister := stubPlazaModelLister{5: {"gpt-5.5", "gpt-6-luna", "gpt-*"}, 6: {"should-not-appear"}}
+	lister := stubPlazaModelLister{5: {"gpt-5.5", "codex-auto-review", "gpt-6-luna", "gpt-*"}, 6: {"should-not-appear"}}
 	svc := NewModelPlazaService(repo, &stubGroupRepoForAvailable{activeGroups: groups}, nil, nil, nil, lister)
 
 	out, err := svc.ListGroups(context.Background())
@@ -546,7 +546,7 @@ func TestListGroups_FallsBackToAccountModelsWhenChannelHasNone(t *testing.T) {
 		names = append(names, m.Name)
 		require.Equal(t, PlatformOpenAI, m.Platform)
 	}
-	require.Equal(t, []string{"gpt-5.5", "gpt-6-luna"}, names, "wildcards are skipped")
+	require.Equal(t, []string{"gpt-5.5", "gpt-6-luna"}, names, "wildcards and internal models are skipped")
 	require.Len(t, byID[6].Models, 1)
 	require.Equal(t, "gpt-priced", byID[6].Models[0].Name)
 	require.NotContains(t, byID, int64(7), "groups with no models stay hidden")

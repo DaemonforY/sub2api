@@ -76,6 +76,13 @@ type PlazaModelLister interface {
 }
 
 // NewModelPlazaService 创建模型广场服务。
+// plazaHiddenAccountModels are names an account accepts that are not offered to users as models —
+// Codex CLI's internal reviewer. Hidden only from the account-derived list; a channel that lists one
+// explicitly still shows it, and calls and billing are unaffected.
+var plazaHiddenAccountModels = map[string]bool{
+	"codex-auto-review": true,
+}
+
 func NewModelPlazaService(
 	channelRepo ChannelRepository,
 	groupRepo GroupRepository,
@@ -209,7 +216,7 @@ func (s *ModelPlazaService) ListGroups(ctx context.Context) ([]PlazaGroup, error
 			}
 			id := gid
 			for _, name := range s.modelLister.GetAvailableModels(ctx, &id, pg.Platform) {
-				if name == "" || strings.Contains(name, "*") {
+				if name == "" || strings.Contains(name, "*") || plazaHiddenAccountModels[strings.ToLower(name)] {
 					continue
 				}
 				pg.Models = append(pg.Models, PlazaModel{Name: name, Platform: pg.Platform})
