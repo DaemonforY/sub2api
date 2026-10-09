@@ -45,6 +45,7 @@ var AnalyticsEventNames = map[string]bool{
 	"invite_link_copy":  true,
 	"withdraw_request":  true, // asked to withdraw rebates
 	"canvas_click":      true, // a link out to the canvas
+	"cta_click":         true, // a sign-up / login call to action on the home page (props.where)
 	"assistant_open":    true,
 	"assistant_ask":     true,
 	"learn_run":         true,

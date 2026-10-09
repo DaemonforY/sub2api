@@ -33,7 +33,7 @@
     <div class="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-dark-700">
       <p class="px-1 text-xs text-gray-500 dark:text-dark-400">{{ t('home.v2.hero.hint') }}</p>
       <div class="flex shrink-0 gap-2">
-        <router-link :to="keyTarget" class="btn btn-secondary px-4 py-2 text-sm">
+        <router-link :to="keyTarget" class="btn btn-secondary px-4 py-2 text-sm" @click="track('cta_click', { where: 'hero-key' })">
           {{ t('home.v2.hero.getKey') }}
         </router-link>
         <a
@@ -54,6 +54,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { canvasUrl } from '@/constants/crossSites'
+import { track } from '@/utils/analytics'
 
 const props = defineProps<{ isAuthenticated: boolean }>()
 

@@ -348,6 +348,7 @@ type PublicSettings struct {
 	DocURL                              string
 	HomeContent                         string
 	CompactHomeEnabled                  bool
+	SignupBonus                         float64 // balance an email sign-up starts with (0 = none)
 	HideCcsImportButton                 bool
 
 	PurchaseSubscriptionEnabled bool

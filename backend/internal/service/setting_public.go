@@ -188,6 +188,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyDocURL,
 		SettingKeyHomeContent,
 		SettingKeyCompactHomeEnabled,
+		SettingKeyDefaultBalance,
+		SettingKeyAuthSourceDefaultEmailBalance,
+		SettingKeyAuthSourceDefaultEmailGrantOnSignup,
 		SettingKeyHideCcsImportButton,
 		SettingKeyPurchaseSubscriptionEnabled,
 		SettingKeyPurchaseSubscriptionURL,
@@ -296,7 +299,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		balanceLowNotifyThreshold = v
 	}
 
-	return &PublicSettings{
+	out := &PublicSettings{
 		RegistrationEnabled:                 settings[SettingKeyRegistrationEnabled] == "true",
 		EmailVerifyEnabled:                  emailVerifyEnabled,
 		ForceEmailOnThirdPartySignup:        settings[SettingKeyForceEmailOnThirdPartySignup] == "true",
@@ -370,7 +373,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		RiskControlEnabled: settings[SettingKeyRiskControlEnabled] == "true",
 
 		AllowUserViewErrorRequests: settings[SettingKeyAllowUserViewErrorRequests] == "true",
-	}, nil
+	}
+	out.SignupBonus = s.signupBonus(settings)
+	return out, nil
 }
 
 // channelMonitorIntervalMin / channelMonitorIntervalMax bound the default interval
@@ -579,6 +584,7 @@ type PublicSettingsInjectionPayload struct {
 	DocURL                              string                   `json:"doc_url"`
 	HomeContent                         string                   `json:"home_content"`
 	CompactHomeEnabled                  bool                     `json:"compact_home_enabled"`
+	SignupBonus                         float64                  `json:"signup_bonus"`
 	HideCcsImportButton                 bool                     `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled         bool                     `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL             string                   `json:"purchase_subscription_url"`
@@ -668,6 +674,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		DocURL:                              settings.DocURL,
 		HomeContent:                         settings.HomeContent,
 		CompactHomeEnabled:                  settings.CompactHomeEnabled,
+		SignupBonus:                         settings.SignupBonus,
 		HideCcsImportButton:                 settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:         settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:             settings.PurchaseSubscriptionURL,
@@ -830,4 +837,21 @@ func parseCustomMenuItemURLs(raw string) []string {
 		}
 	}
 	return urls
+}
+
+// signupBonus is the balance an email sign-up starts with: default_balance, or the email auth-source
+// balance when that source grants on sign-up (as resolveSignupGrantPlan does), so the home and
+// register pages only promise credit that really exists.
+func (s *SettingService) signupBonus(settings map[string]string) float64 {
+	bonus := 0.0
+	if s.cfg != nil {
+		bonus = s.cfg.Default.UserBalance
+	}
+	if v, err := strconv.ParseFloat(strings.TrimSpace(settings[SettingKeyDefaultBalance]), 64); err == nil && v >= 0 {
+		bonus = v
+	}
+	if email := parseProviderDefaultGrantSettings(settings, emailAuthSourceDefaultKeys); email.GrantOnSignup {
+		bonus = mergeProviderDefaultGrantSettings(ProviderDefaultGrantSettings{Balance: bonus}, email).Balance
+	}
+	return bonus
 }

@@ -221,6 +221,7 @@ export default {
       invite_link_copy: 'Copied invite link',
       withdraw_request: 'Requested a rebate withdrawal',
       canvas_click: 'Went to the canvas',
+      cta_click: 'Home page sign-up / login click',
       assistant_open: 'Opened support assistant',
       assistant_ask: 'Asked the assistant',
       learn_run: 'Ran a lesson example',

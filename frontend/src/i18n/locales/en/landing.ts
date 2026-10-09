@@ -12,6 +12,8 @@ export default {
     switchToDark: 'Switch to Dark Mode',
     dashboard: 'Dashboard',
     login: 'Login',
+    register: 'Sign up free',
+    signupBonus: 'New accounts get ${amount} of free credit for images and chat',
     getStarted: 'Get Started',
     goToDashboard: 'Go to Dashboard',
     // User-focused value proposition

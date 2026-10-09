@@ -71,6 +71,14 @@ describe('UserDashboardGetStarted', () => {
     expect(w.find('[data-testid="get-started-waiting"]').exists()).toBe(true)
   })
 
+  it('offers the canvas to newcomers who only want to draw', async () => {
+    const w = mountCard()
+    await flushPromises()
+    const href = w.get('[data-testid="get-started-canvas-link"]').attributes('href')
+    expect(href).toContain('/image?')
+    expect(href).toContain('utm_medium=dashboard-guide')
+  })
+
   it('falls back to the key form when the key cannot be made', async () => {
     starter.mockRejectedValue(new Error('nope'))
     const w = mountCard()

@@ -272,13 +272,23 @@
               />
             </svg>
           </router-link>
-          <router-link
-            v-else
-            to="/login"
-            class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
-          >
-            {{ t('home.login') }}
-          </router-link>
+          <template v-else>
+            <router-link
+              to="/login"
+              class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-dark-200 dark:hover:bg-dark-800"
+              @click="trackCta('nav-login')"
+            >
+              {{ t('home.login') }}
+            </router-link>
+            <router-link
+              v-if="registrationEnabled"
+              to="/register"
+              class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
+              @click="trackCta('nav-register')"
+            >
+              {{ t('home.register') }}
+            </router-link>
+          </template>
         </div>
       </nav>
     </header>
@@ -302,6 +312,15 @@
                 <span class="text-primary-500" aria-hidden="true">✓</span>{{ chip }}
               </span>
             </div>
+            <router-link
+              v-if="!isAuthenticated && registrationEnabled && signupBonus > 0"
+              to="/register"
+              class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/60"
+              @click="trackCta('hero-bonus')"
+            >
+              <span aria-hidden="true">🎁</span>{{ t('home.signupBonus', { amount: signupBonusText }) }}
+              <span aria-hidden="true">→</span>
+            </router-link>
             <HomePromptBox :is-authenticated="isAuthenticated" class="mt-8 text-left" />
           </div>
 
@@ -537,6 +556,7 @@
             <router-link
               :to="isAuthenticated ? dashboardPath : '/register'"
               class="inline-flex items-center rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-primary-700 shadow-lg transition hover:bg-gray-100"
+              @click="trackCta('final-cta')"
             >
               {{ isAuthenticated ? t('home.goToDashboard') : t('home.v2.finalCta.primary') }}
             </router-link>
@@ -610,6 +630,7 @@ import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeUrl } from '@/utils/url'
+import { track } from '@/utils/analytics'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossSites'
 import HomePromptBox from '@/components/home/HomePromptBox.vue'
@@ -656,6 +677,11 @@ const canvasLink = (medium: string, path: '/' | `/${string}` = '/') =>
   canvasUrl({ medium, baseUrl: window.location.origin, path })
 const partnerSites = otherPartnerSites()
 const contactInfo = computed(() => String(appStore.cachedPublicSettings?.contact_info || '').trim())
+const registrationEnabled = computed(() => appStore.cachedPublicSettings?.registration_enabled !== false)
+const signupBonus = computed(() => Number(appStore.cachedPublicSettings?.signup_bonus || 0))
+const signupBonusText = computed(() => String(Math.round(signupBonus.value * 100) / 100))
+const trackCta = (where: string) => track('cta_click', { where })
+
 const heroChips = computed(() => [
   t('home.v2.hero.chips.models'),
   t('home.v2.hero.chips.billing'),

@@ -257,6 +257,7 @@ export interface PublicSettings {
   doc_url: string
   home_content: string
   compact_home_enabled: boolean
+  signup_bonus?: number
   hide_ccs_import_button: boolean
   payment_enabled: boolean
   risk_control_enabled: boolean

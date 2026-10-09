@@ -221,6 +221,7 @@ export default {
       invite_link_copy: '复制邀请链接',
       withdraw_request: '申请返利提现',
       canvas_click: '点击进入画布',
+      cta_click: '首页点击注册 / 登录',
       assistant_open: '打开智能客服',
       assistant_ask: '向客服提问',
       learn_run: '学习站运行示例',

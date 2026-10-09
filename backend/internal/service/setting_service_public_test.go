@@ -225,3 +225,25 @@ func TestSettingService_GetPublicSettings_FallsBackToConfigForWeChatOAuthCapabil
 	require.False(t, settings.WeChatOAuthMPEnabled)
 	require.False(t, settings.WeChatOAuthMobileEnabled)
 }
+
+func TestSettingService_GetPublicSettings_SignupBonus(t *testing.T) {
+	cfg := &config.Config{}
+	cases := []struct {
+		name   string
+		values map[string]string
+		want   float64
+	}{
+		{"nothing configured", map[string]string{}, 0},
+		{"global default balance", map[string]string{SettingKeyDefaultBalance: "2"}, 2},
+		{"email override off keeps global", map[string]string{SettingKeyDefaultBalance: "2", SettingKeyAuthSourceDefaultEmailBalance: "5"}, 2},
+		{"email override on wins", map[string]string{SettingKeyDefaultBalance: "2", SettingKeyAuthSourceDefaultEmailBalance: "1.5", SettingKeyAuthSourceDefaultEmailGrantOnSignup: "true"}, 1.5},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := NewSettingService(&settingPublicRepoStub{values: tc.values}, cfg)
+			got, err := svc.GetPublicSettings(context.Background())
+			require.NoError(t, err)
+			require.InDelta(t, tc.want, got.SignupBonus, 1e-9)
+		})
+	}
+}

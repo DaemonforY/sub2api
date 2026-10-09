@@ -1049,6 +1049,11 @@ export default {
     finish: 'Done',
     waiting: 'Waiting for your first request — checking every 10 seconds…',
     needCredit: 'With a zero balance and no subscription, requests will fail.',
+    canvas: {
+      title: '🎨 Just want to make images?',
+      desc: 'Open the canvas, connect this account in one click and describe a picture — nothing to configure.',
+      action: 'Draw your first image'
+    },
     buy: 'Top up or subscribe',
     tutorial: 'Codex setup guide (with screenshots)',
     askAssistant: 'Ask the support assistant',

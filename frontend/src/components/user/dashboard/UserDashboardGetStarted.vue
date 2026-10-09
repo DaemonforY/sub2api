@@ -10,6 +10,17 @@
       </button>
     </div>
 
+    <!-- Most sign-ups come to draw, not to code: offer the canvas before the Codex steps. -->
+    <div v-if="!allDone" class="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-fuchsia-50 to-violet-50 px-4 py-3 dark:from-fuchsia-900/15 dark:to-violet-900/15" data-testid="get-started-canvas">
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('getStarted.canvas.title') }}</p>
+        <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('getStarted.canvas.desc') }}</p>
+      </div>
+      <a :href="canvasHref" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary shrink-0" data-testid="get-started-canvas-link">
+        {{ t('getStarted.canvas.action') }} ↗
+      </a>
+    </div>
+
     <ol class="grid gap-3 p-4 md:grid-cols-3">
       <li v-for="(s, i) in steps" :key="s.key" class="flex gap-3 rounded-xl p-4" :class="s.done ? 'bg-emerald-50 dark:bg-emerald-900/15' : s.current ? 'bg-primary-50 ring-1 ring-primary-200 dark:bg-primary-900/20 dark:ring-primary-800' : 'bg-gray-50 dark:bg-dark-800/50'" :data-testid="`get-started-step-${s.key}`" :data-done="s.done">
         <span class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-sm font-semibold" :class="s.done ? 'bg-emerald-500 text-white' : 'bg-white text-gray-600 ring-1 ring-gray-200 dark:bg-dark-700 dark:text-dark-200 dark:ring-dark-600'">
@@ -115,6 +126,7 @@ import { useSubscriptionStore } from '@/stores/subscriptions'
 import { guideStepDone, markGuideStep } from '@/utils/getStarted'
 import { codexConfigFolder, codexStarterConfig, detectDesktopOS, downloadTextFile, type DesktopOS } from '@/utils/codexStarterConfig'
 import { track } from '@/utils/analytics'
+import { canvasUrl } from '@/constants/crossSites'
 import type { ApiKey } from '@/types'
 
 const props = defineProps<{
@@ -125,6 +137,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const canvasHref = canvasUrl({ medium: 'dashboard-guide', baseUrl: window.location.origin, path: '/image' })
 const appStore = useAppStore()
 const subscriptions = useSubscriptionStore()
 

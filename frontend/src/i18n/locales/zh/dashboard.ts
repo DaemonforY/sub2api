@@ -1053,6 +1053,11 @@ export default {
     finish: '完成',
     waiting: '正在等你的第一次请求，每 10 秒自动检查一次…',
     needCredit: '账户余额为 0 且没有订阅时，调用会失败。',
+    canvas: {
+      title: '🎨 只想用 AI 画图？',
+      desc: '打开无限画布，用这个账号一键连接，输入一句话就能出图，不用配置任何东西。',
+      action: '去画第一张图'
+    },
     buy: '去充值或订阅',
     tutorial: 'Codex 接入教程（带截图）',
     askAssistant: '遇到问题问智能客服',
