@@ -332,6 +332,39 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/tutors',
+    name: 'Tutors',
+    component: () => import('@/views/user/TutorsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'AI tutors',
+      titleKey: 'tutors.title',
+      descriptionKey: 'tutors.description'
+    }
+  },
+  {
+    path: '/tutors/:id(\\d+)',
+    name: 'TutorEdit',
+    component: () => import('@/views/user/TutorEditView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'AI tutor',
+      titleKey: 'tutors.title',
+      descriptionKey: 'tutors.description'
+    }
+  },
+  {
+    path: '/t/:code([a-zA-Z0-9]{4,16})',
+    name: 'TutorStudent',
+    component: () => import('@/views/public/TutorStudentView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'AI 助教'
+    }
+  },
+  {
     path: '/sites',
     name: 'MySites',
     component: () => import('@/views/user/SitesView.vue'),

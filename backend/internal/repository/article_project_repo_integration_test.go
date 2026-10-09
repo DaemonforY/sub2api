@@ -16,7 +16,9 @@ func TestArticleProjectRepository(t *testing.T) {
 	ctx := context.Background()
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "article-" + suffix + "@article.test", Username: "art" + suffix[len(suffix)-4:]})
-	t.Cleanup(func() { _, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM article_projects WHERE user_id = $1`, user.ID) })
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM article_projects WHERE user_id = $1`, user.ID)
+	})
 	repo := NewArticleProjectRepository(integrationDB)
 
 	p := &service.ArticleProject{UserID: user.ID, KeyID: 42, Status: service.ArticleOutlining, Title: "国庆出游",

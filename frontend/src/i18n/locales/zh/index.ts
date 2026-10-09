@@ -15,6 +15,7 @@ import learn from './learn'
 import assistant from './assistant'
 import pricing from './pricing'
 import video from './video'
+import tutors from './tutors'
 
 export default {
   ...landing,
@@ -34,4 +35,5 @@ export default {
   ...assistant,
   ...pricing,
   ...video,
+  ...tutors,
 }

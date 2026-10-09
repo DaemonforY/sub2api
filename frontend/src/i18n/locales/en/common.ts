@@ -217,6 +217,7 @@ export default {
     communityAdmin: 'Canvas community',
     myCourses: 'My courses',
     myLearning: 'My learning',
+    tutors: 'AI tutors',
     coursesAdmin: 'Courses',
     creatorCenter: 'Creator center',
     courseCreatorsAdmin: 'Course creators',

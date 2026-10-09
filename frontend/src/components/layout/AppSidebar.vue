@@ -842,6 +842,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/my-courses', label: t('nav.myCourses'), icon: BookIcon, hideInSimpleMode: true, featureFlag: flagPayment },
     { path: '/creator', label: t('nav.creatorCenter'), icon: BookIcon, hideInSimpleMode: true, featureFlag: flagPayment },
     { path: '/my-learning', label: t('nav.myLearning'), icon: SparklesIcon, hideInSimpleMode: true },
+    { path: '/tutors', label: t('nav.tutors'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/contests', label: t('nav.contests'), icon: TrophyIcon, hideInSimpleMode: true },
     { path: '/affiliate', label: t('nav.affiliate'), icon: UsersIcon, hideInSimpleMode: true, featureFlag: flagAffiliate },

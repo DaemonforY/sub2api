@@ -16,7 +16,9 @@ func TestAgentRunRepository(t *testing.T) {
 	ctx := context.Background()
 	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
 	agent := "t" + suffix[len(suffix)-12:]
-	t.Cleanup(func() { _, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM agent_runs WHERE agent = $1`, agent) })
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM agent_runs WHERE agent = $1`, agent)
+	})
 	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "agent-" + suffix + "@agent.test", Username: "agent" + suffix[len(suffix)-4:]})
 	repo := NewAgentRunRepository(integrationDB)
 

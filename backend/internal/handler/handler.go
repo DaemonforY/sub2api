@@ -93,6 +93,7 @@ type Handlers struct {
 	Editor           *EditorHandler
 	Assistant        *AssistantHandler
 	OpsAgent         *OpsAgentHandler
+	Tutor            *TutorHandler
 	Analytics        *AnalyticsHandler
 	CanvasMembership *CanvasMembershipHandler
 }
