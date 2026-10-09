@@ -92,6 +92,7 @@ type Handlers struct {
 	Learn            *LearnHandler
 	Editor           *EditorHandler
 	Assistant        *AssistantHandler
+	OpsAgent         *OpsAgentHandler
 	Analytics        *AnalyticsHandler
 	CanvasMembership *CanvasMembershipHandler
 }

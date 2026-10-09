@@ -623,10 +623,13 @@ export default {
         showAdvancedDeveloperSettings: 'Show advanced developer settings (Distributed Lock)',
         advancedSettingsSummary: 'Advanced settings (Distributed Lock)',
         evalIntervalHint: 'How often the evaluator runs. Keeping the default is recommended.',
+        minRateSample: 'Minimum requests for rate rules',
+        minRateSampleHint: 'Error-rate, success-rate and upstream-error-rate rules are not judged when the window has fewer requests than this (a firing alert resolves), so a few failures at low traffic do not page you. 0 turns it off; default 20.',
         validation: {
           title: 'Please fix the following issues',
           invalid: 'Invalid settings',
           evalIntervalRange: 'Evaluation interval must be between 1 and 86400 seconds',
+          minRateSampleRange: 'Minimum requests must be between 0 and 100000',
           lockKeyRequired: 'Distributed lock key is required when lock is enabled',
           lockKeyPrefix: 'Distributed lock key must start with "{prefix}"',
           lockKeyHint: 'Recommended: start with "{prefix}" to avoid conflicts',

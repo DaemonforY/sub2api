@@ -222,6 +222,7 @@ export default {
     courseCreatorsAdmin: 'Course creators',
     learnAdmin: 'AI Learning',
     assistantAdmin: 'Support assistant',
+    opsAgentAdmin: 'Ops assistant',
     canvasMembershipAdmin: 'Creator membership',
     analyticsAdmin: 'Analytics',
     channelLinksAdmin: 'Channel links',

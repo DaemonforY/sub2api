@@ -17,6 +17,7 @@ import courses from './courses'
 import creators from './creators'
 import learn from './learn'
 import assistant from './assistant'
+import opsAgent from './opsAgent'
 import analytics from './analytics'
 
 export default {
@@ -39,5 +40,6 @@ export default {
   ...creators,
   ...learn,
   ...assistant,
+  ...opsAgent,
   ...analytics,
 }

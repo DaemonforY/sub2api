@@ -769,6 +769,8 @@ export interface OpsDistributedLockSettings {
 
 export interface OpsAlertRuntimeSettings {
   evaluation_interval_seconds: number
+  /** Rate rules need at least this many requests in the window to be judged; 0 = off (default 20). */
+  min_rate_sample_requests?: number | null
   distributed_lock: OpsDistributedLockSettings
   silencing: {
     enabled: boolean

@@ -227,6 +227,7 @@ func ProvideHandlers(
 	learnHandler *LearnHandler,
 	editorHandler *EditorHandler,
 	assistantHandler *AssistantHandler,
+	opsAgentHandler *OpsAgentHandler,
 	analyticsHandler *AnalyticsHandler,
 	canvasMembershipHandler *CanvasMembershipHandler,
 	_ *service.IdempotencyCoordinator,
@@ -270,6 +271,7 @@ func ProvideHandlers(
 		Learn:            learnHandler,
 		Editor:           editorHandler,
 		Assistant:        assistantHandler,
+		OpsAgent:         opsAgentHandler,
 		Analytics:        analyticsHandler,
 		CanvasMembership: canvasMembershipHandler,
 	}
@@ -322,6 +324,7 @@ var ProviderSet = wire.NewSet(
 	NewLearnHandler,
 	NewEditorHandler,
 	NewAssistantHandler,
+	NewOpsAgentHandler,
 	NewAnalyticsHandler,
 
 	// Admin handlers

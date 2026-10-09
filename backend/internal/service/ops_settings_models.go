@@ -85,6 +85,11 @@ type OpsRuntimeLogConfig struct {
 type OpsAlertRuntimeSettings struct {
 	EvaluationIntervalSeconds int `json:"evaluation_interval_seconds"`
 
+	// MinRateSampleRequests: error_rate / success_rate / upstream_error_rate rules are not judged
+	// when the window has fewer requests than this (a firing one resolves) — at low traffic a few
+	// failed calls would otherwise read as a 30% error rate. 0 turns the check off; unset means 20.
+	MinRateSampleRequests *int `json:"min_rate_sample_requests"`
+
 	DistributedLock OpsDistributedLockSettings `json:"distributed_lock"`
 	Silencing       OpsAlertSilencingSettings  `json:"silencing"`
 	Thresholds      OpsMetricThresholds        `json:"thresholds"` // 指标阈值配置

@@ -44,6 +44,10 @@ function validateRuntimeSettings(settings: OpsAlertRuntimeSettings): ValidationR
   if (!Number.isFinite(evalSeconds) || evalSeconds < 1 || evalSeconds > 86400) {
     errors.push(t('admin.ops.runtime.validation.evalIntervalRange'))
   }
+  const minSample = settings.min_rate_sample_requests as unknown
+  if (minSample != null && minSample !== '' && (!Number.isInteger(minSample) || (minSample as number) < 0 || (minSample as number) > 100000)) {
+    errors.push(t('admin.ops.runtime.validation.minRateSampleRange'))
+  }
 
   // Thresholds validation
   const thresholds = settings.thresholds
@@ -220,6 +224,9 @@ async function saveAlertSettings() {
 
   saving.value = true
   try {
+    // An emptied number input is "", which the API can't read: send null (= the default).
+    const minSample = draftAlert.value.min_rate_sample_requests as unknown
+    if (minSample === '' || minSample === undefined) draftAlert.value.min_rate_sample_requests = null
     alertSettings.value = await opsAPI.updateAlertRuntimeSettings(draftAlert.value)
     showAlertEditor.value = false
     appStore.showSuccess(t('admin.ops.runtime.saveSuccess'))
@@ -270,6 +277,10 @@ onMounted(() => {
           <div class="text-xs text-gray-600 dark:text-gray-300">
             {{ t('admin.ops.runtime.evalIntervalSeconds') }}:
             <span class="ml-1 font-medium text-gray-900 dark:text-white">{{ alertSettings.evaluation_interval_seconds }}s</span>
+          </div>
+          <div class="text-xs text-gray-600 dark:text-gray-300">
+            {{ t('admin.ops.runtime.minRateSample') }}:
+            <span class="ml-1 font-medium text-gray-900 dark:text-white">{{ alertSettings.min_rate_sample_requests ?? 20 }}</span>
           </div>
           <div
             v-if="alertSettings.silencing?.enabled && alertSettings.silencing.global_until_rfc3339"
@@ -326,6 +337,19 @@ onMounted(() => {
           :aria-invalid="!alertValidation.valid"
         />
         <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.runtime.evalIntervalHint') }}</p>
+      </div>
+
+      <div>
+        <div class="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{{ t('admin.ops.runtime.minRateSample') }}</div>
+        <input
+          v-model.number="draftAlert.min_rate_sample_requests"
+          type="number"
+          min="0"
+          max="100000"
+          class="input"
+          data-testid="ops-min-rate-sample"
+        />
+        <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.runtime.minRateSampleHint') }}</p>
       </div>
 
       <div class="rounded-2xl bg-gray-50 p-4 dark:bg-dark-700/50">

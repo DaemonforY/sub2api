@@ -623,10 +623,13 @@ export default {
         showAdvancedDeveloperSettings: '显示高级开发者设置 (Distributed Lock)',
         advancedSettingsSummary: '高级设置 (分布式锁)',
         evalIntervalHint: '检测任务的执行频率，建议保持默认。',
+        minRateSample: '错误率/成功率最低样本量',
+        minRateSampleHint: '错误率、成功率、上游错误率类规则：时间窗口内请求数少于这个数时不判定（已触发的告警会自动恢复），避免请求量很少时几次失败就报警。填 0 关闭，默认 20。',
         validation: {
           title: '请先修正以下问题',
           invalid: '设置不合法',
           evalIntervalRange: '评估间隔必须在 1 到 86400 秒之间',
+          minRateSampleRange: '最低样本量必须在 0 到 100000 之间',
           lockKeyRequired: '启用分布式锁时必须填写 Lock Key',
           lockKeyPrefix: '分布式锁 Key 必须以「{prefix}」开头',
           lockKeyHint: '建议以「{prefix}」开头以避免冲突',

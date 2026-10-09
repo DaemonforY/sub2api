@@ -139,6 +139,7 @@ func RegisterAdminRoutes(
 		registerCourseAdminRoutes(admin, h)
 		registerLearnAdminRoutes(admin, h)
 		registerAssistantAdminRoutes(admin, h)
+		registerOpsAgentRoutes(admin, h)
 		registerCanvasMembershipAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
@@ -263,6 +264,22 @@ func registerCourseAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/:id/enrollments", h.Admin.Course.Enrollments)
 		g.POST("/:id/enrollments", h.Admin.Course.Grant)
 		g.DELETE("/:id/enrollments/:user_id", h.Admin.Course.Revoke)
+	}
+}
+
+// registerOpsAgentRoutes 运维助手：对话排查报错、告警自动分析、上游站连接。只读。
+func registerOpsAgentRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.OpsAgent == nil {
+		return
+	}
+	g := admin.Group("/ops-agent")
+	{
+		g.GET("/settings", h.OpsAgent.Settings)
+		g.PUT("/settings", h.OpsAgent.SaveSettings)
+		g.GET("/keys", h.OpsAgent.Keys)
+		g.GET("/runs", h.OpsAgent.Runs)
+		g.POST("/chat", h.OpsAgent.Chat)
+		g.POST("/upstream/test", h.OpsAgent.TestUpstream)
 	}
 }
 

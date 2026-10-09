@@ -222,6 +222,7 @@ export default {
     courseCreatorsAdmin: '课程创作者',
     learnAdmin: 'AI 学习',
     assistantAdmin: '智能客服',
+    opsAgentAdmin: '运维助手',
     canvasMembershipAdmin: '创作会员',
     analyticsAdmin: '数据看板',
     channelLinksAdmin: '渠道链接',

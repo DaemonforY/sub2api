@@ -55,6 +55,21 @@ type OpsAlertEvaluatorService struct {
 	skipLogAt time.Time
 
 	warnNoRedisOnce sync.Once
+
+	// Set by evaluateOnce for its run (one evaluation at a time): rate rules need at least
+	// minRateSample requests in the window; computeRuleMetric sets lowSample when there were fewer.
+	minRateSample int
+	lowSample     bool
+
+	// onAlertFired (optional) is told about each alert event created, after its email (运维助手).
+	onAlertFired func(rule *OpsAlertRule, event *OpsAlertEvent)
+}
+
+// SetAlertHook registers a callback for newly fired alert events. It must return quickly.
+func (s *OpsAlertEvaluatorService) SetAlertHook(fn func(rule *OpsAlertRule, event *OpsAlertEvent)) {
+	if s != nil {
+		s.onAlertFired = fn
+	}
 }
 
 type opsAlertRuleState struct {
@@ -175,6 +190,11 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 		}
 	}
 
+	s.minRateSample = opsAlertDefaultMinRateSample
+	if runtimeCfg.MinRateSampleRequests != nil {
+		s.minRateSample = *runtimeCfg.MinRateSampleRequests
+	}
+
 	release, ok := s.tryAcquireLeaderLock(ctx, runtimeCfg.DistributedLock)
 	if !ok {
 		return
@@ -226,14 +246,16 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 		windowStart := safeEnd.Add(-time.Duration(windowMinutes) * time.Minute)
 		windowEnd := safeEnd
 
+		s.lowSample = false
 		metricValue, ok := s.computeRuleMetric(ctx, rule, systemMetrics, windowStart, windowEnd, scopePlatform, scopeGroupID)
-		if !ok {
+		if !ok && !s.lowSample {
 			s.resetRuleState(rule.ID, now)
 			continue
 		}
 		rulesEvaluated++
 
-		breachedNow := compareMetric(metricValue, rule.Operator, rule.Threshold)
+		// Too few requests to judge a rate: counts as healthy (a firing alert resolves).
+		breachedNow := ok && compareMetric(metricValue, rule.Operator, rule.Threshold)
 		required := requiredSustainedBreaches(rule.SustainedMinutes, interval)
 		consecutive := s.updateRuleBreaches(rule.ID, now, interval, breachedNow)
 
@@ -294,6 +316,9 @@ func (s *OpsAlertEvaluatorService) evaluateOnce(interval time.Duration) {
 			if created != nil && created.ID > 0 {
 				if s.maybeSendAlertEmail(ctx, runtimeCfg, rule, created) {
 					emailsSent++
+				}
+				if s.onAlertFired != nil {
+					s.onAlertFired(rule, created)
 				}
 			}
 			continue
@@ -615,6 +640,13 @@ func (s *OpsAlertEvaluatorService) computeRuleMetric(
 		return pick(overview.TTFT.P95)
 	}
 
+	switch strings.TrimSpace(rule.MetricType) {
+	case "success_rate", "error_rate", "upstream_error_rate":
+		if overview.RequestCountSLA > 0 && overview.RequestCountSLA < int64(s.minRateSample) {
+			s.lowSample = true
+			return 0, false
+		}
+	}
 	switch strings.TrimSpace(rule.MetricType) {
 	case "success_rate":
 		if overview.RequestCountSLA <= 0 {

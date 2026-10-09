@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"strings"
 	"time"
@@ -196,9 +197,16 @@ func validateOpsEmailNotificationConfig(cfg *OpsEmailNotificationConfig) error {
 // Alert runtime settings
 // =========================
 
+const (
+	opsAlertDefaultMinRateSample = 20
+	opsAlertMaxMinRateSample     = 100000
+)
+
 func defaultOpsAlertRuntimeSettings() *OpsAlertRuntimeSettings {
+	minSample := opsAlertDefaultMinRateSample
 	return &OpsAlertRuntimeSettings{
 		EvaluationIntervalSeconds: 60,
+		MinRateSampleRequests:     &minSample,
 		DistributedLock: OpsDistributedLockSettings{
 			Enabled:    true,
 			Key:        opsAlertEvaluatorLeaderLockKeyDefault,
@@ -304,6 +312,9 @@ func (s *OpsService) GetOpsAlertRuntimeSettings(ctx context.Context) (*OpsAlertR
 	if cfg.EvaluationIntervalSeconds <= 0 {
 		cfg.EvaluationIntervalSeconds = defaultCfg.EvaluationIntervalSeconds
 	}
+	if cfg.MinRateSampleRequests == nil || *cfg.MinRateSampleRequests < 0 {
+		cfg.MinRateSampleRequests = defaultCfg.MinRateSampleRequests
+	}
 	normalizeOpsDistributedLockSettings(&cfg.DistributedLock, opsAlertEvaluatorLeaderLockKeyDefault, defaultCfg.DistributedLock.TTLSeconds)
 	normalizeOpsAlertSilencingSettings(&cfg.Silencing)
 
@@ -324,6 +335,9 @@ func (s *OpsService) UpdateOpsAlertRuntimeSettings(ctx context.Context, cfg *Ops
 	if cfg.EvaluationIntervalSeconds < 1 || cfg.EvaluationIntervalSeconds > int((24*time.Hour).Seconds()) {
 		return nil, errors.New("evaluation_interval_seconds must be between 1 and 86400")
 	}
+	if cfg.MinRateSampleRequests != nil && (*cfg.MinRateSampleRequests < 0 || *cfg.MinRateSampleRequests > opsAlertMaxMinRateSample) {
+		return nil, fmt.Errorf("min_rate_sample_requests must be between 0 and %d", opsAlertMaxMinRateSample)
+	}
 	if cfg.DistributedLock.Enabled {
 		if err := validateOpsDistributedLockSettings(cfg.DistributedLock); err != nil {
 			return nil, err
@@ -336,6 +350,9 @@ func (s *OpsService) UpdateOpsAlertRuntimeSettings(ctx context.Context, cfg *Ops
 	}
 
 	defaultCfg := defaultOpsAlertRuntimeSettings()
+	if cfg.MinRateSampleRequests == nil {
+		cfg.MinRateSampleRequests = defaultCfg.MinRateSampleRequests
+	}
 	normalizeOpsDistributedLockSettings(&cfg.DistributedLock, opsAlertEvaluatorLeaderLockKeyDefault, defaultCfg.DistributedLock.TTLSeconds)
 	normalizeOpsAlertSilencingSettings(&cfg.Silencing)
 
