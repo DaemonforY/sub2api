@@ -13,8 +13,8 @@ description: 在 LobeChat（LobeHub）和 NextChat（ChatGPT-Next-Web）里接�
 
 一个 HiveGPT 的 API Key：在 [API 密钥](https://hivegpt.cn/keys?action=create) 页创建，分组选 GPT 类分组。还没有账号先 [注册](https://hivegpt.cn/register?utm_source=learn&utm_medium=lobechat)。
 
-::: warning 为什么不能让浏览器直接请求
-两个工具都有「浏览器直接请求接口」的模式。HiveGPT 的接口不接受网页里的跨域请求，所以要让请求经过 LobeChat / NextChat 自己的服务器转发（这也是它们的默认方式），Key 也不会暴露在网页里。
+::: tip 用服务端转发更安全
+两个工具都有「浏览器直接请求接口」的模式，HiveGPT 的接口也允许跨域请求，两种都能用。自己部署给别人用时，建议让请求经过 LobeChat / NextChat 自己的服务器转发（这也是它们的默认方式），Key 只保存在服务器上，不会出现在访客的浏览器里。
 :::
 
 ## 一、LobeChat（LobeHub）
@@ -89,7 +89,7 @@ docker run -d -p 3000:3000 \
 | API Key | 你的 HiveGPT Key |
 | 自定义模型名 | `gpt-5.5`，多个用英文逗号隔开 |
 
-接口地址改成 `https://hivegpt.cn` 时会变成浏览器直接请求，在网页版里会因为跨域被拦下；用服务器端的 `BASE_URL` 就没有这个问题。
+接口地址改成 `https://hivegpt.cn` 时会变成浏览器直接请求，也能用，但 Key 会保存在当前浏览器里。部署给别人用时，保持默认、用服务器端的 `BASE_URL` 更安全。
 
 ## 常见问题
 
@@ -97,7 +97,7 @@ docker run -d -p 3000:3000 \
 |---|---|---|
 | LobeChat 回复是空的 | API 代理地址少了 `/v1` | 改成 `https://hivegpt.cn/v1` |
 | NextChat 报 404，提示「接口地址多了一个 /v1」 | `BASE_URL` 带了 `/v1` | 改成 `https://hivegpt.cn` |
-| 网页里报跨域错误、Failed to fetch | 开了浏览器直接请求 | LobeChat 关闭「使用客户端请求模式」；NextChat 接口地址保持默认 |
+| 网页里报 Failed to fetch | 浏览器连不上接口（网络、代理或地址写错） | 检查接口地址；或 LobeChat 关闭「使用客户端请求模式」、NextChat 接口地址保持默认，改由服务器转发 |
 | NextChat 报 403「you are not allowed to use X model」 | 模型不在 `CUSTOM_MODELS` 里 | 在 `CUSTOM_MODELS` 里加上 |
 | 401 | Key 不对或已停用 | 见 [401 报错](/connect/errors/401) |
 | 提示分组「不支持模型」 | 模型名不在你的分组里 | 见 [模型不存在](/connect/errors/model) |

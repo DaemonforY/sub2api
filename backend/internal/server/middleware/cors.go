@@ -72,6 +72,10 @@ func CORS(cfg config.CORSConfig) gin.HandlerFunc {
 		if origin != "" && !allowAll {
 			_, originAllowed = allowedSet[origin]
 		}
+		if origin != "" && !originAllowed && isPublicGatewayPath(c.Request.URL.Path) {
+			gatewayCORS(c, allowHeadersValue)
+			return
+		}
 
 		if originAllowed {
 			if allowAll {
@@ -117,4 +121,52 @@ func normalizeOrigins(values []string) []string {
 		normalized = append(normalized, trimmed)
 	}
 	return normalized
+}
+
+// isPublicGatewayPath is the API-key-authenticated gateway (/v1, /v1beta, root aliases such as
+// /chat/completions). Browser apps — Obsidian plugins, web chat front ends — call it directly.
+func isPublicGatewayPath(path string) bool {
+	return IsCompatErrorPath(path) || path == "/v1beta" || strings.HasPrefix(path, "/v1beta/")
+}
+
+// gatewayExposeHeaders are the gateway response headers browser clients read (request id for
+// support, Retry-After and rate-limit headers for SDK backoff).
+const gatewayExposeHeaders = "ETag, Server-Timing, X-Request-Id, Retry-After, " +
+	"X-RateLimit-Limit-Requests, X-RateLimit-Remaining-Requests, X-RateLimit-Reset-Requests, " +
+	"X-RateLimit-Limit-Tokens, X-RateLimit-Remaining-Tokens, X-RateLimit-Reset-Tokens"
+
+// gatewayCORS answers any origin on gateway paths. The gateway authenticates with the API key in
+// a header, never a cookie, so "*" without credentials exposes nothing a page could not already
+// send itself. Requested headers are echoed (SDKs add their own: x-stainless-*, anthropic-*,
+// openai-*) once they are checked to be header names.
+func gatewayCORS(c *gin.Context, defaultHeaders string) {
+	h := c.Writer.Header()
+	h.Set("Access-Control-Allow-Origin", "*")
+	allowHeaders := defaultHeaders
+	if requested := strings.TrimSpace(c.GetHeader("Access-Control-Request-Headers")); requested != "" && isHeaderNameList(requested) {
+		allowHeaders = requested
+	}
+	h.Set("Access-Control-Allow-Headers", allowHeaders)
+	h.Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+	h.Set("Access-Control-Expose-Headers", gatewayExposeHeaders)
+	h.Set("Access-Control-Max-Age", "86400")
+	if c.Request.Method == http.MethodOptions {
+		c.AbortWithStatus(http.StatusNoContent)
+		return
+	}
+	c.Next()
+}
+
+func isHeaderNameList(v string) bool {
+	if len(v) > 2048 {
+		return false
+	}
+	for _, r := range v {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_', r == ',', r == ' ':
+		default:
+			return false
+		}
+	}
+	return true
 }

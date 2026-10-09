@@ -309,3 +309,40 @@ func TestNormalizeOrigins(t *testing.T) {
 		})
 	}
 }
+
+func TestCORS_GatewayPathsAllowAnyOriginWithoutCredentials(t *testing.T) {
+	mw := CORS(config.CORSConfig{AllowedOrigins: []string{"https://canvas.example.com"}, AllowCredentials: true})
+	run := func(method, path, origin, reqHeaders string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(method, path, nil)
+		c.Request.Header.Set("Origin", origin)
+		if reqHeaders != "" {
+			c.Request.Header.Set("Access-Control-Request-Headers", reqHeaders)
+		}
+		mw(c)
+		return w
+	}
+
+	for _, path := range []string{"/v1/chat/completions", "/v1/models", "/chat/completions", "/v1beta/models/gemini:generateContent", "/v1/images/generations"} {
+		w := run(http.MethodOptions, path, "app://obsidian.md", "authorization, content-type, x-stainless-os, anthropic-version")
+		assert.Equal(t, http.StatusNoContent, w.Code, path)
+		assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"), path)
+		assert.Empty(t, w.Header().Get("Access-Control-Allow-Credentials"), "never credentials with *: %s", path)
+		assert.Equal(t, "authorization, content-type, x-stainless-os, anthropic-version", w.Header().Get("Access-Control-Allow-Headers"))
+		assert.Contains(t, w.Header().Get("Access-Control-Expose-Headers"), "Retry-After")
+	}
+
+	// The panel API keeps the configured list.
+	w := run(http.MethodOptions, "/api/v1/auth/me", "https://evil.example.com", "")
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"))
+
+	// A configured origin keeps its own (credentialed) answer on gateway paths too.
+	w = run(http.MethodOptions, "/v1/chat/completions", "https://canvas.example.com", "")
+	assert.Equal(t, "https://canvas.example.com", w.Header().Get("Access-Control-Allow-Origin"))
+
+	// Requested headers that are not header names are not echoed.
+	w = run(http.MethodOptions, "/v1/models", "https://x.example", "authorization\r\nx-evil: 1")
+	assert.NotContains(t, w.Header().Get("Access-Control-Allow-Headers"), "x-evil")
+}
