@@ -194,8 +194,12 @@ func (s *TutorService) SetPricer(p TutorPricer) { s.price = p }
 const (
 	tutorEstPromptChars  = 1500 // the template's task and the rules
 	tutorEstHistoryChars = 1200 // earlier turns and the question
-	tutorEstOutputTokens = 600
+	tutorEstOutputTokens = 400  // answers measured on hivegpt.cn ran 100–400 tokens
 	tutorEstPassageChars = 6000 // what the search puts in when materials are long
+	// The upstream adds fixed instructions to every chat request: a question with a 175-character
+	// handout was billed ~5 000 input tokens on hivegpt.cn (2026-10-10), ~4 000 more than our prompt.
+	// It is the same every time, so it is cached along with our prompt.
+	tutorEstUpstreamTokens = 4000
 )
 
 // estimate prices a typical question: prompt + materials (all, or the passages) + history in, an answer out.
@@ -206,7 +210,7 @@ func (s *TutorService) estimate(ctx context.Context, key *APIKey, model string, 
 	if materialChars > tutorFullContextChars {
 		materialChars = tutorEstPassageChars
 	}
-	prefix := (tutorEstPromptChars + materialChars) * 2 / 3
+	prefix := tutorEstUpstreamTokens + (tutorEstPromptChars+materialChars)*2/3
 	rest := tutorEstHistoryChars * 2 / 3
 	high, ok := s.price.EstimateTextCost(ctx, key, model, UsageTokens{InputTokens: prefix + rest, OutputTokens: tutorEstOutputTokens})
 	if !ok {

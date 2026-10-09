@@ -438,7 +438,7 @@ func TestTutorCostEstimate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, got.Cost)
 	require.Less(t, got.Cost.Low, got.Cost.High)
-	require.Equal(t, (tutorEstPromptChars+tutorEstHistoryChars)*2/3, got.Cost.InputTokens)
+	require.Equal(t, tutorEstUpstreamTokens+(tutorEstPromptChars+tutorEstHistoryChars)*2/3, got.Cost.InputTokens)
 
 	// More material, a higher quote; long material is capped at the searched passages.
 	_, err = svc.AddMaterial(ctx, 5, tu.ID, "讲义.txt", []byte(strings.Repeat("知识点。", 5000)), "")
@@ -448,7 +448,7 @@ func TestTutorCostEstimate(t *testing.T) {
 	_, err = svc.AddMaterial(ctx, 5, tu.ID, "题库.txt", []byte(strings.Repeat("例题。", 20000)), "")
 	require.NoError(t, err)
 	long, _ := svc.Get(ctx, 5, tu.ID)
-	require.Equal(t, (tutorEstPromptChars+tutorEstPassageChars+tutorEstHistoryChars)*2/3, long.Cost.InputTokens)
+	require.Equal(t, tutorEstUpstreamTokens+(tutorEstPromptChars+tutorEstPassageChars+tutorEstHistoryChars)*2/3, long.Cost.InputTokens)
 	require.Less(t, long.Cost.High, mid.Cost.High, "only the best passages are sent for long materials")
 
 	// Both tiers are quoted; Cost follows the chosen one.
