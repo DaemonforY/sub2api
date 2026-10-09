@@ -39,6 +39,8 @@ description: 用 gpt-image-2 生成电商白底主图、场景图、模特图和
 
 <TryInCanvas prompt="一支淡粉色的磨砂质感护手霜，管身简洁没有文字，斜放在白色的雕塑感石头上，周围有几朵白色小花和水珠，柔和的散射光，淡粉和米白配色，干净高级的美妆产品摄影。" />
 
+<figure class="ai-figure"><img src="/learn-img/prompts/product-handcream.webp" alt="护手霜产品图示例" width="960" height="1152" loading="lazy" /><figcaption>用上面这条提示词生成，没有用参考图<span>AI 生成配图</span></figcaption></figure>
+
 **食品**
 
 <TryInCanvas prompt="一盒打开的手工曲奇饼干，木质礼盒里整齐排列着巧克力和抹茶两种口味，俯拍，深木色桌面，旁边有一杯牛奶和散落的巧克力碎，温暖的自然光，美食摄影风格，细节诱人。" />

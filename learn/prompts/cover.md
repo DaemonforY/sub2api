@@ -27,6 +27,8 @@ description: 用 gpt-image-2 生成小红书笔记封面（3:4）、公众号文
 
 <TryInCanvas prompt="一张 3:4 竖版小红书封面。浅奶油色背景，下半部分是俯拍的桌面：一本打开的笔记本、一支钢笔和一杯拿铁，自然窗光。上半部分留出大面积干净的空白，用大号黑色粗圆体字写「5 个习惯让我每天多出 2 小时」，下方用小号字写「时间管理｜亲测有效」。除这两行文字外没有其他文字，排版简洁，文字清晰。" />
 
+<figure class="ai-figure"><img src="/learn-img/prompts/cover-xhs.webp" alt="小红书干货笔记封面示例" width="960" height="1280" loading="lazy" /><figcaption>用上面这条提示词生成<span>AI 生成配图</span></figcaption></figure>
+
 **探店 / 美食**
 
 <TryInCanvas prompt="一张 3:4 竖版小红书封面，一碗热气腾腾的番茄牛腩面放在木桌上，45 度角，暖色调，背景是虚化的小餐馆。画面顶部用大号白色粗体字写「人均 30 吃到撑」，字有一点黑色描边，醒目清晰。美食摄影风格，食物细节诱人。" />
@@ -51,7 +53,9 @@ description: 用 gpt-image-2 生成小红书笔记封面（3:4）、公众号文
 
 ## B 站 / 横版视频封面
 
-<TryInCanvas prompt="一张 16:9 横版视频封面，左侧是一个惊讶表情的卡通程序员角色（原创形象），右侧用超大号的黄色粗体字写「这个 bug 我找了 3 天」，字有黑色粗描边，背景是亮蓝色放射状线条。夸张、醒目、高饱和的综艺风格，文字清晰。" />
+<TryInCanvas prompt="一张 16:9 横版视频封面，左侧是一个惊讶表情的卡通程序员角色（原创形象），右侧用超大号的黄色粗体字写「这个 bug 我找了 3 天」，字有黑色粗描边，背景是亮蓝色放射状线条。除了标题没有其他文字，不出现任何品牌标志或现成的卡通形象。夸张、醒目、高饱和的综艺风格，文字清晰。" />
+
+<figure class="ai-figure"><img src="/learn-img/prompts/cover-bilibili.webp" alt="B 站视频封面示例" width="960" height="540" loading="lazy" /><figcaption>用上面这条提示词生成<span>AI 生成配图</span></figcaption></figure>
 
 ## 写封面提示词的要点
 

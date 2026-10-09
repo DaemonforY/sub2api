@@ -19,6 +19,8 @@ description: 用 gpt-image-2 生成原创动漫头像、3D 卡通头像、像素
 
 <TryInCanvas prompt="一个 3D 卡通风格的头像：扎丸子头的女孩，戴着毛线帽和围巾，脸颊微红，开心地笑，胸像构图，柔和的工作室灯光，背景是淡粉色，皮克斯动画风格的渲染质感，1:1 正方形。" />
 
+<figure class="ai-figure"><img src="/learn-img/prompts/avatar-3d.webp" alt="3D 卡通头像示例" width="960" height="960" loading="lazy" /><figcaption>用上面这条提示词生成<span>AI 生成配图</span></figcaption></figure>
+
 **像素风**
 
 <TryInCanvas prompt="一个 32×32 像素风格的头像：一个戴着红色鸭舌帽的男孩，侧脸，复古游戏风格，有限的配色，清晰的像素边缘，纯色背景，1:1 正方形。" />
