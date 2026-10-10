@@ -51,8 +51,12 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | 识别图片、提取文字、读 PDF | [看图识图 API](/connect/vision) | 5 分钟 |
 | Responses 新接口 | [Responses API 教程](/connect/responses-api) | 10 分钟 |
 | 批量处理 Excel 表格 | [用 GPT 批量处理 Excel](/connect/excel) | 10 分钟 |
+| 批量翻译 SRT 字幕 | [批量翻译字幕](/connect/subtitle-translate) | 5 分钟 |
+| 批量总结 PDF、Word 文档 | [批量总结文档](/connect/summarize-docs) | 5 分钟 |
 | 飞书、企业微信群机器人 | [群机器人接入 GPT](/connect/feishu-wecom-bot) | 10 分钟 |
+| QQ、微信、飞书、钉钉聊天机器人（不写代码） | [AstrBot 接入 GPT API](/connect/astrbot) | 15 分钟 |
 | VS Code 里的 Cline / Roo Code | [Cline 配置自定义 API](/connect/cline) | 3 分钟 |
+| VS Code / JetBrains 里的 Continue | [Continue 配置 OpenAI 兼容 API](/connect/continue) | 5 分钟 |
 | Dify 应用和工作流 | [Dify 接入 OpenAI 兼容模型](/connect/dify) | 5 分钟 |
 | Obsidian 笔记 | [Obsidian Copilot 接入](/connect/obsidian) | 3 分钟 |
 | Zotero 翻译论文、读文献 | [Zotero 接入 GPT API](/connect/zotero) | 5 分钟 |
