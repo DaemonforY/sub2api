@@ -26,6 +26,9 @@ const (
 	indexNowBatchSize  = 1000 // the protocol allows 10,000 per request
 	indexNowFirstDelay = 2 * time.Minute
 	indexNowInterval   = 24 * time.Hour
+	// A brand-new key is rejected (403) until IndexNow has fetched the key file, so a failed run is
+	// retried within the hour rather than the next day.
+	indexNowRetry = time.Hour
 )
 
 var indexNowKeyPattern = regexp.MustCompile(`^[A-Za-z0-9-]{8,128}$`)
@@ -49,12 +52,14 @@ func startIndexNow(cfg config.IndexNowConfig, src indexNowSource, rdb *redis.Cli
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			n, err := runIndexNow(ctx, cfg, src, rdb, client)
 			cancel()
+			wait := indexNowInterval
 			if err != nil {
 				slog.Warn("indexnow_push_failed", "error", err, "pushed", n)
+				wait = indexNowRetry
 			} else if n > 0 {
 				slog.Info("indexnow_pushed", "urls", n)
 			}
-			time.Sleep(indexNowInterval)
+			time.Sleep(wait)
 		}
 	}()
 }
