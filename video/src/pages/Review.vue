@@ -1,14 +1,16 @@
 <template>
   <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">{{ tab === 'review' ? '案例审核' : '模型与广告' }}</h1>
+      <h1 class="text-2xl font-bold">{{ tabTitles[tab] }}</h1>
       <div v-if="session.me?.admin" class="flex gap-2">
         <button class="chip" :class="{ 'chip-on': tab === 'review' }" @click="tab = 'review'">案例审核</button>
+        <button class="chip" :class="{ 'chip-on': tab === 'works' }" @click="tab = 'works'">作品管理</button>
         <button class="chip" :class="{ 'chip-on': tab === 'settings' }" @click="tab = 'settings'">模型与广告</button>
       </div>
     </div>
     <p v-if="!session.me?.admin" class="card mt-6 p-8 text-center text-ink-500">只有管理员可以审核案例</p>
     <AdminSettings v-else-if="tab === 'settings'" class="mt-6" />
+    <AdminWorks v-else-if="tab === 'works'" class="mt-6" />
     <template v-else>
       <p class="mt-1 text-sm text-ink-500">用户提交的作品审核通过后出现在案例库；可以设为精选。</p>
       <p v-if="loaded && !items.length" class="card mt-6 p-8 text-center text-ink-500">没有待审核的作品</p>
@@ -40,8 +42,10 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import FilmPlayer from '../components/FilmPlayer.vue'
 import AdminSettings from '../components/AdminSettings.vue'
+import AdminWorks from '../components/AdminWorks.vue'
 import UploadedMedia from '../components/UploadedMedia.vue'
 import { modeLabel } from '../lib/media'
 import { api, catalog, session } from '../lib/api'
@@ -51,7 +55,9 @@ const items = ref([])
 const cats = ref([])
 const loaded = ref(false)
 const previewing = ref(null)
-const tab = ref('review')
+const route = useRoute()
+const tabTitles = { review: '案例审核', works: '作品管理', settings: '模型与广告' }
+const tab = ref(tabTitles[route.query.tab] ? route.query.tab : 'review')
 async function load() {
   if (!session.me?.admin) return
   try {

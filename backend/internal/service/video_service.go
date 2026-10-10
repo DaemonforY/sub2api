@@ -1110,5 +1110,63 @@ func (s *VideoService) Review(ctx context.Context, admin *User, id, decision, ca
 	return s.repo.SetVisibility(ctx, id, visibility, category, p.Title, featured)
 }
 
+// VideoAdminEdit changes a work's details from 作品管理 on the review page; nil fields stay.
+type VideoAdminEdit struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Category    string  `json:"category"`
+	Featured    *bool   `json:"featured"`
+	// Visibility: "" keeps it, "public" publishes at once, "private" takes the work off the gallery.
+	Visibility string `json:"visibility"`
+}
+
+// AdminEdit lets an admin rename, describe, recategorise, feature, publish or hide any work.
+func (s *VideoService) AdminEdit(ctx context.Context, admin *User, id string, in VideoAdminEdit) (*VideoProject, error) {
+	p, err := s.AdminWork(ctx, admin, id)
+	if err != nil {
+		return nil, err
+	}
+	visibility := p.Visibility
+	switch in.Visibility {
+	case "":
+	case VideoVisibilityPublic:
+		if p.Status != VideoStatusReady || p.Spec == nil {
+			return nil, ErrVideoNotReady
+		}
+		visibility = VideoVisibilityPublic
+	case VideoVisibilityPrivate:
+		visibility = VideoVisibilityPrivate
+	default:
+		return nil, ErrVideoInvalid
+	}
+	if in.Title != nil || in.Description != nil {
+		if in.Title != nil {
+			if t := clipRunes(*in.Title, videoTitleMaxChars); t != "" {
+				p.Title = t
+				if p.Spec != nil {
+					p.Spec.Title = t
+				}
+			}
+		}
+		if in.Description != nil {
+			p.Prompt = clipRunes(*in.Description, videoPromptMaxChars)
+			if p.Spec != nil && p.Mode == VideoModeUpload {
+				p.Spec.Summary = clipRunes(p.Prompt, 300)
+			}
+		}
+		if err := s.repo.Save(ctx, p); err != nil {
+			return nil, err
+		}
+	}
+	category := in.Category
+	if _, ok := findVideoCategory(category); !ok {
+		category = p.Category
+	}
+	if err := s.repo.SetVisibility(ctx, id, visibility, category, p.Title, in.Featured); err != nil {
+		return nil, err
+	}
+	return s.AdminWork(ctx, admin, id)
+}
+
 // Wait blocks until all agent runs ended (tests).
 func (s *VideoService) Wait() { s.wg.Wait() }

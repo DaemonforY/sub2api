@@ -56,6 +56,8 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 		g.GET("/admin/pending", h.Video.Pending)
 		g.GET("/admin/works/:id", h.Video.AdminWork)
 		g.POST("/admin/works/:id/review", h.Video.Review)
+		g.PUT("/admin/works/:id", h.Video.AdminEdit)
+		g.POST("/admin/works/:id/poster", h.Video.AdminSetPoster)
 		g.POST("/admin/import", h.Video.Import)
 		g.GET("/admin/settings", h.Video.AdminSettings)
 		g.PUT("/admin/settings", h.Video.SaveSettings)

@@ -36,26 +36,33 @@ const (
 	VideoUploadPerDay         = 20
 	VideoUploadStorageBytes   = 2 << 30
 
+	// Admins upload showcase works from the review page: longer and larger files, no daily count
+	// or storage quota. 250 MB stays under the server's global request body limit (256 MB).
+	VideoUploadAdminMaxVideoBytes = 250 << 20
+	VideoUploadAdminMaxSeconds    = 30 * 60
+
 	videoMediaURLTTL = 12 * time.Hour
 )
 
 var (
-	ErrVideoUploadType     = infraerrors.BadRequest("VIDEO_UPLOAD_TYPE", "只支持 MP4、WebM 视频或 SVG 动画，请换一个文件（Only MP4, WebM or SVG files）")
-	ErrVideoUploadVideoBig = infraerrors.BadRequest("VIDEO_UPLOAD_TOO_LARGE", "视频不能超过 100 MB，请压缩或剪短后再传（Videos must be 100 MB or smaller）")
-	ErrVideoUploadSVGBig   = infraerrors.BadRequest("VIDEO_UPLOAD_SVG_TOO_LARGE", "SVG 不能超过 2 MB，请删掉不需要的图层或压缩路径后再传（SVG files must be 2 MB or smaller）")
-	ErrVideoUploadTooLong  = infraerrors.BadRequest("VIDEO_UPLOAD_TOO_LONG", "视频不能超过 3 分钟，请剪短后再传（Videos must be 3 minutes or shorter）")
-	ErrVideoUploadCodec    = infraerrors.BadRequest("VIDEO_UPLOAD_CODEC", "这个视频的编码浏览器播放不了，请导出为 H.264 编码的 MP4 后再传（Export as H.264 MP4）")
-	ErrVideoUploadMOV      = infraerrors.BadRequest("VIDEO_UPLOAD_MOV", "这是 MOV（QuickTime）文件，请导出或转换为 MP4 后再传（Convert the MOV file to MP4）")
-	ErrVideoUploadDuration = infraerrors.BadRequest("VIDEO_UPLOAD_DURATION", "读不到这个视频的时长，请用剪辑软件重新导出为 MP4 后再传（Could not read the video duration; re-export as MP4）")
-	ErrVideoUploadBroken   = infraerrors.BadRequest("VIDEO_UPLOAD_BROKEN", "视频文件不完整或已损坏，请重新导出后再传（The video file is damaged or incomplete）")
-	ErrVideoUploadNoVideo  = infraerrors.BadRequest("VIDEO_UPLOAD_NO_VIDEO", "文件里没有视频画面（可能是纯音频），请换一个视频文件（No video track found）")
-	ErrVideoUploadSVG      = infraerrors.BadRequest("VIDEO_UPLOAD_SVG", "SVG 文件格式不正确，请用 UTF-8 编码导出标准 SVG 后再传（Invalid SVG file）")
-	ErrVideoUploadSVGLarge = infraerrors.BadRequest("VIDEO_UPLOAD_SVG_COMPLEX", "SVG 元素太多或层级太深，请简化后再传（The SVG is too complex）")
-	ErrVideoUploadPoster   = infraerrors.BadRequest("VIDEO_UPLOAD_POSTER", "封面只支持 2 MB 以内的 JPG、WebP 或 PNG 图片（Cover must be a JPG, WebP or PNG up to 2 MB）")
-	ErrVideoUploadDaily    = infraerrors.TooManyRequests("VIDEO_UPLOAD_DAILY", "24 小时内最多上传 20 个作品，请明天再来（Upload limit reached: 20 per day）")
-	ErrVideoUploadStorage  = infraerrors.BadRequest("VIDEO_UPLOAD_STORAGE", "上传作品的总空间已用满（2 GB），请先删除一些不需要的上传作品（Upload storage is full: 2 GB）")
-	ErrVideoUploadAgent    = infraerrors.BadRequest("VIDEO_UPLOAD_AGENT", "上传的作品不能让 AI 修改；要改动请重新上传，或者用一句话让 AI 生成新作品（Uploaded works cannot be edited by the agent）")
-	ErrVideoUploadNotVideo = infraerrors.BadRequest("VIDEO_UPLOAD_NOT_VIDEO", "只有上传的视频可以更换封面（Only uploaded videos have a cover）")
+	ErrVideoUploadType      = infraerrors.BadRequest("VIDEO_UPLOAD_TYPE", "只支持 MP4、WebM 视频或 SVG 动画，请换一个文件（Only MP4, WebM or SVG files）")
+	ErrVideoUploadVideoBig  = infraerrors.BadRequest("VIDEO_UPLOAD_TOO_LARGE", "视频不能超过 100 MB，请压缩或剪短后再传（Videos must be 100 MB or smaller）")
+	ErrVideoUploadSVGBig    = infraerrors.BadRequest("VIDEO_UPLOAD_SVG_TOO_LARGE", "SVG 不能超过 2 MB，请删掉不需要的图层或压缩路径后再传（SVG files must be 2 MB or smaller）")
+	ErrVideoUploadTooLong   = infraerrors.BadRequest("VIDEO_UPLOAD_TOO_LONG", "视频不能超过 3 分钟，请剪短后再传（Videos must be 3 minutes or shorter）")
+	ErrVideoUploadCodec     = infraerrors.BadRequest("VIDEO_UPLOAD_CODEC", "这个视频的编码浏览器播放不了，请导出为 H.264 编码的 MP4 后再传（Export as H.264 MP4）")
+	ErrVideoUploadMOV       = infraerrors.BadRequest("VIDEO_UPLOAD_MOV", "这是 MOV（QuickTime）文件，请导出或转换为 MP4 后再传（Convert the MOV file to MP4）")
+	ErrVideoUploadDuration  = infraerrors.BadRequest("VIDEO_UPLOAD_DURATION", "读不到这个视频的时长，请用剪辑软件重新导出为 MP4 后再传（Could not read the video duration; re-export as MP4）")
+	ErrVideoUploadBroken    = infraerrors.BadRequest("VIDEO_UPLOAD_BROKEN", "视频文件不完整或已损坏，请重新导出后再传（The video file is damaged or incomplete）")
+	ErrVideoUploadNoVideo   = infraerrors.BadRequest("VIDEO_UPLOAD_NO_VIDEO", "文件里没有视频画面（可能是纯音频），请换一个视频文件（No video track found）")
+	ErrVideoUploadSVG       = infraerrors.BadRequest("VIDEO_UPLOAD_SVG", "SVG 文件格式不正确，请用 UTF-8 编码导出标准 SVG 后再传（Invalid SVG file）")
+	ErrVideoUploadSVGLarge  = infraerrors.BadRequest("VIDEO_UPLOAD_SVG_COMPLEX", "SVG 元素太多或层级太深，请简化后再传（The SVG is too complex）")
+	ErrVideoUploadPoster    = infraerrors.BadRequest("VIDEO_UPLOAD_POSTER", "封面只支持 2 MB 以内的 JPG、WebP 或 PNG 图片（Cover must be a JPG, WebP or PNG up to 2 MB）")
+	ErrVideoUploadDaily     = infraerrors.TooManyRequests("VIDEO_UPLOAD_DAILY", "24 小时内最多上传 20 个作品，请明天再来（Upload limit reached: 20 per day）")
+	ErrVideoUploadStorage   = infraerrors.BadRequest("VIDEO_UPLOAD_STORAGE", "上传作品的总空间已用满（2 GB），请先删除一些不需要的上传作品（Upload storage is full: 2 GB）")
+	ErrVideoUploadAgent     = infraerrors.BadRequest("VIDEO_UPLOAD_AGENT", "上传的作品不能让 AI 修改；要改动请重新上传，或者用一句话让 AI 生成新作品（Uploaded works cannot be edited by the agent）")
+	ErrVideoUploadAdminBig  = infraerrors.BadRequest("VIDEO_UPLOAD_TOO_LARGE", "管理员上传的视频不能超过 250 MB，请压缩后再传（Admin uploads must be 250 MB or smaller）")
+	ErrVideoUploadAdminLong = infraerrors.BadRequest("VIDEO_UPLOAD_TOO_LONG", "管理员上传的视频不能超过 30 分钟，请剪短后再传（Admin uploads must be 30 minutes or shorter）")
+	ErrVideoUploadNotVideo  = infraerrors.BadRequest("VIDEO_UPLOAD_NOT_VIDEO", "只有上传的视频可以更换封面（Only uploaded videos have a cover）")
 )
 
 // VideoUpload is the file of an uploaded work, kept in spec.upload.
@@ -87,6 +94,33 @@ type VideoUploadFile struct {
 	Reader io.ReaderAt
 }
 
+// videoUploadLimits are the size and length caps of one upload; quota adds the per-user daily count
+// and storage checks.
+type videoUploadLimits struct {
+	maxBytes   int64
+	maxSeconds float64
+	quota      bool
+	errBig     error
+	errLong    error
+}
+
+var (
+	videoUserUploadLimits  = videoUploadLimits{VideoUploadMaxVideoBytes, VideoUploadMaxSeconds, true, ErrVideoUploadVideoBig, ErrVideoUploadTooLong}
+	videoAdminUploadLimits = videoUploadLimits{VideoUploadAdminMaxVideoBytes, VideoUploadAdminMaxSeconds, false, ErrVideoUploadAdminBig, ErrVideoUploadAdminLong}
+)
+
+// VideoUploadMaxBytesFor is the largest video the key's user may upload.
+func VideoUploadMaxBytesFor(key *APIKey) int64 {
+	return videoUploadLimitsFor(key).maxBytes
+}
+
+func videoUploadLimitsFor(key *APIKey) videoUploadLimits {
+	if key != nil && key.User != nil && key.User.Role == RoleAdmin {
+		return videoAdminUploadLimits
+	}
+	return videoUserUploadLimits
+}
+
 type VideoUploadInput struct {
 	Title       string
 	Description string
@@ -97,7 +131,7 @@ type VideoUploadInput struct {
 
 // checkVideoUpload identifies an uploaded file. Videos are checked in place; an SVG comes back
 // sanitized (the bytes to store).
-func checkVideoUpload(f VideoUploadFile) (*VideoUpload, *videoMediaInfo, []byte, error) {
+func checkVideoUpload(f VideoUploadFile, lim videoUploadLimits) (*VideoUpload, *videoMediaInfo, []byte, error) {
 	if f.Reader == nil || f.Size <= 0 {
 		return nil, nil, nil, ErrVideoUploadType
 	}
@@ -123,8 +157,8 @@ func checkVideoUpload(f VideoUploadFile) (*VideoUpload, *videoMediaInfo, []byte,
 		up := &VideoUpload{Kind: VideoUploadKindSVG, Mime: "image/svg+xml", Size: int64(len(clean))}
 		return up, &videoMediaInfo{Mime: up.Mime, Ext: ".svg", Width: info.Width, Height: info.Height}, clean, nil
 	}
-	if f.Size > VideoUploadMaxVideoBytes {
-		return nil, nil, nil, ErrVideoUploadVideoBig
+	if f.Size > lim.maxBytes {
+		return nil, nil, nil, lim.errBig
 	}
 	info, err := probeVideoMedia(f.Reader, f.Size)
 	switch {
@@ -141,8 +175,8 @@ func checkVideoUpload(f VideoUploadFile) (*VideoUpload, *videoMediaInfo, []byte,
 	case err != nil:
 		return nil, nil, nil, ErrVideoUploadBroken
 	}
-	if info.Duration > VideoUploadMaxSeconds+0.5 {
-		return nil, nil, nil, ErrVideoUploadTooLong
+	if info.Duration > lim.maxSeconds+0.5 {
+		return nil, nil, nil, lim.errLong
 	}
 	up := &VideoUpload{Kind: VideoUploadKindVideo, Mime: info.Mime, Size: f.Size, Duration: info.Duration, Codec: info.Codec}
 	return up, info, nil, nil
@@ -208,7 +242,8 @@ func (s *VideoService) Upload(ctx context.Context, key *APIKey, in VideoUploadIn
 	if key == nil || key.Key == "" {
 		return nil, ErrVideoKey
 	}
-	up, info, svg, err := checkVideoUpload(in.File)
+	lim := videoUploadLimitsFor(key)
+	up, info, svg, err := checkVideoUpload(in.File, lim)
 	if err != nil {
 		return nil, err
 	}
@@ -225,10 +260,10 @@ func (s *VideoService) Upload(ctx context.Context, key *APIKey, in VideoUploadIn
 	if err != nil {
 		return nil, err
 	}
-	if max(count, s.recentUploads(key.UserID, since)) >= VideoUploadPerDay {
+	if lim.quota && max(count, s.recentUploads(key.UserID, since)) >= VideoUploadPerDay {
 		return nil, ErrVideoUploadDaily
 	}
-	if used+up.Size+up.PosterSize > VideoUploadStorageBytes {
+	if lim.quota && used+up.Size+up.PosterSize > VideoUploadStorageBytes {
 		return nil, ErrVideoUploadStorage
 	}
 
@@ -329,32 +364,51 @@ func (s *VideoService) SetPoster(ctx context.Context, userID int64, id string, f
 	if err != nil {
 		return nil, err
 	}
+	if err := s.setPoster(ctx, p, f); err != nil {
+		return nil, err
+	}
+	return s.own(ctx, userID, id)
+}
+
+// AdminSetPoster replaces the cover of any uploaded video (作品管理 on the review page).
+func (s *VideoService) AdminSetPoster(ctx context.Context, admin *User, id string, f *VideoUploadFile) (*VideoProject, error) {
+	p, err := s.AdminWork(ctx, admin, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.setPoster(ctx, p, f); err != nil {
+		return nil, err
+	}
+	return s.AdminWork(ctx, admin, id)
+}
+
+func (s *VideoService) setPoster(ctx context.Context, p *VideoProject, f *VideoUploadFile) error {
 	if p.Mode != VideoModeUpload || p.Spec == nil || p.Spec.Upload == nil || p.Spec.Upload.Kind != VideoUploadKindVideo {
-		return nil, ErrVideoUploadNotVideo
+		return ErrVideoUploadNotVideo
 	}
 	data, mime, ext, err := readPoster(f)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	up := p.Spec.Upload
 	sum := sha256.Sum256(data)
 	name := videoUploadFileName("poster", ext, sum[:])
 	dir := s.projectDir(p.ID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, name), data, 0o644); err != nil {
-		return nil, err
+		return err
 	}
 	old := up.Poster
 	up.Poster, up.PosterMime, up.PosterSize = name, mime, int64(len(data))
 	if err := s.repo.Save(ctx, p); err != nil {
-		return nil, err
+		return err
 	}
 	if old != "" && old != name {
 		_ = os.Remove(filepath.Join(dir, filepath.Base(old)))
 	}
-	return s.own(ctx, userID, id)
+	return nil
 }
 
 func (s *VideoService) recentUploads(userID int64, since time.Time) int {

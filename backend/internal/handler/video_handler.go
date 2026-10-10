@@ -386,6 +386,20 @@ func (h *VideoHandler) Review(c *gin.Context) {
 	response.Success(c, gin.H{"ok": true})
 }
 
+// AdminEdit PUT /api/v1/video/admin/works/:id — title, description, category, featured, visibility.
+func (h *VideoHandler) AdminEdit(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	var in service.VideoAdminEdit
+	if !bindVideo(c, &in) {
+		return
+	}
+	p, err := h.service.AdminEdit(c.Request.Context(), key.User, c.Param("id"), in)
+	h.reply(c, p, err)
+}
+
 // Import POST /api/v1/video/admin/import — an admin adds a finished work (scene code included).
 func (h *VideoHandler) Import(c *gin.Context) {
 	key, ok := videoKey(c)
@@ -495,8 +509,8 @@ func (h *VideoHandler) UploadAdImage(c *gin.Context) {
 
 // The multipart limits: a video, a cover and the text fields, with room for the multipart framing.
 const (
-	videoUploadBodyLimit = service.VideoUploadMaxVideoBytes + service.VideoUploadMaxPosterBytes + 1<<20
-	videoUploadMemory    = 4 << 20 // larger parts go to temporary files
+	videoUploadBodyExtra = service.VideoUploadMaxPosterBytes + 1<<20 // the cover and the form fields
+	videoUploadMemory    = 4 << 20                                   // larger parts go to temporary files
 )
 
 func videoFormFile(form *multipart.Form, field string) (*service.VideoUploadFile, func(), error) {
@@ -513,8 +527,8 @@ func videoFormFile(form *multipart.Form, field string) (*service.VideoUploadFile
 }
 
 // parseVideoUpload reads a multipart upload; it answers the request itself when that fails.
-func parseVideoUpload(c *gin.Context) (*multipart.Form, bool) {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, videoUploadBodyLimit)
+func parseVideoUpload(c *gin.Context, maxVideo int64) (*multipart.Form, bool) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxVideo+videoUploadBodyExtra)
 	if err := c.Request.ParseMultipartForm(videoUploadMemory); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
@@ -534,7 +548,7 @@ func (h *VideoHandler) Upload(c *gin.Context) {
 	if !ok {
 		return
 	}
-	form, ok := parseVideoUpload(c)
+	form, ok := parseVideoUpload(c, service.VideoUploadMaxBytesFor(key))
 	if !ok {
 		return
 	}
@@ -569,7 +583,7 @@ func (h *VideoHandler) SetPoster(c *gin.Context) {
 	if !ok {
 		return
 	}
-	form, ok := parseVideoUpload(c)
+	form, ok := parseVideoUpload(c, 0)
 	if !ok {
 		return
 	}
@@ -581,6 +595,27 @@ func (h *VideoHandler) SetPoster(c *gin.Context) {
 		return
 	}
 	p, err := h.service.SetPoster(c.Request.Context(), key.UserID, c.Param("id"), poster)
+	h.reply(c, p, err)
+}
+
+// AdminSetPoster POST /api/v1/video/admin/works/:id/poster — multipart: poster; any uploaded video.
+func (h *VideoHandler) AdminSetPoster(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	form, ok := parseVideoUpload(c, 0)
+	if !ok {
+		return
+	}
+	defer func() { _ = form.RemoveAll() }()
+	poster, closePoster, err := videoFormFile(form, "poster")
+	defer closePoster()
+	if err != nil || poster == nil {
+		response.ErrorFrom(c, service.ErrVideoUploadPoster)
+		return
+	}
+	p, err := h.service.AdminSetPoster(c.Request.Context(), key.User, c.Param("id"), poster)
 	h.reply(c, p, err)
 }
 

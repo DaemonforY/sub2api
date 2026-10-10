@@ -192,7 +192,7 @@ type VideoGalleryQuery struct {
 type VideoRepository interface {
 	Create(ctx context.Context, p *VideoProject) error
 	Get(ctx context.Context, id string) (*VideoProject, error)
-	// Save writes title, status, stage, error, spec, duration, usage and options.
+	// Save writes title, prompt, status, stage, error, spec, duration, usage and options.
 	Save(ctx context.Context, p *VideoProject) error
 	Delete(ctx context.Context, userID int64, id string) (bool, error)
 	ListByUser(ctx context.Context, userID int64, limit int) ([]VideoCard, error)

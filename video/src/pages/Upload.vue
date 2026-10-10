@@ -24,7 +24,7 @@
         >
           <UploadCloud class="h-10 w-10 text-brand-500" />
           <span class="mt-3 text-base font-medium">把文件拖到这里，或点击选择</span>
-          <span class="mt-2 text-sm text-ink-500">MP4 / WebM 视频：不超过 100 MB、3 分钟 · SVG 动画：不超过 2 MB</span>
+          <span class="mt-2 text-sm text-ink-500">MP4 / WebM 视频：不超过 {{ admin ? '250 MB、30 分钟（管理员）' : '100 MB、3 分钟' }} · SVG 动画：不超过 2 MB</span>
           <input ref="input" type="file" class="sr-only" accept=".mp4,.m4v,.webm,.svg,video/mp4,video/webm,image/svg+xml" data-testid="upload-input" @change="onPick" />
         </label>
 
@@ -66,6 +66,11 @@
               </select>
             </label>
 
+            <div v-if="admin" class="space-y-2 rounded-xl bg-brand-50 p-3 text-sm dark:bg-brand-900/20">
+              <label class="flex items-center gap-2"><input v-model="publishNow" type="checkbox" class="accent-brand-500" />上传后直接发布到案例库（免审核）</label>
+              <label v-if="publishNow" class="flex items-center gap-2"><input v-model="featured" type="checkbox" class="accent-brand-500" />设为精选</label>
+            </div>
+
             <p v-if="problem" class="rounded-xl bg-red-50 p-3 text-sm leading-6 text-red-700 dark:bg-red-900/20 dark:text-red-300" data-testid="upload-error">{{ problem }}</p>
 
             <div v-if="uploading" class="space-y-1.5">
@@ -86,7 +91,8 @@
               </button>
               <button v-if="uploading" class="btn-ghost" @click="cancel">取消</button>
             </div>
-            <p class="text-xs leading-5 text-ink-400">每个账号 24 小时内最多上传 {{ UPLOAD_LIMITS.perDay }} 个作品，上传作品共用 2 GB 空间。请勿上传侵权、违法或含个人隐私的内容。</p>
+            <p v-if="admin" class="text-xs leading-5 text-ink-400">管理员上传不限次数和空间；发布后可在「审核 → 作品管理」里修改。</p>
+            <p v-else class="text-xs leading-5 text-ink-400">每个账号 24 小时内最多上传 {{ limits.perDay }} 个作品，上传作品共用 2 GB 空间。请勿上传侵权、违法或含个人隐私的内容。</p>
           </div>
         </div>
       </template>
@@ -95,13 +101,13 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Loader2, LogIn, UploadCloud } from 'lucide-vue-next'
 import HistorySidebar from '../components/HistorySidebar.vue'
 import PosterPicker from '../components/PosterPicker.vue'
-import { apiUpload, catalog, session, signIn } from '../lib/api'
-import { UPLOAD_LIMITS, fmtBytes, fmtTime, uploadKind } from '../lib/media'
+import { api, apiUpload, catalog, session, signIn } from '../lib/api'
+import { ADMIN_UPLOAD_LIMITS, UPLOAD_LIMITS as USER_UPLOAD_LIMITS, fmtBytes, fmtTime, uploadKind } from '../lib/media'
 import { toast, toastError } from '../lib/toast'
 
 const router = useRouter()
@@ -121,6 +127,10 @@ const problem = ref('')
 const uploading = ref(false)
 const progress = ref(0)
 let abort = null
+const admin = computed(() => !!session.me?.admin)
+const limits = computed(() => (admin.value ? ADMIN_UPLOAD_LIMITS : USER_UPLOAD_LIMITS))
+const publishNow = ref(true)
+const featured = ref(false)
 
 async function doSignIn() {
   try {
@@ -151,11 +161,12 @@ function pick(f) {
     toast('只支持 MP4、WebM 视频或 SVG 动画，请换一个文件（Only MP4, WebM or SVG files）', 'error', 6000)
     return
   }
-  if (k === 'video' && f.size > UPLOAD_LIMITS.videoBytes) {
-    toast(`视频有 ${fmtBytes(f.size)}，不能超过 100 MB，请压缩或剪短后再传（Videos must be 100 MB or smaller）`, 'error', 6000)
+  if (k === 'video' && f.size > limits.value.videoBytes) {
+    const cap = fmtBytes(limits.value.videoBytes)
+    toast(`视频有 ${fmtBytes(f.size)}，不能超过 ${cap}，请压缩或剪短后再传（Videos must be ${cap} or smaller）`, 'error', 6000)
     return
   }
-  if (k === 'svg' && f.size > UPLOAD_LIMITS.svgBytes) {
+  if (k === 'svg' && f.size > limits.value.svgBytes) {
     toast(`SVG 有 ${fmtBytes(f.size)}，不能超过 2 MB，请删掉不需要的图层或压缩路径后再传（SVG files must be 2 MB or smaller）`, 'error', 6000)
     return
   }
@@ -168,7 +179,8 @@ function pick(f) {
 
 function onMeta(m) {
   meta.value = m
-  if (m.duration > UPLOAD_LIMITS.seconds + 0.5) problem.value = `视频有 ${fmtTime(m.duration)}，不能超过 3 分钟，请剪短后再传（Videos must be 3 minutes or shorter）`
+  const mins = limits.value.seconds / 60
+  if (m.duration > limits.value.seconds + 0.5) problem.value = `视频有 ${fmtTime(m.duration)}，不能超过 ${mins} 分钟，请剪短后再传（Videos must be ${mins} minutes or shorter）`
 }
 function onPoster({ blob }) {
   poster.value = blob
@@ -195,7 +207,7 @@ async function submit() {
   form.append('title', title.value.trim())
   form.append('description', description.value.trim())
   form.append('category', category.value)
-  if (kind.value === 'video' && poster.value && poster.value.size <= UPLOAD_LIMITS.posterBytes) form.append('poster', poster.value, 'poster.jpg')
+  if (kind.value === 'video' && poster.value && poster.value.size <= limits.value.posterBytes) form.append('poster', poster.value, 'poster.jpg')
   form.append('file', file.value, file.value.name)
   uploading.value = true
   progress.value = 0
@@ -204,7 +216,12 @@ async function submit() {
   abort = ctrl
   try {
     const p = await apiUpload('/uploads', form, { signal: ctrl.signal, onProgress: (x) => (progress.value = x) })
-    toast('上传成功', 'success')
+    if (admin.value && publishNow.value) {
+      await api(`/admin/works/${p.id}`, { method: 'PUT', body: { visibility: 'public', featured: featured.value } })
+      toast('已上传并发布到案例库', 'success')
+    } else {
+      toast('上传成功', 'success')
+    }
     router.push(`/p/${p.id}`)
   } catch (err) {
     if (err?.name !== 'AbortError') problem.value = err.message

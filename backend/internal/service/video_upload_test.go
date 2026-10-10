@@ -87,7 +87,7 @@ func TestCheckVideoUploadRejects(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			_, _, _, err := checkVideoUpload(tc.file)
+			_, _, _, err := checkVideoUpload(tc.file, videoUserUploadLimits)
 			require.ErrorIs(t, err, tc.want)
 		})
 	}
@@ -105,8 +105,12 @@ func TestCheckVideoUploadTooLong(t *testing.T) {
 	ts := uint32(body[12])<<24 | uint32(body[13])<<16 | uint32(body[14])<<8 | uint32(body[15])
 	dur := ts * 200
 	body[16], body[17], body[18], body[19] = byte(dur>>24), byte(dur>>16), byte(dur>>8), byte(dur)
-	_, _, _, err := checkVideoUpload(bytesFile("long.mp4", data))
+	_, _, _, err := checkVideoUpload(bytesFile("long.mp4", data), videoUserUploadLimits)
 	require.ErrorIs(t, err, ErrVideoUploadTooLong)
+	// Admins may upload up to 30 minutes.
+	up, _, _, err := checkVideoUpload(bytesFile("long.mp4", data), videoAdminUploadLimits)
+	require.NoError(t, err)
+	require.InDelta(t, 200, up.Duration, 0.01)
 }
 
 func TestSanitizeSVG(t *testing.T) {
@@ -319,6 +323,60 @@ func TestVideoUploadQuota(t *testing.T) {
 		CreatedAt: time.Now().Add(-48 * time.Hour), Spec: &VideoSpec{Upload: &VideoUpload{Size: VideoUploadStorageBytes - 10}}}
 	_, err = s.Upload(ctx, other, VideoUploadInput{File: bytesFile("a.svg", svg)})
 	require.ErrorIs(t, err, ErrVideoUploadStorage)
+	// Admins have no daily count.
+	admin := &APIKey{ID: 9, UserID: 42, Key: "sk-admin", User: &User{ID: 42, Role: RoleAdmin}}
+	_, err = s.Upload(ctx, admin, VideoUploadInput{File: bytesFile("a.svg", svg)})
+	require.NoError(t, err)
+	require.Equal(t, int64(VideoUploadAdminMaxVideoBytes), VideoUploadMaxBytesFor(admin))
+	require.Equal(t, int64(VideoUploadMaxVideoBytes), VideoUploadMaxBytesFor(key))
+}
+
+func TestVideoAdminEdit(t *testing.T) {
+	repo := newFakeVideoRepo()
+	s := newVideoService(repo, &fakeTTS{}, nil, t.TempDir())
+	key := &APIKey{ID: 7, UserID: 42, Key: "sk-test"}
+	admin := &User{ID: 1, Role: RoleAdmin}
+	ctx := context.Background()
+	p, err := s.Upload(ctx, key, VideoUploadInput{Title: "旧标题", File: uploadFixture(t, "rotated.mp4")})
+	require.NoError(t, err)
+
+	title, desc, featured := " 新标题 ", "新的介绍", true
+	_, err = s.AdminEdit(ctx, &User{ID: 42, Role: RoleUser}, p.ID, VideoAdminEdit{Title: &title})
+	require.ErrorIs(t, err, ErrVideoForbidden)
+	_, err = s.AdminEdit(ctx, admin, p.ID, VideoAdminEdit{Visibility: "rejected"})
+	require.ErrorIs(t, err, ErrVideoInvalid)
+
+	got, err := s.AdminEdit(ctx, admin, p.ID, VideoAdminEdit{Title: &title, Description: &desc, Category: "science", Featured: &featured, Visibility: VideoVisibilityPublic})
+	require.NoError(t, err)
+	require.Equal(t, "新标题", got.Title)
+	require.Equal(t, "新标题", got.Spec.Title)
+	require.Equal(t, "新的介绍", got.Prompt)
+	require.Equal(t, "新的介绍", got.Spec.Summary)
+	require.Equal(t, "science", got.Category)
+	require.True(t, got.Featured)
+	w, err := s.Work(ctx, p.ID)
+	require.NoError(t, err)
+	require.Equal(t, "新标题", w.Title)
+
+	// An empty title is ignored; the other fields stay.
+	empty := " "
+	got, err = s.AdminEdit(ctx, admin, p.ID, VideoAdminEdit{Title: &empty})
+	require.NoError(t, err)
+	require.Equal(t, "新标题", got.Title)
+	require.Equal(t, "science", got.Category)
+	require.True(t, got.Featured)
+
+	// The admin can change the cover of someone else's upload.
+	png := []byte("\x89PNG\r\n\x1a\nimage")
+	got, err = s.AdminSetPoster(ctx, admin, p.ID, &VideoUploadFile{Size: int64(len(png)), Reader: bytes.NewReader(png)})
+	require.NoError(t, err)
+	require.Equal(t, "image/png", got.Spec.Upload.PosterMime)
+
+	// Hide takes it off the gallery.
+	_, err = s.AdminEdit(ctx, admin, p.ID, VideoAdminEdit{Visibility: VideoVisibilityPrivate})
+	require.NoError(t, err)
+	_, err = s.Work(ctx, p.ID)
+	require.ErrorIs(t, err, ErrVideoNotFound)
 }
 
 func linkQuery(t *testing.T, u string) (string, string) {

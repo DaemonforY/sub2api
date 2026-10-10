@@ -62,9 +62,9 @@ func (r *videoRepository) Save(ctx context.Context, p *service.VideoProject) err
 	_, err := r.db.ExecContext(ctx, `
 UPDATE video_projects
 SET title = $2, status = $3, stage = $4, error = $5, spec = $6::jsonb, duration = $7, usage = $8::jsonb, options = $9::jsonb,
-    api_key_id = $10, updated_at = NOW()
+    api_key_id = $10, prompt = $11, updated_at = NOW()
 WHERE id = $1`,
-		p.ID, p.Title, p.Status, p.Stage, p.Error, spec, p.Duration, videoJSON(p.Usage), videoJSON(p.Options), p.APIKeyID)
+		p.ID, p.Title, p.Status, p.Stage, p.Error, spec, p.Duration, videoJSON(p.Usage), videoJSON(p.Options), p.APIKeyID, p.Prompt)
 	return err
 }
 

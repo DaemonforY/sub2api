@@ -8,6 +8,9 @@ export const UPLOAD_LIMITS = {
   perDay: 20
 }
 
+/** Admins upload showcase works with larger caps and no daily count (server: VideoUploadAdmin*). */
+export const ADMIN_UPLOAD_LIMITS = { ...UPLOAD_LIMITS, videoBytes: 250 * 1024 * 1024, seconds: 30 * 60 }
+
 /** What a work is called on cards and pages. */
 export function modeLabel(work) {
   if (work?.mode === 'film') return 'HTML 视频'
