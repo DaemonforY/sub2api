@@ -60,7 +60,7 @@ const engine = {
   has_key: true, key_masked: '••••abcd', created_at: '', updated_at: ''
 }
 
-const mountView = () => mount(GeoMonitorView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } } })
+const mountView = () => mount(GeoMonitorView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' }, teleport: true } } })
 
 describe('GeoMonitorView', () => {
   beforeEach(() => {

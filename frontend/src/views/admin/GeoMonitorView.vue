@@ -358,9 +358,8 @@
       </datalist>
 
       <!-- 回答详情 -->
-      <div v-if="detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-testid="geo-detail" @click.self="detail = null">
-        <div class="card max-h-[85vh] w-full max-w-2xl space-y-3 overflow-y-auto p-5">
-          <h3 class="font-semibold text-gray-900 dark:text-white">{{ t('admin.geo.detail.title', { engine: detail.engine_name }) }}</h3>
+      <BaseDialog :show="!!detail" :title="detail ? t('admin.geo.detail.title', { engine: detail.engine_name }) : ''" width="wide" close-on-click-outside @close="detail = null">
+        <div v-if="detail" class="space-y-3" data-testid="geo-detail">
           <div class="text-xs text-gray-500">
             {{ t('admin.geo.detail.time') }}：{{ fmtTime(detail.created_at) }} · {{ t(`admin.geo.detail.source.${detail.source}`) }}
           </div>
@@ -390,12 +389,11 @@
             <button type="button" class="btn btn-secondary btn-sm" @click="detail = null">{{ t('admin.geo.common.close') }}</button>
           </div>
         </div>
-      </div>
+      </BaseDialog>
 
       <!-- 手动录入 -->
-      <div v-if="mForm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="mForm = null">
-        <form class="card max-h-[85vh] w-full max-w-2xl space-y-3 overflow-y-auto p-5" data-testid="geo-manual-form" @submit.prevent="saveManual">
-          <h3 class="font-semibold text-gray-900 dark:text-white">{{ t('admin.geo.manual.title') }}</h3>
+      <BaseDialog :show="!!mForm" :title="t('admin.geo.manual.title')" width="wide" @close="mForm = null">
+        <form v-if="mForm" class="space-y-3" data-testid="geo-manual-form" @submit.prevent="saveManual">
           <div>
             <label class="input-label" for="geo-m-q">{{ t('admin.geo.manual.question') }}</label>
             <select id="geo-m-q" v-model.number="mForm.question_id" class="input" required>
@@ -421,7 +419,7 @@
             <button type="submit" class="btn btn-primary btn-sm" :disabled="saving" data-testid="geo-manual-save">{{ t('admin.geo.manual.submit') }}</button>
           </div>
         </form>
-      </div>
+      </BaseDialog>
     </div>
   </AppLayout>
 </template>
@@ -430,6 +428,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import {
   addManualCheck,
   createEngine,
