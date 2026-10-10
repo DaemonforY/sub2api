@@ -19,6 +19,7 @@ import learn from './learn'
 import assistant from './assistant'
 import opsAgent from './opsAgent'
 import analytics from './analytics'
+import geo from './geo'
 
 export default {
   ...overview,
@@ -42,4 +43,5 @@ export default {
   ...assistant,
   ...opsAgent,
   ...analytics,
+  ...geo,
 }

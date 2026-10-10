@@ -735,6 +735,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/geo',
+    name: 'AdminGeoMonitor',
+    component: () => import('@/views/admin/GeoMonitorView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'GEO monitor',
+      titleKey: 'admin.geo.title',
+      descriptionKey: 'admin.geo.description'
+    }
+  },
+  {
     path: '/admin/courses',
     name: 'AdminCourses',
     component: () => import('@/views/admin/CoursesView.vue'),

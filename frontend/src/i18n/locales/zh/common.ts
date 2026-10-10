@@ -227,6 +227,7 @@ export default {
     canvasMembershipAdmin: '创作会员',
     analyticsAdmin: '数据看板',
     channelLinksAdmin: '渠道链接',
+    geoAdmin: 'GEO 监测',
     marginAdmin: '套餐毛利',
   },
 

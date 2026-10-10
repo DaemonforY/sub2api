@@ -227,6 +227,7 @@ export default {
     canvasMembershipAdmin: 'Creator membership',
     analyticsAdmin: 'Analytics',
     channelLinksAdmin: 'Channel links',
+    geoAdmin: 'GEO monitor',
     marginAdmin: 'Plan margins',
   },
 
