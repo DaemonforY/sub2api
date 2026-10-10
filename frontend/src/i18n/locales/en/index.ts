@@ -17,6 +17,7 @@ import pricing from './pricing'
 import video from './video'
 import tutors from './tutors'
 import accountDeletion from './accountDeletion'
+import promoMascot from './promoMascot'
 
 export default {
   ...landing,
@@ -38,4 +39,5 @@ export default {
   ...video,
   ...tutors,
   ...accountDeletion,
+  ...promoMascot,
 }

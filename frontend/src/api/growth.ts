@@ -10,6 +10,8 @@ export interface GrowthPublicConfig {
   invitee_bonus_cap: number
   /** Trial balance for signing up with an invite ($, 0 = off). */
   invitee_signup_bonus: number
+  /** Global share (%) of each invitee payment the inviter earns; per-user overrides not reflected. */
+  inviter_rebate_rate_percent?: number
   /** 老用户锁价: buyers keep their price on renewal within price_lock_grace_days of expiry. */
   price_lock_enabled: boolean
   price_lock_grace_days: number

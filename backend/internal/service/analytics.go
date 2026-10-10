@@ -33,30 +33,32 @@ const (
 // AnalyticsEventNames is the allowlist of browser events. page_view covers every page of every app;
 // the rest mark steps that a page view can't show.
 var AnalyticsEventNames = map[string]bool{
-	"page_view":         true,
-	"signup_view":       true, // register form shown
-	"signup_code_sent":  true, // email code sent
-	"signup_success":    true,
-	"signup_error":      true, // sign-up stopped: props.reason = field or API error code, props.step
-	"login_success":     true,
-	"key_created":       true,
-	"key_config_copied": true, // copied a key / client config from the "use key" dialog
-	"pricing_view":      true,
-	"checkout_start":    true,
-	"invite_link_copy":  true,
-	"withdraw_request":  true, // asked to withdraw rebates
-	"canvas_click":      true, // a link out to the canvas
-	"cta_click":         true, // a sign-up / login call to action on the home page (props.where)
-	"assistant_open":    true,
-	"assistant_ask":     true,
-	"learn_run":         true,
-	"editor_copy":       true, // copied the formatted article
-	"editor_draft_push": true, // pushed to the WeChat draft box
-	"editor_ai_use":     true,
-	"guide_view":        true, // dashboard "get started" card shown
-	"guide_first_call":  true, // … and saw the first API call arrive
-	"guide_dismiss":     true,
-	"guide_config_open": true, // opened the no-terminal Codex setup
+	"page_view":          true,
+	"signup_view":        true, // register form shown
+	"signup_code_sent":   true, // email code sent
+	"signup_success":     true,
+	"signup_error":       true, // sign-up stopped: props.reason = field or API error code, props.step
+	"login_success":      true,
+	"key_created":        true,
+	"key_config_copied":  true, // copied a key / client config from the "use key" dialog
+	"pricing_view":       true,
+	"checkout_start":     true,
+	"invite_link_copy":   true,
+	"withdraw_request":   true, // asked to withdraw rebates
+	"canvas_click":       true, // a link out to the canvas
+	"cta_click":          true, // a sign-up / login call to action on the home page (props.where)
+	"assistant_open":     true,
+	"assistant_ask":      true,
+	"promo_mascot_open":  true, // hovered / tapped the home page offers mascot
+	"promo_mascot_click": true, // clicked an offer in it (props.offer)
+	"learn_run":          true,
+	"editor_copy":        true, // copied the formatted article
+	"editor_draft_push":  true, // pushed to the WeChat draft box
+	"editor_ai_use":      true,
+	"guide_view":         true, // dashboard "get started" card shown
+	"guide_first_call":   true, // … and saw the first API call arrive
+	"guide_dismiss":      true,
+	"guide_config_open":  true, // opened the no-terminal Codex setup
 }
 
 var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true}

@@ -629,6 +629,8 @@
 
     <!-- 智能客服（后台「智能客服」开启后显示） -->
     <HomeAssistant :site-name="siteName" />
+    <!-- 右侧福利小蜂：悬停展开本站优惠（来自增长配置，关掉的优惠不显示） -->
+    <HomePromoMascot />
   </div>
 </template>
 
@@ -652,6 +654,7 @@ import HomeHeroCollage from '@/components/home/HomeHeroCollage.vue'
 import HomeSteps from '@/components/home/HomeSteps.vue'
 import HomeSupport from '@/components/home/HomeSupport.vue'
 import HomeAssistant from '@/components/home/HomeAssistant.vue'
+import HomePromoMascot from '@/components/home/HomePromoMascot.vue'
 import HomeFaq from '@/components/home/HomeFaq.vue'
 
 const { t } = useI18n()

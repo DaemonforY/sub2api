@@ -35,8 +35,10 @@ type growthPublicConfig struct {
 	InviteeBonusRatePercent float64 `json:"invitee_bonus_rate_percent"`
 	InviteeBonusCap         float64 `json:"invitee_bonus_cap"`
 	InviteeSignupBonus      float64 `json:"invitee_signup_bonus"`
-	PriceLockEnabled        bool    `json:"price_lock_enabled"`
-	PriceLockGraceDays      int     `json:"price_lock_grace_days"`
+	// Global share of each invitee payment the inviter earns (per-user overrides not reflected).
+	InviterRebateRatePercent float64 `json:"inviter_rebate_rate_percent"`
+	PriceLockEnabled         bool    `json:"price_lock_enabled"`
+	PriceLockGraceDays       int     `json:"price_lock_grace_days"`
 	// One key serves both the user's subscriptions and balance (smart billing).
 	SmartBilling       bool     `json:"smart_billing"`
 	LeaderboardEnabled bool     `json:"leaderboard_enabled"`
@@ -78,6 +80,7 @@ func (h *GrowthHandler) PublicConfig(c *gin.Context) {
 		cfg.InviteeBonusRatePercent = settings.InviteeBonusRatePercent
 		cfg.InviteeBonusCap = settings.InviteeBonusCap
 		cfg.InviteeSignupBonus = settings.InviteeSignupBonus
+		cfg.InviterRebateRatePercent = h.settingService.GetAffiliateRebateRatePercent(ctx)
 		if settings.Enabled {
 			cfg.WithdrawEnabled = true
 			cfg.WithdrawMinCNY = settings.MinCNY

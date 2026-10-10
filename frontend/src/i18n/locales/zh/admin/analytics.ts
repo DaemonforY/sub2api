@@ -239,6 +239,8 @@ export default {
       cta_click: '首页点击注册 / 登录',
       assistant_open: '打开智能客服',
       assistant_ask: '向客服提问',
+      promo_mascot_open: '打开首页福利小蜂',
+      promo_mascot_click: '点击福利小蜂里的优惠',
       learn_run: '学习站运行示例',
       editor_copy: '排版：复制到公众号',
       editor_draft_push: '排版：推送草稿箱',

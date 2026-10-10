@@ -239,6 +239,8 @@ export default {
       cta_click: 'Home page sign-up / login click',
       assistant_open: 'Opened support assistant',
       assistant_ask: 'Asked the assistant',
+      promo_mascot_open: 'Opened home offers mascot',
+      promo_mascot_click: 'Clicked an offer in the mascot',
       learn_run: 'Ran a lesson example',
       editor_copy: 'Editor: copied article',
       editor_draft_push: 'Editor: pushed to drafts',
