@@ -93,6 +93,7 @@ type Handlers struct {
 	Editor           *EditorHandler
 	Assistant        *AssistantHandler
 	OpsAgent         *OpsAgentHandler
+	GeoMonitor       *GeoMonitorHandler
 	Tutor            *TutorHandler
 	AccountDeletion  *AccountDeletionHandler
 	SiteBuilder      *SiteBuilderHandler

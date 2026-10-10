@@ -102,6 +102,8 @@ var ProviderSet = wire.NewSet(
 	NewSiteDraftRepository,
 	NewAgentRunRepository,
 	NewOpsAgentRepository,
+	NewGeoMonitorRepository,
+	NewGeoRunState,
 	NewSiteHostingRepository,
 	NewVideoRepository,
 	NewCanvasSessionRepository,

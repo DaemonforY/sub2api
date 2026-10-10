@@ -1204,6 +1204,7 @@ var ProviderSet = wire.NewSet(
 	ProvideSiteBuilderService,
 	ProvideAssistantService,
 	ProvideOpsAgentService,
+	ProvideGeoMonitorService,
 	NewLoginGuardService,
 	ProvideAnalyticsService,
 	ProvideActivationReminderService,

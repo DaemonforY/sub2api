@@ -140,6 +140,7 @@ func RegisterAdminRoutes(
 		registerLearnAdminRoutes(admin, h)
 		registerAssistantAdminRoutes(admin, h)
 		registerOpsAgentRoutes(admin, h)
+		registerGeoMonitorRoutes(admin, h)
 		registerCanvasMembershipAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
@@ -280,6 +281,33 @@ func registerOpsAgentRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/runs", h.OpsAgent.Runs)
 		g.POST("/chat", h.OpsAgent.Chat)
 		g.POST("/upstream/test", h.OpsAgent.TestUpstream)
+	}
+}
+
+// registerGeoMonitorRoutes GEO 监测：AI 助手回答典型问题时有没有提到、引用本站。
+func registerGeoMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.GeoMonitor == nil {
+		return
+	}
+	g := admin.Group("/geo")
+	{
+		g.GET("/questions", h.GeoMonitor.ListQuestions)
+		g.POST("/questions", h.GeoMonitor.CreateQuestion)
+		g.PUT("/questions/:id", h.GeoMonitor.UpdateQuestion)
+		g.DELETE("/questions/:id", h.GeoMonitor.DeleteQuestion)
+		g.GET("/engines", h.GeoMonitor.ListEngines)
+		g.POST("/engines", h.GeoMonitor.CreateEngine)
+		g.PUT("/engines/:id", h.GeoMonitor.UpdateEngine)
+		g.DELETE("/engines/:id", h.GeoMonitor.DeleteEngine)
+		g.POST("/engines/:id/test", h.GeoMonitor.TestEngine)
+		g.GET("/checks", h.GeoMonitor.ListChecks)
+		g.POST("/checks", h.GeoMonitor.AddManual)
+		g.DELETE("/checks/:id", h.GeoMonitor.DeleteCheck)
+		g.POST("/run", h.GeoMonitor.Run)
+		g.GET("/status", h.GeoMonitor.Status)
+		g.GET("/summary", h.GeoMonitor.Summary)
+		g.GET("/settings", h.GeoMonitor.Settings)
+		g.PUT("/settings", h.GeoMonitor.SaveSettings)
 	}
 }
 
