@@ -140,8 +140,8 @@ func normalizeSEOPath(p string) string {
 }
 
 func homeDescription(name string) string {
-	return name + " 是一站式 AI 服务平台：一个账号、一个 API Key 即可调用 GPT、Codex 等大模型，兼容 OpenAI 接口，按实际 token 用量计费；" +
-		"可接入 Codex、OpenCode、Cherry Studio 等 AI 工具，还有无限画布 AI 生图、AI 学习站、公众号排版和付费课程。"
+	return name + " 是兼容 OpenAI 接口的 AI 模型 API 平台：一个 API Key 即可调用 GPT、Codex、gpt-image-2 等模型，按实际用量计费，出错不扣费；" +
+		"可接入 Codex、OpenCode、Cherry Studio 等工具，还有 AI 学习站、无限画布 AI 生图、公众号排版和付费课程。"
 }
 
 func plazaPublic(ctx context.Context, content SEOContent) bool {

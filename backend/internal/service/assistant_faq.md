@@ -5,7 +5,7 @@
 
 ## HiveGPT 是什么
 链接：/
-HiveGPT（hivegpt.cn）是一个 AI 服务聚合平台：注册一个账号、创建一个 API Key，就能调用 GPT、Codex 等模型，在无限画布里画图，接入 Codex、OpenCode 等编程工具（暂不支持 Claude Code）。站内还有 AI 学习站、公众号排版工具、创作比赛和付费课程。
+HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册账号、创建一个 API Key，就能调用 GPT、Codex、gpt-image-2 等模型，按实际用量计费，出错不扣费；可以接入 Codex、OpenCode、Cherry Studio 等工具（暂不支持 Claude Code），在无限画布里画图。站内还有 AI 学习站、公众号排版工具、创作比赛和付费课程。目前只提供 GPT 系列模型，不提供 Claude、Gemini。
 
 ## 怎么注册和登录
 链接：/register

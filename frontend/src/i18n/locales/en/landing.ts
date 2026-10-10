@@ -48,7 +48,7 @@ export default {
     goToDashboard: 'Go to Dashboard',
     // User-focused value proposition
     heroSubtitle: 'One Key, All AI Models',
-    heroDescription: 'No need to manage multiple subscriptions. Access Claude, GPT, Gemini and more with a single API key',
+    heroDescription: 'OpenAI-compatible API: one key for GPT, Codex, gpt-image-2 and more, pay only for what you use, failed requests are free',
     tags: {
       subscriptionToApi: 'Subscription to API',
       stickySession: 'Session Persistence',

@@ -48,7 +48,7 @@ export default {
     goToDashboard: '进入控制台',
     // 新增：面向用户的价值主张
     heroSubtitle: '一个密钥，畅用多个 AI 模型',
-    heroDescription: '无需管理多个订阅账号，一站式接入 Claude、GPT、Gemini 等主流 AI 服务',
+    heroDescription: '兼容 OpenAI 接口，一个 API Key 调用 GPT、Codex、gpt-image-2 等模型，按实际用量计费，出错不扣费',
     tags: {
       subscriptionToApi: '订阅转 API',
       stickySession: '会话保持',
