@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -56,7 +57,7 @@ var (
 	ErrGeoNothingToRun     = infraerrors.BadRequest("GEO_NOTHING_TO_RUN", "没有可运行的组合：请先启用至少一个问题和一个引擎（No enabled questions or engines）")
 	ErrGeoBadRequest       = infraerrors.BadRequest("GEO_BAD_REQUEST", "请求格式不正确，请刷新页面后重试（Invalid request）")
 	errGeoBadQuestion      = infraerrors.BadRequest("GEO_BAD_QUESTION", "请填写问题，最多 500 字；分类最多 32 字（Question required, up to 500 characters; category up to 32）")
-	errGeoBadEngine        = infraerrors.BadRequest("GEO_BAD_ENGINE", "引擎设置不正确：名称（最多 64 字）和模型名必填，Base URL 要以 http:// 或 https:// 开头（Invalid engine settings）")
+	errGeoBadEngine        = infraerrors.BadRequest("GEO_BAD_ENGINE", "引擎设置不正确：名称（最多 64 字）和模型名必填，Base URL 要以 https:// 开头，且不能是本机或内网地址（Invalid engine settings）")
 	errGeoEngineKey        = infraerrors.BadRequest("GEO_ENGINE_KEY", "请填写这个引擎的 API Key（API key required）")
 	errGeoBadExtraBody     = infraerrors.BadRequest("GEO_BAD_EXTRA_BODY", `附加参数要是 JSON 对象，例如 {"enable_search": true}，最多 8KB（extra_body must be a JSON object）`)
 	errGeoBadManual        = infraerrors.BadRequest("GEO_BAD_MANUAL", "请选择问题、填写引擎名称（最多 64 字）并粘贴回答内容（Question, engine name and answer are required）")
@@ -300,8 +301,18 @@ func normalizeGeoBaseURL(raw string) (string, bool) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || len(raw) > 500 {
 		return "", false
 	}
+	// Engines are public AI APIs: https only, and never localhost / private addresses, so an admin
+	// form cannot be used to probe the server's own network (the test button shows the reply).
+	if !geoAllowPrivateEngines {
+		if _, err := urlvalidator.ValidateHTTPSURL(raw, urlvalidator.ValidationOptions{}); err != nil {
+			return "", false
+		}
+	}
 	return raw, true
 }
+
+// geoAllowPrivateEngines lets tests point engines at httptest servers on 127.0.0.1.
+var geoAllowPrivateEngines = false
 
 func normalizeGeoExtraBody(raw json.RawMessage) (json.RawMessage, error) {
 	trimmed := strings.TrimSpace(string(raw))

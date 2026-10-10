@@ -1,12 +1,15 @@
 package service
 
 import (
+	"net/url"
+
 	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
 	"io"
 	"net"
 	"net/http"
@@ -316,6 +319,12 @@ func (s *GeoMonitorService) ask(ctx context.Context, e GeoEngine, key, question 
 	body, err := buildGeoRequestBody(e.ExtraBody, e.Model, question)
 	if err != nil {
 		return "", nil, &geoCallError{msg: "附加参数不是合法的 JSON 对象，请在「引擎」里修改（invalid extra_body）"}
+	}
+	if !geoAllowPrivateEngines {
+		u, perr := url.Parse(e.BaseURL)
+		if perr != nil || urlvalidator.ValidateResolvedIP(u.Hostname()) != nil {
+			return "", nil, &geoCallError{msg: "Base URL 指向本机或内网地址，或域名解析失败，已拒绝请求（engine host is not allowed）"}
+		}
 	}
 	reqCtx, cancel := context.WithTimeout(ctx, geoEngineTimeout)
 	defer cancel()

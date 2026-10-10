@@ -27,6 +27,9 @@ type geoRepoStub struct {
 	nextID    int64
 }
 
+
+func init() { geoAllowPrivateEngines = true } // engines here are httptest servers on 127.0.0.1
+
 func (r *geoRepoStub) ListQuestions(context.Context) ([]GeoQuestion, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -445,4 +448,16 @@ func TestGeoSummaryOrdersManualEngines(t *testing.T) {
 	require.Equal(t, 2, sum.Totals.Answered)
 	require.Equal(t, 1, sum.Totals.Mentioned)
 	require.InDelta(t, 0.5, sum.Totals.MentionRate, 1e-9)
+}
+
+func TestGeoEngineBaseURLRejectsPrivateHosts(t *testing.T) {
+	geoAllowPrivateEngines = false
+	defer func() { geoAllowPrivateEngines = true }()
+	for _, bad := range []string{"http://api.perplexity.ai", "https://127.0.0.1:8080/v1", "https://localhost/v1", "https://10.0.0.5/v1", "https://192.168.1.2/v1"} {
+		_, ok := normalizeGeoBaseURL(bad)
+		require.False(t, ok, bad)
+	}
+	got, ok := normalizeGeoBaseURL("https://api.perplexity.ai/chat/completions")
+	require.True(t, ok)
+	require.Equal(t, "https://api.perplexity.ai", got)
 }
