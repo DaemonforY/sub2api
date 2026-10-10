@@ -49,6 +49,7 @@ type FrontendServer struct {
 	settings    PublicSettingsProvider
 	overrideDir string // local file override directory
 	videoHost   string // HiveGPT 视频 is served for this host (e.g. video.hivegpt.cn)
+	indexNowKey string // served as /<key>.txt for IndexNow ownership checks
 
 	seo        SEOContent // dynamic public pages for meta tags and the sitemap; may be nil
 	site       atomic.Pointer[seoSiteInfo]
@@ -84,6 +85,43 @@ func (s *FrontendServer) SetSEOContent(content SEOContent) {
 // instead of the main site. Empty disables it.
 func (s *FrontendServer) SetVideoHost(host string) {
 	s.videoHost = strings.ToLower(strings.TrimSpace(host))
+}
+
+// SetIndexNowKey serves the IndexNow key file at /<key>.txt.
+func (s *FrontendServer) SetIndexNowKey(key string) {
+	s.indexNowKey = strings.TrimSpace(key)
+}
+
+// IndexNowPages is every public page of the main site with a fingerprint that changes when the page
+// does: the built HTML's hash for the learning site, the update time for dynamic pages. Paths are the
+// canonical ones (learn pages end in .html, index pages in /).
+func (s *FrontendServer) IndexNowPages(ctx context.Context) map[string]string {
+	out := map[string]string{}
+	for _, p := range mainSitemapPages(ctx, s.seo) {
+		fp := "static"
+		if !p.Updated.IsZero() {
+			fp = p.Updated.UTC().Format(time.RFC3339)
+		}
+		out[p.Path] = fp
+	}
+	_ = fs.WalkDir(s.distFS, "learn", func(name string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(name, ".html") || name == "learn/404.html" ||
+			strings.HasPrefix(name, "learn/assets/") {
+			return nil
+		}
+		raw, err := fs.ReadFile(s.distFS, name)
+		if err != nil {
+			return nil
+		}
+		path := "/" + name
+		if strings.HasSuffix(path, "/index.html") {
+			path = strings.TrimSuffix(path, "index.html")
+		}
+		sum := sha256.Sum256(raw)
+		out[path] = hex.EncodeToString(sum[:8])
+		return nil
+	})
+	return out
 }
 
 // NewFrontendServer creates a new frontend server with settings injection
@@ -150,6 +188,12 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 		cleanPath := strings.TrimPrefix(path, "/")
 		if cleanPath == "" {
 			cleanPath = "index.html"
+		}
+
+		if s.indexNowKey != "" && cleanPath == s.indexNowKey+".txt" {
+			c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(s.indexNowKey))
+			c.Abort()
+			return
 		}
 
 		video := s.videoHost != "" && requestHost(c.Request) == s.videoHost

@@ -99,6 +99,8 @@ func SetupRouter(
 				plaza = handlers.ModelPlaza
 			}
 			frontendServer.SetSEOContent(newSEOContent(courses, videos, plaza))
+			frontendServer.SetIndexNowKey(cfg.IndexNow.Key)
+			startIndexNow(cfg.IndexNow, frontendServer, redisClient)
 			frontendServer.SetVideoPlayer(newVideoPlayerSource(videos))
 			r.Use(frontendServer.Middleware())
 		}

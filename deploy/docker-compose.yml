@@ -58,6 +58,10 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
       # 价格补丁：按字段覆盖同步来的价格表（例如 gpt-5.6-sol 的官方促销价），见 backend/resources/model-pricing/README.md
       - PRICING_OVERRIDE_FILE=${PRICING_OVERRIDE_FILE:-/app/resources/model-pricing/hivegpt_overrides.json}
+      # IndexNow：部署后把新增 / 改动的公开页面推送给 Bing 等搜索引擎（ChatGPT、Copilot 的联网搜索用 Bing）。
+      # Key 是公开的，网站会在 /<key>.txt 返回它；INDEXNOW_SITE 留空即关闭
+      - INDEXNOW_KEY=${INDEXNOW_KEY:-953208ea0807c89b2f85552dd7b5f44e}
+      - INDEXNOW_SITE=${INDEXNOW_SITE:-https://hivegpt.cn}
       # 网关全量请求日志（后台「请求日志」页，含完整 URL 与 API Key）；保留天数 0 表示永久保留
       - REQUEST_LOG_ENABLED=${REQUEST_LOG_ENABLED:-true}
       - REQUEST_LOG_RETENTION_DAYS=${REQUEST_LOG_RETENTION_DAYS:-30}

@@ -31,6 +31,12 @@ func (s *FrontendServer) SetVideoPlayer(VideoPlayerSource) {}
 // SetVideoHost is a no-op for non-embed builds.
 func (s *FrontendServer) SetVideoHost(string) {}
 
+// SetIndexNowKey is a no-op for non-embed builds.
+func (s *FrontendServer) SetIndexNowKey(string) {}
+
+// IndexNowPages is empty for non-embed builds.
+func (s *FrontendServer) IndexNowPages(context.Context) map[string]string { return nil }
+
 // InvalidateCache is a no-op for non-embed builds
 func (s *FrontendServer) InvalidateCache() {}
 

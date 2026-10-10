@@ -74,6 +74,7 @@ type Config struct {
 	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
 	Sites                   SitesConfig                   `mapstructure:"sites"`
 	Video                   VideoConfig                   `mapstructure:"video"`
+	IndexNow                IndexNowConfig                `mapstructure:"indexnow"`
 	Community               CommunityConfig               `mapstructure:"community"`
 	CanvasCloud             CanvasCloudConfig             `mapstructure:"canvas_cloud"`
 	Security                SecurityConfig                `mapstructure:"security"`
@@ -739,6 +740,17 @@ type CanvasCloudConfig struct {
 
 // VideoConfig is HiveGPT 视频: the app is served when the request's host is Domain (e.g.
 // video.hivegpt.cn, proxied to this server); an empty Domain only hides the app — the API stays.
+// IndexNowConfig pushes new and changed public pages to IndexNow (Bing, Yandex, Seznam…) so they are
+// indexed within days instead of waiting for a crawl. Off when Key or Site is empty.
+type IndexNowConfig struct {
+	// Key is the IndexNow key (8–128 of a-z, A-Z, 0-9, -); it is public and served at /<key>.txt.
+	Key string `mapstructure:"key"`
+	// Site is the public origin whose pages are pushed, e.g. https://hivegpt.cn.
+	Site string `mapstructure:"site"`
+	// Endpoint defaults to https://api.indexnow.org/indexnow, which shares the URLs with every engine.
+	Endpoint string `mapstructure:"endpoint"`
+}
+
 type VideoConfig struct {
 	Domain string `mapstructure:"domain"`
 	// Dir stores narration audio; keep it on the persistent data volume.
@@ -2366,6 +2378,9 @@ func setDefaults() {
 	viper.SetDefault("pricing.data_dir", "./data")
 	viper.SetDefault("pricing.fallback_file", "./resources/model-pricing/model_prices_and_context_window.json")
 	viper.SetDefault("pricing.override_file", "")
+	viper.SetDefault("indexnow.key", "")
+	viper.SetDefault("indexnow.site", "")
+	viper.SetDefault("indexnow.endpoint", "https://api.indexnow.org/indexnow")
 	viper.SetDefault("pricing.update_interval_hours", 24)
 	viper.SetDefault("pricing.hash_check_interval_minutes", 10)
 
