@@ -102,6 +102,20 @@ func TestAnalyticsAttributionChannels(t *testing.T) {
 		{AnalyticsAttribution{Referrer: "https://www.v2ex.com/t/1"}, "ref:v2ex.com"},
 		{AnalyticsAttribution{Referrer: "https://canvas.hivegpt.cn/"}, "direct"},
 		{AnalyticsAttribution{}, "direct"},
+		// AI assistants (GEO): referrers and the utm_source their links carry.
+		{AnalyticsAttribution{Referrer: "https://chatgpt.com/"}, "ai:chatgpt"},
+		{AnalyticsAttribution{Source: "chatgpt.com", Medium: "referral"}, "ai:chatgpt"},
+		{AnalyticsAttribution{Source: "perplexity"}, "ai:perplexity"},
+		{AnalyticsAttribution{Referrer: "https://www.perplexity.ai/search/x"}, "ai:perplexity"},
+		{AnalyticsAttribution{Referrer: "https://gemini.google.com/app"}, "ai:gemini"},
+		{AnalyticsAttribution{Referrer: "https://www.google.com/"}, "search"},
+		{AnalyticsAttribution{Referrer: "https://yiyan.baidu.com/"}, "ai:yiyan"},
+		{AnalyticsAttribution{Referrer: "https://www.doubao.com/chat/"}, "ai:doubao"},
+		{AnalyticsAttribution{Referrer: "https://yuanbao.tencent.com/"}, "ai:yuanbao"},
+		{AnalyticsAttribution{Referrer: "https://kimi.moonshot.cn/"}, "ai:kimi"},
+		{AnalyticsAttribution{Referrer: "https://chat.deepseek.com/"}, "ai:deepseek"},
+		{AnalyticsAttribution{Referrer: "https://platform.openai.com/docs"}, "ref:platform.openai.com"},
+		{AnalyticsAttribution{Source: "zhihu"}, "zhihu"},
 	}
 	for _, c := range cases {
 		require.Equal(t, c.want, normalizeAttribution(c.in).Source, "%+v", c.in)

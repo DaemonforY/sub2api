@@ -200,7 +200,9 @@ export default {
       invite: 'Invite link',
       search: 'Search engine',
       unknown: 'Not recorded (before tracking)',
-      ref: 'From {host}'
+      ref: 'From {host}',
+      ai: 'AI · {name}',
+      aiTotal: 'From AI answers (ChatGPT, Doubao, Yuanbao, Kimi, DeepSeek…)'
     },
     pages: 'Top pages',
     features: 'Feature use',

@@ -159,6 +159,14 @@
                 </tr>
               </thead>
               <tbody>
+                <tr v-if="aiTotal" class="border-t border-gray-100 bg-primary-50/60 dark:border-dark-700 dark:bg-primary-900/10" data-testid="analytics-ai-total">
+                  <td class="py-1 font-semibold">{{ t('admin.analytics.source.aiTotal') }}</td>
+                  <td>{{ aiTotal.visitors }}</td>
+                  <td>{{ aiTotal.signups }}</td>
+                  <td>{{ aiTotal.activated }}</td>
+                  <td>{{ aiTotal.paid_users }}</td>
+                  <td>{{ aiTotal.revenue ? aiTotal.revenue.toFixed(2) : 0 }}</td>
+                </tr>
                 <tr v-for="c in data.channels || []" :key="c.source" class="border-t border-gray-100 dark:border-dark-700">
                   <td class="py-1 font-medium">{{ sourceLabel(c.source) }}</td>
                   <td>{{ c.visitors }}</td>
@@ -358,7 +366,34 @@ function barWidth(n: number, top: number): string {
   return `${Math.max(8, (n / top) * 100)}%`
 }
 
+// AI assistants that sent the visitor (GEO); the backend reports them as ai:<engine>.
+const AI_ENGINE_NAMES: Record<string, string> = {
+  chatgpt: 'ChatGPT', perplexity: 'Perplexity', copilot: 'Copilot', gemini: 'Gemini', claude: 'Claude',
+  doubao: '豆包', yuanbao: '腾讯元宝', kimi: 'Kimi', deepseek: 'DeepSeek', qwen: '通义千问', yiyan: '文心一言',
+  metaso: '秘塔', zhipu: '智谱清言', poe: 'Poe', you: 'You.com', phind: 'Phind', grok: 'Grok'
+}
+
+// Sum of every ai:* channel, shown above the channel rows when AI answers sent anyone.
+const aiTotal = computed(() => {
+  const rows = (data.value?.channels || []).filter((c) => c.source.startsWith('ai:'))
+  if (!rows.length) return null
+  return rows.reduce(
+    (acc, c) => ({
+      visitors: acc.visitors + c.visitors,
+      signups: acc.signups + c.signups,
+      activated: acc.activated + c.activated,
+      paid_users: acc.paid_users + c.paid_users,
+      revenue: acc.revenue + (c.revenue || 0)
+    }),
+    { visitors: 0, signups: 0, activated: 0, paid_users: 0, revenue: 0 }
+  )
+})
+
 function sourceLabel(src: string): string {
+  if (src.startsWith('ai:')) {
+    const engine = src.slice(3)
+    return t('admin.analytics.source.ai', { name: AI_ENGINE_NAMES[engine] || engine })
+  }
   if (src.startsWith('ref:')) return t('admin.analytics.source.ref', { host: src.slice(4) })
   const key = `admin.analytics.source.${src}`
   return te(key) ? t(key) : src

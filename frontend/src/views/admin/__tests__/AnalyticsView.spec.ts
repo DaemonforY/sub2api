@@ -68,6 +68,31 @@ describe('AnalyticsView', () => {
     expect(getOverview).toHaveBeenLastCalledWith(7)
   })
 
+  it('labels AI assistants and sums them in an AI total row', async () => {
+    getOverview.mockResolvedValue({
+      ...overview,
+      channels: [
+        { source: 'ai:chatgpt', visitors: 5, signups: 2, activated: 1, paid_users: 1, revenue: 20 },
+        { source: 'ai:doubao', visitors: 3, signups: 1, activated: 0, paid_users: 0, revenue: 0 },
+        { source: 'invite', visitors: 26, signups: 5, activated: 2, paid_users: 1, revenue: 120 }
+      ]
+    })
+    getReminder.mockResolvedValue(null)
+    const w = mount(AnalyticsView, { global: { stubs: { AppLayout: { template: '<div><slot /></div>' } } } })
+    await flushPromises()
+    const channels = w.get('[data-testid="analytics-channels"]').text()
+    expect(channels).toContain('{"name":"ChatGPT"}')
+    expect(channels).toContain('{"name":"豆包"}')
+    const total = w.get('[data-testid="analytics-ai-total"]').text()
+    expect(total).toContain('8')
+    expect(total).toContain('20.00')
+
+    getOverview.mockResolvedValue(overview)
+    await w.get('[data-testid="analytics-range-7"]').trigger('click')
+    await flushPromises()
+    expect(w.find('[data-testid="analytics-ai-total"]').exists()).toBe(false)
+  })
+
   it('turns the reminder email on only after confirming', async () => {
     getOverview.mockResolvedValue(overview)
     const off = { enabled: false, sent: 0, due: 3, subject: 'S', preview: '<p>hi</p>' }

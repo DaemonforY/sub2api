@@ -305,6 +305,10 @@ func normalizeAttribution(a AnalyticsAttribution) UserAttribution {
 	}
 	switch {
 	case out.Source != "":
+		// AI search answers tag their links (ChatGPT: utm_source=chatgpt.com, Perplexity: perplexity).
+		if engine := analyticsAIEngine(strings.ToLower(out.Source)); engine != "" {
+			out.Source = "ai:" + engine
+		}
 	case out.AffCode != "":
 		out.Source = "invite"
 	case out.ReferrerHost != "":
@@ -315,7 +319,31 @@ func normalizeAttribution(a AnalyticsAttribution) UserAttribution {
 	return out
 }
 
+// analyticsAIEngines maps hosts (or utm_source values) of AI assistants to a short engine name, so the
+// dashboard can show how many visitors AI answers send (GEO). Checked before the search engines:
+// gemini.google.com and yiyan.baidu.com are AI, not search.
+var analyticsAIEngines = []struct{ match, engine string }{
+	{"chatgpt.com", "chatgpt"}, {"chat.openai.com", "chatgpt"},
+	{"perplexity", "perplexity"}, {"copilot.microsoft.com", "copilot"}, {"gemini.google.com", "gemini"},
+	{"claude.ai", "claude"}, {"doubao.com", "doubao"}, {"yuanbao.tencent.com", "yuanbao"},
+	{"kimi.moonshot.cn", "kimi"}, {"kimi.com", "kimi"}, {"chat.deepseek.com", "deepseek"}, {"deepseek.com", "deepseek"},
+	{"tongyi.aliyun.com", "qwen"}, {"qianwen", "qwen"}, {"yiyan.baidu.com", "yiyan"}, {"metaso.cn", "metaso"},
+	{"chatglm.cn", "zhipu"}, {"poe.com", "poe"}, {"you.com", "you"}, {"phind.com", "phind"}, {"grok.com", "grok"},
+}
+
+func analyticsAIEngine(hostOrTag string) string {
+	for _, e := range analyticsAIEngines {
+		if hostOrTag == e.match || strings.HasSuffix(hostOrTag, "."+e.match) || (!strings.Contains(e.match, ".") && strings.Contains(hostOrTag, e.match)) {
+			return e.engine
+		}
+	}
+	return ""
+}
+
 func analyticsReferrerChannel(host string) string {
+	if engine := analyticsAIEngine(host); engine != "" {
+		return "ai:" + engine
+	}
 	for _, s := range []string{"google.", "bing.com", "baidu.com", "sogou.com", "so.com", "sm.cn", "yandex.", "duckduckgo.com"} {
 		if strings.Contains(host, s) {
 			return "search"

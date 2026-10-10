@@ -200,7 +200,9 @@ export default {
       invite: '邀请链接',
       search: '搜索引擎',
       unknown: '未记录（埋点上线前）',
-      ref: '来自 {host}'
+      ref: '来自 {host}',
+      ai: 'AI · {name}',
+      aiTotal: 'AI 来源合计（ChatGPT、豆包、元宝、Kimi、DeepSeek 等 AI 回答里点进来的）'
     },
     pages: '热门页面',
     features: '功能使用',
