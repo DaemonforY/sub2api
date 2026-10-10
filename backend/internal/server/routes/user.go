@@ -31,6 +31,9 @@ func RegisterUserRoutes(
 			user.GET("/profile", h.User.GetProfile)
 			user.PUT("/password", h.User.ChangePassword)
 			user.PUT("", h.User.UpdateProfile)
+			if h.AccountDeletion != nil {
+				user.POST("/delete-account", panelRateLimiter.Heavy(), h.AccountDeletion.DeleteSelf)
+			}
 			user.GET("/aff", h.User.GetAffiliate)
 			if h.ImageTools != nil {
 				user.GET("/image-tools/uses", h.ImageTools.MyUses)

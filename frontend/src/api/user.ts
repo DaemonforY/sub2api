@@ -63,6 +63,14 @@ export async function changePassword(
 }
 
 /**
+ * Permanently delete the current user's account
+ * @param confirm - 「注销账号」 or "DELETE"
+ */
+export async function deleteAccount(confirm: string): Promise<void> {
+  await apiClient.post('/user/delete-account', { confirm })
+}
+
+/**
  * Send verification code for adding a notify email
  * @param email - Email address to verify
  */
@@ -204,6 +212,7 @@ export const userAPI = {
   getProfile,
   updateProfile,
   changePassword,
+  deleteAccount,
   sendNotifyEmailCode,
   verifyNotifyEmail,
   removeNotifyEmail,
