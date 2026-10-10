@@ -60,6 +60,7 @@ import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'
 import { POSTER_TEMPLATES, posterSiteName, type PosterData, type PosterTemplateId } from '@/utils/invitePoster'
 import { drawInvitePoster } from '@/utils/invitePosterDraw'
+import { dataUrlToBlob } from '@/utils/shareCard'
 
 const props = defineProps<{
   inviteLink: string
@@ -129,7 +130,8 @@ async function copyImage() {
   if (!url) return
   try {
     if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) throw new Error('unsupported')
-    const blob = await (await fetch(url)).blob()
+    // Decode locally: the CSP's connect-src has no data:, so fetch(dataUrl) is blocked in production.
+    const blob = dataUrlToBlob(url)
     await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
     appStore.showSuccess(t('affiliatePoster.copied'))
   } catch {
