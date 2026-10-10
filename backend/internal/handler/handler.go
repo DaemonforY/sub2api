@@ -95,6 +95,7 @@ type Handlers struct {
 	OpsAgent         *OpsAgentHandler
 	Tutor            *TutorHandler
 	AccountDeletion  *AccountDeletionHandler
+	SiteBuilder      *SiteBuilderHandler
 	Analytics        *AnalyticsHandler
 	CanvasMembership *CanvasMembershipHandler
 }

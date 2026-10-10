@@ -18,6 +18,7 @@ import video from './video'
 import tutors from './tutors'
 import accountDeletion from './accountDeletion'
 import promoMascot from './promoMascot'
+import siteBuilder from './siteBuilder'
 
 export default {
   ...landing,
@@ -40,4 +41,5 @@ export default {
   ...tutors,
   ...accountDeletion,
   ...promoMascot,
+  ...siteBuilder,
 }

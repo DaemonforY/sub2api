@@ -4,6 +4,14 @@
       <div v-if="data && !data.quota.available" class="card p-5 text-sm text-gray-600 dark:text-gray-300">{{ t('sites.unavailable') }}</div>
 
       <template v-else-if="data">
+        <router-link
+          to="/sites/ai"
+          class="card flex flex-wrap items-center justify-between gap-3 border-primary-200 bg-gradient-to-r from-primary-50 to-violet-50 p-4 hover:shadow-md dark:border-primary-900/50 dark:from-primary-900/20 dark:to-violet-900/20"
+          data-testid="site-builder-entry"
+        >
+          <span class="text-sm text-gray-700 dark:text-dark-200">{{ t('siteBuilder.entryHint') }}</span>
+          <span class="btn btn-primary">{{ t('siteBuilder.entry') }}</span>
+        </router-link>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div class="card p-4">
             <div class="text-xs text-gray-500 dark:text-dark-400">{{ t('sites.quota.sites') }}</div>

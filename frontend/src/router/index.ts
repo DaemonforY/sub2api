@@ -377,6 +377,28 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/sites/ai',
+    name: 'SiteBuilder',
+    component: () => import('@/views/user/SiteBuilderView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'AI site builder',
+      titleKey: 'siteBuilder.title'
+    }
+  },
+  {
+    path: '/sites/ai/:id(\\d+)',
+    name: 'SiteDraft',
+    component: () => import('@/views/user/SiteDraftView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'AI site builder',
+      titleKey: 'siteBuilder.title'
+    }
+  },
+  {
     path: '/site-report',
     name: 'SiteReport',
     component: () => import('@/views/SiteReportView.vue'),

@@ -64,3 +64,24 @@ func ProvideArticleAgentService(repo ArticleProjectRepository, learn *LearnServi
 	svc.RecoverInterrupted(ctx)
 	return svc
 }
+
+// ProvideSiteBuilderService wires AI 建站: pictures live next to the articles (<data dir>/site-drafts)
+// and runs a previous process left behind are settled.
+func ProvideSiteBuilderService(repo SiteDraftRepository, learn *LearnService, hosting *SiteHostingService, openai *OpenAIGatewayService, cfg *config.Config) *SiteBuilderService {
+	dir := "./data/site-drafts"
+	if cfg != nil && cfg.Video.Dir != "" {
+		dir = filepath.Join(filepath.Dir(filepath.Clean(cfg.Video.Dir)), "site-drafts")
+	}
+	var pub SiteBuilderPublisher
+	if hosting != nil {
+		pub = hosting
+	}
+	svc := NewSiteBuilderService(repo, learn, pub, dir)
+	if openai != nil {
+		svc.SetPricer(openai)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	svc.RecoverInterrupted(ctx)
+	return svc
+}

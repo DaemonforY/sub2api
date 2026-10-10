@@ -38,6 +38,25 @@ func RegisterSiteRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth middle
 		mine.GET("/:id/stats", h.SiteHosting.Stats)
 	}
 
+	// AI 建站: generation is billed to the user's own key; publishing goes through site hosting.
+	if h.SiteBuilder != nil {
+		drafts := v1.Group("/site-drafts")
+		drafts.Use(gin.HandlerFunc(jwtAuth))
+		drafts.Use(middleware.BackendModeUserGuard(settingService))
+		drafts.Use(panelRateLimiter.Global())
+		drafts.GET("/config", h.SiteBuilder.Config)
+		drafts.GET("", h.SiteBuilder.List)
+		drafts.POST("", panelRateLimiter.Heavy(), h.SiteBuilder.Create)
+		drafts.GET("/:id", h.SiteBuilder.Get)
+		drafts.POST("/:id/revise", panelRateLimiter.Heavy(), h.SiteBuilder.Revise)
+		drafts.POST("/:id/retry", panelRateLimiter.Heavy(), h.SiteBuilder.Retry)
+		drafts.POST("/:id/undo", h.SiteBuilder.Undo)
+		drafts.POST("/:id/cancel", h.SiteBuilder.Cancel)
+		drafts.POST("/:id/publish", panelRateLimiter.Heavy(), h.SiteBuilder.Publish)
+		drafts.DELETE("/:id", h.SiteBuilder.Delete)
+		drafts.GET("/:id/images/:n", h.SiteBuilder.Image)
+	}
+
 	// Open API for scripts, agents and the canvas ("发布为网页"), authenticated with an API key.
 	keyed := v1.Group("/hosting/sites")
 	keyed.Use(gin.HandlerFunc(apiKeyAuth))

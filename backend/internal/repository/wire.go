@@ -99,6 +99,7 @@ var ProviderSet = wire.NewSet(
 	NewArticleProjectRepository,
 	NewTutorRepository,
 	NewAccountDeletionRepository,
+	NewSiteDraftRepository,
 	NewAgentRunRepository,
 	NewOpsAgentRepository,
 	NewSiteHostingRepository,
