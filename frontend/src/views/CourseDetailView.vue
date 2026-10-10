@@ -12,15 +12,24 @@
       </div>
 
       <div v-else class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" data-testid="course-detail">
-        <div class="min-w-0 space-y-6">
+        <div ref="contentRef" class="min-w-0 space-y-6">
           <div class="overflow-hidden rounded-2xl border border-gray-200/70 bg-white dark:border-dark-700 dark:bg-dark-800">
             <div class="relative aspect-video bg-gradient-to-br from-primary-500 via-violet-500 to-teal-400">
               <img v-if="course.cover_url" :src="course.cover_url" alt="" class="h-full w-full object-cover" />
               <span v-else class="absolute inset-0 flex items-center justify-center text-7xl">📘</span>
             </div>
-            <div class="p-6">
+            <div class="relative p-6">
+              <button
+                type="button"
+                class="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300"
+                data-testid="course-share"
+                @click="openSummary"
+              >
+                <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" /></svg>
+                {{ t('shareCard.share') }}
+              </button>
               <span v-if="course.category" class="badge badge-gray">{{ course.category }}</span>
-              <h1 class="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{{ course.title }}</h1>
+              <h1 class="mt-2 pr-16 text-2xl font-bold text-gray-900 dark:text-white">{{ course.title }}</h1>
               <p v-if="course.subtitle" class="mt-2 text-gray-600 dark:text-dark-300">{{ course.subtitle }}</p>
               <p v-if="course.creator_name" class="mt-2 text-sm text-gray-500 dark:text-dark-400" data-testid="course-creator">{{ t('courses.byCreator', { name: course.creator_name }) }}</p>
             </div>
@@ -107,6 +116,9 @@
       </span>
       <button class="btn btn-primary px-6" @click="buy">{{ buyLabel }}</button>
     </div>
+
+    <SelectionShare v-if="course" :root="contentRef" :title="course.title" skip="iframe, video, [data-testid=course-outline]" @quote="openQuote" />
+    <ShareCardDialog :show="shareOpen" :input="shareInput" @close="shareOpen = false" />
   </div>
 </template>
 
@@ -119,6 +131,11 @@ import { bilibiliEmbed, getCourse, strikePrice, type Course } from '@/api/course
 import { useAuthStore } from '@/stores/auth'
 import { renderMarkdown } from '@/utils/markdown'
 import { extractApiErrorMessage } from '@/utils/apiError'
+import SelectionShare from '@/components/share/SelectionShare.vue'
+import ShareCardDialog, { type ShareCardInput } from '@/components/share/ShareCardDialog.vue'
+import { useAppStore } from '@/stores/app'
+import { posterSiteName } from '@/utils/invitePoster'
+import type { ShareBlock } from '@/utils/shareCard'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -148,6 +165,44 @@ const saleLeft = computed(() => {
   if (days > 0) return t('courses.saleLeftDays', { days, hours })
   return t('courses.saleLeftHours', { hours, minutes: minutes % 60 })
 })
+
+// Share card: the course's key facts (summary) or a passage selected in the intro / trial / FAQ (quote).
+const appStore = useAppStore()
+const contentRef = ref<HTMLElement | null>(null)
+const shareOpen = ref(false)
+const shareInput = ref<ShareCardInput | null>(null)
+
+function shareBase() {
+  const c = course.value!
+  const site = posterSiteName(appStore.cachedPublicSettings?.site_name || appStore.siteName)
+  return {
+    brand: t('shareCard.course.brand', { site }),
+    title: c.title,
+    label: c.category || undefined,
+    meta: c.creator_name ? t('shareCard.course.metaCreator', { count: c.lesson_count, creator: c.creator_name }) : t('shareCard.course.meta', { count: c.lesson_count })
+  }
+}
+
+/** Key points: the outline's section titles, or its first lessons when there is a single section. */
+function coursePoints(c: Course): string[] {
+  const sections = c.outline.map((s) => s.title).filter(Boolean)
+  if (sections.length >= 2) return sections.slice(0, 4)
+  return c.outline.flatMap((s) => s.lessons.map((l) => l.title)).filter(Boolean).slice(0, 4)
+}
+
+function openSummary() {
+  const c = course.value
+  if (!c) return
+  const intro = (c.intro_md || '').replace(/[#>*_`[\]()!-]/g, ' ').replace(/\s+/g, ' ').trim()
+  shareInput.value = { kind: 'summary', ...shareBase(), summary: c.subtitle || intro.slice(0, 100), points: coursePoints(c) }
+  shareOpen.value = true
+}
+
+function openQuote(blocks: ShareBlock[], truncated: boolean, anchor: string) {
+  if (!course.value) return
+  shareInput.value = { kind: 'quote', ...shareBase(), blocks, truncated, anchor, meta: t('shareCard.quoteMeta') }
+  shareOpen.value = true
+}
 
 const buyLabel = computed(() => (course.value?.owned ? t('courses.mine.go') : t('courses.buy')))
 

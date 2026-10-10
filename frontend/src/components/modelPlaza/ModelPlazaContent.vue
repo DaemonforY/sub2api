@@ -1,10 +1,23 @@
 <template>
   <div class="space-y-5">
     <!-- 页头(独立形态下展示标题;后台形态 AppHeader 已有页面标题) -->
-    <div v-if="!embedded">
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">{{ t('modelPlaza.title') }}</h1>
-      <p class="mt-1.5 text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
+    <div v-if="!embedded" class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">{{ t('modelPlaza.title') }}</h1>
+        <p class="mt-1.5 text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
+      </div>
+      <button
+        v-if="sharePoints.length"
+        type="button"
+        class="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 dark:border-primary-500/30 dark:bg-primary-500/10 dark:text-primary-300"
+        data-testid="plaza-share"
+        @click="shareOpen = true"
+      >
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" /></svg>
+        {{ t('shareCard.share') }}
+      </button>
     </div>
+    <ShareCardDialog v-if="!embedded" :show="shareOpen" :input="shareInput" @close="shareOpen = false" />
 
     <!-- 全局价格说明(管理员配置,Markdown) -->
     <div
@@ -72,6 +85,10 @@ import PlazaFilterBar from './PlazaFilterBar.vue'
 import PlazaGroupSection from './PlazaGroupSection.vue'
 import type { ModelPlazaGroup, ModelPlazaResponse } from '@/api/modelPlaza'
 import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/stores/app'
+import ShareCardDialog, { type ShareCardInput } from '@/components/share/ShareCardDialog.vue'
+import { platformLabel } from '@/utils/platformColors'
+import { posterSiteName } from '@/utils/invitePoster'
 
 const props = defineProps<{
   response: ModelPlazaResponse | null
@@ -89,6 +106,38 @@ const selectedPlatform = ref<string>('all')
 const selectedGroupId = ref<number | 'all'>('all')
 const selectedRate = ref<number | 'all'>('all')
 const searchQuery = ref('')
+
+// Share card: model counts per platform with a few example names.
+const appStore = useAppStore()
+const shareOpen = ref(false)
+const modelsByPlatform = computed(() => {
+  const map = new Map<string, string[]>()
+  for (const g of props.response?.groups ?? []) {
+    if (!g.platform || g.platform === 'composite') continue
+    const names = map.get(g.platform) ?? []
+    for (const m of g.models) if (!names.includes(m.name)) names.push(m.name)
+    map.set(g.platform, names)
+  }
+  return [...map.entries()].filter(([, names]) => names.length).sort((a, b) => b[1].length - a[1].length)
+})
+const sharePoints = computed(() =>
+  modelsByPlatform.value.slice(0, 4).map(([platform, names]) =>
+    t('shareCard.plaza.point', { platform: platformLabel(platform), count: names.length, examples: names.slice(0, 2).join('、') })
+  )
+)
+const shareInput = computed<ShareCardInput>(() => {
+  const site = posterSiteName(appStore.cachedPublicSettings?.site_name || appStore.siteName)
+  const count = new Set(modelsByPlatform.value.flatMap(([, names]) => names)).size
+  return {
+    kind: 'summary',
+    brand: t('shareCard.plaza.brand', { site }),
+    label: t('shareCard.plaza.label'),
+    title: t('shareCard.plaza.title', { site }),
+    summary: t('shareCard.plaza.summary', { count }),
+    points: sharePoints.value,
+    meta: t('shareCard.plaza.meta')
+  }
+})
 
 const searchActive = computed(() => searchQuery.value.trim() !== '')
 

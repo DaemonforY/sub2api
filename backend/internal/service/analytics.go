@@ -51,6 +51,9 @@ var AnalyticsEventNames = map[string]bool{
 	"assistant_ask":      true,
 	"promo_mascot_open":  true, // hovered / tapped the home page offers mascot
 	"promo_mascot_click": true, // clicked an offer in it (props.offer)
+	"share_card_open":    true, // opened a share card (props.kind = quote / summary)
+	"share_card_save":    true, // saved it (props.method = download / copy / share / longpress)
+	"share_link_copy":    true, // copied the page link or a quoted passage
 	"learn_run":          true,
 	"editor_copy":        true, // copied the formatted article
 	"editor_draft_push":  true, // pushed to the WeChat draft box

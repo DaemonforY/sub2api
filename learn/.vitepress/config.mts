@@ -1,11 +1,12 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineConfig, type DefaultTheme } from 'vitepress'
 import guideSidebar from './guide-sidebar.json'
 import bigdataSidebar from './bigdata-sidebar.json'
 import codexSidebar from './codex-sidebar.json'
-import { lessonHref, trackHref, tracks } from './theme/tracks'
-import { seoHead } from './seo-head'
+import { findLesson, lessonHref, trackHref, tracks } from './theme/tracks'
+import { SECTIONS, seoHead } from './seo-head'
+import { pageShareCard } from './share-data'
 
 // AI 学习 at hivegpt.cn/learn. Pages carry the main site's CSP (script-src 'self' + nonce), so
 // nothing may be inlined: no appearance script, site data in a separate chunk (metaChunk).
@@ -246,6 +247,20 @@ export default defineConfig({
     writeFileSync(join(site.outDir, 'tracks.json'), JSON.stringify(data))
   },
   transformHead: ({ pageData, siteConfig }) => seoHead(pageData, siteConfig.srcDir),
+  // Share card data (title, key points, reading time, reprint source) for the 分享 button.
+  transformPageData(pageData, { siteConfig }) {
+    if (pageData.isNotFound) return
+    let md = ''
+    try {
+      md = readFileSync(join(siteConfig.srcDir, pageData.relativePath), 'utf8')
+    } catch {
+      return
+    }
+    const fm = pageData.frontmatter
+    const lesson = fm.lesson ? findLesson(String(fm.lesson)) : null
+    const label = lesson ? `${lesson.track.letter} · ${lesson.track.title}` : SECTIONS[pageData.relativePath.split('/')[0]] || ''
+    pageData.shareCard = pageShareCard(md, fm, pageData.title, label, lesson?.lesson.minutes || 0)
+  },
   transformHtml: (code) => code.replace(/<script id="check-mac-os">[\s\S]*?<\/script>/, ''),
   vite: {
     server: {

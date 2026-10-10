@@ -12,7 +12,7 @@ const ORIGIN = 'https://hivegpt.cn'
 const BASE = `${ORIGIN}/learn/`
 const SITE_NAME = 'HiveGPT AI 学习'
 
-const SECTIONS: Record<string, string> = {
+export const SECTIONS: Record<string, string> = {
   connect: '接入教程',
   errors: '报错排查',
   prompts: '生图提示词',

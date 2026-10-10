@@ -7,10 +7,11 @@ const { getCourse, push, auth } = vi.hoisted(() => ({ getCourse: vi.fn(), push: 
 
 vi.mock('@/api/courses', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/courses')>()), getCourse }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
+vi.mock('@/stores/app', () => ({ useAppStore: () => ({ siteName: 'HiveGPT', cachedPublicSettings: null }) }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ params: { slug: 'ai-agent' } }), useRouter: () => ({ push }) }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))
 
-const stubs = { PlazaNavBar: true, RouterLink: { template: '<a><slot /></a>' } }
+const stubs = { PlazaNavBar: true, SelectionShare: true, ShareCardDialog: true, RouterLink: { template: '<a><slot /></a>' } }
 const course = {
   id: 5, slug: 'ai-agent', title: 'AI Agent 实战', subtitle: '从零做 Agent', category: 'AI 开发', cover_url: '', price: 199, original_price: 299,
   intro_md: '## 适合谁\n<script>alert(1)</script>后端开发', trial_md: '', faq_md: '',
@@ -74,5 +75,16 @@ describe('CourseDetailView', () => {
     const direct = mount(CourseDetailView, { global: { stubs } })
     await flushPromises()
     expect(direct.get('[data-testid="course-trial-video"]').attributes('src')).toBe('https://cdn.example.com/trial.mp4')
+  })
+
+  it('opens the share card with the course title and outline as key points', async () => {
+    getCourse.mockResolvedValue({ ...course, outline: [...course.outline, { title: '第二章', lessons: [] }] })
+    const wrapper = mount(CourseDetailView, { global: { stubs } })
+    await flushPromises()
+    const dialog = wrapper.findComponent({ name: 'ShareCardDialog' })
+    expect(dialog.props('show')).toBe(false)
+    await wrapper.get('[data-testid="course-share"]').trigger('click')
+    expect(dialog.props('show')).toBe(true)
+    expect(dialog.props('input')).toMatchObject({ kind: 'summary', title: 'AI Agent 实战', label: 'AI 开发', summary: '从零做 Agent', points: ['第一章', '第二章'] })
   })
 })

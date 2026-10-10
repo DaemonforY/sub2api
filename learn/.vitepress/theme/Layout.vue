@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The default theme with lesson header / footer, the account button, and ✓ on finished lessons
-// in the sidebar.
+// The default theme with lesson header / footer, the account button, ✓ on finished lessons in the
+// sidebar, and share cards (分享 button, select-to-quote).
 import DefaultTheme from 'vitepress/theme'
 import { nextTick, onMounted, watch } from 'vue'
 import { useRoute } from 'vitepress'
@@ -8,6 +8,9 @@ import LessonHeader from './components/LessonHeader.vue'
 import LessonFooter from './components/LessonFooter.vue'
 import NavUser from './components/NavUser.vue'
 import Tutor from './components/Tutor.vue'
+import ShareButton from './components/ShareButton.vue'
+import SelectionShare from './components/SelectionShare.vue'
+import ShareCardDialog from './components/ShareCardDialog.vue'
 import { loadProgress, progress } from './api'
 import { lessonByPath } from './tracks'
 
@@ -31,9 +34,9 @@ watch(() => progress.completed, () => nextTick(markSidebar), { deep: true })
 
 <template>
   <Layout>
-    <template #doc-before><LessonHeader /></template>
-    <template #doc-footer-before><LessonFooter /></template>
+    <template #doc-before><ShareButton place="top" /><LessonHeader /></template>
+    <template #doc-footer-before><LessonFooter /><ShareButton place="bottom" /></template>
     <template #nav-bar-content-after><NavUser /></template>
-    <template #layout-bottom><Tutor /></template>
+    <template #layout-bottom><Tutor /><SelectionShare /><ShareCardDialog /></template>
   </Layout>
 </template>
