@@ -1,5 +1,5 @@
 <template>
-  <div v-if="config?.enabled" class="fixed bottom-4 right-4 z-40 sm:bottom-6 sm:right-6" data-testid="home-assistant">
+  <div v-if="config?.enabled" :class="['fixed right-4 z-40 transition-[bottom] duration-300 sm:bottom-6 sm:right-6', lifted ? 'bottom-20' : 'bottom-4']" data-testid="home-assistant">
     <!-- Launcher -->
     <button
       v-if="!open"
@@ -143,7 +143,8 @@ import { useI18n } from 'vue-i18n'
 import { getAssistantConfig, streamAssistant, type AssistantConfig, type AssistantSource } from '@/api/assistant'
 import { renderMarkdown } from '@/utils/markdown'
 
-const props = defineProps<{ siteName: string }>()
+// lifted: the home page's phone sign-up bar is showing along the bottom edge.
+const props = defineProps<{ siteName: string; lifted?: boolean }>()
 const { t } = useI18n()
 
 interface ChatMessage {

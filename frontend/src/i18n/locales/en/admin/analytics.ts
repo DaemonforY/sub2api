@@ -232,7 +232,7 @@ export default {
       },
       ctaClicks: {
         title: 'Home page buttons',
-        hint: 'Clicks on the home page sign-up / login buttons: nav-register, hero-bonus, hero-key, final-cta, nav-login.',
+        hint: 'Clicks on the home page sign-up / login buttons: nav-register, hero-signup, hero-generate (opens the sign-up sheet for visitors), sheet-register / sheet-login, mobile-bar, final-cta, nav-login (hero-bonus and hero-key before the 10/12 redesign).',
         col: 'Button'
       }
     },

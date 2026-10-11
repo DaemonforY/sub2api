@@ -54,8 +54,14 @@ type PublicPricing struct {
 	AvgRequestCostUSD float64 `json:"avg_request_cost_usd"`
 	AvgSampleRequests int     `json:"avg_sample_requests"`
 	// Requests members have made in total (admins excluded); the home page shows it from 10,000 up.
-	TotalRequests int       `json:"total_requests"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	TotalRequests int `json:"total_requests"`
+	// What the sign-up credit buys on the starter key (the first public pay-as-you-go OpenAI group,
+	// where /keys/starter puts it): the average cost of one image and of one other request there
+	// over the last 30 days, at the group's current rates. 0 without enough samples; the home page
+	// turns them into 「够画约 N 张图，或和 GPT-6 对话约 M 次」.
+	StarterImageCostUSD   float64   `json:"starter_image_cost_usd"`
+	StarterRequestCostUSD float64   `json:"starter_request_cost_usd"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 var publicPricingCache struct {
@@ -119,7 +125,7 @@ func (s *PaymentConfigService) buildPublicPricing(ctx context.Context) (*PublicP
 
 	groups, err := s.entClient.Group.Query().
 		Where(group.StatusEQ(StatusActive), group.SubscriptionTypeEQ(SubscriptionTypeStandard), group.IsExclusiveEQ(false)).
-		Order(group.BySortOrder()).All(ctx)
+		Order(group.BySortOrder(), group.ByID()).All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +139,12 @@ func (s *PaymentConfigService) buildPublicPricing(ctx context.Context) (*PublicP
 	sort.SliceStable(out.PayAsYouGo, func(i, j int) bool {
 		return out.PayAsYouGo[i].Platform == PlatformOpenAI && out.PayAsYouGo[j].Platform != PlatformOpenAI
 	})
+	for _, g := range groups { // same order as BillingRouteService.payAsYouGoGroup
+		if g.Platform == PlatformOpenAI {
+			s.fillStarterCosts(ctx, out, g)
+			break
+		}
+	}
 
 	var agg []struct {
 		Sum   float64 `json:"sum"`
@@ -154,4 +166,55 @@ func (s *PaymentConfigService) buildPublicPricing(ctx context.Context) (*PublicP
 		out.TotalRequests = n
 	}
 	return out, nil
+}
+
+// Samples needed before the home page quotes what the sign-up credit buys.
+const (
+	starterMinImages   = 20
+	starterMinRequests = 50
+)
+
+func (s *PaymentConfigService) fillStarterCosts(ctx context.Context, out *PublicPricing, g *dbent.Group) {
+	since := time.Now().AddDate(0, 0, -30)
+	var images []struct {
+		Sum   float64 `json:"sum"`
+		Count int     `json:"count"`
+	}
+	// total_cost is the standard price; the group's multiplier is applied on top when billing.
+	if err := s.entClient.UsageLog.Query().
+		Where(usagelog.GroupIDEQ(g.ID), usagelog.CreatedAtGTE(since), usagelog.ImageCountGT(0), usagelog.HasUserWith(user.RoleNEQ(RoleAdmin))).
+		Aggregate(dbent.As(dbent.Sum(usagelog.FieldTotalCost), "sum"), dbent.As(dbent.Sum(usagelog.FieldImageCount), "count")).
+		Scan(ctx, &images); err == nil && len(images) == 1 {
+		out.StarterImageCostUSD = starterUnitCost(images[0].Sum, images[0].Count, starterMinImages, groupImageMultiplier(g))
+	}
+	var requests []struct {
+		Sum   float64 `json:"sum"`
+		Count int     `json:"count"`
+	}
+	if err := s.entClient.UsageLog.Query().
+		Where(usagelog.GroupIDEQ(g.ID), usagelog.CreatedAtGTE(since), usagelog.ImageCountEQ(0), usagelog.HasUserWith(user.RoleNEQ(RoleAdmin))).
+		Aggregate(dbent.As(dbent.Sum(usagelog.FieldTotalCost), "sum"), dbent.As(dbent.Count(), "count")).
+		Scan(ctx, &requests); err == nil && len(requests) == 1 {
+		out.StarterRequestCostUSD = starterUnitCost(requests[0].Sum, requests[0].Count, starterMinRequests, g.RateMultiplier)
+	}
+}
+
+// starterUnitCost is the average standard cost of one unit times the multiplier billed now, or 0
+// with fewer than minSamples units.
+func starterUnitCost(standardSum float64, units, minSamples int, multiplier float64) float64 {
+	if units < minSamples || standardSum <= 0 || multiplier <= 0 {
+		return 0
+	}
+	return standardSum / float64(units) * multiplier
+}
+
+// groupImageMultiplier mirrors resolveImageRateMultiplier for a group: images may have their own rate.
+func groupImageMultiplier(g *dbent.Group) float64 {
+	if g.ImageRateIndependent {
+		if g.ImageRateMultiplier < 0 {
+			return 0
+		}
+		return g.ImageRateMultiplier
+	}
+	return g.RateMultiplier
 }

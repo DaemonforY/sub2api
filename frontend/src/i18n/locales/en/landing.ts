@@ -166,6 +166,137 @@ export default {
       }
     },
     // Home v2 (inspired by mxai.cn: create-from-the-hero, scenario entry points, showcase wall, onboarding path, FAQ)
+    // Home page, 2026-10 redesign: one slogan, what the sign-up credit buys, prompt first then sign up
+    v3: {
+      nav: {
+        draw: 'Draw',
+        write: 'Write',
+        code: 'Code',
+        works: 'Gallery',
+        pricing: 'Pricing',
+        signupTag: '+${amount}'
+      },
+      hero: {
+        news: 'GPT-6 Astra is here',
+        newsTail: 'Pay per use',
+        titleLead: "You're the boss.",
+        titleHighlight: 'AI does the work.',
+        subtitleLead: 'Posters, articles, code fixes, merged spreadsheets — ',
+        subtitleEm: 'say it in one sentence and it gets going.',
+        subtitleTail: ' No coding and no foreign credit card needed.',
+        offerTitle: 'Sign up and get ${amount} of credit',
+        offerBoth: 'About {images} images, or about {chats} GPT-6 chats',
+        offerImages: 'About {images} images',
+        offerChats: 'About {chats} GPT-6 chats',
+        offerGeneric: 'Works for images and chat, pay for what you use',
+        cta: 'Sign up free, get ${amount}',
+        ctaNoBonus: 'Sign up free',
+        ctaSecondary: 'See what it can do',
+        ctaDashboard: 'Open console',
+        trustPay: 'WeChat Pay, credited instantly',
+        trustMetered: 'Pay for what you use, every charge listed',
+        trustTotal: '{n} requests served'
+      },
+      demo: {
+        tabs: { draw: 'Draw', write: 'Write', code: 'Code' },
+        you: 'You',
+        placeholder: 'Describe a picture, e.g. a moonlit classical courtyard in ink-wash style',
+        generate: 'Generate',
+        generating: 'Generating…',
+        more: 'More works',
+        draw: {
+          prompt: 'A ginger shorthair cat lying on the sill of an old wooden window, looking out at a rainy street. Dusk, warm lamp light inside, cold blue outside, raindrops on the glass, watercolour illustration.',
+          caption: "A member's work · gpt-image-2 · prompt excerpt",
+          alt: "A member's work: a ginger cat at a rainy window"
+        },
+        write: {
+          prompt: 'Lay this draft out as a WeChat article, add a cover image and make the title catchier.',
+          caption: 'WeChat article editor · real screen',
+          alt: 'The WeChat article editor',
+          go: 'Open editor'
+        },
+        code: {
+          prompt: 'Merge the 30 Excel files in the "Reports" folder on my desktop into one sheet and drop duplicate rows.',
+          caption: 'Codex · illustration',
+          go: 'Read the guide',
+          cmd: 'merge the 30 Excel files in "Reports" into one sheet',
+          line1: 'read 30 files, 4,812 rows',
+          line2: 'unify headers: date / store / category / sales',
+          line3: 'drop 26 duplicate rows',
+          line4: 'write summary.xlsx',
+          done: 'done',
+          mock: 'illustration'
+        }
+      },
+      jobs: {
+        eyebrow: 'What it does for you',
+        title: 'Say what you want. It handles the rest.',
+        subtitle: 'One account for images, writing and code; one balance, charged for whatever you use.',
+        say: 'You say: ',
+        draw: {
+          title: 'Draw',
+          say: 'A documentary photo of an old Chinese street, then and now: the old days on the left, today on the right',
+          caption: "A member's work",
+          go: 'Draw one',
+          more: 'Edit · cut out · extend'
+        },
+        write: {
+          title: 'Write',
+          say: 'Lay this draft out as a WeChat article, add a cover and send it to my drafts',
+          caption: 'WeChat article editor',
+          go: 'Article editor',
+          more: 'Writing style test'
+        },
+        code: {
+          title: 'Code',
+          say: 'Merge the 30 Excel files on my desktop into one sheet',
+          cmd: 'merge the Excel files in "Reports"',
+          line1: '30 files, 4,812 rows',
+          line2: 'headers unified, 26 duplicates dropped',
+          done: 'wrote summary.xlsx',
+          go: 'Set up Codex in 5 minutes',
+          more: 'Let AI sort files and sheets'
+        }
+      },
+      sheet: {
+        title: 'Sign up to generate this picture',
+        prompt: 'Your prompt: ',
+        promptHint: 'After signing up you go straight to the canvas with it.',
+        perkBonus: '${amount} of free credit',
+        perkImages: ', about {images} images',
+        perkModels: 'GPT-6, gpt-image-2 and Codex in one account',
+        register: 'Sign up free',
+        wechat: 'Sign up with WeChat',
+        login: 'Have an account? Log in',
+        close: 'Close'
+      },
+      mobileBar: {
+        title: 'Sign up, get ${amount}',
+        images: 'About {images} free images',
+        generic: 'For images and chat',
+        cta: 'Sign up'
+      },
+      finalCta: {
+        bonus: '${amount} on sign-up · WeChat Pay · pay for what you use',
+        noBonus: 'WeChat Pay · pay for what you use'
+      },
+      footer: {
+        editor: 'WeChat article editor',
+        style: 'Writing style test'
+      },
+      firstImage: {
+        title: 'All set — draw your first picture',
+        account: 'Your account is ready',
+        balance: '${amount} credit added',
+        key: 'A key that can draw is ready for you',
+        keyFailed: 'No key yet; you can make one when you connect on the canvas',
+        prompt: 'Your prompt: ',
+        next: 'On the canvas, click Generate, then "Connect with {site}", and authorize in the small window that opens.',
+        go: 'Open the canvas →',
+        auto: 'Opening in {n} s',
+        dashboard: 'Go to the console instead'
+      }
+    },
     v2: {
       nav: {
         start: 'Start creating',
@@ -234,7 +365,7 @@ export default {
         }
       },
       community: {
-        title: 'From the community',
+        title: 'All made by people on HiveGPT',
         subtitle: 'Made with AI on HiveGPT Infinite Canvas. Like one? Remix it in a click.',
         more: 'Explore more',
         siteLabel: 'Web page',
@@ -294,21 +425,21 @@ export default {
         title: 'FAQ',
         subtitle: 'You might find your answer here',
         items: {
-          what: {
-            q: 'What is {site}?',
-            a: '{site} is an AI service hub. With one account and one API key you can make images and videos on the canvas and plug coding tools like Codex and OpenCode into it.'
+          noCode: {
+            q: 'Can I use it without coding?',
+            a: 'Yes. Drawing and WeChat articles take a few clicks in the browser; only coding tools like Codex need installing, and the learning site walks you through it.'
           },
-          models: {
-            q: 'Which models and tools are supported?',
-            a: 'See the model plaza and the supported list on this page; more are added over time. Coding tools include Codex CLI and OpenCode, with copy-ready configs under "Use key" in the console.'
+          bonus: {
+            q: 'How far does the free credit go?',
+            a: 'It is charged by actual use, and every image or question is listed under Usage. The "about N images" on this page is estimated from the last 30 days of real charges. Top up from ¥1 when it runs out.'
           },
-          billing: {
-            q: 'How does billing work?',
-            a: 'You pay for what you use. Each key can have a spending cap, and usage details are always visible in the console.'
+          vsChatgpt: {
+            q: 'How is this different from a ChatGPT subscription?',
+            a: 'No foreign credit card: pay with WeChat. No monthly plan needed: pay for what you use. Images, chat and Codex share one balance.'
           },
           canvas: {
             q: 'How do the canvas and API keys relate?',
-            a: 'The canvas is a free creative UI; the actual generation runs through your API key on this site. Opening the canvas from here fills in the gateway URL, so you only paste your key.'
+            a: 'The canvas is a free creative UI; generation runs on a key in your account. When you click Generate, choose "Connect with {site}" and authorize; no copying keys by hand.'
           },
           privacy: {
             q: 'Is my data safe?',
@@ -316,7 +447,7 @@ export default {
           },
           contact: {
             q: 'What if I run into problems?',
-            a: 'Check the documentation first. If that does not help, reach us through the contact info on this page.'
+            a: 'Ask the assistant in the bottom-right corner or read the guides on the learning site. If that does not help, reach us through the contact info on this page.'
           }
         }
       },
@@ -327,7 +458,7 @@ export default {
         secondary: 'Try the canvas first'
       },
       footer: {
-        desc: 'One key for popular AI models: images, video and coding assistants in one place.',
+        desc: 'Images, writing and code: say it in one sentence and AI gets it done.',
         product: 'Product',
         support: 'Support',
         canvas: 'Infinite Canvas',

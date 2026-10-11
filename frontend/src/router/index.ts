@@ -455,6 +455,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/first-image',
+    name: 'FirstImage',
+    component: () => import('@/views/user/FirstImageView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Your first image',
+      titleKey: 'home.v3.firstImage.title'
+    }
+  },
+  {
     path: '/canvas-connect',
     name: 'CanvasConnect',
     component: () => import('@/views/user/CanvasConnectView.vue'),

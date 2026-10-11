@@ -2,7 +2,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import HomeCommunityWall from '../HomeCommunityWall.vue'
-import HomeHeroCollage from '../HomeHeroCollage.vue'
 
 const { recommendedWorks } = vi.hoisted(() => ({ recommendedWorks: vi.fn() }))
 
@@ -33,18 +32,5 @@ describe('home community works', () => {
     const wrapper = mount(HomeCommunityWall)
     await flushPromises()
     expect(wrapper.find('[data-testid="home-community-wall"]').exists()).toBe(false)
-  })
-
-  it('hero shows the terminal until there are enough works', async () => {
-    recommendedWorks.mockResolvedValue([work(1), work(2), work(3)])
-    const few = mount(HomeHeroCollage, { slots: { default: '<div data-testid="terminal" />' } })
-    await flushPromises()
-    expect(few.find('[data-testid="terminal"]').exists()).toBe(true)
-
-    recommendedWorks.mockResolvedValue([1, 2, 3, 4, 5, 6, 7].map(work))
-    const many = mount(HomeHeroCollage, { slots: { default: '<div data-testid="terminal" />' } })
-    await flushPromises()
-    expect(many.find('[data-testid="terminal"]').exists()).toBe(false)
-    expect(many.findAll('a')).toHaveLength(4)
   })
 })

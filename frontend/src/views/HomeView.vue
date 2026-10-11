@@ -114,7 +114,7 @@
       ></div>
     </div>
 
-    <!-- Header -->
+    <!-- Header: five ways in on wide screens; everything else lives in the footer -->
     <header class="sticky top-0 z-30 border-b border-gray-200/50 bg-white/70 px-4 py-3 backdrop-blur-xl sm:px-6 dark:border-dark-800/60 dark:bg-dark-950/70">
       <nav class="mx-auto flex max-w-6xl items-center justify-between gap-2">
         <!-- Logo -->
@@ -125,116 +125,20 @@
           <span class="hidden truncate text-base font-semibold text-gray-900 sm:inline dark:text-white">{{ siteName }}</span>
         </router-link>
 
-        <!-- Nav Actions (phones keep the language, canvas, learn, theme and login; explore,
-             contests, courses and the model plaza come back from sm; on phones the community wall
-             and the footer link to them) -->
+        <div class="hidden flex-1 items-center gap-1 pl-6 text-sm md:flex" data-testid="home-nav-links">
+          <a
+            v-for="link in navLinks"
+            :key="link.key"
+            :href="link.href"
+            v-bind="link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}"
+            class="rounded-lg px-3 py-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white"
+          >
+            {{ t(`home.v3.nav.${link.key}`) }}
+          </a>
+        </div>
+
         <div class="flex shrink-0 items-center gap-1 sm:gap-2">
-          <!-- Language Switcher -->
           <LocaleSwitcher />
-
-          <!-- Explore: the community on the canvas site -->
-          <a
-            :href="canvasLink('nav-explore', '/explore')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            :title="t('home.v2.nav.explore')"
-          >
-            <Icon name="globe" size="sm" />
-            <span class="hidden sm:inline">{{ t('home.v2.nav.explore') }}</span>
-          </a>
-          <!-- Contests -->
-          <RouterLink
-            to="/contests"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            :title="t('contests.title')"
-          >
-            <Icon name="trophy" size="sm" />
-            <span class="hidden sm:inline">{{ t('nav.contests') }}</span>
-          </RouterLink>
-          <!-- Canvas site link (cross-site) -->
-          <a
-            :href="canvasLink('nav')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            :title="t('home.canvas.card.title')"
-          >
-            <Icon name="sparkles" size="sm" />
-            <span class="hidden sm:inline">{{ t('home.canvas.navLabel') }}</span>
-          </a>
-          <!-- Image tools on the canvas site (wide screens; the canvas link covers phones) -->
-          <a
-            :href="canvasLink('nav-tools', '/tools')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 md:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            :title="t('home.v2.nav.tools')"
-          >
-            <Icon name="bolt" size="sm" />
-            <span>{{ t('home.v2.nav.tools') }}</span>
-          </a>
-          <!-- AI 学习 (/learn, a static site served beside the SPA) -->
-          <a
-            :href="learnUrl('nav')"
-            class="inline-flex items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            :title="t('home.learn.card.title')"
-          >
-            <Icon name="book" size="sm" />
-            <span class="hidden sm:inline">{{ t('home.learn.navLabel') }}</span>
-          </a>
-          <!-- 公众号排版 (/editor/, a static app served beside the SPA) -->
-          <a
-            href="/editor/?utm_source=home&utm_medium=nav"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 md:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            :title="t('appModules.editor.description')"
-            data-testid="home-editor-link"
-          >
-            <Icon name="document" size="sm" />
-            <span>{{ t('appModules.editor.name') }}</span>
-          </a>
-          <!-- Paid courses (shown once a course is on sale) -->
-          <router-link
-            v-if="hasCourses"
-            to="/courses"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            data-testid="home-courses-link"
-          >
-            <Icon name="book" size="sm" />
-            <span class="hidden sm:inline">{{ t('courses.navLabel') }}</span>
-          </router-link>
-          <!-- Pricing -->
-          <router-link
-            to="/pricing"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-            data-testid="home-pricing-link"
-          >
-            <span>{{ t('pricing.navLabel') }}</span>
-          </router-link>
-          <!-- Doc Link -->
-          <a
-            v-if="docUrl"
-            :href="docUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="hidden rounded-lg p-2 text-gray-500 sm:inline-block transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
-            :title="t('home.viewDocs')"
-          >
-            <Icon name="book" size="md" />
-          </a>
-
-          <!-- Model Plaza Link -->
-          <router-link
-            v-if="showModelPlazaEntry"
-            to="/model-plaza"
-            class="hidden items-center gap-1.5 rounded-lg p-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:inline-flex dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
-            :title="t('nav.modelPlaza')"
-          >
-            <Icon name="grid" size="md" />
-            <span class="hidden sm:inline">{{ t('nav.modelPlaza') }}</span>
-          </router-link>
-
-          <!-- Theme Toggle -->
           <button
             @click="toggleTheme"
             class="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white"
@@ -243,16 +147,6 @@
             <Icon v-if="isDark" name="sun" size="md" />
             <Icon v-else name="moon" size="md" />
           </button>
-
-          <!-- Primary CTA: start creating in the canvas -->
-          <a
-            :href="canvasLink('nav-cta', '/image')"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="hidden items-center rounded-full bg-gradient-to-r from-primary-500 to-violet-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-primary-500/30 transition hover:opacity-90 md:inline-flex"
-          >
-            {{ t('home.v2.nav.start') }}
-          </a>
 
           <!-- Login / Dashboard Button -->
           <router-link
@@ -266,24 +160,11 @@
               {{ userInitial }}
             </span>
             <span class="whitespace-nowrap text-xs font-medium text-white">{{ t('home.dashboard') }}</span>
-            <svg
-              class="h-3 w-3 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"
-              />
-            </svg>
           </router-link>
           <template v-else>
             <router-link
               to="/login"
-              class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-dark-200 dark:hover:bg-dark-800"
+              class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-dark-200 dark:hover:bg-dark-800"
               @click="trackCta('nav-login')"
             >
               {{ t('home.login') }}
@@ -291,10 +172,11 @@
             <router-link
               v-if="registrationEnabled"
               to="/register"
-              class="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-800 dark:bg-gray-800 dark:hover:bg-gray-700"
+              class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-500"
               @click="trackCta('nav-register')"
             >
               {{ t('home.register') }}
+              <span v-if="signupBonus > 0" class="rounded-md bg-amber-300 px-1.5 text-[11px] font-bold text-amber-950">{{ t('home.v3.nav.signupTag', { amount: signupBonusText }) }}</span>
             </router-link>
           </template>
         </div>
@@ -302,289 +184,94 @@
     </header>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex-1 px-6 pb-16 pt-10 lg:pt-16">
+    <main class="relative z-10 flex-1 px-4 pb-16 pt-8 sm:px-6 lg:pt-14">
       <div class="mx-auto max-w-6xl">
-        <!-- Hero: value proposition + create-from-here prompt box (left), gateway terminal (right) -->
-        <div class="mb-20 flex flex-col items-center gap-12 lg:flex-row lg:gap-14">
-          <div class="w-full flex-1 text-center lg:text-left">
-            <p class="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-200/70 bg-primary-50/70 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800/60 dark:bg-primary-900/20 dark:text-primary-300">
-              <span class="h-1.5 w-1.5 rounded-full bg-primary-500"></span>
-              {{ t('home.v2.hero.eyebrow', { site: siteName }) }}
+        <!-- Hero: the slogan, what signing up gets you, one button; on the right a sentence turning into a piece of work -->
+        <section class="home-hero relative mb-24 grid items-center gap-10 lg:grid-cols-[1.02fr_1fr] lg:gap-14" data-testid="home-hero">
+          <div>
+            <p class="mb-5 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/60 py-1 pl-1 pr-3 text-xs text-gray-500 sm:text-sm dark:border-white/10 dark:bg-white/5 dark:text-dark-300">
+              <span class="rounded-full bg-teal-400 px-2 py-0.5 text-[11px] font-bold text-teal-950">NEW</span>
+              <span class="text-gray-900 dark:text-white">{{ t('home.v3.hero.news') }}</span>· {{ t('home.v3.hero.newsTail') }}
             </p>
-            <h1 class="text-4xl font-bold leading-tight text-gray-900 dark:text-white md:text-5xl lg:text-6xl">
-              {{ t('home.v2.hero.titleLead') }}<span class="block bg-gradient-to-r from-primary-500 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">{{ t('home.v2.hero.titleHighlight') }}</span>
+            <h1 class="break-keep text-[min(46px,11.5vw)] font-extrabold leading-[1.06] tracking-tight text-gray-900 sm:text-6xl lg:text-[80px] dark:text-white">
+              <span class="block">{{ t('home.v3.hero.titleLead') }}</span>
+              <span class="inline-block bg-gradient-to-r from-violet-400 via-primary-600 to-teal-500 bg-clip-text pb-1 text-transparent">{{ t('home.v3.hero.titleHighlight') }}</span>
             </h1>
-            <p class="mt-5 text-lg text-gray-600 dark:text-dark-300">{{ t('home.v2.hero.subtitle') }}</p>
-            <div class="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-gray-600 dark:text-dark-300 lg:justify-start">
-              <span v-for="chip in heroChips" :key="chip" class="inline-flex items-center gap-1.5">
-                <span class="text-primary-500" aria-hidden="true">✓</span>{{ chip }}
+            <p class="mt-5 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg dark:text-dark-300">
+              {{ t('home.v3.hero.subtitleLead') }}<span class="text-gray-900 dark:text-white">{{ t('home.v3.hero.subtitleEm') }}</span>{{ t('home.v3.hero.subtitleTail') }}
+            </p>
+
+            <!-- What signing up gets you, in pictures and chats rather than dollars -->
+            <div
+              v-if="showOffer"
+              class="mt-7 flex max-w-lg items-center gap-4 rounded-2xl border border-amber-300/60 bg-gradient-to-r from-amber-100/80 to-amber-50/30 p-3 pr-5 dark:border-amber-300/30 dark:from-amber-300/15 dark:to-amber-300/[0.03]"
+              data-testid="home-offer"
+            >
+              <span class="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-amber-300 text-2xl font-extrabold tracking-tight text-amber-950">${{ signupBonusText }}</span>
+              <span>
+                <span class="block font-semibold text-gray-900 dark:text-white">{{ t('home.v3.hero.offerTitle', { amount: signupBonusText }) }}</span>
+                <span class="mt-0.5 block text-sm text-amber-900/80 dark:text-amber-100/70">{{ offerLine }}</span>
               </span>
             </div>
-            <router-link
-              v-if="!isAuthenticated && registrationEnabled && signupBonus > 0"
-              to="/register"
-              class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-800/60"
-              @click="trackCta('hero-bonus')"
-            >
-              <span aria-hidden="true">🎁</span>{{ t('home.signupBonus', { amount: signupBonusText }) }}
-              <span aria-hidden="true">→</span>
-            </router-link>
-            <HomePromptBox :is-authenticated="isAuthenticated" class="mt-8 text-left" />
+
+            <div class="mt-7 flex flex-wrap gap-3">
+              <div ref="heroCta" class="w-full sm:w-auto">
+                <router-link
+                  v-if="isAuthenticated"
+                  :to="dashboardPath"
+                  class="btn btn-primary w-full px-7 py-3.5 text-base shadow-lg shadow-primary-600/30 sm:w-auto sm:text-lg"
+                >
+                  {{ t('home.v3.hero.ctaDashboard') }} →
+                </router-link>
+                <router-link
+                  v-else-if="registrationEnabled"
+                  to="/register"
+                  class="btn btn-primary w-full px-7 py-3.5 text-base shadow-lg shadow-primary-600/30 sm:w-auto sm:text-lg"
+                  data-testid="home-hero-signup"
+                  @click="trackCta('hero-signup')"
+                >
+                  {{ signupBonus > 0 ? t('home.v3.hero.cta', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }} →
+                </router-link>
+              </div>
+              <a href="#jobs" class="btn btn-secondary hidden px-6 py-3.5 text-base sm:inline-flex">{{ t('home.v3.hero.ctaSecondary') }}</a>
+            </div>
+            <div class="mt-6 hidden flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500 sm:flex dark:text-dark-400">
+              <span v-for="item in trustItems" :key="item" class="inline-flex items-center gap-2">
+                <span class="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-teal-500" aria-hidden="true"></span>{{ item }}
+              </span>
+            </div>
           </div>
 
-          <!-- Right: community works (the terminal animation until there are enough) -->
-          <div class="hidden flex-1 justify-center lg:flex lg:justify-end">
-            <HomeHeroCollage>
-            <div class="terminal-container">
-              <div class="terminal-window">
-                <!-- Window header -->
-                <div class="terminal-header">
-                  <div class="terminal-buttons">
-                    <span class="btn-close"></span>
-                    <span class="btn-minimize"></span>
-                    <span class="btn-maximize"></span>
-                  </div>
-                  <span class="terminal-title">terminal</span>
-                </div>
-                <!-- Terminal content -->
-                <div class="terminal-body">
-                  <div class="code-line line-1">
-                    <span class="code-prompt">$</span>
-                    <span class="code-cmd">curl</span>
-                    <span class="code-flag">-X POST</span>
-                    <span class="code-url">/v1/messages</span>
-                  </div>
-                  <div class="code-line line-2">
-                    <span class="code-comment"># Routing to upstream...</span>
-                  </div>
-                  <div class="code-line line-3">
-                    <span class="code-success">200 OK</span>
-                    <span class="code-response">{ "content": "Hello!" }</span>
-                  </div>
-                  <div class="code-line line-4">
-                    <span class="code-prompt">$</span>
-                    <span class="cursor"></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            </HomeHeroCollage>
-          </div>
-        </div>
+          <HomeHeroDemo @generate="onGenerate" />
+        </section>
+
+        <HomeJobs />
 
         <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" :contact-info="contactInfo" />
 
         <HomeCommunityWall />
 
-        <HomeScenarios :is-authenticated="isAuthenticated" :show-model-plaza="showModelPlazaEntry" />
-
-        <HomeShowcase />
-
-        <!-- Why: gateway strengths -->
-        <div class="mb-10 text-center">
-          <h2 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('home.v2.why.title', { site: siteName }) }}</h2>
-          <p class="mt-3 text-gray-600 dark:text-dark-300">{{ t('home.v2.why.subtitle') }}</p>
-        </div>
-        <!-- Features Grid -->
-        <div class="mb-12 grid gap-6 md:grid-cols-3">
-          <!-- Feature 1: Unified Gateway -->
-          <div
-            class="group rounded-2xl border border-gray-200/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
-          >
-            <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 transition-transform group-hover:scale-110"
-            >
-              <Icon name="server" size="lg" class="text-white" />
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.unifiedGateway') }}
-            </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
-              {{ t('home.features.unifiedGatewayDesc') }}
-            </p>
-          </div>
-
-          <!-- Feature 2: Account Pool -->
-          <div
-            class="group rounded-2xl border border-gray-200/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
-          >
-            <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 shadow-lg shadow-primary-500/30 transition-transform group-hover:scale-110"
-            >
-              <svg
-                class="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
-                />
-              </svg>
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.multiAccount') }}
-            </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
-              {{ t('home.features.multiAccountDesc') }}
-            </p>
-          </div>
-
-          <!-- Feature 3: Billing & Quota -->
-          <div
-            class="group rounded-2xl border border-gray-200/50 bg-white/60 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary-500/10 dark:border-dark-700/50 dark:bg-dark-800/60"
-          >
-            <div
-              class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30 transition-transform group-hover:scale-110"
-            >
-              <svg
-                class="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
-                />
-              </svg>
-            </div>
-            <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-              {{ t('home.features.balanceQuota') }}
-            </h3>
-            <p class="text-sm leading-relaxed text-gray-600 dark:text-dark-400">
-              {{ t('home.features.balanceQuotaDesc') }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Supported Providers -->
-        <div class="mb-8 text-center">
-          <h2 class="mb-3 text-2xl font-bold text-gray-900 dark:text-white">
-            {{ t('home.providers.title') }}
-          </h2>
-          <p class="text-sm text-gray-600 dark:text-dark-400">
-            {{ t('home.providers.description') }}
-          </p>
-        </div>
-
-        <div class="mb-16 flex flex-wrap items-center justify-center gap-4">
-          <!-- Claude - Pending -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-5 py-3 opacity-60 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/40"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-400 to-orange-500"
-            >
-              <span class="text-xs font-bold text-white">C</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.claude') }}</span>
-            <span
-              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-dark-400"
-              >{{ t('home.providers.pending') }}</span
-            >
-          </div>
-          <!-- GPT - Supported -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-primary-200 bg-white/60 px-5 py-3 ring-1 ring-primary-500/20 backdrop-blur-sm dark:border-primary-800 dark:bg-dark-800/60"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-green-600"
-            >
-              <span class="text-xs font-bold text-white">G</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">GPT</span>
-            <span
-              class="rounded bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-              >{{ t('home.providers.supported') }}</span
-            >
-          </div>
-          <!-- Gemini - Pending -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-5 py-3 opacity-60 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/40"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600"
-            >
-              <span class="text-xs font-bold text-white">G</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.gemini') }}</span>
-            <span
-              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-dark-400"
-              >{{ t('home.providers.pending') }}</span
-            >
-          </div>
-          <!-- Antigravity - Pending -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-5 py-3 opacity-60 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/40"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600"
-            >
-              <span class="text-xs font-bold text-white">A</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.antigravity') }}</span>
-            <span
-              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-dark-400"
-              >{{ t('home.providers.pending') }}</span
-            >
-          </div>
-          <!-- More - Coming Soon -->
-          <div
-            class="flex items-center gap-2 rounded-xl border border-gray-200/50 bg-white/40 px-5 py-3 opacity-60 backdrop-blur-sm dark:border-dark-700/50 dark:bg-dark-800/40"
-          >
-            <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-gray-500 to-gray-600"
-            >
-              <span class="text-xs font-bold text-white">+</span>
-            </div>
-            <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{ t('home.providers.more') }}</span>
-            <span
-              class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700 dark:text-dark-400"
-              >{{ t('home.providers.soon') }}</span
-            >
-          </div>
-        </div>
-
-        <HomeSteps :is-authenticated="isAuthenticated" :dashboard-path="dashboardPath" />
-
-        <HomeSupport :doc-url="docUrl" :learn-href="learnUrl('home-support')" :contact-info="contactInfo" />
-
         <HomeFaq :site-name="siteName" />
 
-        <!-- Final CTA -->
-        <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-violet-600 to-fuchsia-600 px-6 py-12 text-center text-white shadow-xl sm:px-12">
+        <!-- Final CTA: the slogan once more -->
+        <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-violet-600 to-teal-600 px-6 py-14 text-center text-white shadow-xl sm:px-12">
           <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl"></div>
-          <h2 class="text-2xl font-bold sm:text-3xl">{{ t('home.v2.finalCta.title') }}</h2>
-          <p class="mt-3 text-white/80">{{ t('home.v2.finalCta.subtitle') }}</p>
-          <div class="mt-7 flex flex-wrap justify-center gap-3">
-            <router-link
-              :to="isAuthenticated ? dashboardPath : '/register'"
-              class="inline-flex items-center rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-primary-700 shadow-lg transition hover:bg-gray-100"
-              @click="trackCta('final-cta')"
-            >
-              {{ isAuthenticated ? t('home.goToDashboard') : t('home.v2.finalCta.primary') }}
-            </router-link>
-            <a
-              :href="canvasLink('home-final-cta', '/image')"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center rounded-xl border border-white/40 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              {{ t('home.v2.finalCta.secondary') }}
-            </a>
-          </div>
+          <h2 class="break-keep text-3xl font-extrabold tracking-tight sm:text-5xl">{{ t('home.v3.hero.titleLead') }}{{ t('home.v3.hero.titleHighlight') }}</h2>
+          <p class="mt-4 text-white/80">{{ signupBonus > 0 ? t('home.v3.finalCta.bonus', { amount: signupBonusText }) : t('home.v3.finalCta.noBonus') }}</p>
+          <router-link
+            v-if="isAuthenticated || registrationEnabled"
+            :to="isAuthenticated ? dashboardPath : '/register'"
+            class="mt-8 inline-flex items-center rounded-xl bg-white px-7 py-3 text-base font-semibold text-primary-700 shadow-lg transition hover:bg-gray-100"
+            @click="trackCta('final-cta')"
+          >
+            {{ isAuthenticated ? t('home.v3.hero.ctaDashboard') : signupBonus > 0 ? t('home.v3.hero.cta', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }} →
+          </router-link>
         </section>
       </div>
     </main>
 
     <!-- Footer -->
-    <footer class="relative z-10 mt-8 border-t border-gray-200/50 px-6 pb-8 pt-12 dark:border-dark-800/50">
+    <footer class="relative z-10 mt-8 border-t border-gray-200/50 px-6 pb-24 pt-12 sm:pb-8 dark:border-dark-800/50">
       <div class="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
         <div class="lg:col-span-2">
           <div class="flex items-center gap-2.5">
@@ -598,6 +285,8 @@
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('home.v2.footer.product') }}</h3>
           <ul class="mt-3 space-y-2 text-sm text-gray-500 dark:text-dark-400">
             <li><a :href="canvasLink('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.canvas') }}</a></li>
+            <li><a href="/editor/?utm_source=home&utm_medium=footer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v3.footer.editor') }}</a></li>
+            <li><router-link to="/style" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v3.footer.style') }}</router-link></li>
             <li><router-link to="/pricing" class="hover:text-gray-900 dark:hover:text-white">{{ t('pricing.navLabel') }}</router-link></li>
             <li><a href="/learn/connect/" class="hover:text-gray-900 dark:hover:text-white">{{ t('pricing.guideNav') }}</a></li>
             <li><router-link to="/contests" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.contests') }}</router-link></li>
@@ -627,8 +316,30 @@
       </div>
     </footer>
 
+    <!-- Phones: once the hero button scrolls away, sign-up stays one tap away -->
+    <div
+      v-if="showMobileBar"
+      :class="['fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.625rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur transition-transform duration-300 sm:hidden dark:border-white/10 dark:bg-dark-950/95', mobileBarVisible ? 'translate-y-0' : 'translate-y-full']"
+      data-testid="home-mobile-bar"
+    >
+      <div class="min-w-0 flex-1 leading-tight">
+        <b class="block text-[15px] text-gray-900 dark:text-white">{{ signupBonus > 0 ? t('home.v3.mobileBar.title', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }}</b>
+        <span class="text-xs text-gray-500 dark:text-dark-400">{{ estimate.images > 0 ? t('home.v3.mobileBar.images', { images: estimate.images }) : t('home.v3.mobileBar.generic') }}</span>
+      </div>
+      <router-link to="/register" class="btn btn-primary shrink-0 px-5 py-2.5" @click="trackCta('mobile-bar')">{{ t('home.v3.mobileBar.cta') }}</router-link>
+    </div>
+
+    <HomeSignupSheet
+      :open="sheetOpen"
+      :prompt="sheetPrompt"
+      :bonus="signupBonus"
+      :images="estimate.images"
+      :registration-enabled="registrationEnabled"
+      @close="sheetOpen = false"
+    />
+
     <!-- 智能客服（后台「智能客服」开启后显示） -->
-    <HomeAssistant :site-name="siteName" />
+    <HomeAssistant :site-name="siteName" :lifted="showMobileBar && mobileBarVisible" />
     <!-- 右侧福利小蜂：悬停展开本站优惠（来自增长配置，关掉的优惠不显示） -->
     <HomePromoMascot />
   </div>
@@ -636,7 +347,7 @@
 
 <script setup lang="ts">
 import { listCourses } from '@/api/courses'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
@@ -645,19 +356,18 @@ import { sanitizeUrl } from '@/utils/url'
 import { track } from '@/utils/analytics'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossSites'
-import HomePromptBox from '@/components/home/HomePromptBox.vue'
-import HomeScenarios from '@/components/home/HomeScenarios.vue'
-import HomeShowcase from '@/components/home/HomeShowcase.vue'
+import { formatTotalRequests, getPublicPricing, signupCreditEstimate, type PublicPricing } from '@/api/pricing'
+import { savePendingPrompt } from '@/utils/pendingPrompt'
+import HomeHeroDemo from '@/components/home/HomeHeroDemo.vue'
+import HomeJobs from '@/components/home/HomeJobs.vue'
+import HomeSignupSheet from '@/components/home/HomeSignupSheet.vue'
 import HomePricing from '@/components/home/HomePricing.vue'
 import HomeCommunityWall from '@/components/home/HomeCommunityWall.vue'
-import HomeHeroCollage from '@/components/home/HomeHeroCollage.vue'
-import HomeSteps from '@/components/home/HomeSteps.vue'
-import HomeSupport from '@/components/home/HomeSupport.vue'
 import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import HomePromoMascot from '@/components/home/HomePromoMascot.vue'
 import HomeFaq from '@/components/home/HomeFaq.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
@@ -696,11 +406,42 @@ const signupBonus = computed(() => Number(appStore.cachedPublicSettings?.signup_
 const signupBonusText = computed(() => String(Math.round(signupBonus.value * 100) / 100))
 const trackCta = (where: string) => track('cta_click', { where })
 
-const heroChips = computed(() => [
-  t('home.v2.hero.chips.models'),
-  t('home.v2.hero.chips.billing'),
-  t('home.v2.hero.chips.stable')
-])
+const navLinks = [
+  { key: 'draw', href: canvasLink('nav-draw', '/image'), external: true },
+  { key: 'write', href: '/editor/?utm_source=home&utm_medium=nav', external: false },
+  { key: 'code', href: '/learn/codex/hivegpt?utm_source=home&utm_medium=nav', external: false },
+  { key: 'works', href: canvasLink('nav-explore', '/explore'), external: true },
+  { key: 'pricing', href: '/pricing', external: false }
+]
+
+// Live numbers: what the sign-up credit buys and how many requests the site has served.
+const pricing = ref<PublicPricing | null>(null)
+const estimate = computed(() => signupCreditEstimate(signupBonus.value, pricing.value))
+const offerLine = computed(() => {
+  const { images, chats } = estimate.value
+  if (images > 0 && chats > 0) return t('home.v3.hero.offerBoth', { images, chats })
+  if (images > 0) return t('home.v3.hero.offerImages', { images })
+  if (chats > 0) return t('home.v3.hero.offerChats', { chats })
+  return t('home.v3.hero.offerGeneric')
+})
+const trustItems = computed(() => {
+  const total = formatTotalRequests(pricing.value?.total_requests, String(locale.value))
+  return [t('home.v3.hero.trustPay'), t('home.v3.hero.trustMetered'), ...(total ? [t('home.v3.hero.trustTotal', { n: total })] : [])]
+})
+
+// 生成 in the hero: members go straight to the canvas; visitors keep their sentence and sign up first.
+const sheetOpen = ref(false)
+const sheetPrompt = ref('')
+function onGenerate(prompt: string) {
+  trackCta('hero-generate')
+  if (isAuthenticated.value) {
+    window.open(canvasUrl({ medium: 'home-hero', baseUrl: window.location.origin, path: '/image', prompt }), '_blank', 'noopener,noreferrer')
+    return
+  }
+  savePendingPrompt(prompt)
+  sheetPrompt.value = prompt
+  sheetOpen.value = true
+}
 
 // Auth state
 const isAuthenticated = computed(() => authStore.isAuthenticated)
@@ -717,6 +458,14 @@ const userInitial = computed(() => {
   if (!user || !user.email) return ''
   return user.email.charAt(0).toUpperCase()
 })
+
+const showOffer = computed(() => !isAuthenticated.value && registrationEnabled.value && signupBonus.value > 0)
+const showMobileBar = computed(() => !isAuthenticated.value && registrationEnabled.value)
+
+// Phones get a bottom sign-up bar once the hero button has scrolled up out of view.
+const heroCta = ref<HTMLElement | null>(null)
+const mobileBarVisible = ref(false)
+let heroObserver: IntersectionObserver | null = null
 
 // Current year for footer
 const currentYear = computed(() => new Date().getFullYear())
@@ -756,168 +505,18 @@ onMounted(() => {
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
   }
+
+  getPublicPricing()
+    .then((p) => (pricing.value = p))
+    .catch(() => {})
+
+  if (heroCta.value && typeof IntersectionObserver !== 'undefined') {
+    heroObserver = new IntersectionObserver(([entry]) => {
+      mobileBarVisible.value = !entry.isIntersecting && entry.boundingClientRect.top < 0
+    })
+    heroObserver.observe(heroCta.value)
+  }
 })
+
+onBeforeUnmount(() => heroObserver?.disconnect())
 </script>
-
-<style scoped>
-/* Terminal Container */
-.terminal-container {
-  position: relative;
-  display: inline-block;
-}
-
-/* Terminal Window */
-.terminal-window {
-  width: 420px;
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-  border-radius: 14px;
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg);
-  transition: transform 0.3s ease;
-}
-
-.terminal-window:hover {
-  transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(-4px);
-}
-
-/* Terminal Header */
-.terminal-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  background: rgba(30, 41, 59, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.terminal-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.terminal-buttons span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.btn-close {
-  background: #ef4444;
-}
-.btn-minimize {
-  background: #eab308;
-}
-.btn-maximize {
-  background: #22c55e;
-}
-
-.terminal-title {
-  flex: 1;
-  text-align: center;
-  font-size: 12px;
-  font-family: ui-monospace, monospace;
-  color: #64748b;
-  margin-right: 52px;
-}
-
-/* Terminal Body */
-.terminal-body {
-  padding: 20px 24px;
-  font-family: ui-monospace, 'Fira Code', monospace;
-  font-size: 14px;
-  line-height: 2;
-}
-
-.code-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  opacity: 0;
-  animation: line-appear 0.5s ease forwards;
-}
-
-.line-1 {
-  animation-delay: 0.3s;
-}
-.line-2 {
-  animation-delay: 1s;
-}
-.line-3 {
-  animation-delay: 1.8s;
-}
-.line-4 {
-  animation-delay: 2.5s;
-}
-
-@keyframes line-appear {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.code-prompt {
-  color: #22c55e;
-  font-weight: bold;
-}
-.code-cmd {
-  color: #38bdf8;
-}
-.code-flag {
-  color: #a78bfa;
-}
-.code-url {
-  color: #14b8a6;
-}
-.code-comment {
-  color: #64748b;
-  font-style: italic;
-}
-.code-success {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-.code-response {
-  color: #fbbf24;
-}
-
-/* Blinking Cursor */
-.cursor {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  background: #22c55e;
-  animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-  0%,
-  50% {
-    opacity: 1;
-  }
-  51%,
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Dark mode adjustments */
-:deep(.dark) .terminal-window {
-  box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(20, 184, 166, 0.2),
-    0 0 40px rgba(20, 184, 166, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-</style>

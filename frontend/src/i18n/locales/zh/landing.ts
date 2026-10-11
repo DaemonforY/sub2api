@@ -166,6 +166,137 @@ export default {
       }
     },
     // 首页 v2（参考 mxai.cn 的首屏即创作、场景入口、案例墙、上手路径、FAQ 结构）
+    // 首页 2026-10 改版：一句 slogan、送多少说成具体的东西、先写提示词再注册
+    v3: {
+      nav: {
+        draw: '画图',
+        write: '写作',
+        code: '编程',
+        works: '作品',
+        pricing: '价格',
+        signupTag: '送${amount}'
+      },
+      hero: {
+        news: 'GPT-6 Astra 已上线',
+        newsTail: '微信付款，按次计费',
+        titleLead: '你当老板，',
+        titleHighlight: 'AI 打工。',
+        subtitleLead: '画海报、写公众号、改代码、合并表格——',
+        subtitleEm: '用中文说一句，它就开干。',
+        subtitleTail: '不用会编程，不用海外信用卡。',
+        offerTitle: '注册就送 ${amount} 体验额度',
+        offerBoth: '够画约 {images} 张图，或和 GPT-6 对话约 {chats} 次',
+        offerImages: '够画约 {images} 张图',
+        offerChats: '够和 GPT-6 对话约 {chats} 次',
+        offerGeneric: '画图、对话都能用，用多少扣多少',
+        cta: '免费注册，领 ${amount}',
+        ctaNoBonus: '免费注册',
+        ctaSecondary: '先看看它能干什么',
+        ctaDashboard: '进入控制台',
+        trustPay: '微信支付，自动到账',
+        trustMetered: '用多少扣多少，每笔可查',
+        trustTotal: '已为用户处理 {n} 次请求'
+      },
+      demo: {
+        tabs: { draw: '画图', write: '写作', code: '编程' },
+        you: '你说',
+        placeholder: '描述你想画的画面，例如：月光下的古风庭院，水墨风格',
+        generate: '生成',
+        generating: '正在生成…',
+        more: '看更多作品',
+        draw: {
+          prompt: '一只橘色短毛猫趴在老式木窗的窗台上，侧脸望向窗外下雨的街道。傍晚，室内暖黄台灯，窗外冷蓝，玻璃上挂着雨滴，水彩插画风格。',
+          caption: '真实用户作品 · gpt-image-2 · 提示词节选',
+          alt: '用户作品：雨天窗台上的橘猫'
+        },
+        write: {
+          prompt: '把这篇稿子排成公众号样式，配一张封面，标题改得更抓人一点。',
+          caption: '公众号排版 · 真实界面',
+          alt: '公众号排版界面',
+          go: '去排版'
+        },
+        code: {
+          prompt: '把桌面「报表」文件夹里 30 个 Excel 合并成一张总表，去掉重复的行。',
+          caption: 'Codex · 示意',
+          go: '看教程',
+          cmd: '把「报表」里的 30 个 Excel 合并成一张总表',
+          line1: '读取 30 个文件，共 4,812 行',
+          line2: '统一表头：日期 / 门店 / 品类 / 销售额',
+          line3: '去掉 26 行重复记录',
+          line4: '写入 汇总.xlsx',
+          done: '完成',
+          mock: '示意'
+        }
+      },
+      jobs: {
+        eyebrow: '它能替你干的活',
+        title: '你只管说要什么，剩下的它来。',
+        subtitle: '一个账号，画图、写作、编程都能用；同一份余额，用哪个扣哪个。',
+        say: '你说：',
+        draw: {
+          title: '画图',
+          say: '拍一张中国老街「今昔对照」的纪实照片，左边旧时代，右边新时代',
+          caption: '真实用户作品',
+          go: '去画一张',
+          more: '改图 · 抠图 · 扩图'
+        },
+        write: {
+          title: '写作',
+          say: '把这篇稿子排成公众号样式，配好封面，一键发到草稿箱',
+          caption: '公众号排版',
+          go: '公众号排版',
+          more: '测写作风格'
+        },
+        code: {
+          title: '编程',
+          say: '把桌面上 30 个 Excel 合并成一张总表',
+          cmd: '合并「报表」里的 Excel',
+          line1: '30 个文件，4,812 行',
+          line2: '统一表头，去重 26 行',
+          done: '已写入 汇总.xlsx',
+          go: '5 分钟接入 Codex',
+          more: '让 AI 整理文件和表格'
+        }
+      },
+      sheet: {
+        title: '注册就能生成这张图',
+        prompt: '你的提示词：',
+        promptHint: '注册完会带着这句话去画布出图。',
+        perkBonus: '送 ${amount} 体验额度',
+        perkImages: '，约 {images} 张图',
+        perkModels: 'GPT-6、gpt-image-2、Codex 一个账号全用上',
+        register: '免费注册',
+        wechat: '微信一键注册',
+        login: '已有账号？登录',
+        close: '关闭'
+      },
+      mobileBar: {
+        title: '注册送 ${amount}',
+        images: '先免费画约 {images} 张图',
+        generic: '画图、对话都能用',
+        cta: '免费注册'
+      },
+      finalCta: {
+        bonus: '注册送 ${amount} · 微信付款 · 用多少扣多少',
+        noBonus: '微信付款 · 用多少扣多少'
+      },
+      footer: {
+        editor: '公众号排版',
+        style: '测写作风格'
+      },
+      firstImage: {
+        title: '准备好了，去画第一张图',
+        account: '账号注册好了',
+        balance: '余额 ${amount} 已到账',
+        key: '已为你准备好能画图的密钥',
+        keyFailed: '密钥还没建好，到画布连接时可以再建一个',
+        prompt: '你的提示词：',
+        next: '到画布后点「开始生成」，再点「用 {site} 账号一键连接」，在弹出的小窗口里点「授权」，就能出图。',
+        go: '去画布出图 →',
+        auto: '{n} 秒后自动打开',
+        dashboard: '先去控制台看看'
+      }
+    },
     v2: {
       nav: {
         start: '开始创作',
@@ -234,7 +365,7 @@ export default {
         }
       },
       community: {
-        title: '社区作品',
+        title: '这些，都是用户在 HiveGPT 上做的',
         subtitle: '大家在 HiveGPT 无限画布上用 AI 创作的作品，喜欢的可以一键做同款',
         more: '去发现页看更多',
         siteLabel: '网页',
@@ -294,21 +425,21 @@ export default {
         title: '常见问题',
         subtitle: '先看看这些，也许就能找到答案',
         items: {
-          what: {
-            q: '{site} 是什么？',
-            a: '{site} 是一个 AI 服务聚合平台。你只需要一个账号和一个 API Key，就能在画布里画图、生成视频，也能接入 Codex、OpenCode 等编程工具。'
+          noCode: {
+            q: '不会编程能用吗？',
+            a: '能。画图、写公众号都在网页里点几下就行；只有接 Codex 这类编程工具时才要装软件，学习站有一步一步的教程。'
           },
-          models: {
-            q: '支持哪些模型和工具？',
-            a: '已开放的模型以「模型广场」和首页的支持列表为准，并会持续增加。编程工具支持 Codex CLI、OpenCode 等，控制台「使用密钥」里有一键复制的配置。'
+          bonus: {
+            q: '送的体验额度能用多少？',
+            a: '按实际用量扣，画一张图、问一次各扣多少都记在「使用记录」里；首页写的「够画约 N 张图」是按最近 30 天的实际扣费估的。用完再充，1 元起充。'
           },
-          billing: {
-            q: '如何收费？',
-            a: '按实际用量计费，用多少扣多少。你可以为每个 Key 设置额度上限，随时在控制台查看用量明细。'
+          vsChatgpt: {
+            q: '和直接买 ChatGPT 会员有什么区别？',
+            a: '不用海外信用卡，微信就能付；不用包月，用多少扣多少；画图、对话和 Codex 用的是同一份余额。'
           },
           canvas: {
             q: '画布和 API Key 是什么关系？',
-            a: '画布是一个免费的创作界面，真正的生图、生视频由你的 API Key 调用本站完成。从本站跳转到画布时网关地址会自动填好，只需粘贴 Key。'
+            a: '画布是免费的创作界面，出图用的是你账号里的 Key。在画布点「开始生成」时选「用 {site} 账号一键连接」，授权一下就连好了，不用手动复制 Key。'
           },
           privacy: {
             q: '我的数据安全吗？',
@@ -316,7 +447,7 @@ export default {
           },
           contact: {
             q: '遇到问题怎么办？',
-            a: '先查看使用文档，仍未解决可以通过页面上的联系方式找到我们。'
+            a: '先问右下角的智能客服，或者看学习站的教程；还没解决可以通过页面上的联系方式找到我们。'
           }
         }
       },
@@ -327,7 +458,7 @@ export default {
         secondary: '先去画布看看'
       },
       footer: {
-        desc: '一个 Key 畅用主流 AI：画图、视频、编程助手一站搞定。',
+        desc: '画图、写作、编程，用中文说一句，AI 帮你做完。',
         product: '产品',
         support: '支持',
         canvas: '无限画布',

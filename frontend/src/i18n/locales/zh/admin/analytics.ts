@@ -232,7 +232,7 @@ export default {
       },
       ctaClicks: {
         title: '首页按钮点击',
-        hint: '首页上去注册 / 登录的按钮各被点了多少次：nav-register 导航注册、hero-bonus 送额度提示、hero-key 获取 API Key、final-cta 页底立即开始、nav-login 登录。',
+        hint: '首页上去注册 / 登录的按钮各被点了多少次：nav-register 导航注册、hero-signup 首屏注册、hero-generate 首屏「生成」（访客会弹注册框）、sheet-register / sheet-login 注册框里的注册 / 登录、mobile-bar 手机底部注册条、final-cta 页底注册、nav-login 登录（10/12 改版前还有 hero-bonus、hero-key）。',
         col: '按钮'
       }
     },

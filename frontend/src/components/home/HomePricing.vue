@@ -83,7 +83,7 @@
 // pay-as-you-go. A plan used to its limits is worth (cap in USD ÷ recharge ratio) in yuan of top-ups.
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getPublicPricing, planDays, planPeriodCapUSD, type PublicPricing } from '@/api/pricing'
+import { formatTotalRequests, getPublicPricing, planDays, planPeriodCapUSD, type PublicPricing } from '@/api/pricing'
 import { track } from '@/utils/analytics'
 
 const props = defineProps<{ isAuthenticated: boolean; signupBonus?: number; contactInfo?: string }>()
@@ -131,14 +131,7 @@ const trust = computed(() => [
   }
 ])
 
-// Only worth saying once the number is big enough to reassure (members' requests, admins excluded).
-const TOTAL_REQUESTS_MIN = 10000
-const totalRequestsText = computed(() => {
-  const n = data.value?.total_requests || 0
-  if (n < TOTAL_REQUESTS_MIN) return ''
-  if (!String(locale.value).startsWith('zh')) return n.toLocaleString('en-US')
-  return n >= 100000 ? `${Math.floor(n / 10000)} 万` : `${(Math.floor(n / 1000) / 10).toFixed(1)} 万`
-})
+const totalRequestsText = computed(() => formatTotalRequests(data.value?.total_requests, String(locale.value)))
 
 function subscribeTarget(id: number): string {
   const target = `/purchase?tab=subscription&plan=${id}`

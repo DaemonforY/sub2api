@@ -34,6 +34,6 @@ import { useI18n } from 'vue-i18n'
 defineProps<{ siteName: string }>()
 const { t } = useI18n()
 
-const keys = ['what', 'models', 'billing', 'canvas', 'privacy', 'contact'] as const
-const open = ref<string>('what')
+const keys = ['noCode', 'bonus', 'vsChatgpt', 'canvas', 'privacy', 'contact'] as const
+const open = ref<string>('noCode')
 </script>

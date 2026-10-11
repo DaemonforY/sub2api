@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
@@ -252,6 +253,9 @@ func TestPublicPricing(t *testing.T) {
 	daily := 60.0
 	require.NoError(t, integrationEntClient.Group.UpdateOneID(sub.ID).SetDailyLimitUsd(daily).Exec(ctx))
 	payg := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-payg-" + sfx, Platform: service.PlatformOpenAI, RateMultiplier: 1.2}))
+	// First in sort order, so it is the starter key's group; images have their own 3× rate.
+	require.NoError(t, integrationEntClient.Group.UpdateOneID(payg.ID).SetSortOrder(-2_000_000_000).
+		SetImageRateIndependent(true).SetImageRateMultiplier(3).Exec(ctx))
 	hidden := rows.group(mustCreateGroup(t, integrationEntClient, &service.Group{Name: "pp-vip-" + sfx, Platform: service.PlatformOpenAI, IsExclusive: true, RateMultiplier: 0.5}))
 	orig := 299.0
 	_, err := integrationEntClient.SubscriptionPlan.Create().SetGroupID(sub.ID).SetName("月度-" + sfx).SetPrice(120).SetOriginalPrice(orig).
@@ -265,8 +269,18 @@ func TestPublicPricing(t *testing.T) {
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: member.ID, Key: "sk-pp-" + sfx})
 	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "pp-acc-" + sfx}))
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
-		SetRequestID("pp-" + sfx).SetModel("gpt-5.5").SetActualCost(0.2).SetCreatedAt(time.Now()).Save(ctx)
+		SetRequestID("pp-" + sfx).SetModel("gpt-5.5").SetActualCost(0.2).SetTotalCost(0.1).SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
+	// 20 images at $4 standard, and 49 more requests at $0.10 standard (50 with the one above).
+	_, err = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
+		SetRequestID("pp-img-" + sfx).SetModel("gpt-image-2").SetImageCount(20).SetTotalCost(4).SetActualCost(12).SetCreatedAt(time.Now()).Save(ctx)
+	require.NoError(t, err)
+	more := make([]*dbent.UsageLogCreate, 49)
+	for i := range more {
+		more[i] = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
+			SetRequestID(fmt.Sprintf("pp-%d-%s", i, sfx)).SetModel("gpt-5.5").SetTotalCost(0.1).SetActualCost(0.12).SetCreatedAt(time.Now())
+	}
+	require.NoError(t, integrationEntClient.UsageLog.CreateBulk(more...).Exec(ctx))
 
 	svc := service.NewPaymentConfigService(integrationEntClient, NewSettingRepository(integrationEntClient), nil)
 	out, err := svc.PublicPricing(ctx)
@@ -299,6 +313,8 @@ func TestPublicPricing(t *testing.T) {
 	require.False(t, names[sub.Name], "subscription groups are not pay-as-you-go")
 	require.GreaterOrEqual(t, out.AvgSampleRequests, 1)
 	require.Greater(t, out.AvgRequestCostUSD, 0.0)
+	require.InDelta(t, 0.6, out.StarterImageCostUSD, 1e-9, "$0.20 an image at the group's 3× image rate")
+	require.InDelta(t, 0.12, out.StarterRequestCostUSD, 1e-9, "$0.10 a request at the group's 1.2×")
 }
 
 func TestChannelLinkRepository(t *testing.T) {

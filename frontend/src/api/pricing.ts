@@ -37,6 +37,9 @@ export interface PublicPricing {
   avg_sample_requests: number
   /** Requests members have made in total (admins excluded). */
   total_requests?: number
+  /** Cost of one image / one other request on the starter key's group now (USD); 0 = not enough data. */
+  starter_image_cost_usd?: number
+  starter_request_cost_usd?: number
 }
 
 export async function getPublicPricing(): Promise<PublicPricing> {
@@ -71,4 +74,24 @@ export function planPeriodCapUSD(p: PricingPlan): number | null {
 export function planMonthlyPrice(p: PricingPlan): number {
   const days = planDays(p)
   return days > 0 ? (p.price / days) * 30 : p.price
+}
+
+// Only worth saying once the number is big enough to reassure (members' requests, admins excluded).
+const TOTAL_REQUESTS_MIN = 10000
+
+/** 「1.4 万」 in Chinese, 14,220 otherwise; '' below 10,000. */
+export function formatTotalRequests(n: number | undefined, locale: string): string {
+  if (!n || n < TOTAL_REQUESTS_MIN) return ''
+  if (!locale.startsWith('zh')) return n.toLocaleString('en-US')
+  return n >= 100000 ? `${Math.floor(n / 10000)} 万` : `${(Math.floor(n / 1000) / 10).toFixed(1)} 万`
+}
+
+/**
+ * What the sign-up credit buys on the starter key: whole images and requests (0 when unknown or
+ * under one). Requests above 20 are rounded down to tens so the page never promises too much.
+ */
+export function signupCreditEstimate(bonusUSD: number, p: Pick<PublicPricing, 'starter_image_cost_usd' | 'starter_request_cost_usd'> | null): { images: number; chats: number } {
+  const per = (cost?: number) => (bonusUSD > 0 && cost && cost > 0 ? Math.floor(bonusUSD / cost) : 0)
+  const chats = per(p?.starter_request_cost_usd)
+  return { images: per(p?.starter_image_cost_usd), chats: chats > 20 ? Math.floor(chats / 10) * 10 : chats }
 }
