@@ -22,6 +22,8 @@ export default {
     settingsTitle: 'Settings',
     hint: 'Each question makes a few model calls (one per lookup round), billed to the key below. Consider a quota limit on that key.',
     enabled: 'Enable the ops assistant',
+    capacityAlert: 'Capacity alert',
+    capacityAlertHint: "Every 30 minutes, check the upstream site's Codex accounts below: when a 7-day window is 80% used with 2+ days left, or on pace to run out before it resets, mail the alert recipients (once per account per window). Needs the upstream address and Admin API Key.",
     autoAlert: 'Analyse alerts automatically',
     autoAlertHint: 'When an alert fires, run an analysis (alerts fired together are analysed together, at most once per 10 minutes) and mail it to the alert recipients in Ops → Email notification. Runs are listed below.',
     keyHint: 'Only your own active keys in GPT groups are listed. Only the key ID is stored.',

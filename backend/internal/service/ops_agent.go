@@ -66,6 +66,7 @@ type OpsAgentSettings struct {
 	KeyName          string `json:"key_name,omitempty"`
 	KeyProblem       string `json:"key_problem,omitempty"`
 	AutoAlert        bool   `json:"auto_alert"`
+	CapacityAlert    bool   `json:"capacity_alert"` // 容量告警 (ops_capacity_alert.go), on by default
 	UpstreamName     string `json:"upstream_name"`
 	UpstreamURL      string `json:"upstream_url"`
 	UpstreamKey      string `json:"upstream_key,omitempty"`
@@ -92,6 +93,8 @@ type OpsAgentService struct {
 	client    *http.Client
 	upClient  *http.Client
 	now       func() time.Time
+	// capacityMail replaces the alert mail in tests.
+	capacityMail func(subject, body string)
 
 	autoMu      sync.Mutex
 	autoPending []opsAgentAlertItem
@@ -120,21 +123,23 @@ func ProvideOpsAgentService(learn *LearnService, settings SettingRepository, enc
 	}
 	svc := NewOpsAgentService(learn, store, encryptor, repo, runs, ops, email)
 	evaluator.SetAlertHook(svc.OnAlertFired)
+	svc.startCapacityAlerts()
 	return svc
 }
 
 func (s *OpsAgentService) load(ctx context.Context) (OpsAgentSettings, string) {
-	out := OpsAgentSettings{Model: opsAgentDefaultModel}
+	out := OpsAgentSettings{Model: opsAgentDefaultModel, CapacityAlert: true}
 	if s.settings == nil {
 		return out, ""
 	}
 	v, err := s.settings.GetMultiple(ctx, []string{settingOpsAgentEnabled, settingOpsAgentModel, settingOpsAgentKeyID, settingOpsAgentKeyOwner,
-		settingOpsAgentAutoAlert, settingOpsAgentUpName, settingOpsAgentUpURL, settingOpsAgentUpKey})
+		settingOpsAgentAutoAlert, settingOpsAgentCapacityAlert, settingOpsAgentUpName, settingOpsAgentUpURL, settingOpsAgentUpKey})
 	if err != nil {
 		return out, ""
 	}
 	out.Enabled = v[settingOpsAgentEnabled] == "true"
 	out.AutoAlert = v[settingOpsAgentAutoAlert] == "true"
+	out.CapacityAlert = v[settingOpsAgentCapacityAlert] != "false"
 	if m := strings.TrimSpace(v[settingOpsAgentModel]); m != "" {
 		out.Model = m
 	}
@@ -189,11 +194,12 @@ func (s *OpsAgentService) SaveSettings(ctx context.Context, adminID int64, in Op
 		return OpsAgentSettings{}, ErrOpsAgentSettings
 	}
 	values := map[string]string{
-		settingOpsAgentEnabled:   strconv.FormatBool(in.Enabled),
-		settingOpsAgentAutoAlert: strconv.FormatBool(in.AutoAlert),
-		settingOpsAgentModel:     model,
-		settingOpsAgentUpName:    name,
-		settingOpsAgentUpURL:     upURL,
+		settingOpsAgentEnabled:       strconv.FormatBool(in.Enabled),
+		settingOpsAgentAutoAlert:     strconv.FormatBool(in.AutoAlert),
+		settingOpsAgentCapacityAlert: strconv.FormatBool(in.CapacityAlert),
+		settingOpsAgentModel:         model,
+		settingOpsAgentUpName:        name,
+		settingOpsAgentUpURL:         upURL,
 	}
 	current, _ := s.load(ctx)
 	switch {

@@ -90,6 +90,13 @@
               <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t('admin.opsAgent.autoAlertHint') }}</span>
             </span>
           </label>
+          <label class="flex items-start gap-2 text-sm">
+            <input v-model="form.capacity_alert" type="checkbox" class="mt-0.5 h-4 w-4" data-testid="ops-agent-capacity" />
+            <span>
+              {{ t('admin.opsAgent.capacityAlert') }}
+              <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t('admin.opsAgent.capacityAlertHint') }}</span>
+            </span>
+          </label>
           <div class="grid gap-4 md:grid-cols-2">
             <label class="text-sm">
               <span class="input-label">{{ t('admin.assistant.key') }}</span>
@@ -225,6 +232,7 @@ const form = reactive<OpsAgentSettings>({
   model: 'gpt-5.6-terra',
   key_id: 0,
   auto_alert: false,
+  capacity_alert: true,
   upstream_name: '',
   upstream_url: '',
   upstream_key_set: false

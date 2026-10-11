@@ -15,6 +15,8 @@ export interface OpsAgentSettings {
   key_problem?: string
   /** 告警自动分析: fired alerts start a run and the answer is mailed to the alert recipients. */
   auto_alert: boolean
+  /** 容量告警: mail when the upstream Codex accounts' 7-day windows run out early (on by default). */
+  capacity_alert: boolean
   /** An upstream Sub2API site (one of the API-key accounts points at it), read with its Admin API Key. */
   upstream_name: string
   upstream_url: string
