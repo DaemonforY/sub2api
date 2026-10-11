@@ -14,6 +14,8 @@ export interface AffiliateAdminEntry {
   aff_code: string
   aff_code_custom: boolean
   aff_rebate_rate_percent?: number | null
+  /** Per-user rebate term in days (0 = forever); absent = global term. */
+  aff_rebate_duration_days?: number | null
   aff_count: number
 }
 
@@ -99,6 +101,10 @@ export interface UpdateAffiliateUserRequest {
   aff_rebate_rate_percent?: number | null
   /** Set true to explicitly clear the per-user rate (sets it to NULL). */
   clear_rebate_rate?: boolean
+  /** Per-user rebate term in days, 0 = forever. */
+  aff_rebate_duration_days?: number
+  /** Set true to clear the per-user term (back to the global one). */
+  clear_rebate_duration?: boolean
 }
 
 export interface BatchSetRateRequest {

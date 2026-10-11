@@ -459,3 +459,7 @@ func findSetCookieValue(cookies []*http.Cookie, name string) string {
 	}
 	return ""
 }
+
+func (r *oauthEmailAffiliateRepoStub) SetUserRebateDuration(context.Context, int64, *int) error {
+	return nil
+}

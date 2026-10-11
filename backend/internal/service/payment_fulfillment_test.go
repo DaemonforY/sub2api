@@ -1293,3 +1293,7 @@ func TestExecuteSubscriptionFulfillmentDoesNotDuplicateWorkAfterLegacySuccessAud
 
 var _ AffiliateRepository = (*paymentFulfillmentAffiliateRepoStub)(nil)
 var _ SettingRepository = (*paymentFulfillmentSettingRepoStub)(nil)
+
+func (r *paymentFulfillmentAffiliateRepoStub) SetUserRebateDuration(context.Context, int64, *int) error {
+	return nil
+}

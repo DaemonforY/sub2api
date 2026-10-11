@@ -56,6 +56,10 @@ type UpdateAffiliateUserRequest struct {
 	// ClearRebateRate explicitly clears the per-user rate (sets it to NULL).
 	// Used to disambiguate from "field not provided".
 	ClearRebateRate bool `json:"clear_rebate_rate"`
+	// AffRebateDurationDays: per-user rebate term in days (0 = forever);
+	// ClearRebateDuration sets it back to the global term.
+	AffRebateDurationDays *int `json:"aff_rebate_duration_days"`
+	ClearRebateDuration   bool `json:"clear_rebate_duration"`
 }
 
 func (h *AffiliateHandler) UpdateUserSettings(c *gin.Context) {
@@ -85,6 +89,17 @@ func (h *AffiliateHandler) UpdateUserSettings(c *gin.Context) {
 		}
 	} else if req.AffRebateRatePercent != nil {
 		if err := h.affiliateService.AdminSetUserRebateRate(c.Request.Context(), userID, req.AffRebateRatePercent); err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+	}
+
+	if req.ClearRebateDuration || req.AffRebateDurationDays != nil {
+		days := req.AffRebateDurationDays
+		if req.ClearRebateDuration {
+			days = nil
+		}
+		if err := h.affiliateService.AdminSetUserRebateDuration(c.Request.Context(), userID, days); err != nil {
 			response.ErrorFrom(c, err)
 			return
 		}
@@ -121,7 +136,7 @@ func (h *AffiliateHandler) SetUserInviter(c *gin.Context) {
 }
 
 // ClearUserSettings removes ALL of a user's custom affiliate settings — clears
-// the exclusive rebate rate AND regenerates the invite code as a new system
+// the exclusive rebate rate and term AND regenerates the invite code as a new system
 // random one. Conceptually this "removes the user from the custom list".
 //
 // Both writes happen in this handler; failure of one leaves the other applied,
@@ -134,6 +149,10 @@ func (h *AffiliateHandler) ClearUserSettings(c *gin.Context) {
 		return
 	}
 	if err := h.affiliateService.AdminSetUserRebateRate(c.Request.Context(), userID, nil); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if err := h.affiliateService.AdminSetUserRebateDuration(c.Request.Context(), userID, nil); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

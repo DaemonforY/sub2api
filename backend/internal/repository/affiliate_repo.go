@@ -840,6 +840,7 @@ SELECT user_id,
        aff_code,
        aff_code_custom,
        aff_rebate_rate_percent,
+       aff_rebate_duration_days,
        inviter_id,
        aff_count,
        aff_quota::double precision,
@@ -863,11 +864,13 @@ WHERE user_id = $1`, userID)
 	var out service.AffiliateSummary
 	var inviterID sql.NullInt64
 	var rebateRate sql.NullFloat64
+	var rebateDays sql.NullInt64
 	if err := rows.Scan(
 		&out.UserID,
 		&out.AffCode,
 		&out.AffCodeCustom,
 		&rebateRate,
+		&rebateDays,
 		&inviterID,
 		&out.AffCount,
 		&out.AffQuota,
@@ -885,6 +888,10 @@ WHERE user_id = $1`, userID)
 		v := rebateRate.Float64
 		out.AffRebateRatePercent = &v
 	}
+	if rebateDays.Valid {
+		v := int(rebateDays.Int64)
+		out.AffRebateDurationDays = &v
+	}
 	return &out, nil
 }
 
@@ -894,6 +901,7 @@ SELECT user_id,
        aff_code,
        aff_code_custom,
        aff_rebate_rate_percent,
+       aff_rebate_duration_days,
        inviter_id,
        aff_count,
        aff_quota::double precision,
@@ -919,11 +927,13 @@ LIMIT 1`, strings.ToUpper(strings.TrimSpace(code)))
 	var out service.AffiliateSummary
 	var inviterID sql.NullInt64
 	var rebateRate sql.NullFloat64
+	var rebateDays sql.NullInt64
 	if err := rows.Scan(
 		&out.UserID,
 		&out.AffCode,
 		&out.AffCodeCustom,
 		&rebateRate,
+		&rebateDays,
 		&inviterID,
 		&out.AffCount,
 		&out.AffQuota,
@@ -940,6 +950,10 @@ LIMIT 1`, strings.ToUpper(strings.TrimSpace(code)))
 	if rebateRate.Valid {
 		v := rebateRate.Float64
 		out.AffRebateRatePercent = &v
+	}
+	if rebateDays.Valid {
+		v := int(rebateDays.Int64)
+		out.AffRebateDurationDays = &v
 	}
 	return &out, nil
 }
@@ -1163,6 +1177,34 @@ WHERE user_id = ANY($2)`, nullableArg(ratePercent), pq.Array(userIDs))
 	})
 }
 
+// SetUserRebateDuration 设置或清除用户专属返利有效期（天）。days==nil 表示清除（沿用全局）。
+func (r *affiliateRepository) SetUserRebateDuration(ctx context.Context, userID int64, days *int) error {
+	if userID <= 0 {
+		return service.ErrUserNotFound
+	}
+	var arg any
+	if days != nil {
+		arg = *days
+	}
+	return r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
+		if _, err := ensureUserAffiliateWithClient(txCtx, txClient, userID); err != nil {
+			return err
+		}
+		res, err := txClient.ExecContext(txCtx, `
+UPDATE user_affiliates
+SET aff_rebate_duration_days = $1,
+    updated_at = NOW()
+WHERE user_id = $2`, arg, userID)
+		if err != nil {
+			return fmt.Errorf("set aff_rebate_duration_days: %w", err)
+		}
+		if affected, _ := res.RowsAffected(); affected == 0 {
+			return service.ErrUserNotFound
+		}
+		return nil
+	})
+}
+
 // nullableArg unwraps a *float64 into an interface{} suitable for SQL parameter
 // binding: nil pointer → SQL NULL, non-nil → the float value.
 func nullableArg(v *float64) any {
@@ -1199,7 +1241,7 @@ func (r *affiliateRepository) ListUsersWithCustomSettings(ctx context.Context, f
 	const baseFrom = `
 FROM user_affiliates ua
 JOIN users u ON u.id = ua.user_id
-WHERE (ua.aff_code_custom = true OR ua.aff_rebate_rate_percent IS NOT NULL)
+WHERE (ua.aff_code_custom = true OR ua.aff_rebate_rate_percent IS NOT NULL OR ua.aff_rebate_duration_days IS NOT NULL)
   AND (u.email ILIKE $1 OR u.username ILIKE $1)`
 
 	client := clientFromContext(ctx, r.client)
@@ -1216,6 +1258,7 @@ SELECT ua.user_id,
        ua.aff_code,
        ua.aff_code_custom,
        ua.aff_rebate_rate_percent,
+       ua.aff_rebate_duration_days,
        ua.aff_count` + baseFrom + `
 ORDER BY ua.updated_at DESC
 LIMIT $2 OFFSET $3`
@@ -1230,9 +1273,14 @@ LIMIT $2 OFFSET $3`
 	for rows.Next() {
 		var e service.AffiliateAdminEntry
 		var rebate sql.NullFloat64
+		var rebateDays sql.NullInt64
 		if err := rows.Scan(&e.UserID, &e.Email, &e.Username, &e.AffCode,
-			&e.AffCodeCustom, &rebate, &e.AffCount); err != nil {
+			&e.AffCodeCustom, &rebate, &rebateDays, &e.AffCount); err != nil {
 			return nil, 0, err
+		}
+		if rebateDays.Valid {
+			v := int(rebateDays.Int64)
+			e.AffRebateDurationDays = &v
 		}
 		if rebate.Valid {
 			v := rebate.Float64

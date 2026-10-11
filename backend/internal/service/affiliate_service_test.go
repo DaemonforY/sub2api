@@ -46,6 +46,20 @@ func TestResolveRebateRatePercent_PerUserOverride(t *testing.T) {
 		svc.resolveRebateRatePercent(context.Background(), &AffiliateSummary{AffRebateRatePercent: &tooLow}), 1e-9)
 }
 
+// TestRebateDurationDays_PerInviterOverride: a partner's own term wins over the global one (here
+// the nil-settings default of 0 = forever), 0 means forever, and a negative value is treated as 0.
+func TestRebateDurationDays_PerInviterOverride(t *testing.T) {
+	t.Parallel()
+	svc := &AffiliateService{}
+	ctx := context.Background()
+	require.Equal(t, 0, svc.rebateDurationDays(ctx, &AffiliateSummary{}))
+	days := 180
+	require.Equal(t, 180, svc.rebateDurationDays(ctx, &AffiliateSummary{AffRebateDurationDays: &days}))
+	neg := -3
+	require.Equal(t, 0, svc.rebateDurationDays(ctx, &AffiliateSummary{AffRebateDurationDays: &neg}))
+	require.Error(t, svc.AdminSetUserRebateDuration(ctx, 1, &days), "no repo is reported, not a panic")
+}
+
 // TestIsEnabled_NilSettingServiceReturnsDefault verifies that IsEnabled
 // safely handles a nil settingService dependency by returning the default
 // (off). This protects callers from nil-pointer crashes in misconfigured

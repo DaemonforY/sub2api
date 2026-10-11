@@ -7456,17 +7456,18 @@
                         <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{{ t('admin.settings.features.affiliate.customUsers.col.username') }}</th>
                         <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{{ t('admin.settings.features.affiliate.customUsers.col.code') }}</th>
                         <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{{ t('admin.settings.features.affiliate.customUsers.col.rate') }}</th>
+                        <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{{ t('admin.settings.features.affiliate.customUsers.col.duration') }}</th>
                         <th class="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">{{ t('admin.settings.features.affiliate.customUsers.col.actions') }}</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900">
                       <tr v-if="affiliateState.loading">
-                        <td colspan="6" class="px-3 py-6 text-center text-sm text-gray-500">
+                        <td colspan="7" class="px-3 py-6 text-center text-sm text-gray-500">
                           {{ t('common.loading') }}
                         </td>
                       </tr>
                       <tr v-else-if="affiliateState.entries.length === 0">
-                        <td colspan="6" class="px-3 py-6 text-center text-sm text-gray-500">
+                        <td colspan="7" class="px-3 py-6 text-center text-sm text-gray-500">
                           {{ t('admin.settings.features.affiliate.customUsers.empty') }}
                         </td>
                       </tr>
@@ -7489,6 +7490,11 @@
                         </td>
                         <td class="px-3 py-2 text-sm">
                           <span v-if="entry.aff_rebate_rate_percent != null">{{ entry.aff_rebate_rate_percent }}%</span>
+                          <span v-else class="text-gray-400">{{ t('admin.settings.features.affiliate.customUsers.useGlobal') }}</span>
+                        </td>
+                        <td class="px-3 py-2 text-sm" data-testid="affiliate-duration-cell">
+                          <span v-if="entry.aff_rebate_duration_days === 0">{{ t('admin.settings.features.affiliate.modal.durationForever') }}</span>
+                          <span v-else-if="entry.aff_rebate_duration_days != null">{{ t('admin.settings.features.affiliate.modal.durationDays', { days: entry.aff_rebate_duration_days }) }}</span>
                           <span v-else class="text-gray-400">{{ t('admin.settings.features.affiliate.customUsers.useGlobal') }}</span>
                         </td>
                         <td class="px-3 py-2 text-sm">
@@ -7635,6 +7641,22 @@
                 </div>
                 <p class="mt-1 text-xs text-gray-400">
                   {{ t('admin.settings.features.affiliate.modal.rateHint') }}
+                </p>
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.affiliate.modal.durationLabel') }}</label>
+                <input
+                  v-model="affiliateModal.duration"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="3650"
+                  class="input"
+                  data-testid="affiliate-duration-input"
+                  :placeholder="t('admin.settings.features.affiliate.modal.durationPlaceholder')"
+                />
+                <p class="mt-1 text-xs text-gray-400">
+                  {{ t('admin.settings.features.affiliate.modal.durationHint') }}
                 </p>
               </div>
             </div>
@@ -12636,6 +12658,7 @@ interface AffiliateModalState {
   editingEntry: AffiliateAdminEntry | null;
   code: string;
   rate: string | number;
+  duration: string | number;
   searchTimer: number | null;
 }
 
@@ -12649,6 +12672,7 @@ const affiliateModal = reactive<AffiliateModalState>({
   editingEntry: null,
   code: "",
   rate: "",
+  duration: "",
   searchTimer: null,
 });
 
@@ -12794,6 +12818,21 @@ function openAffiliateModal(entry: AffiliateAdminEntry | null) {
   affiliateModal.code = entry?.aff_code_custom ? entry.aff_code : "";
   affiliateModal.rate =
     entry?.aff_rebate_rate_percent != null ? String(entry.aff_rebate_rate_percent) : "";
+  affiliateModal.duration =
+    entry?.aff_rebate_duration_days != null ? String(entry.aff_rebate_duration_days) : "";
+}
+
+// parseRebateDuration: "" → null (clear / leave), whole days 0–3650 → number, anything else →
+// undefined after a toast.
+function parseRebateDuration(raw: string | number): number | null | undefined {
+  const s = String(raw ?? "").trim();
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isInteger(n) || n < 0 || n > 3650) {
+    appStore.showError(t("admin.settings.features.affiliate.modal.errorBadDuration"));
+    return undefined;
+  }
+  return n;
 }
 
 function closeAffiliateModal() {
@@ -12843,12 +12882,14 @@ const affiliateModalCanSubmit = computed(() => {
   }
   const codeFilled = affiliateModal.code.trim() !== "";
   const rateFilled = String(affiliateModal.rate ?? "").trim() !== "";
-  if (codeFilled || rateFilled) return true;
+  const durationFilled = String(affiliateModal.duration ?? "").trim() !== "";
+  if (codeFilled || rateFilled || durationFilled) return true;
   // Edit mode + empty rate input is a meaningful "clear" only if the user
   // currently has an exclusive rate to clear.
   return (
     affiliateModal.mode === "edit" &&
-    affiliateModal.editingEntry?.aff_rebate_rate_percent != null
+    (affiliateModal.editingEntry?.aff_rebate_rate_percent != null ||
+      affiliateModal.editingEntry?.aff_rebate_duration_days != null)
   );
 });
 
@@ -12878,6 +12919,16 @@ async function submitAffiliateModal() {
     }
   } else {
     payload.aff_rebate_rate_percent = rateInput;
+  }
+
+  const durationInput = parseRebateDuration(affiliateModal.duration);
+  if (durationInput === undefined) return; // toast already shown
+  if (durationInput === null) {
+    if (affiliateModal.mode === "edit" && affiliateModal.editingEntry?.aff_rebate_duration_days != null) {
+      payload.clear_rebate_duration = true;
+    }
+  } else {
+    payload.aff_rebate_duration_days = durationInput;
   }
 
   affiliateModal.saving = true;

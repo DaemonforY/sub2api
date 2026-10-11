@@ -58,17 +58,19 @@ func isValidAffiliateCodeFormat(code string) bool {
 }
 
 type AffiliateSummary struct {
-	UserID               int64     `json:"user_id"`
-	AffCode              string    `json:"aff_code"`
-	AffCodeCustom        bool      `json:"aff_code_custom"`
-	AffRebateRatePercent *float64  `json:"aff_rebate_rate_percent,omitempty"`
-	InviterID            *int64    `json:"inviter_id,omitempty"`
-	AffCount             int       `json:"aff_count"`
-	AffQuota             float64   `json:"aff_quota"`
-	AffFrozenQuota       float64   `json:"aff_frozen_quota"`
-	AffHistoryQuota      float64   `json:"aff_history_quota"`
-	CreatedAt            time.Time `json:"created_at"`
-	UpdatedAt            time.Time `json:"updated_at"`
+	UserID               int64    `json:"user_id"`
+	AffCode              string   `json:"aff_code"`
+	AffCodeCustom        bool     `json:"aff_code_custom"`
+	AffRebateRatePercent *float64 `json:"aff_rebate_rate_percent,omitempty"`
+	// AffRebateDurationDays overrides affiliate_rebate_duration_days for this inviter (0 = forever).
+	AffRebateDurationDays *int      `json:"aff_rebate_duration_days,omitempty"`
+	InviterID             *int64    `json:"inviter_id,omitempty"`
+	AffCount              int       `json:"aff_count"`
+	AffQuota              float64   `json:"aff_quota"`
+	AffFrozenQuota        float64   `json:"aff_frozen_quota"`
+	AffHistoryQuota       float64   `json:"aff_history_quota"`
+	CreatedAt             time.Time `json:"created_at"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 type AffiliateInvitee struct {
@@ -114,6 +116,7 @@ type AffiliateRepository interface {
 	ResetUserAffCode(ctx context.Context, userID int64) (string, error)
 	SetUserRebateRate(ctx context.Context, userID int64, ratePercent *float64) error
 	BatchSetUserRebateRate(ctx context.Context, userIDs []int64, ratePercent *float64) error
+	SetUserRebateDuration(ctx context.Context, userID int64, days *int) error
 	ListUsersWithCustomSettings(ctx context.Context, filter AffiliateAdminFilter) ([]AffiliateAdminEntry, int64, error)
 	ListAffiliateInviteRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateInviteRecord, int64, error)
 	ListAffiliateRebateRecords(ctx context.Context, filter AffiliateRecordFilter) ([]AffiliateRebateRecord, int64, error)
@@ -130,13 +133,14 @@ type AffiliateAdminFilter struct {
 
 // AffiliateAdminEntry 专属用户列表条目
 type AffiliateAdminEntry struct {
-	UserID               int64    `json:"user_id"`
-	Email                string   `json:"email"`
-	Username             string   `json:"username"`
-	AffCode              string   `json:"aff_code"`
-	AffCodeCustom        bool     `json:"aff_code_custom"`
-	AffRebateRatePercent *float64 `json:"aff_rebate_rate_percent,omitempty"`
-	AffCount             int      `json:"aff_count"`
+	UserID                int64    `json:"user_id"`
+	Email                 string   `json:"email"`
+	Username              string   `json:"username"`
+	AffCode               string   `json:"aff_code"`
+	AffCodeCustom         bool     `json:"aff_code_custom"`
+	AffRebateRatePercent  *float64 `json:"aff_rebate_rate_percent,omitempty"`
+	AffRebateDurationDays *int     `json:"aff_rebate_duration_days,omitempty"`
+	AffCount              int      `json:"aff_count"`
 }
 
 type AffiliateRecordFilter struct {
@@ -377,12 +381,10 @@ func (s *AffiliateService) accrueInviteRebate(ctx context.Context, inviteeUserID
 	if err != nil {
 		return 0, err
 	}
-	// 有效期检查：超过返利有效期后不再产生返利
-	if s.settingService != nil {
-		if durationDays := s.settingService.GetAffiliateRebateDurationDays(ctx); durationDays > 0 {
-			if time.Now().After(inviteeSummary.CreatedAt.AddDate(0, 0, durationDays)) {
-				return 0, nil
-			}
+	// 有效期检查：超过返利有效期后不再产生返利（邀请人专属有效期优先，0 表示永久）
+	if durationDays := s.rebateDurationDays(ctx, inviterSummary); durationDays > 0 {
+		if time.Now().After(inviteeSummary.CreatedAt.AddDate(0, 0, durationDays)) {
+			return 0, nil
 		}
 	}
 
@@ -424,6 +426,18 @@ func (s *AffiliateService) accrueInviteRebate(ctx context.Context, inviteeUserID
 		return 0, nil
 	}
 	return rebate, nil
+}
+
+// rebateDurationDays is how many days after sign-up an invitee's orders still earn the inviter a
+// rebate: the inviter's own term when set, else the global setting (0 = forever).
+func (s *AffiliateService) rebateDurationDays(ctx context.Context, inviter *AffiliateSummary) int {
+	if inviter != nil && inviter.AffRebateDurationDays != nil {
+		return max(*inviter.AffRebateDurationDays, 0)
+	}
+	if s.settingService == nil {
+		return 0
+	}
+	return s.settingService.GetAffiliateRebateDurationDays(ctx)
 }
 
 // resolveRebateRatePercent returns the inviter's exclusive rate when set,
@@ -577,6 +591,22 @@ func (s *AffiliateService) AdminSetUserRebateRate(ctx context.Context, userID in
 		return err
 	}
 	return s.repo.SetUserRebateRate(ctx, userID, ratePercent)
+}
+
+// MaxAffiliateRebateDurationDays caps a per-inviter rebate term (0 = forever is allowed).
+const MaxAffiliateRebateDurationDays = 3650
+
+var errAffiliateBadDuration = infraerrors.BadRequest("AFFILIATE_BAD_DURATION", "返利有效期要在 0–3650 天之间，0 表示永久（Rebate term must be 0–3650 days; 0 = forever）")
+
+// AdminSetUserRebateDuration 设置/清除用户专属返利有效期（天，0 永久）。days==nil 表示清除（沿用全局）。
+func (s *AffiliateService) AdminSetUserRebateDuration(ctx context.Context, userID int64, days *int) error {
+	if s == nil || s.repo == nil {
+		return infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "affiliate service unavailable")
+	}
+	if days != nil && (*days < 0 || *days > MaxAffiliateRebateDurationDays) {
+		return errAffiliateBadDuration
+	}
+	return s.repo.SetUserRebateDuration(ctx, userID, days)
 }
 
 // AdminBatchSetUserRebateRate 批量设置/清除用户专属返利比例。
