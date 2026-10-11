@@ -43,7 +43,7 @@ OpenAI 的帮助文档明确写了：ChatGPT 会员和 API 是分开计费的，
 | `gpt-6.1-sol` | $2 / $0.1 / $10 |
 | `gpt-6-luna` | $0.1 / $0.01 / $0.5 |
 
-HiveGPT 按模型的官方美元标价计费，充值 ¥1 = $1 额度；你的 Key 能用哪些模型、各自多少钱，以 [模型广场](https://hivegpt.cn/model-plaza) 为准。
+HiveGPT 充值 ¥1 = $1 额度，按量分组按模型官方美元标价的 0.6 倍扣费；你的 Key 能用哪些模型、各自多少钱，以 [模型广场](https://hivegpt.cn/model-plaza) 为准。
 
 ## 算一算：每月大概花多少
 

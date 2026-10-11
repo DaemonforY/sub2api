@@ -61,7 +61,7 @@ curl https://你的服务地址/v1/chat/completions \
 
 对照上面的检查项，HiveGPT 的做法是：
 
-- 按模型的官方美元标价计费，充值 ¥1 = $1 额度，各模型单价在 [模型广场](https://hivegpt.cn/model-plaza) 公开。
+- 充值 ¥1 = $1 额度；按量分组按模型官方美元标价的 0.6 倍扣费（订阅按套餐额度），各模型单价在 [模型广场](https://hivegpt.cn/model-plaza) 公开。
 - [使用记录](https://hivegpt.cn/usage) 里能查到每次请求的模型、token 数和扣费。
 - 限流、超时、上游报错的请求不扣费，报错会写明原因和处理方法，见 [报错速查](/connect/errors/)。
 - 支持 Chat Completions、Responses、流式和画图接口，各工具的接法见 [接入教程](/connect/)。
