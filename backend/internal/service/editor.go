@@ -36,7 +36,7 @@ const (
 	editorProxyImageMax    = 10 << 20
 	editorDraftContentMax  = 2 << 20
 	editorAITextMax        = 20000
-	editorAIInstructionMax = 500
+	editorAIInstructionMax = 2000 // room for a style prompt from /style
 	editorAIPromptMax      = 2000
 	editorAIMaxTokens      = 16000
 	editorImageModel       = "gpt-image-2"
@@ -576,7 +576,7 @@ func (s *EditorService) AIText(ctx context.Context, userID int64, in EditorAITex
 	if in.Action == "custom" {
 		ins := strings.TrimSpace(in.Instruction)
 		if ins == "" || utf8.RuneCountInString(ins) > editorAIInstructionMax {
-			return editorErr("EDITOR_AI_INSTRUCTION", "请写下修改要求，最多 500 字（Instruction 1–500 characters）")
+			return editorErr("EDITOR_AI_INSTRUCTION", "请写下修改要求，最多 2000 字（Instruction 1–2000 characters）")
 		}
 		task += ins
 	}

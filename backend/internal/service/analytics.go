@@ -58,6 +58,9 @@ var AnalyticsEventNames = map[string]bool{
 	"editor_copy":        true, // copied the formatted article
 	"editor_draft_push":  true, // pushed to the WeChat draft box
 	"editor_ai_use":      true,
+	"style_fetch":        true, // 测写作风格: read an article from its link
+	"style_analyze":      true, // … ran the AI portrait (props.articles)
+	"style_prompt_copy":  true, // … copied the style prompt
 	"guide_view":         true, // dashboard "get started" card shown
 	"guide_first_call":   true, // … and saw the first API call arrive
 	"guide_dismiss":      true,

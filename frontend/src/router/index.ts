@@ -268,6 +268,16 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: 'Contest', titleKey: 'contests.title' }
   },
   {
+    path: '/style',
+    name: 'WritingStyle',
+    component: () => import('@/views/StyleView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '测测你的写作风格',
+      titleKey: 'style.title'
+    }
+  },
+  {
     path: '/model-plaza',
     name: 'ModelPlaza',
     component: () => import('@/views/ModelPlazaView.vue'),

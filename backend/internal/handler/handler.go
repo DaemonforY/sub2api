@@ -91,6 +91,7 @@ type Handlers struct {
 	Course           *CourseHandler
 	Learn            *LearnHandler
 	Editor           *EditorHandler
+	Style            *StyleHandler
 	Assistant        *AssistantHandler
 	OpsAgent         *OpsAgentHandler
 	GeoMonitor       *GeoMonitorHandler

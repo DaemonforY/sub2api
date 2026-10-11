@@ -47,3 +47,25 @@ func RegisterEditorRoutes(
 		a.GET("/:id/images/:n", h.Editor.ArticleImage)
 	}
 }
+
+// RegisterStyleRoutes registers 测测你的写作风格 (/style): reading a 公众号 article's text is open to
+// visitors (limited per IP); the quote and the AI analysis need login and bill the reader's key.
+func RegisterStyleRoutes(
+	v1 *gin.RouterGroup,
+	h *handler.Handlers,
+	jwtAuth middleware.JWTAuthMiddleware,
+	settingService *service.SettingService,
+	panelRateLimiter *middleware.PanelRateLimiter,
+) {
+	if h.Style == nil {
+		return
+	}
+	g := v1.Group("/style")
+	g.POST("/fetch", panelRateLimiter.PublicIP(), h.Style.Fetch)
+	auth := g.Group("")
+	auth.Use(gin.HandlerFunc(jwtAuth))
+	auth.Use(middleware.BackendModeUserGuard(settingService))
+	auth.Use(panelRateLimiter.Global())
+	auth.GET("/quote", h.Style.Quote)
+	auth.POST("/analyze", panelRateLimiter.Heavy(), h.Style.Analyze)
+}

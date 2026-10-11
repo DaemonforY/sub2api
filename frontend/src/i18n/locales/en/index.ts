@@ -20,6 +20,7 @@ import accountDeletion from './accountDeletion'
 import promoMascot from './promoMascot'
 import shareCard from './shareCard'
 import siteBuilder from './siteBuilder'
+import style from './style'
 
 export default {
   ...landing,
@@ -44,4 +45,5 @@ export default {
   ...promoMascot,
   ...shareCard,
   ...siteBuilder,
+  ...style,
 }

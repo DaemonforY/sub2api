@@ -166,6 +166,7 @@ func mainNavLinks(ctx context.Context, content SEOContent) []seoLink {
 		{"/courses", "AI 课程"},
 		{"/contests", "创作比赛"},
 		{"/editor/", "公众号排版"},
+		{"/style", "测写作风格"},
 		{"/register", "注册"},
 		{"/login", "登录"},
 	}...)
@@ -178,6 +179,7 @@ var mainStaticPages = []struct {
 	{"/", "", ""}, // filled from the site name
 	{"/pricing", "价格与套餐：按量计费与订阅对比", "看清 GPT、Codex、画图等模型怎么计费：按实际 token 用量扣费或购买订阅套餐，在售套餐的额度对比和按用量估算，充值与支付方式说明。"},
 	{"/model-plaza", "模型广场：可用 AI 模型与价格", "平台可调用的 AI 模型一览：模型能力、所属分组、输入输出 token 单价，以及如何用 API Key 调用。"},
+	{"/style", "测测你的写作风格：看清你是怎么写的", "贴 1–5 篇你写的公众号文章，免费看句长、口头禅和 AI 味；AI 写出你的写作风格画像，再给你一段让任何 AI 都写得像你的风格提示词。"},
 	{"/courses", "AI 课程：编程、画图与工作流实战", "精选 AI 实战课程：AI 编程工具、AI 画图、自动化工作流等，试看后购买，讲师答疑。"},
 	{"/contests", "AI 创作比赛", "参加 AI 画图、视频与编程创作比赛，投稿作品、查看榜单和获奖结果。"},
 	{"/register", "注册账号", "注册账号，创建 API Key，即可调用 GPT、Codex 等 AI 模型并接入编程工具。"},
