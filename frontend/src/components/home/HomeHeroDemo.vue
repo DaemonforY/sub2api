@@ -47,13 +47,13 @@
 
     <div :class="['demo-result relative mt-2.5 h-[300px] overflow-hidden rounded-2xl bg-gray-900 sm:h-[400px]', { pending }]">
       <img
-        src="/home/cat.jpg"
+        src="/home-media/cat.jpg"
         :alt="t('home.v3.demo.draw.alt')"
         :class="['demo-layer object-cover object-[30%_45%]', { shown: shown === 'draw' }]"
         fetchpriority="high"
       />
       <img
-        src="/home/editor.jpg"
+        src="/home-media/editor.jpg"
         :alt="t('home.v3.demo.write.alt')"
         :class="['demo-layer object-cover object-top', { shown: shown === 'write' }]"
         loading="lazy"

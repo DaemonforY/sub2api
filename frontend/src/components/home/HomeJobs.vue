@@ -42,6 +42,8 @@ import { useI18n } from 'vue-i18n'
 import { canvasUrl } from '@/constants/crossSites'
 
 /** 它能替你干的活: each card is 「你说：…」 and what came back, with the way in. */
+// The pictures live in public/home-media: a public folder named after an SPA route (public/home)
+// makes the server answer that route (/home) with a redirect to the folder.
 const { t } = useI18n()
 const external = { target: '_blank', rel: 'noopener noreferrer' }
 const utm = 'utm_source=home&utm_medium=jobs'
@@ -50,13 +52,13 @@ const jobs = [
   {
     key: 'draw',
     model: 'gpt-image-2',
-    image: '/home/jinxi.jpg',
+    image: '/home-media/jinxi.jpg',
     position: 'object-center',
     go: canvasUrl({ medium: 'home-jobs', baseUrl: window.location.origin, path: '/image' }),
     more: canvasUrl({ medium: 'home-jobs', path: '/tools' }),
     external: true
   },
-  { key: 'write', model: 'GPT-6', image: '/home/editor.jpg', position: 'object-[60%_0]', go: `/editor/?${utm}`, more: `/style?${utm}`, external: false },
+  { key: 'write', model: 'GPT-6', image: '/home-media/editor.jpg', position: 'object-[60%_0]', go: `/editor/?${utm}`, more: `/style?${utm}`, external: false },
   { key: 'code', model: 'Codex', image: '', position: '', go: `/learn/codex/hivegpt?${utm}`, more: `/learn/scenes/automation?${utm}`, external: false }
 ] as const
 </script>
