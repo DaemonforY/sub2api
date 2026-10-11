@@ -91,9 +91,12 @@ func (h *AnalyticsHandler) ChannelRedirect(c *gin.Context) {
 	c.Redirect(http.StatusFound, h.links.Resolve(c.Request.Context(), c.Param("code"), c.GetHeader("User-Agent")))
 }
 
-// AdminChannelLinks GET /api/v1/admin/analytics/channel-links
+// AdminChannelLinks GET /api/v1/admin/analytics/channel-links?days=30 (0 = all time) — each link
+// with its funnel, revenue, usage cost, rebates and profit; cost from the 套餐毛利 rate.
 func (h *AnalyticsHandler) AdminChannelLinks(c *gin.Context) {
-	out, err := h.links.List(c.Request.Context())
+	days, _ := strconv.Atoi(c.Query("days"))
+	ctx := c.Request.Context()
+	out, err := h.links.Report(ctx, days, h.margin.CostPerUSD(ctx))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

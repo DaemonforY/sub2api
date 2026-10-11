@@ -412,6 +412,7 @@
 </template>
 
 <script setup lang="ts">
+import { resolvePromoCode } from '@/utils/promoReferral'
 import { track } from '@/utils/analytics'
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -705,7 +706,7 @@ onMounted(async () => {
 
     // Read promo code from URL parameter only if promo code is enabled
     if (promoCodeEnabled.value) {
-      const promoParam = route.query.promo as string
+      const promoParam = resolvePromoCode(route.query.promo)
       if (promoParam) {
         formData.promo_code = promoParam
         // Validate the promo code from URL

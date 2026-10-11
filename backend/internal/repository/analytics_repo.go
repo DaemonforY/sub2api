@@ -113,7 +113,7 @@ su AS (
 // Orders that brought in money (not paid from balance), by members.
 const sqlAnalyticsOrders = `
 paid AS (
-  SELECT o.user_id, o.amount, (COALESCE(o.paid_at, o.completed_at, o.created_at) AT TIME ZONE 'Asia/Shanghai')::date AS d
+  SELECT o.user_id, ` + sqlOrderCNY + ` AS amount, (COALESCE(o.paid_at, o.completed_at, o.created_at) AT TIME ZONE 'Asia/Shanghai')::date AS d
   FROM payment_orders o JOIN users u ON u.id = o.user_id AND u.role <> 'admin'
   WHERE o.status = 'COMPLETED' AND o.payment_type <> 'balance' AND COALESCE(o.paid_at, o.completed_at, o.created_at) >= $1
 )`

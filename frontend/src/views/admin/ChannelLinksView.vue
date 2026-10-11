@@ -7,9 +7,17 @@
           <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.channelLinks.statsNote') }}</p>
         </div>
         <div class="flex items-center gap-2">
+          <select v-model.number="days" class="input w-auto py-1 text-sm" data-testid="channel-links-period" @change="load">
+            <option v-for="d in PERIODS" :key="d" :value="d">{{ t(`admin.channelLinks.period.${d ? `d${d}` : 'all'}`) }}</option>
+          </select>
           <router-link to="/admin/analytics" class="btn btn-secondary btn-sm">{{ t('admin.channelLinks.backToAnalytics') }}</router-link>
           <button type="button" class="btn btn-primary btn-sm" data-testid="channel-link-new" @click="startCreate">{{ t('admin.channelLinks.create') }}</button>
         </div>
+      </div>
+
+      <div v-if="loaded && !costPerUSD" class="card flex flex-wrap items-center justify-between gap-2 border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300" data-testid="channel-links-cost-missing">
+        <span>{{ t('admin.channelLinks.costMissing') }}</span>
+        <router-link to="/admin/margin" class="btn btn-secondary btn-sm">{{ t('admin.channelLinks.goMargin') }}</router-link>
       </div>
 
       <!-- Create / edit -->
@@ -55,6 +63,11 @@
             <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelLinks.field.affHint') }}</p>
           </div>
           <div>
+            <label class="input-label" for="cl-promo">{{ t('admin.channelLinks.field.promo') }}</label>
+            <input id="cl-promo" v-model="form.promo_code" class="input font-mono uppercase" maxlength="32" :placeholder="t('admin.channelLinks.field.promoPlaceholder')" />
+            <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelLinks.field.promoHint') }}</p>
+          </div>
+          <div>
             <label class="input-label" for="cl-code">{{ t('admin.channelLinks.field.code') }}</label>
             <input
               id="cl-code"
@@ -79,7 +92,8 @@
 
       <div class="card p-4">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[960px] text-sm" data-testid="channel-links-table">
+          <p v-if="costPerUSD" class="mb-2 text-xs text-gray-500 dark:text-dark-400">{{ t('admin.channelLinks.costNote', { rate: costPerUSD }) }}</p>
+          <table class="w-full min-w-[1180px] text-sm" data-testid="channel-links-table">
             <thead>
               <tr class="whitespace-nowrap text-left text-xs text-gray-500">
                 <th class="py-1">{{ t('admin.channelLinks.col.name') }}</th>
@@ -89,7 +103,11 @@
                 <th class="px-2 text-right">{{ t('admin.analytics.col.signups') }}</th>
                 <th class="px-2 text-right">{{ t('admin.channelLinks.col.activated') }}</th>
                 <th class="px-2 text-right">{{ t('admin.analytics.col.paidUsers') }}</th>
-                <th class="px-2 text-right">{{ t('admin.analytics.col.revenue') }}</th>
+                <th class="px-2 text-right">{{ t('admin.channelLinks.col.revenue') }}</th>
+                <th class="px-2 text-right">{{ t('admin.channelLinks.col.usage') }}</th>
+                <th v-if="costPerUSD" class="px-2 text-right">{{ t('admin.channelLinks.col.cost') }}</th>
+                <th class="px-2 text-right">{{ t('admin.channelLinks.col.rebates') }}</th>
+                <th v-if="costPerUSD" class="px-2 text-right">{{ t('admin.channelLinks.col.profit') }}</th>
                 <th class="px-2 text-right">{{ t('admin.channelLinks.col.actions') }}</th>
               </tr>
             </thead>
@@ -100,6 +118,7 @@
                   <div class="text-xs text-gray-500">
                     {{ sourceLabel(l.source) }}<template v-if="l.medium"> · {{ mediumLabel(l.medium) }}</template> · {{ l.target_path }}
                     <template v-if="l.aff_code"> · {{ t('admin.channelLinks.affTag', { code: l.aff_code }) }}</template>
+                    <template v-if="l.promo_code"> · {{ t('admin.channelLinks.promoTag', { code: l.promo_code }) }}</template>
                   </div>
                   <div v-if="l.note" class="text-xs text-gray-400">{{ l.note }}</div>
                 </td>
@@ -113,7 +132,16 @@
                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ l.signups }}</td>
                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ l.activated }}</td>
                 <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ l.paid_users }}</td>
-                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ l.revenue ? l.revenue.toFixed(2) : 0 }}</td>
+                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ money(l.revenue) }}</td>
+                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ money(l.usage_usd) }}</td>
+                <td v-if="costPerUSD" class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ money(l.cost_cny) }}</td>
+                <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums">{{ money(l.rebates) }}</td>
+                <td
+                  v-if="costPerUSD"
+                  class="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums"
+                  :class="l.profit < 0 ? 'text-red-600 dark:text-red-400' : l.profit > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''"
+                  :data-testid="`channel-link-profit-${l.code}`"
+                >{{ money(l.profit) }}</td>
                 <td class="whitespace-nowrap py-2 pl-2 text-right">
                   <button type="button" class="btn btn-secondary btn-sm" @click="showQR(l)">{{ t('admin.channelLinks.qr') }}</button>
                   <button type="button" class="btn btn-secondary btn-sm ml-1" @click="startEdit(l)">{{ t('admin.channelLinks.edit') }}</button>
@@ -121,7 +149,7 @@
                 </td>
               </tr>
               <tr v-if="!loading && !links.length">
-                <td colspan="9" class="py-4 text-center text-gray-500">{{ t('admin.channelLinks.empty') }}</td>
+                <td :colspan="costPerUSD ? 14 : 12" class="py-4 text-center text-gray-500">{{ t('admin.channelLinks.empty') }}</td>
               </tr>
             </tbody>
           </table>
@@ -175,7 +203,12 @@ const TARGETS = [
   { key: 'editor', path: '/editor/' }
 ]
 
+const PERIODS = [7, 30, 90, 0]
+
 const links = ref<ChannelLink[]>([])
+const days = ref(30)
+const costPerUSD = ref(0)
+const loaded = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const form = ref<(ChannelLinkInput & { code: string }) | null>(null)
@@ -187,6 +220,8 @@ const qr = ref<{ link: ChannelLink; dataUrl: string } | null>(null)
 const origin = typeof window === 'undefined' ? '' : window.location.origin
 const shortBase = computed(() => `${origin}/go/`)
 const shortUrl = (l: ChannelLink) => `${origin}/go/${l.code}`
+
+const money = (v: number) => (v ? v.toFixed(2) : '0')
 
 function sourceLabel(s: string): string {
   return te(`admin.channelLinks.source.${s}`) ? t(`admin.channelLinks.source.${s}`) : s
@@ -205,7 +240,10 @@ watch(targetChoice, (v) => {
 async function load(): Promise<void> {
   loading.value = true
   try {
-    links.value = await listChannelLinks()
+    const rep = await listChannelLinks(days.value)
+    links.value = rep.links
+    costPerUSD.value = rep.cost_per_usd
+    loaded.value = true
   } catch (e: unknown) {
     appStore.showError(extractApiErrorMessage(e, t('admin.analytics.loadFailed')))
   } finally {
@@ -215,14 +253,17 @@ async function load(): Promise<void> {
 
 function startCreate(): void {
   editingId.value = null
-  form.value = { code: '', name: '', source: 'xiaohongshu', medium: 'post', target_path: '/', aff_code: '', note: '' }
+  form.value = { code: '', name: '', source: 'xiaohongshu', medium: 'post', target_path: '/', aff_code: '', promo_code: '', note: '' }
   sourceChoice.value = 'xiaohongshu'
   targetChoice.value = '/'
 }
 
 function startEdit(l: ChannelLink): void {
   editingId.value = l.id
-  form.value = { code: l.code, name: l.name, source: l.source, medium: l.medium, target_path: l.target_path, aff_code: l.aff_code, note: l.note }
+  form.value = {
+    code: l.code, name: l.name, source: l.source, medium: l.medium, target_path: l.target_path,
+    aff_code: l.aff_code, promo_code: l.promo_code || '', note: l.note
+  }
   sourceChoice.value = SOURCES.includes(l.source) ? l.source : '__custom'
   targetChoice.value = TARGETS.some((p) => p.path === l.target_path) ? l.target_path : '__custom'
 }
@@ -231,7 +272,11 @@ async function save(): Promise<void> {
   if (!form.value || saving.value) return
   saving.value = true
   try {
-    const input: ChannelLinkInput = { ...form.value, aff_code: form.value.aff_code.trim().toUpperCase() }
+    const input: ChannelLinkInput = {
+      ...form.value,
+      aff_code: form.value.aff_code.trim().toUpperCase(),
+      promo_code: form.value.promo_code.trim().toUpperCase()
+    }
     const saved = editingId.value ? await updateChannelLink(editingId.value, input) : await createChannelLink(input)
     appStore.showSuccess(t('admin.channelLinks.saved'))
     const created = !editingId.value

@@ -15,8 +15,14 @@ import (
 
 // Channel links (渠道链接): one short link per place the site is promoted — a 小红书 post, a B 站
 // video, a partner's article. hivegpt.cn/go/<code> redirects to the landing page with
-// utm_source / utm_medium / utm_campaign=<code> (and the partner's invite code, if any), so the
-// analytics first touch ties visitors, sign-ups, activation and payments back to the link.
+// utm_source / utm_medium / utm_campaign=<code> (and the partner's invite code and promo code, if
+// any), so the analytics first touch ties visitors, sign-ups, activation and payments back to the
+// link.
+//
+// For a blogger link (one with an invite code) the link's people are those whose first touch was
+// the link plus everyone the blogger invited some other way (their own ?aff= link, typing the
+// code): together that is the audience the blogger is paid for. The report sets what they paid
+// against what their usage cost upstream and the rebates accrued on their orders.
 
 type ChannelLink struct {
 	ID         int64     `json:"id"`
@@ -26,16 +32,32 @@ type ChannelLink struct {
 	Medium     string    `json:"medium"`
 	TargetPath string    `json:"target_path"`
 	AffCode    string    `json:"aff_code"`
+	PromoCode  string    `json:"promo_code"`
 	Note       string    `json:"note"`
-	Clicks     int64     `json:"clicks"`
+	Clicks     int64     `json:"clicks"` // all time
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
-	// Funnel of the people whose first visit came through this link (members only).
+	// Funnel and money of the link's people (members only) within the report period: visitors and
+	// sign-ups counted when they happened, payments, usage and rebates when they happened —
+	// including from people who signed up before the period.
 	Visitors  int64   `json:"visitors"`
 	Signups   int64   `json:"signups"`
-	Activated int64   `json:"activated"` // made an API call
+	Activated int64   `json:"activated"` // of those sign-ups, made an API call
 	PaidUsers int64   `json:"paid_users"`
-	Revenue   float64 `json:"revenue"`
+	Revenue   float64 `json:"revenue"`   // CNY actually received, payment fee excluded
+	UsageUSD  float64 `json:"usage_usd"` // usage at standard prices
+	Rebates   float64 `json:"rebates"`   // CNY value of the rebates accrued on their orders
+	// Filled in by the report from the 套餐毛利 cost rate; zero when the rate isn't set.
+	CostCNY float64 `json:"cost_cny"`
+	Profit  float64 `json:"profit"` // Revenue − CostCNY − Rebates
+}
+
+// ChannelLinkReport is the 渠道链接 page: every link with its numbers over the last Days days
+// (0 = all time).
+type ChannelLinkReport struct {
+	Days       int           `json:"days"`
+	CostPerUSD float64       `json:"cost_per_usd"` // 0 = not set, cost and profit left out
+	Links      []ChannelLink `json:"links"`
 }
 
 type ChannelLinkInput struct {
@@ -45,11 +67,12 @@ type ChannelLinkInput struct {
 	Medium     string `json:"medium"`
 	TargetPath string `json:"target_path"`
 	AffCode    string `json:"aff_code"`
+	PromoCode  string `json:"promo_code"`
 	Note       string `json:"note"`
 }
 
 type ChannelLinkRepository interface {
-	List(ctx context.Context) ([]ChannelLink, error)
+	List(ctx context.Context, since time.Time) ([]ChannelLink, error)
 	GetByCode(ctx context.Context, code string) (*ChannelLink, error) // nil when unknown
 	Create(ctx context.Context, l *ChannelLink) error                 // ErrChannelLinkCodeTaken on a duplicate code
 	Update(ctx context.Context, l *ChannelLink) error
@@ -65,6 +88,7 @@ var (
 	errChannelLinkBadSource = infraerrors.BadRequest("CHANNEL_LINK_BAD_SOURCE", "渠道只能用小写字母、数字、- 和 _，最多 32 个字符（Source: up to 32 lowercase letters, digits, - or _）")
 	errChannelLinkBadTarget = infraerrors.BadRequest("CHANNEL_LINK_BAD_TARGET", "落地页要填站内路径，以 / 开头，例如 /pricing（The landing page must be a path on this site, like /pricing）")
 	errChannelLinkBadAff    = infraerrors.BadRequest("CHANNEL_LINK_BAD_AFF", "邀请码不存在（Unknown invite code）")
+	errChannelLinkBadPromo  = infraerrors.BadRequest("CHANNEL_LINK_BAD_PROMO", "优惠码不存在、已停用或已过期，先到「优惠码」里建好（Unknown, disabled or expired promo code）")
 )
 
 var (
@@ -75,18 +99,45 @@ var (
 type ChannelLinkService struct {
 	repo      ChannelLinkRepository
 	affiliate *AffiliateService
+	promo     *PromoService
 }
 
-func NewChannelLinkService(repo ChannelLinkRepository, affiliate *AffiliateService) *ChannelLinkService {
-	return &ChannelLinkService{repo: repo, affiliate: affiliate}
+func NewChannelLinkService(repo ChannelLinkRepository, affiliate *AffiliateService, promo *PromoService) *ChannelLinkService {
+	return &ChannelLinkService{repo: repo, affiliate: affiliate, promo: promo}
 }
 
-func (s *ChannelLinkService) List(ctx context.Context) ([]ChannelLink, error) {
-	out, err := s.repo.List(ctx)
-	if out == nil {
-		out = []ChannelLink{}
+// Report lists the links with their numbers over the last days days (0 = all time; anything else
+// is clamped to 1–365). costPerUSD is the CNY cost of $1 of usage (套餐毛利); 0 leaves cost and
+// profit out.
+func (s *ChannelLinkService) Report(ctx context.Context, days int, costPerUSD float64) (*ChannelLinkReport, error) {
+	since := time.Time{}
+	if days != 0 {
+		days = max(1, min(days, 365))
+		since = time.Now().AddDate(0, 0, -days)
 	}
-	return out, err
+	links, err := s.repo.List(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+	if links == nil {
+		links = []ChannelLink{}
+	}
+	if costPerUSD < 0 {
+		costPerUSD = 0
+	}
+	for i := range links {
+		applyChannelLinkCost(&links[i], costPerUSD)
+	}
+	return &ChannelLinkReport{Days: days, CostPerUSD: costPerUSD, Links: links}, nil
+}
+
+func applyChannelLinkCost(l *ChannelLink, costPerUSD float64) {
+	l.Revenue, l.UsageUSD, l.Rebates = round2(l.Revenue), round2(l.UsageUSD), round2(l.Rebates)
+	if costPerUSD <= 0 {
+		return
+	}
+	l.CostCNY = round2(l.UsageUSD * costPerUSD)
+	l.Profit = round2(l.Revenue - l.CostCNY - l.Rebates)
 }
 
 func (s *ChannelLinkService) Create(ctx context.Context, in ChannelLinkInput) (*ChannelLink, error) {
@@ -161,6 +212,9 @@ func ChannelLinkTarget(l *ChannelLink) string {
 	if l.AffCode != "" {
 		q.Set("aff", l.AffCode)
 	}
+	if l.PromoCode != "" {
+		q.Set("promo", l.PromoCode)
+	}
 	u.RawQuery = q.Encode()
 	return u.String()
 }
@@ -173,6 +227,7 @@ func (s *ChannelLinkService) validate(ctx context.Context, in ChannelLinkInput) 
 		Medium:     strings.ToLower(strings.TrimSpace(in.Medium)),
 		TargetPath: strings.TrimSpace(in.TargetPath),
 		AffCode:    strings.ToUpper(strings.TrimSpace(in.AffCode)),
+		PromoCode:  strings.ToUpper(strings.TrimSpace(in.PromoCode)),
 		Note:       truncateRunes(strings.TrimSpace(in.Note), 300),
 	}
 	if l.Code != "" && !channelLinkCodePattern.MatchString(l.Code) {
@@ -193,6 +248,14 @@ func (s *ChannelLinkService) validate(ctx context.Context, in ChannelLinkInput) 
 	if l.AffCode != "" {
 		if s.affiliate == nil || s.affiliate.CheckCode(ctx, l.AffCode) != nil {
 			return nil, errChannelLinkBadAff
+		}
+	}
+	if l.PromoCode != "" {
+		if len(l.PromoCode) > 32 || s.promo == nil {
+			return nil, errChannelLinkBadPromo
+		}
+		if _, err := s.promo.ValidatePromoCode(ctx, l.PromoCode); err != nil {
+			return nil, errChannelLinkBadPromo
 		}
 	}
 	return l, nil

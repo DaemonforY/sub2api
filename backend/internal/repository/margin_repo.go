@@ -21,6 +21,11 @@ func NewMarginRepository(db *sql.DB) service.MarginRepository {
 // When an order brought money in.
 const sqlOrderPaidAt = `COALESCE(o.paid_at, o.completed_at, o.created_at)`
 
+// sqlOrderCNY is the CNY an order brought in: what was paid, less the payment fee. o.amount is
+// the credited balance for top-ups, which drifts from the money once BALANCE_RECHARGE_MULTIPLIER
+// isn't 1.
+const sqlOrderCNY = `(o.pay_amount / (1 + COALESCE(o.fee_rate, 0) / 100))`
+
 func (r *marginRepository) Load(ctx context.Context, since time.Time, topUsers int) (*service.MarginRaw, error) {
 	out := &service.MarginRaw{}
 	q := func(query string, scan func(*sql.Rows) error, args ...any) error {
@@ -64,7 +69,7 @@ WHERE l.created_at >= $1`, since).Scan(&out.AdminUsageUSD); err != nil {
 
 	// Money in through payment gateways.
 	if err := q(`
-SELECT o.order_type, COALESCE(SUM(o.amount), 0)::float8
+SELECT o.order_type, COALESCE(SUM(`+sqlOrderCNY+`), 0)::float8
 FROM payment_orders o JOIN users u ON u.id = o.user_id AND u.role <> 'admin'
 WHERE o.status = 'COMPLETED' AND o.payment_type <> 'balance' AND `+sqlOrderPaidAt+` >= $1
 GROUP BY 1`, func(rows *sql.Rows) error {
@@ -92,7 +97,7 @@ SELECT p.id, p.name, p.group_id, g.name, p.price, p.validity_days, p.validity_un
   g.daily_limit_usd, g.weekly_limit_usd, g.monthly_limit_usd,
   (SELECT COUNT(*) FROM payment_orders o JOIN users u ON u.id = o.user_id AND u.role <> 'admin'
      WHERE o.plan_id = p.id AND o.status = 'COMPLETED' AND `+sqlOrderPaidAt+` >= $1),
-  (SELECT COALESCE(SUM(o.amount), 0)::float8 FROM payment_orders o JOIN users u ON u.id = o.user_id AND u.role <> 'admin'
+  (SELECT COALESCE(SUM(`+sqlOrderCNY+`), 0)::float8 FROM payment_orders o JOIN users u ON u.id = o.user_id AND u.role <> 'admin'
      WHERE o.plan_id = p.id AND o.status = 'COMPLETED' AND `+sqlOrderPaidAt+` >= $1)
 FROM subscription_plans p JOIN groups g ON g.id = p.group_id
 WHERE p.for_sale
@@ -114,7 +119,7 @@ ORDER BY p.sort_order, p.id`, func(rows *sql.Rows) error {
 	// subscription orders for the same group paid during the term (renewals included).
 	if err := q(`
 SELECT s.id, s.user_id, u.email, s.group_id, g.name, s.starts_at, s.expires_at,
-  (SELECT COALESCE(SUM(o.amount), 0)::float8 FROM payment_orders o
+  (SELECT COALESCE(SUM(`+sqlOrderCNY+`), 0)::float8 FROM payment_orders o
      WHERE o.user_id = s.user_id AND o.order_type = 'subscription' AND o.status = 'COMPLETED'
        AND o.subscription_group_id = s.group_id
        AND `+sqlOrderPaidAt+` >= s.starts_at - INTERVAL '1 hour' AND `+sqlOrderPaidAt+` < s.expires_at),
@@ -145,7 +150,7 @@ WITH x AS (
   FROM usage_logs l WHERE l.created_at >= $1 GROUP BY l.user_id
 )
 SELECT u.id, u.email, x.usage::float8, x.billed::float8,
-  (SELECT COALESCE(SUM(o.amount), 0)::float8 FROM payment_orders o
+  (SELECT COALESCE(SUM(`+sqlOrderCNY+`), 0)::float8 FROM payment_orders o
      WHERE o.user_id = u.id AND o.status = 'COMPLETED' AND o.payment_type <> 'balance' AND `+sqlOrderPaidAt+` >= $1)
 FROM x JOIN users u ON u.id = x.user_id AND u.role <> 'admin'
 ORDER BY x.usage DESC, u.id LIMIT $2`, func(rows *sql.Rows) error {

@@ -15,6 +15,7 @@ import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
 import { pickOAuthAffiliateCode, storeAffiliateReferralCode } from '@/utils/oauthAffiliate'
+import { storePromoCode } from '@/utils/promoReferral'
 
 /**
  * Route definitions with lazy loading
@@ -1227,6 +1228,8 @@ router.beforeEach(async (to, _from, next) => {
   if (affCode) {
     storeAffiliateReferralCode(affCode)
   }
+  // So does a blogger's promo code (?promo=), filled in on the register page.
+  storePromoCode(to.query?.promo)
 
   // Set page title
   const appStore = useAppStore()

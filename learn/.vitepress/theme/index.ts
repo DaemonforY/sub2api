@@ -28,6 +28,12 @@ function rememberAffiliate() {
       const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000
       window.localStorage.setItem('affiliate_referral_code', JSON.stringify({ code, expiresAt }))
     }
+    // A blogger's promo code, same key and lifetime as frontend/src/utils/promoReferral.ts.
+    const promo = (q.get('promo') || '').trim()
+    if (promo && /^[A-Za-z0-9_-]{1,32}$/.test(promo)) {
+      const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000
+      window.localStorage.setItem('promo_referral_code', JSON.stringify({ code: promo.toUpperCase(), expiresAt }))
+    }
   } catch {
     // storage unavailable
   }

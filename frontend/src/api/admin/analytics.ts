@@ -87,7 +87,9 @@ export interface ChannelLink {
   medium: string
   target_path: string
   aff_code: string
+  promo_code: string
   note: string
+  /** All time. */
   clicks: number
   created_at: string
   updated_at: string
@@ -96,13 +98,30 @@ export interface ChannelLink {
   /** Made an API call. */
   activated: number
   paid_users: number
+  /** CNY received in the period, payment fee excluded. */
   revenue: number
+  /** Usage at standard prices in the period. */
+  usage_usd: number
+  /** CNY value of the rebates accrued on their orders in the period. */
+  rebates: number
+  /** usage_usd × the 套餐毛利 cost rate; 0 when the rate isn't set. */
+  cost_cny: number
+  /** revenue − cost_cny − rebates. */
+  profit: number
 }
 
-export type ChannelLinkInput = Pick<ChannelLink, 'name' | 'source' | 'medium' | 'target_path' | 'aff_code' | 'note'> & { code?: string }
+export interface ChannelLinkReport {
+  days: number
+  /** 0 = cost rate not set on 套餐毛利. */
+  cost_per_usd: number
+  links: ChannelLink[]
+}
 
-export async function listChannelLinks(): Promise<ChannelLink[]> {
-  const { data } = await apiClient.get('/admin/analytics/channel-links')
+export type ChannelLinkInput = Pick<ChannelLink, 'name' | 'source' | 'medium' | 'target_path' | 'aff_code' | 'promo_code' | 'note'> & { code?: string }
+
+/** days: 7 / 30 / 90, or 0 for all time. */
+export async function listChannelLinks(days = 0): Promise<ChannelLinkReport> {
+  const { data } = await apiClient.get('/admin/analytics/channel-links', { params: { days } })
   return data
 }
 

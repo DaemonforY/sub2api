@@ -409,7 +409,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	activationReminderRepository := repository.NewActivationReminderRepository(db)
 	activationReminderService := service.ProvideActivationReminderService(activationReminderRepository, settingRepository, emailService)
 	channelLinkRepository := repository.NewChannelLinkRepository(db)
-	channelLinkService := service.NewChannelLinkService(channelLinkRepository, affiliateService)
+	channelLinkService := service.NewChannelLinkService(channelLinkRepository, affiliateService, promoService)
 	marginRepository := repository.NewMarginRepository(db)
 	marginService := service.NewMarginService(marginRepository, settingRepository)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, activationReminderService, channelLinkService, marginService)

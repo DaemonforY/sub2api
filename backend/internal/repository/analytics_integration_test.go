@@ -34,6 +34,8 @@ func trackCommitted(t *testing.T) *committedRows {
 			args []any
 		}{
 			{`DELETE FROM usage_logs WHERE user_id = ANY($1) OR group_id = ANY($2) OR account_id = ANY($3)`, []any{users, groups, accounts}},
+			{`DELETE FROM user_affiliate_ledger WHERE user_id = ANY($1) OR source_user_id = ANY($1)`, []any{users}},
+			{`DELETE FROM user_affiliates WHERE user_id = ANY($1)`, []any{users}},
 			{`DELETE FROM payment_orders WHERE user_id = ANY($1)`, []any{users}},
 			{`DELETE FROM user_subscriptions WHERE user_id = ANY($1) OR group_id = ANY($2)`, []any{users, groups}},
 			{`DELETE FROM subscription_plans WHERE group_id = ANY($1)`, []any{groups}},
@@ -304,7 +306,7 @@ func TestChannelLinkRepository(t *testing.T) {
 	rows := trackCommitted(t)
 	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
 	repo := NewChannelLinkRepository(integrationDB)
-	links := service.NewChannelLinkService(repo, nil)
+	links := service.NewChannelLinkService(repo, nil, nil)
 	analytics := service.NewAnalyticsService(NewAnalyticsRepository(integrationDB))
 
 	l, err := links.Create(ctx, service.ChannelLinkInput{Name: "测试渠道", Source: "xiaohongshu", Medium: "post", TargetPath: "/pricing"})
@@ -325,7 +327,7 @@ func TestChannelLinkRepository(t *testing.T) {
 			Events: []service.AnalyticsBatchEvent{{Name: "page_view", Path: "/pricing"}}}, service.AnalyticsRequestMeta{IP: "203.0.113.9", UserAgent: ua})
 		require.NoError(t, err)
 	}
-	// Both sign up; A calls the API and pays ¥60, B stops there.
+	// Both sign up; A calls the API ($4 at standard prices) and pays ¥60, B stops there.
 	mk := func(tag string) *service.User {
 		return rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "cl-" + tag + "-" + sfx + "@test.local", Username: "cl" + tag + sfx[len(sfx)-6:]}))
 	}
@@ -335,33 +337,65 @@ func TestChannelLinkRepository(t *testing.T) {
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: a.ID, Key: "sk-cl-" + sfx})
 	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "cl-acc-" + sfx}))
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(a.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).
-		SetRequestID("cl-" + sfx).SetModel("gpt-5").SetCreatedAt(time.Now()).Save(ctx)
+		SetRequestID("cl-" + sfx).SetModel("gpt-5").SetTotalCost(4).SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
-	_, err = integrationEntClient.PaymentOrder.Create().
-		SetUserID(a.ID).SetUserEmail(a.Email).SetUserName(a.Username).
-		SetAmount(60).SetPayAmount(60).SetFeeRate(0).
-		SetRechargeCode("CL-" + sfx).SetOutTradeNo("cl_" + sfx).
-		SetPaymentType("alipay").SetPaymentTradeNo("t").
-		SetOrderType(payment.OrderTypeSubscription).SetStatus(service.OrderStatusCompleted).
-		SetPaidAt(time.Now()).SetExpiresAt(time.Now()).SetClientIP("127.0.0.1").SetSrcHost("test").
-		Save(ctx)
-	require.NoError(t, err)
-
-	all, err := links.List(ctx)
-	require.NoError(t, err)
-	var got *service.ChannelLink
-	for i := range all {
-		if all[i].Code == l.Code {
-			got = &all[i]
-		}
+	order := func(u *service.User, tag string, amount, pay, fee float64) int64 {
+		o, err := integrationEntClient.PaymentOrder.Create().
+			SetUserID(u.ID).SetUserEmail(u.Email).SetUserName(u.Username).
+			SetAmount(amount).SetPayAmount(pay).SetFeeRate(fee).
+			SetRechargeCode("CL-" + tag + sfx).SetOutTradeNo("cl_" + tag + sfx).
+			SetPaymentType("alipay").SetPaymentTradeNo("t").
+			SetOrderType(payment.OrderTypeSubscription).SetStatus(service.OrderStatusCompleted).
+			SetPaidAt(time.Now()).SetExpiresAt(time.Now()).SetClientIP("127.0.0.1").SetSrcHost("test").
+			Save(ctx)
+		require.NoError(t, err)
+		return o.ID
 	}
-	require.NotNil(t, got)
+	order(a, "a", 60, 60, 0)
+
+	find := func(days int, rate float64) service.ChannelLink {
+		rep, err := links.Report(ctx, days, rate)
+		require.NoError(t, err)
+		for _, x := range rep.Links {
+			if x.Code == l.Code {
+				return x
+			}
+		}
+		t.Fatalf("link %s missing", l.Code)
+		return service.ChannelLink{}
+	}
+	got := find(0, 0)
 	require.EqualValues(t, 2, got.Clicks)
 	require.EqualValues(t, 2, got.Visitors)
 	require.EqualValues(t, 2, got.Signups)
 	require.EqualValues(t, 1, got.Activated)
 	require.EqualValues(t, 1, got.PaidUsers)
 	require.InDelta(t, 60, got.Revenue, 1e-9)
+	require.InDelta(t, 4, got.UsageUSD, 1e-9)
+	require.Zero(t, got.Profit, "no cost rate set")
+
+	// Make it a blogger link: K owns invite code KOL…; C was invited by K without the link (typed
+	// the code), paid ¥106 with a 6% fee for 100 credited, and K accrued 20 on it — worth ¥20.
+	k, c := mk("k"), mk("c")
+	affCode := "KOL" + sfx[len(sfx)-8:]
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO user_affiliates (user_id, aff_code) VALUES ($1, $2)`, k.ID, affCode)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO user_affiliates (user_id, aff_code, inviter_id) VALUES ($1, $2, $3)`, c.ID, "KC"+sfx[len(sfx)-8:], k.ID)
+	require.NoError(t, err)
+	oc := order(c, "c", 100, 106, 6)
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO user_affiliate_ledger (user_id, action, amount, source_user_id, source_order_id, created_at, updated_at)
+VALUES ($1, 'accrue', 20, $2, $3, NOW(), NOW())`, k.ID, c.ID, oc)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx, `UPDATE channel_links SET aff_code = $2 WHERE id = $1`, l.ID, affCode)
+	require.NoError(t, err)
+
+	got = find(30, 0.5)
+	require.EqualValues(t, 3, got.Signups, "A, B and the invited C")
+	require.EqualValues(t, 2, got.PaidUsers)
+	require.InDelta(t, 160, got.Revenue, 1e-9, "¥60 + ¥106 less the 6% fee")
+	require.InDelta(t, 20, got.Rebates, 1e-9)
+	require.InDelta(t, 2, got.CostCNY, 1e-9, "$4 × ¥0.5")
+	require.InDelta(t, 138, got.Profit, 1e-9)
 
 	// Editing keeps the code; deleting removes it.
 	upd, err := links.Update(ctx, l.ID, service.ChannelLinkInput{Code: "ignored", Name: "改名", Source: "xiaohongshu", TargetPath: "/register"})
