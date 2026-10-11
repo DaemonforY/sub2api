@@ -43,6 +43,8 @@ func RegisterUserRoutes(
 			user.POST("/aff/bind", h.User.BindAffiliateInviter)
 			if h.Growth != nil {
 				user.GET("/aff/leaderboard", h.Growth.Leaderboard)
+				// 博主专属短链的数据
+				user.GET("/aff/links", h.Growth.PartnerLinks)
 				// 返利提现（人工打款）
 				user.GET("/aff/withdraw", h.Growth.WithdrawStatus)
 				user.POST("/aff/withdraw", panelRateLimiter.Heavy(), h.Growth.RequestWithdraw)

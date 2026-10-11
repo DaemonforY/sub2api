@@ -110,6 +110,8 @@
           </div>
         </div>
 
+        <PartnerLinksCard />
+
         <InvitePosterCard
           :invite-link="inviteLink"
           :aff-code="detail.aff_code"
@@ -197,6 +199,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import InviteLeaderboardCard from '@/components/user/growth/InviteLeaderboardCard.vue'
 import InvitePosterCard from '@/components/user/growth/InvitePosterCard.vue'
+import PartnerLinksCard from '@/components/user/growth/PartnerLinksCard.vue'
 import WithdrawCard from '@/components/user/growth/WithdrawCard.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { growthAPI } from '@/api/growth'

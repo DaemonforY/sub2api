@@ -16,13 +16,37 @@ type GrowthHandler struct {
 	settingService *service.SettingService
 	withdraw       *service.AffiliateWithdrawService
 	billingRoute   *service.BillingRouteService
+	links          *service.ChannelLinkService
 }
 
 // ProvideGrowthHandler also tells the pages whether one key serves both subscriptions and balance.
-func ProvideGrowthHandler(svc *service.GrowthService, settingService *service.SettingService, withdraw *service.AffiliateWithdrawService, billingRoute *service.BillingRouteService) *GrowthHandler {
+// and lists a blogger's own channel links.
+func ProvideGrowthHandler(svc *service.GrowthService, settingService *service.SettingService, withdraw *service.AffiliateWithdrawService, billingRoute *service.BillingRouteService, links *service.ChannelLinkService) *GrowthHandler {
 	h := NewGrowthHandler(svc, settingService, withdraw)
 	h.billingRoute = billingRoute
+	h.links = links
 	return h
+}
+
+// PartnerLinks GET /api/v1/user/aff/links?days=30 (0 = all time) — the channel links that carry
+// the user's invite code (博主专属短链) with their funnel, payments and rebates.
+func (h *GrowthHandler) PartnerLinks(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	if h.links == nil {
+		response.Success(c, service.PartnerLinkReport{Links: []service.PartnerLink{}})
+		return
+	}
+	days, _ := strconv.Atoi(c.Query("days"))
+	out, err := h.links.ForPartner(c.Request.Context(), subject.UserID, days)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
 }
 
 // NewGrowthHandler creates the user growth handler.

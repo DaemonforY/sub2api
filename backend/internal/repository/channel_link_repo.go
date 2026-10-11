@@ -32,7 +32,7 @@ func scanChannelLink(row interface{ Scan(...any) error }, l *service.ChannelLink
 // the owner of the link's invite code. Money is in CNY: orders by what was paid less the payment
 // fee; a rebate by the same paid-per-credited ratio of the order it came from (as withdrawals value
 // it), at face value when it has no order (redeem codes).
-func (r *channelLinkRepository) List(ctx context.Context, since time.Time) ([]service.ChannelLink, error) {
+func (r *channelLinkRepository) List(ctx context.Context, since time.Time, affCode string) ([]service.ChannelLink, error) {
 	rows, err := r.db.QueryContext(ctx, `
 WITH coh AS (
   SELECT c.id AS link_id, a.user_id FROM channel_links c JOIN user_attributions a ON a.campaign = c.code
@@ -64,7 +64,8 @@ SELECT `+channelLinkColumns+`,
      FROM m JOIN user_affiliate_ledger g ON g.source_user_id = m.id AND g.action = 'accrue'
      LEFT JOIN payment_orders o ON o.id = g.source_order_id
      WHERE m.link_id = c.id AND g.created_at >= $1)
-FROM channel_links c ORDER BY c.created_at DESC, c.id DESC`, since)
+FROM channel_links c WHERE ($2 = '' OR c.aff_code = $2)
+ORDER BY c.created_at DESC, c.id DESC`, since, affCode)
 	if err != nil {
 		return nil, err
 	}

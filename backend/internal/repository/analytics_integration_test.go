@@ -397,6 +397,15 @@ VALUES ($1, 'accrue', 20, $2, $3, NOW(), NOW())`, k.ID, c.ID, oc)
 	require.InDelta(t, 2, got.CostCNY, 1e-9, "$4 × ¥0.5")
 	require.InDelta(t, 138, got.Profit, 1e-9)
 
+	// The blogger's own view lists only links carrying their code.
+	mine, err := repo.List(ctx, time.Time{}, affCode)
+	require.NoError(t, err)
+	require.Len(t, mine, 1)
+	require.Equal(t, l.Code, mine[0].Code)
+	none, err := repo.List(ctx, time.Time{}, "NOPE"+sfx[len(sfx)-6:])
+	require.NoError(t, err)
+	require.Empty(t, none)
+
 	// Editing keeps the code; deleting removes it.
 	upd, err := links.Update(ctx, l.ID, service.ChannelLinkInput{Code: "ignored", Name: "改名", Source: "xiaohongshu", TargetPath: "/register"})
 	require.NoError(t, err)

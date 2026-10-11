@@ -115,6 +115,28 @@ export interface InviteLeaderboardEntry {
   is_current_user?: boolean
 }
 
+/** A channel link carrying the user's invite code (博主专属短链) with its numbers. */
+export interface PartnerLink {
+  code: string
+  name: string
+  promo_code: string
+  /** All time. */
+  clicks: number
+  visitors: number
+  signups: number
+  activated: number
+  paid_users: number
+  /** CNY their people paid in the period. */
+  revenue: number
+  /** CNY of rebates it earned in the period. */
+  rebates: number
+}
+
+export interface PartnerLinkReport {
+  days: number
+  links: PartnerLink[]
+}
+
 export interface InviteLeaderboard {
   period: string
   start?: string
@@ -164,6 +186,11 @@ export const growthAPI = {
   },
   async getLeaderboard(period: LeaderboardPeriod): Promise<InviteLeaderboard> {
     const { data } = await apiClient.get<InviteLeaderboard>('/user/aff/leaderboard', { params: { period } })
+    return data
+  },
+  /** days: 7 / 30 or 0 for all time. */
+  async getPartnerLinks(days: number): Promise<PartnerLinkReport> {
+    const { data } = await apiClient.get<PartnerLinkReport>('/user/aff/links', { params: { days } })
     return data
   },
   async getWithdrawStatus(): Promise<WithdrawStatus> {

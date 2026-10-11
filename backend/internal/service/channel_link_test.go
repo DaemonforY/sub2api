@@ -20,7 +20,7 @@ func newChannelLinkRepoStub() *channelLinkRepoStub {
 	return &channelLinkRepoStub{links: map[string]*ChannelLink{}, clicks: map[int64]int{}}
 }
 
-func (r *channelLinkRepoStub) List(context.Context, time.Time) ([]ChannelLink, error) {
+func (r *channelLinkRepoStub) List(context.Context, time.Time, string) ([]ChannelLink, error) {
 	return nil, nil
 }
 func (r *channelLinkRepoStub) GetByCode(_ context.Context, code string) (*ChannelLink, error) {

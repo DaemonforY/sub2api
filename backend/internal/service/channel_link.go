@@ -72,7 +72,8 @@ type ChannelLinkInput struct {
 }
 
 type ChannelLinkRepository interface {
-	List(ctx context.Context, since time.Time) ([]ChannelLink, error)
+	// List returns every link, or only those carrying affCode when it isn't empty.
+	List(ctx context.Context, since time.Time, affCode string) ([]ChannelLink, error)
 	GetByCode(ctx context.Context, code string) (*ChannelLink, error) // nil when unknown
 	Create(ctx context.Context, l *ChannelLink) error                 // ErrChannelLinkCodeTaken on a duplicate code
 	Update(ctx context.Context, l *ChannelLink) error
@@ -115,7 +116,7 @@ func (s *ChannelLinkService) Report(ctx context.Context, days int, costPerUSD fl
 		days = max(1, min(days, 365))
 		since = time.Now().AddDate(0, 0, -days)
 	}
-	links, err := s.repo.List(ctx, since)
+	links, err := s.repo.List(ctx, since, "")
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +130,60 @@ func (s *ChannelLinkService) Report(ctx context.Context, days int, costPerUSD fl
 		applyChannelLinkCost(&links[i], costPerUSD)
 	}
 	return &ChannelLinkReport{Days: days, CostPerUSD: costPerUSD, Links: links}, nil
+}
+
+// PartnerLink is what a blogger sees of a link carrying their invite code on the 邀请返利 page:
+// the funnel, what their people paid and the rebates it earned them — not cost or profit.
+type PartnerLink struct {
+	Code      string  `json:"code"`
+	Name      string  `json:"name"`
+	PromoCode string  `json:"promo_code"`
+	Clicks    int64   `json:"clicks"` // all time
+	Visitors  int64   `json:"visitors"`
+	Signups   int64   `json:"signups"`
+	Activated int64   `json:"activated"`
+	PaidUsers int64   `json:"paid_users"`
+	Revenue   float64 `json:"revenue"`
+	Rebates   float64 `json:"rebates"`
+}
+
+type PartnerLinkReport struct {
+	Days  int           `json:"days"`
+	Links []PartnerLink `json:"links"`
+}
+
+// ForPartner lists the links that carry the user's invite code with their numbers over the last
+// days days (0 = all time). Empty for users who have none.
+func (s *ChannelLinkService) ForPartner(ctx context.Context, userID int64, days int) (*PartnerLinkReport, error) {
+	out := &PartnerLinkReport{Links: []PartnerLink{}}
+	since := time.Time{}
+	if days != 0 {
+		days = max(1, min(days, 365))
+		since = time.Now().AddDate(0, 0, -days)
+	}
+	out.Days = days
+	if s.affiliate == nil || s.affiliate.repo == nil {
+		return out, nil
+	}
+	aff, err := s.affiliate.repo.EnsureUserAffiliate(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if aff == nil || aff.AffCode == "" {
+		return out, nil
+	}
+	links, err := s.repo.List(ctx, since, aff.AffCode)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range links {
+		out.Links = append(out.Links, PartnerLink{
+			Code: l.Code, Name: l.Name, PromoCode: l.PromoCode, Clicks: l.Clicks, Visitors: l.Visitors,
+			Signups: l.Signups, Activated: l.Activated, PaidUsers: l.PaidUsers,
+			Revenue: round2(l.Revenue), Rebates: round2(l.Rebates),
+		})
+	}
+	return out, nil
 }
 
 func applyChannelLinkCost(l *ChannelLink, costPerUSD float64) {
