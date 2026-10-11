@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -225,6 +226,8 @@ func (s *PromptLibrarySyncService) fetch(ctx context.Context, src *PromptSource)
 	switch src.Format {
 	case "youmind":
 		return s.fetchYouMind(ctx, src)
+	case "handraw":
+		return s.fetchHandraw(ctx, src)
 	default:
 		return s.fetchRegistry(ctx, src)
 	}
@@ -454,6 +457,71 @@ func (s *PromptLibrarySyncService) fetchYouMind(ctx context.Context, src *Prompt
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+type handrawStyle struct {
+	Number         flexString `json:"number"`
+	Group          flexString `json:"group"`
+	Reference      flexString `json:"reference"`
+	GenerationName flexString `json:"generation_name"`
+	Traits         flexString `json:"traits"`
+}
+
+// handrawStyleNumber is a style code such as "FA-001"; its first two letters name the image folder.
+var handrawStyleNumber = regexp.MustCompile(`^F[A-Z]-\d{3}$`)
+
+// fetchHandraw reads yang0/handraw-style's styles.json (skills/handdraw-style-prompter/references):
+// 327 numbered hand-drawn styles, each a style name and its traits. A style becomes a prompt with a
+// placeholder for the subject; its sample image (images/individual/<FA>/<FA-001>.webp) is the cover.
+// The project's MIT license asks for credit to yang0 and the repository: author and source link.
+// Styles without traits (13 of them, mostly named after one anime or game) are left out.
+func (s *PromptLibrarySyncService) fetchHandraw(ctx context.Context, src *PromptSource) ([]PromptItem, error) {
+	body, err := s.open(ctx, src.URL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = body.Close() }()
+	repo := strings.TrimRight(strings.TrimSpace(src.Homepage), "/")
+	if repo == "" {
+		repo = "https://github.com/yang0/handraw-style"
+	}
+	seen := map[string]bool{}
+	var items []PromptItem
+	err = decodeJSONArray(body, func(_ int, rec handrawStyle) {
+		number := strings.TrimSpace(string(rec.Number))
+		name := strings.TrimSpace(string(rec.GenerationName))
+		traits := strings.TrimSpace(string(rec.Traits))
+		if !handrawStyleNumber.MatchString(number) || name == "" || traits == "" || seen[number] {
+			return
+		}
+		seen[number] = true
+		// "FA 国际社论幽默 / Editorial & Humor Doodle" -> "国际社论幽默"
+		group := strings.TrimSpace(strings.SplitN(string(rec.Group), "/", 2)[0])
+		group = strings.TrimSpace(strings.TrimPrefix(group, number[:2]))
+		prompt := "【画面主题：在这里写你要画的内容】\n\n画风：" + name + "，手绘插画。\n风格特征：" + traits
+		description := "手绘风格图鉴 " + number
+		if group != "" {
+			description += " · " + group
+		}
+		if ref := strings.TrimSpace(string(rec.Reference)); ref != "" {
+			description += "。风格参考：" + ref
+		}
+		description += "。来自 yang0/handraw-style，把第一行换成你要画的内容即可。"
+		hints := []string{"illustration"}
+		if number[:2] == "FF" {
+			hints = []string{"3d"}
+		}
+		tags := []string{"手绘"}
+		if group != "" {
+			tags = append(tags, group)
+		}
+		items = append(items, buildSourcePromptItem(sourcePromptFields{
+			externalID: number, title: "手绘 " + number + " · " + name, prompt: prompt, description: description,
+			cover: absolutePromptURL(src.URL, "../../../images/individual/"+number[:2]+"/"+number+".webp"),
+			tags:  tags, author: "yang0", sourceURL: repo, modelHint: "gpt-image-2", sceneHints: hints,
+		}))
+	})
+	return items, err
 }
 
 type sourcePromptFields struct {

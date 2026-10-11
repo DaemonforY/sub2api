@@ -434,3 +434,38 @@ type countRepo struct{ PromptLibraryRepository }
 
 func (countRepo) CountUntranslated(context.Context) (int64, error)    { return 0, nil }
 func (countRepo) CountUncheckedScenes(context.Context) (int64, error) { return 0, nil }
+
+func TestPromptSyncParsesHandrawStyles(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/yang0/handraw-style/master/skills/handdraw-style-prompter/references/styles.json", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"number": "FA-001", "group": "FA 国际社论幽默 / Editorial & Humor Doodle", "reference": "Gemma Correll", "generation_name": "Playful Deadpan Doodle", "traits": "松散黑线、怪萌人物、少量点色、白底"},
+			{"number": "FF-003", "group": "FF 3D黏土毛毡与纸雕 / 3D Clay, Felt & Papercraft", "reference": "", "generation_name": "Felt Diorama", "traits": "羊毛毡质感、微缩场景"},
+			{"number": "FA-001", "group": "dup", "generation_name": "dup", "traits": "dup"},
+			{"number": "../x", "group": "bad", "generation_name": "bad", "traits": "bad"},
+			{"number": "FB-002", "group": "FB", "generation_name": "", "traits": "no name is skipped"}
+		]`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	sync := NewPromptLibrarySyncService(nil, srv.Client(), nil)
+
+	items, err := sync.fetchHandraw(context.Background(), &PromptSource{ID: "handraw-style", Format: "handraw", Homepage: "https://github.com/yang0/handraw-style",
+		URL: srv.URL + "/yang0/handraw-style/master/skills/handdraw-style-prompter/references/styles.json"})
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+
+	first := items[0]
+	require.Equal(t, "FA-001", first.ExternalID)
+	require.Equal(t, "手绘 FA-001 · Playful Deadpan Doodle", first.Title)
+	require.Equal(t, srv.URL+"/yang0/handraw-style/master/images/individual/FA/FA-001.webp", first.CoverURL)
+	require.Contains(t, first.Prompt, "画风：Playful Deadpan Doodle")
+	require.Contains(t, first.Prompt, "松散黑线")
+	require.NotContains(t, first.Prompt, "Gemma Correll", "the artist is credited in the description, not imitated in the prompt")
+	require.Contains(t, first.Description, "风格参考：Gemma Correll")
+	require.Equal(t, "yang0", first.Author)
+	require.Equal(t, "https://github.com/yang0/handraw-style", first.SourceURL)
+	require.Equal(t, "illustration", first.Scenes[0])
+	require.Contains(t, first.SourceTags, "国际社论幽默")
+	require.Equal(t, "3d", items[1].Scenes[0])
+}
