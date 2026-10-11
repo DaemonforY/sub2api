@@ -474,7 +474,7 @@ var handrawStyleNumber = regexp.MustCompile(`^F[A-Z]-\d{3}$`)
 // 327 numbered hand-drawn styles, each a style name and its traits. A style becomes a prompt with a
 // placeholder for the subject; its sample image (images/individual/<FA>/<FA-001>.webp) is the cover.
 // The project's MIT license asks for credit to yang0 and the repository: author and source link.
-// Styles without traits (13 of them, mostly named after one anime or game) are left out.
+// 13 styles have no traits (mostly named after one anime or game); their prompt is the style name alone.
 func (s *PromptLibrarySyncService) fetchHandraw(ctx context.Context, src *PromptSource) ([]PromptItem, error) {
 	body, err := s.open(ctx, src.URL)
 	if err != nil {
@@ -491,14 +491,17 @@ func (s *PromptLibrarySyncService) fetchHandraw(ctx context.Context, src *Prompt
 		number := strings.TrimSpace(string(rec.Number))
 		name := strings.TrimSpace(string(rec.GenerationName))
 		traits := strings.TrimSpace(string(rec.Traits))
-		if !handrawStyleNumber.MatchString(number) || name == "" || traits == "" || seen[number] {
+		if !handrawStyleNumber.MatchString(number) || name == "" || seen[number] {
 			return
 		}
 		seen[number] = true
 		// "FA 国际社论幽默 / Editorial & Humor Doodle" -> "国际社论幽默"
 		group := strings.TrimSpace(strings.SplitN(string(rec.Group), "/", 2)[0])
 		group = strings.TrimSpace(strings.TrimPrefix(group, number[:2]))
-		prompt := "【画面主题：在这里写你要画的内容】\n\n画风：" + name + "，手绘插画。\n风格特征：" + traits
+		prompt := "【画面主题：在这里写你要画的内容】\n\n画风：" + name + "，手绘插画。"
+		if traits != "" {
+			prompt += "\n风格特征：" + traits
+		}
 		description := "手绘风格图鉴 " + number
 		if group != "" {
 			description += " · " + group
