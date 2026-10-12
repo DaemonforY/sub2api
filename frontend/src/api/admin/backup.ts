@@ -85,6 +85,8 @@ export async function testS3Connection(config: BackupS3Config): Promise<TestS3Re
 // credentials configured above and only keeps its own bucket/prefix.
 export interface ImageStorageConfig {
   enabled: boolean
+  /** '' = S3-compatible bucket; 'local' = this server's disk (needs only public_base_url, kept ~1 day). */
+  provider?: '' | 'local'
   reuse_backup_s3: boolean
   bucket: string
   prefix: string

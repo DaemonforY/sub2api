@@ -71,13 +71,28 @@
           </label>
         </div>
 
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <div class="mb-3 flex flex-wrap items-center gap-4 text-sm text-gray-700 dark:text-gray-300" data-testid="image-storage-provider">
+          <span class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.backup.imageStorage.provider') }}</span>
+          <label class="inline-flex items-center gap-2">
+            <input v-model="imageStorageForm.provider" type="radio" value="" />
+            <span>{{ t('admin.backup.imageStorage.providerS3') }}</span>
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input v-model="imageStorageForm.provider" type="radio" value="local" />
+            <span>{{ t('admin.backup.imageStorage.providerLocal') }}</span>
+          </label>
+        </div>
+        <p v-if="isLocalImageStorage" class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+          {{ t('admin.backup.imageStorage.localHint') }}
+        </p>
+
+        <label v-if="!isLocalImageStorage" class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
           <input v-model="imageStorageForm.reuse_backup_s3" type="checkbox" />
           <span>{{ t('admin.backup.imageStorage.reuseBackupS3') }}</span>
         </label>
 
         <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
+          <div v-if="!isLocalImageStorage">
             <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.backup.imageStorage.bucket') }}</label>
             <input v-model="imageStorageForm.bucket" class="input w-full" :placeholder="imageStorageForm.reuse_backup_s3 ? t('admin.backup.imageStorage.bucketInherited') : ''" />
           </div>
@@ -86,7 +101,7 @@
             <input v-model="imageStorageForm.prefix" class="input w-full" placeholder="images/" />
           </div>
 
-          <template v-if="!imageStorageForm.reuse_backup_s3">
+          <template v-if="!isLocalImageStorage && !imageStorageForm.reuse_backup_s3">
             <div>
               <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.backup.s3.endpoint') }}</label>
               <input v-model="imageStorageForm.endpoint" class="input w-full" placeholder="https://<account_id>.r2.cloudflarestorage.com" />
@@ -111,9 +126,16 @@
 
           <div>
             <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.backup.imageStorage.publicBaseUrl') }}</label>
-            <input v-model="imageStorageForm.public_base_url" class="input w-full" :placeholder="t('admin.backup.imageStorage.publicBaseUrlPlaceholder')" />
+            <input
+              v-model="imageStorageForm.public_base_url"
+              class="input w-full"
+              :placeholder="isLocalImageStorage ? localImageBaseUrl : t('admin.backup.imageStorage.publicBaseUrlPlaceholder')"
+            />
+            <p v-if="isLocalImageStorage" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.backup.imageStorage.localBaseUrlHint', { url: localImageBaseUrl }) }}
+            </p>
           </div>
-          <div>
+          <div v-if="!isLocalImageStorage">
             <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">{{ t('admin.backup.imageStorage.presignExpiryHours') }}</label>
             <input v-model.number="imageStorageForm.presign_expiry_hours" type="number" min="1" class="input w-full" />
           </div>
@@ -447,6 +469,7 @@ const testingS3 = ref(false)
 // to reuse the credentials configured above and only differ by prefix.
 const imageStorageForm = ref<ImageStorageConfig>({
   enabled: false,
+  provider: '',
   reuse_backup_s3: true,
   bucket: '',
   prefix: 'images/',
@@ -460,6 +483,9 @@ const imageStorageForm = ref<ImageStorageConfig>({
   force_path_style: false,
 })
 const imageStorageSecretConfigured = ref(false)
+const isLocalImageStorage = computed(() => imageStorageForm.value.provider === 'local')
+// This server's own file route, the right public_base_url for local storage.
+const localImageBaseUrl = `${window.location.origin}/api/v1/image-files`
 const savingImageStorage = ref(false)
 const testingImageStorage = ref(false)
 
@@ -638,6 +664,7 @@ async function loadImageStorageConfig() {
     const { config, secret_configured } = await adminAPI.backup.getImageStorageConfig()
     imageStorageForm.value = {
       ...config,
+      provider: config.provider === 'local' ? 'local' : '',
       prefix: config.prefix || 'images/',
       region: config.region || 'auto',
       secret_access_key: '',

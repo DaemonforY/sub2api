@@ -27,8 +27,11 @@ type ImageStorageFactory func(ctx context.Context, cfg *config.ImageStorageConfi
 // ReuseBackupS3 为真时不保存自己的凭证，直接借用数据库备份已配置的 S3 端点与密钥，
 // 只用自己的 Bucket/Prefix 区分对象；这样"数据走 backups/、图片走 images/"无需重复配置。
 type ImageStorageSettings struct {
-	Enabled       bool `json:"enabled"`
-	ReuseBackupS3 bool `json:"reuse_backup_s3"`
+	Enabled bool `json:"enabled"`
+	// Provider: "" / "s3" for an S3-compatible bucket, "local" for this server's disk
+	// (needs only public_base_url, e.g. https://example.com/api/v1/image-files).
+	Provider      string `json:"provider"`
+	ReuseBackupS3 bool   `json:"reuse_backup_s3"`
 
 	Bucket           string `json:"bucket"` // 留空且复用备份时，沿用备份桶
 	Prefix           string `json:"prefix"`
@@ -167,7 +170,13 @@ func (s *ImageStorageSettingService) SecretConfigured(ctx context.Context) bool 
 func (s *ImageStorageSettingService) Update(ctx context.Context, in ImageStorageSettings) (*ImageStorageSettings, error) {
 	normalizeImageStorageSettings(&in)
 
-	if in.ReuseBackupS3 {
+	if strings.EqualFold(in.Provider, config.ImageStorageProviderLocal) {
+		// 本机磁盘不需要任何凭证。
+		in.Provider = config.ImageStorageProviderLocal
+		in.ReuseBackupS3 = false
+		in.Endpoint, in.Region, in.AccessKeyID, in.SecretAccessKey, in.Bucket = "", "", "", "", ""
+		in.ForcePathStyle = false
+	} else if in.ReuseBackupS3 {
 		// 复用备份凭证时不落自己的密钥，避免同一份密钥在库里存两份。
 		in.Endpoint, in.Region, in.AccessKeyID, in.SecretAccessKey = "", "", "", ""
 		in.ForcePathStyle = false
@@ -205,7 +214,7 @@ func (s *ImageStorageSettingService) Update(ctx context.Context, in ImageStorage
 // 与 Update 一样支持留空 SecretAccessKey 表示沿用已保存的值。
 func (s *ImageStorageSettingService) TestConnection(ctx context.Context, in ImageStorageSettings) error {
 	normalizeImageStorageSettings(&in)
-	if !in.ReuseBackupS3 && in.SecretAccessKey == "" {
+	if !strings.EqualFold(in.Provider, config.ImageStorageProviderLocal) && !in.ReuseBackupS3 && in.SecretAccessKey == "" {
 		old, err := s.load(ctx)
 		if err == nil && old != nil {
 			in.SecretAccessKey = old.SecretAccessKey
@@ -240,6 +249,7 @@ func (s *ImageStorageSettingService) effectiveConfig(ctx context.Context) (*conf
 func (s *ImageStorageSettingService) toImageStorageConfig(ctx context.Context, in *ImageStorageSettings) (*config.ImageStorageConfig, error) {
 	cfg := &config.ImageStorageConfig{
 		Enabled:         in.Enabled,
+		Provider:        in.Provider,
 		Bucket:          in.Bucket,
 		Prefix:          in.Prefix,
 		PublicBaseURL:   in.PublicBaseURL,
@@ -252,6 +262,9 @@ func (s *ImageStorageSettingService) toImageStorageConfig(ctx context.Context, i
 		ForcePathStyle:  in.ForcePathStyle,
 	}
 
+	if cfg.IsLocal() {
+		return cfg, nil
+	}
 	if in.ReuseBackupS3 {
 		backupCfg, err := s.backupCredentials(ctx)
 		if err != nil {
@@ -307,6 +320,7 @@ func (s *ImageStorageSettingService) load(ctx context.Context) (*ImageStorageSet
 func settingsFromConfig(cfg config.ImageStorageConfig) *ImageStorageSettings {
 	return &ImageStorageSettings{
 		Enabled:          cfg.Enabled,
+		Provider:         cfg.Provider,
 		Bucket:           cfg.Bucket,
 		Prefix:           cfg.Prefix,
 		PublicBaseURL:    cfg.PublicBaseURL,
@@ -321,6 +335,10 @@ func settingsFromConfig(cfg config.ImageStorageConfig) *ImageStorageSettings {
 }
 
 func normalizeImageStorageSettings(in *ImageStorageSettings) {
+	in.Provider = strings.ToLower(strings.TrimSpace(in.Provider))
+	if in.Provider != config.ImageStorageProviderLocal {
+		in.Provider = ""
+	}
 	in.Bucket = strings.TrimSpace(in.Bucket)
 	in.Endpoint = strings.TrimSpace(in.Endpoint)
 	in.Region = strings.TrimSpace(in.Region)

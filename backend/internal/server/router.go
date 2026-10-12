@@ -182,4 +182,6 @@ func registerRoutes(
 	routes.RegisterPaymentRoutes(v1, h.Payment, h.PaymentWebhook, h.Admin.Payment, jwtAuth, adminAuth, auditLog, settingService, panelRateLimiter, redisClient)
 
 	handler.RegisterPageRoutes(v1, cfg.Pricing.DataDir, gin.HandlerFunc(jwtAuth), gin.HandlerFunc(adminAuth), settingService)
+	// 异步生图存本机磁盘时的结果文件（公开、带随机任务 ID，约 1 天后清理）
+	v1.GET("/image-files/*key", handler.ServeImageFile(cfg.ImageFilesDir()))
 }

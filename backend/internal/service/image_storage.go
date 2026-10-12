@@ -9,6 +9,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -254,4 +255,17 @@ func extensionForContentType(ct string) string {
 	default:
 		return ".png"
 	}
+}
+
+// LocalImagePath maps a key to a file inside dir, or "" for anything that could escape it.
+func LocalImagePath(dir, key string) string {
+	key = strings.TrimSpace(key)
+	if key == "" || strings.Contains(key, "..") || strings.ContainsAny(key, "\\\x00") || strings.HasPrefix(key, "/") {
+		return ""
+	}
+	clean := filepath.Clean(filepath.FromSlash(key))
+	if clean == "." || strings.HasPrefix(clean, "..") || filepath.IsAbs(clean) {
+		return ""
+	}
+	return filepath.Join(dir, clean)
 }

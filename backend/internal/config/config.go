@@ -10,6 +10,7 @@ import (
 	"net/textproto"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -259,7 +260,10 @@ type BatchImageConfig struct {
 // Enabled 同时作为异步图片任务功能的总开关：未启用或未配置完整凭证时，
 // 异步生图接口整体禁用，避免把上游返回的大 base64 结果塞进 Redis。
 type ImageStorageConfig struct {
-	Enabled         bool   `mapstructure:"enabled"`
+	Enabled bool `mapstructure:"enabled"`
+	// Provider: "s3" (default, any S3-compatible bucket) or "local" — this server's disk
+	// (<data dir>/image-files, served at public_base_url, kept ~1 day). Local needs no credentials.
+	Provider        string `mapstructure:"provider"`
 	Endpoint        string `mapstructure:"endpoint"` // e.g. https://<account_id>.r2.cloudflarestorage.com
 	Region          string `mapstructure:"region"`   // R2 用 "auto"
 	Bucket          string `mapstructure:"bucket"`
@@ -274,7 +278,27 @@ type ImageStorageConfig struct {
 
 // IsConfigured 检查对象存储必要字段是否已配置
 func (c *ImageStorageConfig) IsConfigured() bool {
+	if c.IsLocal() {
+		return c.PublicBaseURL != ""
+	}
 	return c.Bucket != "" && c.AccessKeyID != "" && c.SecretAccessKey != ""
+}
+
+// IsLocal: results are kept on this server's disk instead of an object store.
+func (c *ImageStorageConfig) IsLocal() bool {
+	return strings.EqualFold(strings.TrimSpace(c.Provider), ImageStorageProviderLocal)
+}
+
+// ImageStorageProviderLocal is the Provider value for this server's disk.
+const ImageStorageProviderLocal = "local"
+
+// ImageFilesDir is where local image storage keeps files: next to the video files
+// (<data dir>/image-files), like the editor's article pictures.
+func (c *Config) ImageFilesDir() string {
+	if c != nil && strings.TrimSpace(c.Video.Dir) != "" {
+		return filepath.Join(filepath.Dir(filepath.Clean(c.Video.Dir)), "image-files")
+	}
+	return filepath.Join("data", "image-files")
 }
 
 // Active 返回异步图片任务是否可用：开关打开且凭证齐全
@@ -286,6 +310,12 @@ func (c *ImageStorageConfig) Active() bool {
 // 用于启动日志：只说"凭证不完整"会让运维以为自己漏填了，而实际可能是值填了却没被读到。
 func (c *ImageStorageConfig) MissingCredentialKeys() []string {
 	var missing []string
+	if c.IsLocal() {
+		if c.PublicBaseURL == "" {
+			missing = append(missing, "image_storage.public_base_url")
+		}
+		return missing
+	}
 	if c.Bucket == "" {
 		missing = append(missing, "image_storage.bucket")
 	}
@@ -2319,6 +2349,7 @@ func setDefaults() {
 
 	// Image storage (async image task result offload to S3-compatible object storage)
 	viper.SetDefault("image_storage.enabled", false)
+	viper.SetDefault("image_storage.provider", "")
 	viper.SetDefault("image_storage.region", "auto")
 	viper.SetDefault("image_storage.prefix", "images/")
 	viper.SetDefault("image_storage.force_path_style", false)

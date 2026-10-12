@@ -220,8 +220,11 @@ func ProvideEnt(cfg *config.Config) (*ent.Client, error) {
 //
 // 这里返回工厂而不是实例：异步生图的开关与凭证可以在后台随时改动，客户端必须能在
 // 设置保存后重建，而不是在启动时定死一份。
-func ProvideImageStorageFactory() service.ImageStorageFactory {
+func ProvideImageStorageFactory(appCfg *config.Config) service.ImageStorageFactory {
 	return func(ctx context.Context, cfg *config.ImageStorageConfig) (service.ImageStorage, error) {
+		if cfg != nil && cfg.IsLocal() {
+			return NewLocalImageStorage(appCfg.ImageFilesDir(), cfg.PublicBaseURL)
+		}
 		return NewS3ImageStorage(ctx, cfg)
 	}
 }

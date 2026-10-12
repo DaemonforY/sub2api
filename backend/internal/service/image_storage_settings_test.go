@@ -252,3 +252,47 @@ func TestImageStorageSettingsFallBackToConfigFile(t *testing.T) {
 	require.Equal(t, "yaml-bucket", fetched.Bucket)
 	require.Empty(t, fetched.SecretAccessKey)
 }
+
+// Local disk storage: no credentials, enabled as soon as public_base_url is set, and any S3
+// fields sent along are dropped rather than stored.
+func TestImageStorageSettingsLocalProvider(t *testing.T) {
+	svc, repo, built := newImageStorageFixture(t, config.ImageStorageConfig{})
+	ctx := context.Background()
+
+	out, err := svc.Update(ctx, ImageStorageSettings{Enabled: true, Provider: " LOCAL ", AccessKeyID: "ak", SecretAccessKey: "sk", Bucket: "b"})
+	require.NoError(t, err)
+	require.Equal(t, config.ImageStorageProviderLocal, out.Provider)
+	_, enabled := svc.resolve()
+	require.False(t, enabled, "local still needs public_base_url")
+	require.NotContains(t, repo.values[settingKeyImageStorageConfig], "sk")
+
+	_, err = svc.Update(ctx, ImageStorageSettings{Enabled: true, Provider: "local", PublicBaseURL: "https://hivegpt.cn/api/v1/image-files/"})
+	require.NoError(t, err)
+	uploader, enabled := svc.resolve()
+	require.True(t, enabled)
+	require.NotNil(t, uploader)
+	last := (*built)[len(*built)-1]
+	require.True(t, last.IsLocal())
+	require.Equal(t, "https://hivegpt.cn/api/v1/image-files", last.PublicBaseURL)
+	require.Empty(t, last.AccessKeyID)
+
+	require.NoError(t, svc.TestConnection(ctx, ImageStorageSettings{Provider: "local", PublicBaseURL: "https://hivegpt.cn/api/v1/image-files"}))
+	require.ErrorIs(t, svc.TestConnection(ctx, ImageStorageSettings{Provider: "local"}), ErrImageStorageIncomplete)
+
+	// Anything else is S3 as before.
+	got, err := svc.Get(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "local", got.Provider)
+	_, err = svc.Update(ctx, ImageStorageSettings{Enabled: true, Provider: "ftp", ReuseBackupS3: false})
+	require.NoError(t, err)
+	got, _ = svc.Get(ctx)
+	require.Empty(t, got.Provider)
+}
+
+func TestLocalImagePath(t *testing.T) {
+	dir := "/data/image-files"
+	require.Equal(t, "/data/image-files/images/imgtask_abc-0.png", LocalImagePath(dir, "images/imgtask_abc-0.png"))
+	for _, bad := range []string{"", "../etc/passwd", "images/../../x.png", "/etc/passwd", "a\\..\\b.png", "a\x00.png", ".."} {
+		require.Empty(t, LocalImagePath(dir, bad), bad)
+	}
+}
