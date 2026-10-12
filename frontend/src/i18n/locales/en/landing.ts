@@ -191,7 +191,7 @@ export default {
         offerGeneric: 'Works for images and chat, pay for what you use',
         cta: 'Sign up free, get ${amount}',
         ctaNoBonus: 'Sign up free',
-        ctaSecondary: 'See what it can do',
+        ctaSecondary: 'See how it works',
         ctaDashboard: 'Open console',
         trustPay: 'WeChat Pay, credited instantly',
         trustMetered: 'Pay for what you use, every charge listed',
@@ -207,17 +207,20 @@ export default {
         draw: {
           prompt: 'A ginger shorthair cat lying on the sill of an old wooden window, looking out at a rainy street. Dusk, warm lamp light inside, cold blue outside, raindrops on the glass, watercolour illustration.',
           caption: "A member's work · gpt-image-2 · prompt excerpt",
+          status: 'Done · 2K',
           alt: "A member's work: a ginger cat at a rainy window"
         },
         write: {
           prompt: 'Lay this draft out as a WeChat article, add a cover image and make the title catchier.',
           caption: 'WeChat article editor · real screen',
+          status: 'Laid out',
           alt: 'The WeChat article editor',
           go: 'Open editor'
         },
         code: {
           prompt: 'Merge the 30 Excel files in the "Reports" folder on my desktop into one sheet and drop duplicate rows.',
           caption: 'Codex · illustration',
+          status: 'Done',
           go: 'Read the guide',
           cmd: 'merge the 30 Excel files in "Reports" into one sheet',
           line1: 'read 30 files, 4,812 rows',
@@ -283,6 +286,46 @@ export default {
       footer: {
         editor: 'WeChat article editor',
         style: 'Writing style test'
+      },
+      motion: {
+        hud: {
+          input: 'Your one sentence',
+          inputSpec: '→ 9 tokens',
+          model: 'GPT-6 Astra',
+          modelSpec: 'Draw · Write · Code'
+        },
+        teardown: {
+          eyebrow: 'Take it apart / 05 layers',
+          title: 'How one sentence becomes a picture',
+          subtitle: 'From the words you type to the finished image, all five steps run on {site}.',
+          timeline: 'Exploded view',
+          layers: {
+            prompt: 'Your sentence',
+            promptSpec: 'Chinese · {n} characters',
+            tokens: 'Cut into tokens',
+            tokensSpec: '≈ 70 tokens',
+            modelSpec: 'Works out what to draw',
+            imageSpec: 'Draws in 2K',
+            result: 'Done',
+            resultSpec: 'About {price} each',
+            resultSpecPlain: 'The finished picture'
+          },
+          phases: { p0: 'Stacked', p1: 'Taking it apart', p2: 'Understanding you', p3: 'Drawing', p4: 'Done', p5: 'Back together' }
+        },
+        stats: {
+          eyebrow: 'Data in motion',
+          titlePre: 'We have processed ',
+          titlePost: ' tokens for our users',
+          titlePlain: 'Every request flows through here',
+          requests: 'requests',
+          minTopup: '¥1',
+          payg: 'minimum top-up, pay for what you use',
+          chat: 'Chat',
+          image: 'Images',
+          code: 'Code',
+          legend: 'Each light is one request (illustration)',
+          source: 'From our billing records; cached tokens included'
+        }
       },
       firstImage: {
         title: 'All set — draw your first picture',

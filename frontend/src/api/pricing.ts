@@ -95,3 +95,14 @@ export function signupCreditEstimate(bonusUSD: number, p: Pick<PublicPricing, 's
   const chats = per(p?.starter_request_cost_usd)
   return { images: per(p?.starter_image_cost_usd), chats: chats > 20 ? Math.floor(chats / 10) * 10 : chats }
 }
+
+/** Tokens (input, output and cache) and requests members have used so far; cheap enough to poll. */
+export interface UsageTotals {
+  total_tokens: number
+  total_requests: number
+}
+
+export async function getUsageTotals(): Promise<UsageTotals> {
+  const { data } = await apiClient.get<UsageTotals>('/usage-totals')
+  return data
+}

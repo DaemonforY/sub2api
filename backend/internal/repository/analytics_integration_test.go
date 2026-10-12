@@ -269,7 +269,8 @@ func TestPublicPricing(t *testing.T) {
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: member.ID, Key: "sk-pp-" + sfx})
 	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "pp-acc-" + sfx}))
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
-		SetRequestID("pp-" + sfx).SetModel("gpt-5.5").SetActualCost(0.2).SetTotalCost(0.1).SetCreatedAt(time.Now()).Save(ctx)
+		SetRequestID("pp-" + sfx).SetModel("gpt-5.5").SetActualCost(0.2).SetTotalCost(0.1).
+		SetInputTokens(1200).SetOutputTokens(300).SetCacheCreationTokens(40).SetCacheReadTokens(5000).SetCreatedAt(time.Now()).Save(ctx)
 	require.NoError(t, err)
 	// 20 images at $4 standard, and 49 more requests at $0.10 standard (50 with the one above).
 	_, err = integrationEntClient.UsageLog.Create().SetUserID(member.ID).SetAPIKeyID(key.ID).SetAccountID(acc.ID).SetGroupID(payg.ID).
@@ -315,6 +316,16 @@ func TestPublicPricing(t *testing.T) {
 	require.Greater(t, out.AvgRequestCostUSD, 0.0)
 	require.InDelta(t, 0.6, out.StarterImageCostUSD, 1e-9, "$0.20 an image at the group's 3× image rate")
 	require.InDelta(t, 0.12, out.StarterRequestCostUSD, 1e-9, "$0.10 a request at the group's 1.2×")
+
+	// the live counter: every token of members' requests, cache included
+	totals, err := svc.PublicUsageTotals(ctx)
+	require.NoError(t, err)
+	var wantTokens int64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COALESCE(SUM(l.input_tokens + l.output_tokens + l.cache_creation_tokens + l.cache_read_tokens), 0)
+		FROM usage_logs l JOIN users u ON u.id = l.user_id WHERE u.role <> 'admin'`).Scan(&wantTokens))
+	require.GreaterOrEqual(t, wantTokens, int64(6540))
+	require.Equal(t, wantTokens, totals.TotalTokens)
+	require.Equal(t, int64(members), totals.TotalRequests)
 }
 
 func TestChannelLinkRepository(t *testing.T) {

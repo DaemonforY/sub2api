@@ -22,7 +22,7 @@ describe('home hero demo', () => {
     vi.advanceTimersByTime(6500) // typed, shown, held: on to 写作
     await nextTick()
     expect(w.find('[data-testid="home-hero-generate"]').exists()).toBe(false) // 写作 / 编程 link out instead
-    expect(w.get('a.btn').attributes('href')).toMatch(/^\/editor\//)
+    expect(w.findAll('a').some((x) => /^\/editor\//.test(x.attributes('href') || ''))).toBe(true)
   })
 
   it('makes whatever the visitor writes a drawing prompt and emits it', async () => {

@@ -172,7 +172,7 @@
             <router-link
               v-if="registrationEnabled"
               to="/register"
-              class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-primary-600/30 transition hover:bg-primary-500"
+              class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 px-3 py-1.5 text-sm font-semibold text-white shadow-md shadow-blue-600/30 transition hover:brightness-110"
               @click="trackCta('nav-register')"
             >
               {{ t('home.register') }}
@@ -183,91 +183,98 @@
       </nav>
     </header>
 
-    <!-- Main Content -->
-    <main class="relative z-10 flex-1 px-4 pb-16 pt-8 sm:px-6 lg:pt-14">
-      <div class="mx-auto max-w-6xl">
-        <!-- Hero: the slogan, what signing up gets you, one button; on the right a sentence turning into a piece of work -->
-        <section class="home-hero relative mb-24 grid items-center gap-10 lg:grid-cols-[1.02fr_1fr] lg:gap-14" data-testid="home-hero">
-          <div>
-            <p class="mb-5 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/60 py-1 pl-1 pr-3 text-xs text-gray-500 sm:text-sm dark:border-white/10 dark:bg-white/5 dark:text-dark-300">
-              <span class="rounded-full bg-teal-400 px-2 py-0.5 text-[11px] font-bold text-teal-950">NEW</span>
-              <span class="text-gray-900 dark:text-white">{{ t('home.v3.hero.news') }}</span>· {{ t('home.v3.hero.newsTail') }}
+    <!-- Main Content: the motion screens are always dark; the rest follows the theme -->
+    <main class="relative z-10 flex-1">
+      <!-- ① Hero: the slogan arriving as tokens, what signing up gets you, one button, the live token counter;
+           on the right a sentence turning into a piece of work. Tokens stream past the words into the card. -->
+      <section ref="heroSection" class="home-hero relative overflow-hidden bg-[#050a14] text-white" data-testid="home-hero">
+        <div class="hero-glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <div class="hero-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <HomeMotion kind="river" :context="riverContext" />
+        <div class="relative z-[2] mx-auto grid min-h-[calc(100svh-61px)] max-w-6xl items-center gap-10 px-4 pb-20 pt-8 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-12">
+          <div ref="heroCopy" class="relative">
+            <p class="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#050a14]/60 py-1 pl-1 pr-3 text-xs text-slate-400 sm:text-sm">
+              <span class="rounded-full bg-cyan-300 px-2 py-0.5 text-[11px] font-bold text-cyan-950">NEW</span>
+              <span class="text-white">{{ t('home.v3.hero.news') }}</span>· {{ t('home.v3.hero.newsTail') }}
             </p>
-            <h1 class="break-keep text-[min(46px,11.5vw)] font-extrabold leading-[1.06] tracking-tight text-gray-900 sm:text-6xl lg:text-[80px] dark:text-white">
-              <span class="block">{{ t('home.v3.hero.titleLead') }}</span>
-              <span class="inline-block bg-gradient-to-r from-violet-400 via-primary-600 to-teal-500 bg-clip-text pb-1 text-transparent">{{ t('home.v3.hero.titleHighlight') }}</span>
-            </h1>
-            <p class="mt-5 max-w-xl text-base leading-relaxed text-gray-600 sm:text-lg dark:text-dark-300">
-              {{ t('home.v3.hero.subtitleLead') }}<span class="text-gray-900 dark:text-white">{{ t('home.v3.hero.subtitleEm') }}</span>{{ t('home.v3.hero.subtitleTail') }}
+            <HomeHeroSlogan :lead="t('home.v3.hero.titleLead')" :highlight="t('home.v3.hero.titleHighlight')" :huds="heroHuds" />
+            <p class="mt-5 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
+              {{ t('home.v3.hero.subtitleLead') }}<span class="text-white">{{ t('home.v3.hero.subtitleEm') }}</span>{{ t('home.v3.hero.subtitleTail') }}
             </p>
 
             <!-- What signing up gets you, in pictures and chats rather than dollars -->
             <div
               v-if="showOffer"
-              class="mt-7 flex max-w-lg items-center gap-4 rounded-2xl border border-amber-300/60 bg-gradient-to-r from-amber-100/80 to-amber-50/30 p-3 pr-5 dark:border-amber-300/30 dark:from-amber-300/15 dark:to-amber-300/[0.03]"
+              class="mt-7 flex max-w-lg items-center gap-4 rounded-2xl border border-amber-300/30 bg-gradient-to-r from-amber-300/15 to-amber-300/[0.03] p-3 pr-5"
               data-testid="home-offer"
             >
               <span class="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-amber-300 text-2xl font-extrabold tracking-tight text-amber-950">${{ signupBonusText }}</span>
               <span>
-                <span class="block font-semibold text-gray-900 dark:text-white">{{ t('home.v3.hero.offerTitle', { amount: signupBonusText }) }}</span>
-                <span class="mt-0.5 block text-sm text-amber-900/80 dark:text-amber-100/70">{{ offerLine }}</span>
+                <span class="block font-semibold text-white">{{ t('home.v3.hero.offerTitle', { amount: signupBonusText }) }}</span>
+                <span class="mt-0.5 block text-sm text-amber-100/70">{{ offerLine }}</span>
               </span>
             </div>
 
             <div class="mt-7 flex flex-wrap gap-3">
               <div ref="heroCta" class="w-full sm:w-auto">
-                <router-link
-                  v-if="isAuthenticated"
-                  :to="dashboardPath"
-                  class="btn btn-primary w-full px-7 py-3.5 text-base shadow-lg shadow-primary-600/30 sm:w-auto sm:text-lg"
-                >
+                <router-link v-if="isAuthenticated" :to="dashboardPath" class="hero-btn">
                   {{ t('home.v3.hero.ctaDashboard') }} →
                 </router-link>
                 <router-link
                   v-else-if="registrationEnabled"
                   to="/register"
-                  class="btn btn-primary w-full px-7 py-3.5 text-base shadow-lg shadow-primary-600/30 sm:w-auto sm:text-lg"
+                  class="hero-btn"
                   data-testid="home-hero-signup"
                   @click="trackCta('hero-signup')"
                 >
                   {{ signupBonus > 0 ? t('home.v3.hero.cta', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }} →
                 </router-link>
               </div>
-              <a href="#jobs" class="btn btn-secondary hidden px-6 py-3.5 text-base sm:inline-flex">{{ t('home.v3.hero.ctaSecondary') }}</a>
+              <a href="#teardown" class="hidden items-center rounded-2xl border border-white/15 px-6 py-3.5 text-base text-slate-300 transition hover:border-cyan-300/50 hover:text-white sm:inline-flex">{{ t('home.v3.hero.ctaSecondary') }}</a>
             </div>
-            <div class="mt-6 hidden flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500 sm:flex dark:text-dark-400">
-              <span v-for="item in trustItems" :key="item" class="inline-flex items-center gap-2">
-                <span class="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-teal-500" aria-hidden="true"></span>{{ item }}
-              </span>
-            </div>
+            <HomeTokenCounter class="mt-7" />
           </div>
 
-          <HomeHeroDemo @generate="onGenerate" />
-        </section>
+          <div ref="heroCard"><HomeHeroDemo @generate="onGenerate" /></div>
+        </div>
+        <p class="pointer-events-none absolute bottom-5 left-1/2 z-[2] hidden -translate-x-1/2 font-mono text-[10px] tracking-[0.3em] text-slate-500 sm:block" aria-hidden="true">SCROLL</p>
+      </section>
 
+      <!-- ② 拆开看看: one sentence → a picture, as an exploded view -->
+      <HomeTeardown :site-name="siteName" :image-cost-usd="pricing?.starter_image_cost_usd" />
+
+      <div class="mx-auto max-w-6xl px-4 pt-20 sm:px-6">
         <HomeJobs />
+      </div>
 
+      <!-- ④ 数据在流动: the honeycomb floor and the real totals -->
+      <HomeLiveStats :total-tokens="usage?.total_tokens" :total-requests="usage?.total_requests" />
+
+      <div class="mx-auto max-w-6xl px-4 pb-4 pt-20 sm:px-6">
         <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" :contact-info="contactInfo" />
-
         <HomeCommunityWall />
-
         <HomeFaq :site-name="siteName" />
+      </div>
 
-        <!-- Final CTA: the slogan once more -->
-        <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-600 via-violet-600 to-teal-600 px-6 py-14 text-center text-white shadow-xl sm:px-12">
-          <div class="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl"></div>
-          <h2 class="break-keep text-3xl font-extrabold tracking-tight sm:text-5xl">{{ t('home.v3.hero.titleLead') }}{{ t('home.v3.hero.titleHighlight') }}</h2>
-          <p class="mt-4 text-white/80">{{ signupBonus > 0 ? t('home.v3.finalCta.bonus', { amount: signupBonusText }) : t('home.v3.finalCta.noBonus') }}</p>
+      <!-- ⑥ Final: tokens fly together into the slogan; plain words when there is no motion -->
+      <section ref="finale" class="relative min-h-[100svh] overflow-hidden bg-[#050a14] text-white" data-testid="home-finale">
+        <div class="finale-glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <HomeMotion kind="assemble" :context="assembleContext" @started="finaleMotion = true" />
+        <h2 :class="finaleMotion ? 'sr-only' : 'absolute inset-x-0 top-[30%] z-[2] break-keep px-4 text-center text-4xl font-extrabold tracking-tight sm:text-6xl'">
+          {{ t('home.v3.hero.titleLead') }}{{ t('home.v3.hero.titleHighlight') }}
+        </h2>
+        <div class="absolute inset-x-0 top-[60%] z-[2] px-4 text-center">
+          <p class="text-slate-400">{{ signupBonus > 0 ? t('home.v3.finalCta.bonus', { amount: signupBonusText }) : t('home.v3.finalCta.noBonus') }}</p>
           <router-link
             v-if="isAuthenticated || registrationEnabled"
             :to="isAuthenticated ? dashboardPath : '/register'"
-            class="mt-8 inline-flex items-center rounded-xl bg-white px-7 py-3 text-base font-semibold text-primary-700 shadow-lg transition hover:bg-gray-100"
+            class="hero-btn mt-7"
             @click="trackCta('final-cta')"
           >
             {{ isAuthenticated ? t('home.v3.hero.ctaDashboard') : signupBonus > 0 ? t('home.v3.hero.cta', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }} →
           </router-link>
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
 
     <!-- Footer -->
@@ -356,9 +363,14 @@ import { sanitizeUrl } from '@/utils/url'
 import { track } from '@/utils/analytics'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossSites'
-import { formatTotalRequests, getPublicPricing, signupCreditEstimate, type PublicPricing } from '@/api/pricing'
+import { getPublicPricing, getUsageTotals, signupCreditEstimate, type PublicPricing, type UsageTotals } from '@/api/pricing'
 import { savePendingPrompt } from '@/utils/pendingPrompt'
 import HomeHeroDemo from '@/components/home/HomeHeroDemo.vue'
+import HomeHeroSlogan from '@/components/home/HomeHeroSlogan.vue'
+import HomeTokenCounter from '@/components/home/HomeTokenCounter.vue'
+import HomeMotion from '@/components/home/HomeMotion.vue'
+import HomeTeardown from '@/components/home/HomeTeardown.vue'
+import HomeLiveStats from '@/components/home/HomeLiveStats.vue'
 import HomeJobs from '@/components/home/HomeJobs.vue'
 import HomeSignupSheet from '@/components/home/HomeSignupSheet.vue'
 import HomePricing from '@/components/home/HomePricing.vue'
@@ -367,7 +379,7 @@ import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import HomePromoMascot from '@/components/home/HomePromoMascot.vue'
 import HomeFaq from '@/components/home/HomeFaq.vue'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
@@ -424,10 +436,21 @@ const offerLine = computed(() => {
   if (chats > 0) return t('home.v3.hero.offerChats', { chats })
   return t('home.v3.hero.offerGeneric')
 })
-const trustItems = computed(() => {
-  const total = formatTotalRequests(pricing.value?.total_requests, String(locale.value))
-  return [t('home.v3.hero.trustPay'), t('home.v3.hero.trustMetered'), ...(total ? [t('home.v3.hero.trustTotal', { n: total })] : [])]
-})
+const usage = ref<UsageTotals | null>(null)
+
+// Motion screens: the hero river needs to know where the words and the card are; the finale's
+// particles react to the pointer over that section.
+const heroSection = ref<HTMLElement | null>(null)
+const heroCopy = ref<HTMLElement | null>(null)
+const heroCard = ref<HTMLElement | null>(null)
+const finale = ref<HTMLElement | null>(null)
+const finaleMotion = ref(false)
+const riverContext = () => ({ host: heroSection.value!, text: () => (heroCopy.value ? [heroCopy.value] : []), card: () => heroCard.value })
+const assembleContext = () => ({ lines: [t('home.v3.hero.titleLead'), t('home.v3.hero.titleHighlight')] as [string, string], pointerTarget: finale.value! })
+const heroHuds = computed(() => [
+  { idx: 'INPUT', name: t('home.v3.motion.hud.input'), spec: t('home.v3.motion.hud.inputSpec') },
+  { idx: 'MODEL', name: t('home.v3.motion.hud.model'), spec: t('home.v3.motion.hud.modelSpec') },
+])
 
 // 生成 in the hero: members go straight to the canvas; visitors keep their sentence and sign up first.
 const sheetOpen = ref(false)
@@ -509,6 +532,9 @@ onMounted(() => {
   getPublicPricing()
     .then((p) => (pricing.value = p))
     .catch(() => {})
+  getUsageTotals()
+    .then((u) => (usage.value = u))
+    .catch(() => {})
 
   if (heroCta.value && typeof IntersectionObserver !== 'undefined') {
     heroObserver = new IntersectionObserver(([entry]) => {
@@ -520,3 +546,50 @@ onMounted(() => {
 
 onBeforeUnmount(() => heroObserver?.disconnect())
 </script>
+
+<style scoped>
+.hero-glow {
+  background:
+    radial-gradient(55% 60% at 72% 45%, rgba(37, 99, 235, 0.28), transparent 70%),
+    radial-gradient(40% 50% at 10% 15%, rgba(94, 231, 255, 0.1), transparent 70%);
+}
+.hero-grid {
+  opacity: 0.55;
+  background-image:
+    linear-gradient(rgba(94, 231, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 231, 255, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(70% 70% at 60% 40%, #000, transparent);
+  mask-image: radial-gradient(70% 70% at 60% 40%, #000, transparent);
+}
+.finale-glow {
+  background: radial-gradient(50% 45% at 50% 40%, rgba(37, 99, 235, 0.2), transparent 70%);
+}
+/* the one big button on the dark screens */
+.hero-btn {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  padding: 14px 28px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(100deg, #2563eb, #3b82f6 55%, #22b8e6);
+  box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: filter 0.15s, transform 0.15s;
+}
+.hero-btn:hover {
+  filter: brightness(1.1);
+}
+.hero-btn:active {
+  transform: translateY(1px);
+}
+@media (min-width: 640px) {
+  .hero-btn {
+    width: auto;
+    font-size: 18px;
+  }
+}
+</style>

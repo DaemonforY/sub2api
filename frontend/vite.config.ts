@@ -144,6 +144,11 @@ export default defineConfig(({ mode }) => {
               return 'vendor-stripe'
             }
 
+            // three.js 只给首页动效用，动效启动时才加载，不能进公共依赖。
+            if (id.includes('/three/')) {
+              return 'vendor-three'
+            }
+
             // 其他小型第三方库合并
             return 'vendor-misc'
           }

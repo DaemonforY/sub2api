@@ -191,7 +191,7 @@ export default {
         offerGeneric: '画图、对话都能用，用多少扣多少',
         cta: '免费注册，领 ${amount}',
         ctaNoBonus: '免费注册',
-        ctaSecondary: '先看看它能干什么',
+        ctaSecondary: '拆开看看它怎么干活',
         ctaDashboard: '进入控制台',
         trustPay: '微信支付，自动到账',
         trustMetered: '用多少扣多少，每笔可查',
@@ -207,17 +207,20 @@ export default {
         draw: {
           prompt: '一只橘色短毛猫趴在老式木窗的窗台上，侧脸望向窗外下雨的街道。傍晚，室内暖黄台灯，窗外冷蓝，玻璃上挂着雨滴，水彩插画风格。',
           caption: '真实用户作品 · gpt-image-2 · 提示词节选',
+          status: '已出图 · 2K',
           alt: '用户作品：雨天窗台上的橘猫'
         },
         write: {
           prompt: '把这篇稿子排成公众号样式，配一张封面，标题改得更抓人一点。',
           caption: '公众号排版 · 真实界面',
+          status: '已排好版',
           alt: '公众号排版界面',
           go: '去排版'
         },
         code: {
           prompt: '把桌面「报表」文件夹里 30 个 Excel 合并成一张总表，去掉重复的行。',
           caption: 'Codex · 示意',
+          status: '已完成',
           go: '看教程',
           cmd: '把「报表」里的 30 个 Excel 合并成一张总表',
           line1: '读取 30 个文件，共 4,812 行',
@@ -283,6 +286,46 @@ export default {
       footer: {
         editor: '公众号排版',
         style: '测写作风格'
+      },
+      motion: {
+        hud: {
+          input: '你的一句话',
+          inputSpec: '→ 9 tokens',
+          model: 'GPT-6 Astra',
+          modelSpec: '画图 · 写作 · 编程'
+        },
+        teardown: {
+          eyebrow: '拆开看看 / 05 layers',
+          title: '一句话，是怎么变成一张图的',
+          subtitle: '从你打出的字，到画好的图，中间这五步都在 {site} 里跑完。',
+          timeline: '拆解过程',
+          layers: {
+            prompt: '你说的一句话',
+            promptSpec: '中文 · {n} 个字',
+            tokens: '切成 token',
+            tokensSpec: '≈ 70 tokens',
+            modelSpec: '读懂你要画什么',
+            imageSpec: '2K 出图',
+            result: '成品',
+            resultSpec: '约 {price} 一张',
+            resultSpecPlain: '画好的图'
+          },
+          phases: { p0: '合在一起', p1: '拆开', p2: '读懂你要什么', p3: '出图', p4: '成品', p5: '合成' }
+        },
+        stats: {
+          eyebrow: '数据在流动',
+          titlePre: '已经帮用户处理了 ',
+          titlePost: ' 个 token',
+          titlePlain: '每一次请求，都在这里流动',
+          requests: '次请求',
+          minTopup: '1 元',
+          payg: '起充，用多少扣多少',
+          chat: '对话',
+          image: '画图',
+          code: '编程',
+          legend: '每一次亮起，代表一个请求（示意）',
+          source: '数字来自本站计费记录，含缓存读取的 token'
+        }
       },
       firstImage: {
         title: '准备好了，去画第一张图',

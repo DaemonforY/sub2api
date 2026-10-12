@@ -67,6 +67,8 @@ func RegisterPaymentRoutes(
 	// persisted-state compatibility path for staggered upgrades.
 	// 公开价格页（/pricing）：在售套餐、按量分组和充值比例，不需要登录
 	v1.GET("/pricing", panelRateLimiter.PublicIP(), paymentHandler.GetPublicPricing)
+	// 首页 TOKENS PROCESSED 实时计数：会员累计用掉的 token 和请求数，不需要登录
+	v1.GET("/usage-totals", panelRateLimiter.PublicIP(), paymentHandler.GetPublicUsageTotals)
 
 	// The anonymous verify endpoint is IP rate-limited to prevent out_trade_no
 	// enumeration. It fails open on Redis errors so an outage never blocks a

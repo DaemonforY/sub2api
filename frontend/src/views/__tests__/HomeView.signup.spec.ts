@@ -4,7 +4,7 @@ import { defineComponent, h } from 'vue'
 
 import HomeView from '../HomeView.vue'
 
-const { appStore, authStore, track, getPublicPricing } = vi.hoisted(() => ({
+const { appStore, authStore, track, getPublicPricing, getUsageTotals } = vi.hoisted(() => ({
   appStore: {
     cachedPublicSettings: {} as Record<string, unknown>,
     siteName: 'Fallback site',
@@ -21,13 +21,14 @@ const { appStore, authStore, track, getPublicPricing } = vi.hoisted(() => ({
   },
   track: vi.fn(),
   getPublicPricing: vi.fn(),
+  getUsageTotals: vi.fn(),
 }))
 
 vi.mock('@/stores', () => ({ useAppStore: () => appStore, useAuthStore: () => authStore }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => appStore }))
 vi.mock('@/utils/analytics', () => ({ track: (...a: unknown[]) => track(...a) }))
 vi.mock('@/api/courses', () => ({ listCourses: () => Promise.resolve([]) }))
-vi.mock('@/api/pricing', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/pricing')>()), getPublicPricing }))
+vi.mock('@/api/pricing', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/pricing')>()), getPublicPricing, getUsageTotals }))
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return { ...actual, useI18n: () => ({ t: (key: string, p?: Record<string, unknown>) => (p ? `${key}:${JSON.stringify(p)}` : key), locale: { value: 'zh' } }) }
@@ -48,6 +49,11 @@ function mountHome(settings: Record<string, unknown> = {}) {
         LocaleSwitcher: true,
         Icon: true,
         HomeHeroDemo: DemoStub,
+        HomeHeroSlogan: true,
+        HomeTokenCounter: true,
+        HomeMotion: true,
+        HomeTeardown: true,
+        HomeLiveStats: true,
         HomeJobs: true,
         HomePricing: true,
         HomeCommunityWall: true,
@@ -67,6 +73,7 @@ describe('HomeView sign-up calls to action', () => {
     authStore.isAuthenticated = false
     track.mockReset()
     getPublicPricing.mockReset().mockResolvedValue({ starter_image_cost_usd: 0.6, starter_request_cost_usd: 0.11, total_requests: 14220 })
+    getUsageTotals.mockReset().mockResolvedValue({ total_tokens: 1912852691, total_requests: 18728 })
     localStorage.clear()
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
   })
@@ -86,14 +93,15 @@ describe('HomeView sign-up calls to action', () => {
     expect(w.find('[data-testid="home-mobile-bar"]').exists()).toBe(false)
   })
 
-  it('says what the sign-up credit buys, from live billing', async () => {
+  it('says what the sign-up credit buys, from live billing, and passes the totals on', async () => {
     const w = mountHome({ signup_bonus: 2 })
     await flushPromises()
     const offer = w.get('[data-testid="home-offer"]').text()
     expect(offer).toContain('home.v3.hero.offerTitle:{"amount":"2"}')
     expect(offer).toContain('home.v3.hero.offerBoth:{"images":3,"chats":18}')
     expect(w.get('[data-testid="home-hero-signup"]').text()).toContain('home.v3.hero.cta:{"amount":"2"}')
-    expect(w.text()).toContain('home.v3.hero.trustTotal:{"n":"1.4 万"}')
+    expect(w.findComponent({ name: 'HomeLiveStats' }).props()).toMatchObject({ totalTokens: 1912852691, totalRequests: 18728 })
+    expect(w.findComponent({ name: 'HomeTeardown' }).props('imageCostUsd')).toBe(0.6)
   })
 
   it('promises no credit when none is configured', async () => {

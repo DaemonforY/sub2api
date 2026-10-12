@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"sort"
 	"sync"
 	"time"
@@ -217,4 +218,87 @@ func groupImageMultiplier(g *dbent.Group) float64 {
 		return g.ImageRateMultiplier
 	}
 	return g.RateMultiplier
+}
+
+// PublicUsageTotals is the home page's live TOKENS PROCESSED counter: every token members' requests
+// have used (input, output and cache) and how many requests that was, admins excluded — the same
+// count as total_requests above. The total lives in memory and is topped up with the rows added
+// since the last look, so a page polling every few seconds costs one small query; every ten minutes
+// it is recounted from scratch, which also picks up a row that committed after a later one.
+type PublicUsageTotals struct {
+	TotalTokens   int64     `json:"total_tokens"`
+	TotalRequests int64     `json:"total_requests"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+const (
+	publicUsageTTL     = 5 * time.Second
+	publicUsageRecount = 10 * time.Minute
+)
+
+var publicUsageCache struct {
+	sync.Mutex
+	at, recountedAt time.Time
+	lastID          int64
+	val             PublicUsageTotals
+}
+
+func (s *PaymentConfigService) PublicUsageTotals(ctx context.Context) (*PublicUsageTotals, error) {
+	c := &publicUsageCache
+	c.Lock()
+	defer c.Unlock()
+	now := time.Now()
+	if !c.at.IsZero() && now.Sub(c.at) < publicUsageTTL {
+		v := c.val
+		return &v, nil
+	}
+	full := c.recountedAt.IsZero() || now.Sub(c.recountedAt) >= publicUsageRecount
+	from := c.lastID
+	if full {
+		from = 0
+	}
+	tokens, requests, maxID, err := s.usageSince(ctx, from)
+	if err != nil {
+		if c.at.IsZero() {
+			return nil, err
+		}
+		v := c.val // keep showing the last good total
+		return &v, nil
+	}
+	if full {
+		c.val.TotalTokens, c.val.TotalRequests, c.recountedAt = 0, 0, now
+	}
+	c.val.TotalTokens += tokens
+	c.val.TotalRequests += requests
+	if full || maxID > c.lastID {
+		c.lastID = maxID
+	}
+	c.val.UpdatedAt, c.at = now, now
+	v := c.val
+	return &v, nil
+}
+
+// usageSince sums members' usage rows with id > after.
+func (s *PaymentConfigService) usageSince(ctx context.Context, after int64) (tokens, requests, maxID int64, err error) {
+	var agg []struct {
+		In    sql.NullInt64 `json:"in"`
+		Out   sql.NullInt64 `json:"out"`
+		Write sql.NullInt64 `json:"write"`
+		Read  sql.NullInt64 `json:"read"`
+		Count int64         `json:"count"`
+		MaxID sql.NullInt64 `json:"max_id"`
+	}
+	err = s.entClient.UsageLog.Query().
+		Where(usagelog.IDGT(after), usagelog.HasUserWith(user.RoleNEQ(RoleAdmin))).
+		Aggregate(
+			dbent.As(dbent.Sum(usagelog.FieldInputTokens), "in"), dbent.As(dbent.Sum(usagelog.FieldOutputTokens), "out"),
+			dbent.As(dbent.Sum(usagelog.FieldCacheCreationTokens), "write"), dbent.As(dbent.Sum(usagelog.FieldCacheReadTokens), "read"),
+			dbent.As(dbent.Count(), "count"), dbent.As(dbent.Max(usagelog.FieldID), "max_id"),
+		).
+		Scan(ctx, &agg)
+	if err != nil || len(agg) != 1 {
+		return 0, 0, 0, err
+	}
+	a := agg[0]
+	return a.In.Int64 + a.Out.Int64 + a.Write.Int64 + a.Read.Int64, a.Count, a.MaxID.Int64, nil
 }

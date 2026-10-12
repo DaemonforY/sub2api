@@ -772,3 +772,16 @@ func (h *PaymentHandler) GetPublicPricing(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=60")
 	response.Success(c, out)
 }
+
+// GetPublicUsageTotals returns the tokens and requests members have used so far, for the home
+// page's live TOKENS PROCESSED counter (no login; polled every few seconds).
+// GET /api/v1/usage-totals
+func (h *PaymentHandler) GetPublicUsageTotals(c *gin.Context) {
+	out, err := h.configService.PublicUsageTotals(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=5")
+	response.Success(c, out)
+}

@@ -29,6 +29,14 @@ vi.mock('@/stores/app', () => ({
   useAppStore: () => appStore,
 }))
 
+// the default home fetches live numbers; keep them off the network
+vi.mock('@/api/pricing', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/pricing')>()),
+  getPublicPricing: () => Promise.reject(new Error('offline')),
+  getUsageTotals: () => Promise.reject(new Error('offline')),
+}))
+vi.mock('@/api/courses', () => ({ listCourses: () => Promise.resolve([]) }))
+
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
   return {
