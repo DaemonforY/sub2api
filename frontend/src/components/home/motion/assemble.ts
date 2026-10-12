@@ -1,9 +1,9 @@
-// 收尾 · 令牌成字: drifting tokens fly together into the slogan when the last screen scrolls in, then
-// keep a faint shimmer with a band of light sweeping across; the pointer pushes them apart a little.
-// The words are also in the page for screen readers; the button is plain HTML under the particles.
+// 首屏 · 令牌成字: drifting tokens fly together into the slogan as the page opens, then keep a faint
+// shimmer with a band of light sweeping across; the pointer pushes them apart a little. The slogan is
+// the page's own heading, laid out by CSS and made transparent: the particles take its place, size
+// and font, so the words stay readable, selectable and indexable, and the layout never jumps.
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Camera, Color, Points, Scene, ShaderMaterial, Vector2 } from 'three'
 import { COLORS, rand, type MotionOptions, type SceneHandle } from './stage'
-import { FONT } from './glyphs'
 
 const VS = /* glsl */ `
 attribute vec2 aStart, aTarget;
@@ -47,25 +47,27 @@ void main() {
 
 type Target = [x: number, y: number, line: number]
 
-/** Where to put particles: pixels of the slogan drawn on a canvas, line 1 in red, line 2 in green. */
-function sampleText(lines: [string, string], w: number, h: number, step: number) {
+/** Where to put particles: each line of the heading drawn on a canvas where it sits on the page, line 1 in red, line 2 in green. */
+function sampleText(anchors: Element[], host: Element, w: number, h: number, step: number) {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
   const g = c.getContext('2d', { willReadFrequently: true })!
-  const at100 = (s: string) => { g.font = `800 100px ${FONT}`; return g.measureText(s).width }
-  const one = at100(lines.join(''))
-  // on phones (or when one line won't fit) two big lines read better than one small one
-  const twoLines = w < 700 || (Math.min(118, w * 0.072) * one) / 100 > w * 0.88
-  const size = twoLines ? Math.min(w * 0.15, (100 * w * 0.86) / Math.max(at100(lines[0]), at100(lines[1]))) : Math.min(118, w * 0.072)
-  g.font = `800 ${size}px ${FONT}`
-  g.textBaseline = 'middle'
-  const cy = h * 0.38
-  const w0 = g.measureText(lines[0]).width, w1 = g.measureText(lines[1]).width
-  const parts = twoLines
-    ? [{ x: (w - w0) / 2, y: cy - size * 0.58 }, { x: (w - w1) / 2, y: cy + size * 0.58 }]
-    : [{ x: (w - w0 - w1) / 2, y: cy }, { x: (w - w0 - w1) / 2 + w0, y: cy }]
-  parts.forEach((p, i) => { g.fillStyle = i === 0 ? '#f00' : '#0f0'; g.fillText(lines[i], p.x, p.y) })
+  const hb = host.getBoundingClientRect()
+  anchors.slice(0, 2).forEach((el, i) => {
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el), text = el.textContent ?? ''
+    g.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    g.fillStyle = i === 0 ? '#f00' : '#0f0'
+    const m = g.measureText(text)
+    const asc = m.fontBoundingBoxAscent, desc = m.fontBoundingBoxDescent
+    if (asc && desc) { // the baseline inside the element's box, as CSS places it
+      g.textBaseline = 'alphabetic'
+      g.fillText(text, r.left - hb.left, r.top - hb.top + (r.height - asc - desc) / 2 + asc)
+    } else {
+      g.textBaseline = 'middle'
+      g.fillText(text, r.left - hb.left, r.top - hb.top + r.height / 2)
+    }
+  })
   const data = g.getImageData(0, 0, w, h).data
   const pts: Target[] = []
   let gx0 = Infinity, gx1 = -Infinity
@@ -81,10 +83,20 @@ function sampleText(lines: [string, string], w: number, h: number, step: number)
   return { pts, grad: [gx0, gx1] as const }
 }
 
+/** Where the heading's lines are now, to notice when the page around them moves. */
+function anchorKey(anchors: Element[], host: Element) {
+  const hb = host.getBoundingClientRect()
+  return anchors.map((el) => {
+    const r = el.getBoundingClientRect()
+    return `${Math.round(r.left - hb.left)},${Math.round(r.top - hb.top)},${Math.round(r.width)},${Math.round(r.height)}`
+  }).join('|')
+}
+
 export interface AssembleContext {
-  lines: [string, string]
-  /** the element whose pointer moves push the particles */
-  pointerTarget: HTMLElement
+  /** the page's heading, one element per line (line 2 gets the cyan-to-blue gradient) */
+  anchors: () => Element[]
+  /** the screen the particles fill (the canvas covers its box); pointer moves over it push them */
+  screen: HTMLElement
 }
 
 export function assembleScene(o: MotionOptions, ctx: AssembleContext): SceneHandle {
@@ -104,7 +116,7 @@ export function assembleScene(o: MotionOptions, ctx: AssembleContext): SceneHand
   const uniforms = {
     uTime: { value: 0 }, uProgress: { value: 0 }, uDpr: { value: 1 }, uMouseOn: { value: 0 }, uDot: { value: mobile ? 3 : 3.4 },
     uRes: { value: new Vector2(1, 1) }, uMouse: { value: new Vector2(-999, -999) }, uGrad: { value: new Vector2(0, 1) },
-    uC0: { value: COLORS.pale }, uC1: { value: new Color('#5ee7ff') }, uC2: { value: new Color('#7aa8ff') }, uC3: { value: COLORS.blue },
+    uC0: { value: COLORS.pale }, uC1: { value: new Color('#5ee7ff') }, uC2: { value: new Color('#8fb8ff') }, uC3: { value: COLORS.blue },
   }
   const pts = new Points(geo, new ShaderMaterial({ vertexShader: VS, fragmentShader: FS, uniforms, transparent: true, depthTest: false, depthWrite: false, blending: AdditiveBlending }))
   pts.frustumCulled = false
@@ -113,20 +125,25 @@ export function assembleScene(o: MotionOptions, ctx: AssembleContext): SceneHand
   let enteredAt = -1 // wall clock, so a slow device still lands the words on time
   let mouseTarget = 0
   const onMove = (e: PointerEvent) => {
-    const b = ctx.pointerTarget.getBoundingClientRect()
+    const b = ctx.screen.getBoundingClientRect()
     uniforms.uMouse.value.set(e.clientX - b.left, e.clientY - b.top)
     mouseTarget = 1
   }
   const onLeave = () => { mouseTarget = 0 }
-  ctx.pointerTarget.addEventListener('pointermove', onMove)
-  ctx.pointerTarget.addEventListener('pointerleave', onLeave)
+  ctx.screen.addEventListener('pointermove', onMove)
+  ctx.screen.addEventListener('pointerleave', onLeave)
 
   let layoutKey = ''
-  function layout(w: number, h: number) {
-    const key = `${w}x${h}`
+  let size = { w: 0, h: 0 }
+  let checkedAt = 0
+  function layout() {
+    const { w, h } = size
+    const anchors = ctx.anchors()
+    if (!w || !h || !anchors.length) return
+    const key = `${w}x${h}|${anchorKey(anchors, ctx.screen)}`
     if (key === layoutKey) return
     layoutKey = key
-    const { pts: targets, grad } = sampleText(ctx.lines, w, h, mobile ? 2.3 : 2.5)
+    const { pts: targets, grad } = sampleText(anchors, ctx.screen, w, h, mobile ? 2 : 2.5)
     for (let i = targets.length - 1; i > 0; i--) { // shuffle so a capped count still covers every stroke
       const j = Math.floor(r() * (i + 1))
       ;[targets[i], targets[j]] = [targets[j], targets[i]]
@@ -152,20 +169,23 @@ export function assembleScene(o: MotionOptions, ctx: AssembleContext): SceneHand
     resize(w, h, dpr) {
       uniforms.uDpr.value = dpr
       uniforms.uRes.value.set(w, h)
+      size = { w, h }
       // measure only once the page font is in, or the words land in the wrong place
-      document.fonts.ready.then(() => layout(w, h))
+      void document.fonts.ready.then(layout)
     },
     frame(t, dt) {
       uniforms.uTime.value = t
+      // the page around the heading can still move (late content, a font swap): follow it
+      const now = performance.now()
+      if (now - checkedAt > 1000) { checkedAt = now; layout() }
       if (enteredAt >= 0) uniforms.uProgress.value = Math.min(1, (performance.now() - enteredAt) / 2400)
       uniforms.uMouseOn.value += (mouseTarget - uniforms.uMouseOn.value) * Math.min(1, dt * 6)
     },
-    onEnter() { if (enteredAt < 0) enteredAt = performance.now() },
-    onLeave() { enteredAt = -1; uniforms.uProgress.value = 0 }, // fly in again next time
+    onEnter() { if (enteredAt < 0) enteredAt = performance.now() }, // once: scrolling back up finds the words in place
     settle() { uniforms.uProgress.value = 1; uniforms.uTime.value = 3 },
     dispose() {
-      ctx.pointerTarget.removeEventListener('pointermove', onMove)
-      ctx.pointerTarget.removeEventListener('pointerleave', onLeave)
+      ctx.screen.removeEventListener('pointermove', onMove)
+      ctx.screen.removeEventListener('pointerleave', onLeave)
     },
   }
   return api

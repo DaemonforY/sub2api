@@ -232,7 +232,7 @@ export default {
       },
       ctaClicks: {
         title: '首页按钮点击',
-        hint: '首页上去注册 / 登录的按钮各被点了多少次：nav-register 导航注册、hero-signup 首屏注册、hero-generate 首屏「生成」（访客会弹注册框）、sheet-register / sheet-login 注册框里的注册 / 登录、mobile-bar 手机底部注册条、final-cta 页底注册、nav-login 登录（10/12 改版前还有 hero-bonus、hero-key）。',
+        hint: '首页上去注册 / 充值 / 登录的按钮各被点了多少次：nav-register 导航注册；hero-signup 首屏注册、hero-topup 首屏充值（已登录）、hero-pricing 首屏「看套餐价格」；try-signup / try-topup 第二屏「一句话进去」的注册 / 充值、hero-generate 第二屏演示卡「生成」（访客会弹注册框）；sheet-register / sheet-login 注册框里的注册 / 登录；mobile-bar 手机底部注册条；final-cta / final-topup / final-pricing 页底注册 / 充值 / 看套餐；nav-login 登录。10/12 首屏换成粒子标语之前，hero-signup 是演示卡旁的按钮；更早还有 hero-bonus、hero-key。',
         col: '按钮'
       }
     },

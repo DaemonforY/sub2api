@@ -4,7 +4,7 @@ import { defineComponent, h } from 'vue'
 
 import HomeView from '../HomeView.vue'
 
-const { appStore, authStore, track, getPublicPricing, getUsageTotals } = vi.hoisted(() => ({
+const { appStore, authStore, track, getPublicPricing, getUsageTotals, growthConfig, checkoutInfo } = vi.hoisted(() => ({
   appStore: {
     cachedPublicSettings: {} as Record<string, unknown>,
     siteName: 'Fallback site',
@@ -22,12 +22,16 @@ const { appStore, authStore, track, getPublicPricing, getUsageTotals } = vi.hois
   track: vi.fn(),
   getPublicPricing: vi.fn(),
   getUsageTotals: vi.fn(),
+  growthConfig: vi.fn(),
+  checkoutInfo: vi.fn(),
 }))
 
 vi.mock('@/stores', () => ({ useAppStore: () => appStore, useAuthStore: () => authStore }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => appStore }))
 vi.mock('@/utils/analytics', () => ({ track: (...a: unknown[]) => track(...a) }))
 vi.mock('@/api/courses', () => ({ listCourses: () => Promise.resolve([]) }))
+vi.mock('@/api/growth', () => ({ growthAPI: { getPublicConfig: () => growthConfig() } }))
+vi.mock('@/api/payment', () => ({ paymentAPI: { getCheckoutInfo: () => checkoutInfo() } }))
 vi.mock('@/api/pricing', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/pricing')>()), getPublicPricing, getUsageTotals }))
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>()
@@ -74,6 +78,8 @@ describe('HomeView sign-up calls to action', () => {
     track.mockReset()
     getPublicPricing.mockReset().mockResolvedValue({ starter_image_cost_usd: 0.6, starter_request_cost_usd: 0.11, total_requests: 14220 })
     getUsageTotals.mockReset().mockResolvedValue({ total_tokens: 1912852691, total_requests: 18728 })
+    growthConfig.mockReset().mockResolvedValue({ first_topup_bonus_percent: 20, first_topup_bonus_cap: 10, first_topup_min_amount: 10 })
+    checkoutInfo.mockReset().mockResolvedValue({ data: { first_topup_eligible: true } })
     localStorage.clear()
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: false } as MediaQueryList)
   })
@@ -99,7 +105,14 @@ describe('HomeView sign-up calls to action', () => {
     const offer = w.get('[data-testid="home-offer"]').text()
     expect(offer).toContain('home.v3.hero.offerTitle:{"amount":"2"}')
     expect(offer).toContain('home.v3.hero.offerBoth:{"images":3,"chats":18}')
-    expect(w.get('[data-testid="home-hero-signup"]').text()).toContain('home.v3.hero.cta:{"amount":"2"}')
+    const hero = w.getComponent<typeof RouterLinkStub>('[data-testid="home-hero-cta"]')
+    expect(hero.props('to')).toBe('/register')
+    expect(hero.text()).toContain('home.v3.hero.cta:{"amount":"2"}')
+    expect(w.get('[data-testid="home-hero-line"]').text()).toContain('home.v3.hero.lineSignupImages:{"amount":"2","images":3}')
+    await hero.trigger('click')
+    expect(track).toHaveBeenCalledWith('cta_click', { where: 'hero-signup' })
+    // without motion (jsdom has no WebGL) the heading shows itself
+    expect(w.get('[data-testid="home-hero-title"]').classes()).toContain('text')
     expect(w.findComponent({ name: 'HomeLiveStats' }).props()).toMatchObject({ totalTokens: 1912852691, totalRequests: 18728 })
     expect(w.findComponent({ name: 'HomeTeardown' }).props('imageCostUsd')).toBe(0.6)
   })
@@ -108,7 +121,7 @@ describe('HomeView sign-up calls to action', () => {
     const w = mountHome({ signup_bonus: 0 })
     await flushPromises()
     expect(w.find('[data-testid="home-offer"]').exists()).toBe(false)
-    expect(w.get('[data-testid="home-hero-signup"]').text()).toContain('home.v3.hero.ctaNoBonus')
+    expect(w.get('[data-testid="home-hero-cta"]').text()).toContain('home.v3.hero.ctaNoBonus')
   })
 
   it('keeps a visitor\'s sentence and asks them to sign up before drawing', async () => {
@@ -137,5 +150,43 @@ describe('HomeView sign-up calls to action', () => {
     expect(w.find('[data-testid="home-signup-sheet"]').exists()).toBe(false)
     expect(localStorage.getItem('hg_pending_prompt')).toBeNull()
     open.mockRestore()
+  })
+
+  it('sends a member to the top-up page, not the console, with the first top-up bonus while they qualify', async () => {
+    authStore.isAuthenticated = true
+    const w = mountHome({ payment_enabled: true })
+    await flushPromises()
+    for (const id of ['home-hero-cta', 'home-try-cta', 'home-final-cta']) {
+      const cta = w.getComponent<typeof RouterLinkStub>(`[data-testid="${id}"]`)
+      expect(cta.props('to')).toBe('/purchase')
+      expect(cta.text()).toContain('home.v3.hero.ctaTopupBonus:{"percent":20}')
+    }
+    expect(linksTo(w, '/dashboard').filter((l) => l.text().includes('ctaDashboard'))).toHaveLength(0)
+    const line = w.get('[data-testid="home-hero-line"]').text()
+    expect(line).toContain('home.v3.hero.lineFirstTopup:{"percent":20}')
+    expect(line).toContain('home.v3.hero.lineFirstTopupMin:{"min":"10"}')
+    expect(line).toContain('home.v3.hero.lineFirstTopupCap:{"cap":"10"}')
+    await w.get('[data-testid="home-hero-cta"]').trigger('click')
+    expect(track).toHaveBeenCalledWith('cta_click', { where: 'hero-topup' })
+  })
+
+  it('keeps the plain top-up button once the first top-up is used', async () => {
+    authStore.isAuthenticated = true
+    checkoutInfo.mockResolvedValue({ data: { first_topup_eligible: false } })
+    const w = mountHome({ payment_enabled: true })
+    await flushPromises()
+    const cta = w.getComponent<typeof RouterLinkStub>('[data-testid="home-hero-cta"]')
+    expect(cta.props('to')).toBe('/purchase')
+    expect(cta.text()).toContain('home.v3.hero.ctaTopup')
+    expect(cta.text()).not.toContain('ctaTopupBonus')
+    expect(w.get('[data-testid="home-hero-line"]').text()).toContain('home.v3.hero.linePlans')
+  })
+
+  it('falls back to the console only when payments are off', async () => {
+    authStore.isAuthenticated = true
+    const w = mountHome({ payment_enabled: false })
+    await flushPromises()
+    expect(w.getComponent<typeof RouterLinkStub>('[data-testid="home-hero-cta"]').props('to')).toBe('/dashboard')
+    expect(checkoutInfo).not.toHaveBeenCalled()
   })
 })

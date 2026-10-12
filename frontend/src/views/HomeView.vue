@@ -185,19 +185,46 @@
 
     <!-- Main Content: the motion screens are always dark; the rest follows the theme -->
     <main class="relative z-10 flex-1">
-      <!-- ① Hero: the slogan arriving as tokens, what signing up gets you, one button, the live token counter;
-           on the right a sentence turning into a piece of work. Tokens stream past the words into the card. -->
+      <!-- ① The slogan, made of tokens: they fly together into the words as the page opens. Under it what
+           you get, one button (sign up, or for members the top-up page) and the live token counter. -->
       <section ref="heroSection" class="home-hero relative overflow-hidden bg-[#050a14] text-white" data-testid="home-hero">
+        <div class="stage-glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <div class="hero-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <HomeMotion kind="assemble" eager :deadline="2500" :context="assembleContext" @started="heroTitleMode = 'motion'" @fallback="heroTitleMode = 'text'" />
+        <div class="relative z-[2] flex min-h-[calc(100svh-61px)] w-full flex-col items-center justify-center px-4 pb-24 pt-10 text-center sm:px-6">
+          <p class="mb-8 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#050a14]/60 py-1 pl-1 pr-3 text-xs text-slate-400 sm:mb-10 sm:text-sm">
+            <span class="rounded-full bg-cyan-300 px-2 py-0.5 text-[11px] font-bold text-cyan-950">NEW</span>
+            <span class="text-white">{{ t('home.v3.hero.news') }}</span>· {{ t('home.v3.hero.newsTail') }}
+          </p>
+          <!-- the particles draw this heading in its place; it shows itself when there is no motion -->
+          <h1 :class="['hero-title', heroTitleMode]" data-testid="home-hero-title">
+            <span ref="heroLine1">{{ t('home.v3.hero.titleLead') }}</span>{{ heroTitleGap }}<span ref="heroLine2" class="t2">{{ t('home.v3.hero.titleHighlight') }}</span>
+          </h1>
+          <p class="mt-10 max-w-xl text-[15px] text-slate-300 sm:mt-14 sm:text-base" data-testid="home-hero-line">
+            <template v-for="(part, i) in ctaLine" :key="i"><span v-if="i" class="px-1.5 text-slate-500">·</span><span class="inline-block">{{ part }}</span></template>
+          </p>
+          <div class="mt-7 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
+            <div ref="heroCta" class="w-full sm:w-auto">
+              <router-link v-if="primaryCta" :to="primaryCta.to" class="hero-btn" data-testid="home-hero-cta" @click="trackCta(`hero-${primaryCta.where}`)">
+                {{ primaryCta.label }} →
+              </router-link>
+            </div>
+            <a href="#pricing" class="ghost-btn" data-testid="home-hero-pricing" @click="trackCta('hero-pricing')">{{ t('home.v3.hero.ctaPricing') }}</a>
+          </div>
+          <HomeTokenCounter class="mt-10" />
+        </div>
+        <p class="pointer-events-none absolute bottom-5 left-1/2 z-[2] hidden -translate-x-1/2 font-mono text-[10px] tracking-[0.3em] text-slate-500 sm:block" aria-hidden="true">SCROLL</p>
+      </section>
+
+      <!-- ② 一句话进去，作品出来: the heading decodes as tokens, what signing up gets you, and on the right a
+           sentence turning into a piece of work (a real prompt box). Tokens stream past the words into the card. -->
+      <section ref="trySection" class="relative overflow-hidden bg-[#050a14] text-white" data-testid="home-try">
         <div class="hero-glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
         <div class="hero-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
         <HomeMotion kind="river" :context="riverContext" />
-        <div class="relative z-[2] mx-auto grid min-h-[calc(100svh-61px)] max-w-6xl items-center gap-10 px-4 pb-20 pt-8 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:pt-12">
-          <div ref="heroCopy" class="relative">
-            <p class="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#050a14]/60 py-1 pl-1 pr-3 text-xs text-slate-400 sm:text-sm">
-              <span class="rounded-full bg-cyan-300 px-2 py-0.5 text-[11px] font-bold text-cyan-950">NEW</span>
-              <span class="text-white">{{ t('home.v3.hero.news') }}</span>· {{ t('home.v3.hero.newsTail') }}
-            </p>
-            <HomeHeroSlogan :lead="t('home.v3.hero.titleLead')" :highlight="t('home.v3.hero.titleHighlight')" :huds="heroHuds" />
+        <div class="relative z-[2] mx-auto grid max-w-6xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:py-28">
+          <div ref="tryCopy" class="relative">
+            <HomeHeroSlogan as="h2" :lead="t('home.v3.try.titleLead')" :highlight="t('home.v3.try.titleHighlight')" :huds="heroHuds" />
             <p class="mt-5 max-w-xl text-base leading-relaxed text-slate-400 sm:text-lg">
               {{ t('home.v3.hero.subtitleLead') }}<span class="text-white">{{ t('home.v3.hero.subtitleEm') }}</span>{{ t('home.v3.hero.subtitleTail') }}
             </p>
@@ -216,28 +243,15 @@
             </div>
 
             <div class="mt-7 flex flex-wrap gap-3">
-              <div ref="heroCta" class="w-full sm:w-auto">
-                <router-link v-if="isAuthenticated" :to="dashboardPath" class="hero-btn">
-                  {{ t('home.v3.hero.ctaDashboard') }} →
-                </router-link>
-                <router-link
-                  v-else-if="registrationEnabled"
-                  to="/register"
-                  class="hero-btn"
-                  data-testid="home-hero-signup"
-                  @click="trackCta('hero-signup')"
-                >
-                  {{ signupBonus > 0 ? t('home.v3.hero.cta', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }} →
-                </router-link>
-              </div>
-              <a href="#teardown" class="hidden items-center rounded-2xl border border-white/15 px-6 py-3.5 text-base text-slate-300 transition hover:border-cyan-300/50 hover:text-white sm:inline-flex">{{ t('home.v3.hero.ctaSecondary') }}</a>
+              <router-link v-if="primaryCta" :to="primaryCta.to" class="hero-btn" data-testid="home-try-cta" @click="trackCta(`try-${primaryCta.where}`)">
+                {{ primaryCta.label }} →
+              </router-link>
+              <a href="#teardown" class="ghost-btn hidden sm:inline-flex">{{ t('home.v3.hero.ctaSecondary') }}</a>
             </div>
-            <HomeTokenCounter class="mt-7" />
           </div>
 
           <div ref="heroCard"><HomeHeroDemo @generate="onGenerate" /></div>
         </div>
-        <p class="pointer-events-none absolute bottom-5 left-1/2 z-[2] hidden -translate-x-1/2 font-mono text-[10px] tracking-[0.3em] text-slate-500 sm:block" aria-hidden="true">SCROLL</p>
       </section>
 
       <!-- ② 拆开看看: one sentence → a picture, as an exploded view -->
@@ -250,29 +264,29 @@
       <!-- ④ 数据在流动: the honeycomb floor and the real totals -->
       <HomeLiveStats :total-tokens="usage?.total_tokens" :total-requests="usage?.total_requests" />
 
-      <div class="mx-auto max-w-6xl px-4 pb-4 pt-20 sm:px-6">
+      <div id="pricing" class="mx-auto max-w-6xl scroll-mt-16 px-4 pb-4 pt-20 sm:px-6">
         <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" :contact-info="contactInfo" />
         <HomeCommunityWall />
         <HomeFaq :site-name="siteName" />
       </div>
 
-      <!-- ⑥ Final: tokens fly together into the slogan; plain words when there is no motion -->
-      <section ref="finale" class="relative min-h-[100svh] overflow-hidden bg-[#050a14] text-white" data-testid="home-finale">
-        <div class="finale-glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
-        <HomeMotion kind="assemble" :context="assembleContext" @started="finaleMotion = true" />
-        <h2 :class="finaleMotion ? 'sr-only' : 'absolute inset-x-0 top-[30%] z-[2] break-keep px-4 text-center text-4xl font-extrabold tracking-tight sm:text-6xl'">
-          {{ t('home.v3.hero.titleLead') }}{{ t('home.v3.hero.titleHighlight') }}
-        </h2>
-        <div class="absolute inset-x-0 top-[60%] z-[2] px-4 text-center">
-          <p class="text-slate-400">{{ signupBonus > 0 ? t('home.v3.finalCta.bonus', { amount: signupBonusText }) : t('home.v3.finalCta.noBonus') }}</p>
-          <router-link
-            v-if="isAuthenticated || registrationEnabled"
-            :to="isAuthenticated ? dashboardPath : '/register'"
-            class="hero-btn mt-7"
-            @click="trackCta('final-cta')"
-          >
-            {{ isAuthenticated ? t('home.v3.hero.ctaDashboard') : signupBonus > 0 ? t('home.v3.hero.cta', { amount: signupBonusText }) : t('home.v3.hero.ctaNoBonus') }} →
-          </router-link>
+      <!-- ⑥ Final: the slogan once more, and the same buttons as the first screen -->
+      <section class="relative overflow-hidden bg-[#050a14] py-24 text-white sm:py-32" data-testid="home-finale">
+        <div class="stage-glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <div class="hero-grid pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        <div class="relative z-[2] mx-auto max-w-4xl px-4 text-center">
+          <h2 class="break-keep text-4xl font-extrabold tracking-tight sm:text-6xl">
+            {{ t('home.v3.hero.titleLead') }}{{ heroTitleGap }}<span class="flow-text">{{ t('home.v3.hero.titleHighlight') }}</span>
+          </h2>
+          <p class="mt-6 text-slate-300">
+            <template v-for="(part, i) in ctaLine" :key="i"><span v-if="i" class="px-1.5 text-slate-500">·</span><span class="inline-block">{{ part }}</span></template>
+          </p>
+          <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <router-link v-if="primaryCta" :to="primaryCta.to" class="hero-btn" data-testid="home-final-cta" @click="trackCta(primaryCta.where === 'signup' ? 'final-cta' : `final-${primaryCta.where}`)">
+              {{ primaryCta.label }} →
+            </router-link>
+            <a href="#pricing" class="ghost-btn" @click="trackCta('final-pricing')">{{ t('home.v3.hero.ctaPricing') }}</a>
+          </div>
         </div>
       </section>
     </main>
@@ -354,7 +368,7 @@
 
 <script setup lang="ts">
 import { listCourses } from '@/api/courses'
-import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
@@ -365,6 +379,9 @@ import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { canvasUrl, otherPartnerSites, partnerSiteUrl } from '@/constants/crossSites'
 import { getPublicPricing, getUsageTotals, signupCreditEstimate, type PublicPricing, type UsageTotals } from '@/api/pricing'
 import { savePendingPrompt } from '@/utils/pendingPrompt'
+import { growthAPI } from '@/api/growth'
+import { paymentAPI } from '@/api/payment'
+import { detectMotion } from '@/components/home/motion/tier'
 import HomeHeroDemo from '@/components/home/HomeHeroDemo.vue'
 import HomeHeroSlogan from '@/components/home/HomeHeroSlogan.vue'
 import HomeTokenCounter from '@/components/home/HomeTokenCounter.vue'
@@ -438,15 +455,23 @@ const offerLine = computed(() => {
 })
 const usage = ref<UsageTotals | null>(null)
 
-// Motion screens: the hero river needs to know where the words and the card are; the finale's
-// particles react to the pointer over that section.
+// Motion screens. The first screen's particles take the place of the heading's two lines; the
+// heading stays hidden while they load ('wait') and shows itself when there is no motion or it took
+// too long ('text'). The river on the second screen needs to know where the words and the card are.
 const heroSection = ref<HTMLElement | null>(null)
-const heroCopy = ref<HTMLElement | null>(null)
+const heroLine1 = ref<HTMLElement | null>(null)
+const heroLine2 = ref<HTMLElement | null>(null)
+const heroTitleMode = ref<'wait' | 'motion' | 'text'>(detectMotion() ? 'wait' : 'text')
+// 「你当老板，」 ends in a full-width comma; "You're the boss." needs a space before the next line
+const heroTitleGap = computed(() => (/[，。、！？]$/.test(t('home.v3.hero.titleLead')) ? '' : ' '))
+const assembleContext = () => ({
+  anchors: () => [heroLine1.value, heroLine2.value].filter((el): el is HTMLElement => !!el),
+  screen: heroSection.value!,
+})
+const trySection = ref<HTMLElement | null>(null)
+const tryCopy = ref<HTMLElement | null>(null)
 const heroCard = ref<HTMLElement | null>(null)
-const finale = ref<HTMLElement | null>(null)
-const finaleMotion = ref(false)
-const riverContext = () => ({ host: heroSection.value!, text: () => (heroCopy.value ? [heroCopy.value] : []), card: () => heroCard.value })
-const assembleContext = () => ({ lines: [t('home.v3.hero.titleLead'), t('home.v3.hero.titleHighlight')] as [string, string], pointerTarget: finale.value! })
+const riverContext = () => ({ host: trySection.value!, text: () => (tryCopy.value ? [tryCopy.value] : []), card: () => heroCard.value })
 const heroHuds = computed(() => [
   { idx: 'INPUT', name: t('home.v3.motion.hud.input'), spec: t('home.v3.motion.hud.inputSpec') },
   { idx: 'MODEL', name: t('home.v3.motion.hud.model'), spec: t('home.v3.motion.hud.modelSpec') },
@@ -483,6 +508,53 @@ const userInitial = computed(() => {
 })
 
 const showOffer = computed(() => !isAuthenticated.value && registrationEnabled.value && signupBonus.value > 0)
+
+// The big button: visitors sign up; members go to the top-up page rather than the console, with
+// the first top-up bonus on the button while they still qualify.
+const paymentEnabled = computed(() => appStore.cachedPublicSettings?.payment_enabled === true)
+const firstTopup = ref<{ percent: number; cap: number; min: number } | null>(null)
+const money = (n: number) => String(Math.round(n * 100) / 100)
+const primaryCta = computed<{ to: string; label: string; where: string } | null>(() => {
+  if (isAuthenticated.value) {
+    if (!paymentEnabled.value) return { to: dashboardPath.value, label: t('home.v3.hero.ctaDashboard'), where: 'dashboard' }
+    return firstTopup.value
+      ? { to: '/purchase', label: t('home.v3.hero.ctaTopupBonus', { percent: firstTopup.value.percent }), where: 'topup' }
+      : { to: '/purchase', label: t('home.v3.hero.ctaTopup'), where: 'topup' }
+  }
+  if (!registrationEnabled.value) return null
+  return { to: '/register', label: signupBonus.value > 0 ? t('home.v3.hero.cta', { amount: signupBonusText.value }) : t('home.v3.hero.ctaNoBonus'), where: 'signup' }
+})
+// The line above it says what the button gets you, in parts that wrap as wholes.
+const ctaLine = computed<string[]>(() => {
+  if (isAuthenticated.value) {
+    const f = firstTopup.value
+    if (!paymentEnabled.value || !f) return [t('home.v3.hero.linePayInstant'), t('home.v3.hero.linePayMetered'), t('home.v3.hero.linePlans')]
+    return [
+      t('home.v3.hero.lineFirstTopup', { percent: f.percent }),
+      f.min > 0 ? t('home.v3.hero.lineFirstTopupMin', { min: money(f.min) }) : '',
+      f.cap > 0 ? t('home.v3.hero.lineFirstTopupCap', { cap: money(f.cap) }) : '',
+      t('home.v3.hero.linePayInstant'),
+    ].filter(Boolean)
+  }
+  const pay = [t('home.v3.hero.linePay'), t('home.v3.hero.linePayMetered')]
+  if (signupBonus.value <= 0) return pay
+  const images = estimate.value.images
+  const bonus = images > 0 ? t('home.v3.hero.lineSignupImages', { amount: signupBonusText.value, images }) : t('home.v3.hero.lineSignup', { amount: signupBonusText.value })
+  return [bonus, ...pay]
+})
+async function loadFirstTopup() {
+  if (!isAuthenticated.value || !paymentEnabled.value || firstTopup.value) return
+  try {
+    const cfg = await growthAPI.getPublicConfig()
+    const percent = Number(cfg.first_topup_bonus_percent || 0)
+    if (!percent) return
+    const { data } = await paymentAPI.getCheckoutInfo()
+    if (data.first_topup_eligible) firstTopup.value = { percent, cap: Number(cfg.first_topup_bonus_cap || 0), min: Number(cfg.first_topup_min_amount || 0) }
+  } catch {
+    // the plain top-up button still works
+  }
+}
+watch([isAuthenticated, paymentEnabled], () => void loadFirstTopup())
 const showMobileBar = computed(() => !isAuthenticated.value && registrationEnabled.value)
 
 // Phones get a bottom sign-up bar once the hero button has scrolled up out of view.
@@ -535,6 +607,7 @@ onMounted(() => {
   getUsageTotals()
     .then((u) => (usage.value = u))
     .catch(() => {})
+  void loadFirstTopup()
 
   if (heroCta.value && typeof IntersectionObserver !== 'undefined') {
     heroObserver = new IntersectionObserver(([entry]) => {
@@ -562,8 +635,50 @@ onBeforeUnmount(() => heroObserver?.disconnect())
   -webkit-mask-image: radial-gradient(70% 70% at 60% 40%, #000, transparent);
   mask-image: radial-gradient(70% 70% at 60% 40%, #000, transparent);
 }
-.finale-glow {
-  background: radial-gradient(50% 45% at 50% 40%, rgba(37, 99, 235, 0.2), transparent 70%);
+.stage-glow {
+  background: radial-gradient(50% 45% at 50% 42%, rgba(37, 99, 235, 0.22), transparent 70%);
+}
+/* the first screen's heading: the particles draw it in its place, so it is transparent while they
+   load and run; each line is one unbroken box, so a narrow screen puts the lines one above the other */
+.hero-title {
+  font-size: clamp(44px, 7.2vw, 118px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+.hero-title > span {
+  display: inline-block;
+  white-space: nowrap;
+}
+.hero-title.wait > span,
+.hero-title.motion > span {
+  color: transparent;
+}
+.hero-title.text {
+  animation: title-in 0.6s ease-out;
+}
+.hero-title.text .t2,
+.flow-text {
+  background: linear-gradient(100deg, #9fdcff 0%, #5ee7ff 30%, #3b82f6 70%, #5ee7ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: flow 5s linear infinite;
+}
+@keyframes title-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@keyframes flow {
+  to { background-position: -220% 0; }
+}
+@media (max-width: 639px) {
+  .hero-title {
+    font-size: min(14.5vw, 84px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-title.text, .hero-title.text .t2, .flow-text { animation: none; }
 }
 /* the one big button on the dark screens */
 .hero-btn {
@@ -585,6 +700,22 @@ onBeforeUnmount(() => heroObserver?.disconnect())
 }
 .hero-btn:active {
   transform: translateY(1px);
+}
+/* the quieter one next to it */
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 13px 24px;
+  font-size: 16px;
+  color: #cbd5e1;
+  transition: border-color 0.15s, color 0.15s;
+}
+.ghost-btn:hover {
+  border-color: rgba(103, 232, 249, 0.5);
+  color: #fff;
 }
 @media (min-width: 640px) {
   .hero-btn {

@@ -232,7 +232,7 @@ export default {
       },
       ctaClicks: {
         title: 'Home page buttons',
-        hint: 'Clicks on the home page sign-up / login buttons: nav-register, hero-signup, hero-generate (opens the sign-up sheet for visitors), sheet-register / sheet-login, mobile-bar, final-cta, nav-login (hero-bonus and hero-key before the 10/12 redesign).',
+        hint: 'Clicks on the home page sign-up / top-up / login buttons: nav-register; hero-signup, hero-topup (members) and hero-pricing on the first screen; try-signup / try-topup and hero-generate (the demo card, opens the sign-up sheet for visitors) on the second; sheet-register / sheet-login; mobile-bar; final-cta / final-topup / final-pricing at the bottom; nav-login. Before the particle slogan took the first screen on 10/12, hero-signup was the button next to the demo card; hero-bonus and hero-key are older still.',
         col: 'Button'
       }
     },

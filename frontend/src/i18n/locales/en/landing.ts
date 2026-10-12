@@ -193,6 +193,18 @@ export default {
         ctaNoBonus: 'Sign up free',
         ctaSecondary: 'See how it works',
         ctaDashboard: 'Open console',
+        ctaTopup: 'Top up',
+        ctaTopupBonus: 'Top up, get {percent}% extra',
+        ctaPricing: 'See plans',
+        lineSignup: '${amount} on sign-up',
+        lineSignupImages: '${amount} on sign-up, about {images} images',
+        linePay: 'WeChat Pay',
+        linePayInstant: 'WeChat Pay, credited instantly',
+        linePayMetered: 'pay for what you use',
+        linePlans: 'plans save more',
+        lineFirstTopup: 'First top-up: {percent}% extra',
+        lineFirstTopupMin: 'from ${min}',
+        lineFirstTopupCap: 'up to ${cap}',
         trustPay: 'WeChat Pay, credited instantly',
         trustMetered: 'Pay for what you use, every charge listed',
         trustTotal: '{n} requests served'
@@ -279,9 +291,9 @@ export default {
         generic: 'For images and chat',
         cta: 'Sign up'
       },
-      finalCta: {
-        bonus: '${amount} on sign-up · WeChat Pay · pay for what you use',
-        noBonus: 'WeChat Pay · pay for what you use'
+      try: {
+        titleLead: 'One sentence in,',
+        titleHighlight: 'finished work out.'
       },
       footer: {
         editor: 'WeChat article editor',

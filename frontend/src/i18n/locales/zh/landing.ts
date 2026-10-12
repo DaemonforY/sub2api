@@ -193,6 +193,18 @@ export default {
         ctaNoBonus: '免费注册',
         ctaSecondary: '拆开看看它怎么干活',
         ctaDashboard: '进入控制台',
+        ctaTopup: '去充值',
+        ctaTopupBonus: '去充值，首充多送 {percent}%',
+        ctaPricing: '看套餐价格',
+        lineSignup: '注册送 ${amount}',
+        lineSignupImages: '注册送 ${amount}，够画约 {images} 张图',
+        linePay: '微信付款',
+        linePayInstant: '微信付款，到账即用',
+        linePayMetered: '用多少扣多少',
+        linePlans: '包月更省',
+        lineFirstTopup: '首次充值多送 {percent}%',
+        lineFirstTopupMin: '充 ${min} 起',
+        lineFirstTopupCap: '最高送 ${cap}',
         trustPay: '微信支付，自动到账',
         trustMetered: '用多少扣多少，每笔可查',
         trustTotal: '已为用户处理 {n} 次请求'
@@ -279,9 +291,9 @@ export default {
         generic: '画图、对话都能用',
         cta: '免费注册'
       },
-      finalCta: {
-        bonus: '注册送 ${amount} · 微信付款 · 用多少扣多少',
-        noBonus: '微信付款 · 用多少扣多少'
+      try: {
+        titleLead: '一句话进去，',
+        titleHighlight: '作品出来。'
       },
       footer: {
         editor: '公众号排版',

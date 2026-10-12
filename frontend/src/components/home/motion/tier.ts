@@ -1,8 +1,15 @@
 // Whether this device gets the motion screens, and how much (no three.js in here).
 import type { MotionOptions } from './stage'
 
-/** null: no WebGL, data saver on, or a weak device — keep the static background. */
+let detected: MotionOptions | null | undefined
+
+/** null: no WebGL, data saver on, or a weak device — keep the static background. Probed once per page. */
 export function detectMotion(): MotionOptions | null {
+  if (detected === undefined) detected = probe()
+  return detected
+}
+
+function probe(): MotionOptions | null {
   if (typeof window === 'undefined' || typeof WebGLRenderingContext === 'undefined') return null
   const nav = navigator as Navigator & { connection?: { saveData?: boolean }; deviceMemory?: number }
   if (nav.connection?.saveData) return null

@@ -1,6 +1,6 @@
 <template>
-  <div ref="root" class="hero-slogan">
-    <h1 class="slogan" :aria-label="lead + highlight" data-testid="home-hero-slogan">
+  <div ref="root" class="hero-slogan" :style="hudPad ? { paddingBottom: `${hudPad}px` } : undefined">
+    <component :is="as ?? 'h1'" :class="['slogan', { sub: as === 'h2', waiting }]" :aria-label="lead + highlight" data-testid="home-hero-slogan">
       <span v-for="(line, li) in lines" :key="li" :class="['ln', li === 0 ? 'l1' : 'l2', { flow: done && li === 1, shine: done }]" :data-text="line.text" aria-hidden="true">
         <template v-if="done">{{ line.text }}</template>
         <span
@@ -11,7 +11,7 @@
           :style="c.width ? { width: c.width } : undefined"
         >{{ c.shown }}<i v-if="c.locked && c.id" class="tokid">#{{ c.id }}</i></span>
       </span>
-    </h1>
+    </component>
     <div class="rail" aria-hidden="true"><i style="left: 20%"></i><i style="left: 45%"></i><i style="left: 70%"></i><i style="left: 92%"></i></div>
     <div v-for="(h, i) in huds" :key="h.idx" :class="['hud', { on: hudsOn }]" :style="hudStyle[i]" aria-hidden="true">
       <svg width="60" height="40" class="lead"><path :d="i === 0 ? 'M0 26 L22 26 L60 2' : 'M0 26 L22 26 L60 12'" /><circle cx="0" cy="26" r="2.4" /></svg>
@@ -27,23 +27,27 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { prefersReducedMotion } from './motion/tier'
 
 /**
- * 「你当老板，AI 打工。」 arriving as tokens: every character scrambles through noise, then locks in
- * left to right with a flash and the token id it "was" floating off. Then the second line keeps a
- * flowing gradient, both lines get a passing shine, a rail with light runs underneath and two HUD
- * tags point at the words (from the exploded-view film).
+ * A two-line heading arriving as tokens once it scrolls into view: every character scrambles
+ * through noise, then locks in left to right with a flash and the token id it "was" floating off.
+ * Then the second line keeps a flowing gradient, both lines get a passing shine, a rail with light
+ * runs underneath and two HUD tags point at the words (from the exploded-view film).
+ * As an h2 it is set a size smaller.
  */
-const props = defineProps<{ lead: string; highlight: string; huds: { idx: string; name: string; spec: string }[] }>()
+const props = defineProps<{ lead: string; highlight: string; huds: { idx: string; name: string; spec: string }[]; as?: 'h1' | 'h2' }>()
 
 type Char = { c: string; shown: string; width: string; scrambling: boolean; locked: boolean; id: number }
 const NOISE = ['0', '1', '#', '$', '{', '}', '<', '>', '=', '+', '%', '画', '写', '码', '词', '数', '流', '光', 'A', 'I']
 const LEAD_MS = 380, STEP_MS = 95, SWAP_MS = 55, FLOAT_MS = 1500
+const HUD_GAP = 62, HUD_H = 64 // a tag's step down and its height
 
 const toChars = (s: string): Char[] => [...s].map((c, i) => ({ c, shown: c === ' ' ? ' ' : c, width: '', scrambling: false, locked: false, id: 1000 + ((i * 7919 + 4127) % 90000) }))
 const lines = reactive([{ text: props.lead, chars: toChars(props.lead) }, { text: props.highlight, chars: toChars(props.highlight) }])
 const done = ref(false)
+const waiting = ref(false) // hidden until it scrolls into view and starts decoding
 const hudsOn = ref(false)
 const root = ref<HTMLElement | null>(null)
 const hudPos = ref<{ x: number; y: number; show: boolean }[]>([])
+const hudPad = ref(0) // room below the words so the lower tag clears whatever comes next
 const hudStyle = computed(() => props.huds.map((_, i) => {
   const p = hudPos.value[i]
   return p ? { transform: `translate(${p.x}px, ${p.y}px)`, display: p.show ? '' : 'none' } : { display: 'none' }
@@ -51,6 +55,7 @@ const hudStyle = computed(() => props.huds.map((_, i) => {
 
 let raf = 0
 const timers: ReturnType<typeof setTimeout>[] = []
+let seen: IntersectionObserver | null = null
 
 function placeHuds() {
   const el = root.value
@@ -59,7 +64,10 @@ function placeHuds() {
   const box = el.getBoundingClientRect(), r = l2.getBoundingClientRect()
   const x = r.right - box.left + 78
   const room = box.width + 40 - x >= 130 // the tags may run into the gap between the columns
-  hudPos.value = props.huds.map((_, i) => ({ x, y: r.top - box.top - 12 + i * 62, show: room }))
+  const y = (i: number) => r.top - box.top - 12 + i * HUD_GAP
+  hudPos.value = props.huds.map((_, i) => ({ x, y: y(i), show: room }))
+  const bottom = props.huds.length ? y(props.huds.length - 1) + HUD_H : 0
+  hudPad.value = room ? Math.max(0, Math.ceil(bottom - (box.height - hudPad.value))) : 0
 }
 
 function settle() {
@@ -71,6 +79,7 @@ function settle() {
 }
 
 async function decode() {
+  waiting.value = false
   if (prefersReducedMotion()) return settle()
   await document.fonts?.ready
   await nextTick()
@@ -102,11 +111,19 @@ async function decode() {
 }
 
 onMounted(() => {
-  void decode()
   window.addEventListener('resize', placeHuds)
+  if (typeof IntersectionObserver === 'undefined' || !root.value) return void decode()
+  waiting.value = true
+  seen = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return
+    seen?.disconnect()
+    void decode()
+  }, { threshold: 0.6 })
+  seen.observe(root.value)
 })
 
 onBeforeUnmount(() => {
+  seen?.disconnect()
   cancelAnimationFrame(raf)
   timers.forEach(clearTimeout)
   window.removeEventListener('resize', placeHuds)
@@ -125,6 +142,12 @@ onBeforeUnmount(() => {
   letter-spacing: -0.035em;
   word-break: keep-all;
   color: #fff;
+}
+.slogan.sub {
+  font-size: clamp(40px, 5vw, 72px);
+}
+.slogan.waiting .ln {
+  opacity: 0;
 }
 .ln {
   position: relative;
@@ -290,6 +313,7 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 760px) {
   .slogan { font-size: min(46px, 11.5vw); }
+  .slogan.sub { font-size: min(40px, 10.5vw); }
   .hud { display: none !important; }
 }
 @media (prefers-reduced-motion: reduce) {
