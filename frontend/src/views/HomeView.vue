@@ -308,6 +308,7 @@
             <li><a :href="canvasLink('footer')" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.canvas') }}</a></li>
             <li><a href="/editor/?utm_source=home&utm_medium=footer" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v3.footer.editor') }}</a></li>
             <li><router-link to="/style" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v3.footer.style') }}</router-link></li>
+            <li><router-link to="/games" class="hover:text-gray-900 dark:hover:text-white">{{ t('games.title') }}</router-link></li>
             <li><router-link to="/pricing" class="hover:text-gray-900 dark:hover:text-white">{{ t('pricing.navLabel') }}</router-link></li>
             <li><a href="/learn/connect/" class="hover:text-gray-900 dark:hover:text-white">{{ t('pricing.guideNav') }}</a></li>
             <li><router-link to="/contests" class="hover:text-gray-900 dark:hover:text-white">{{ t('home.v2.footer.contests') }}</router-link></li>

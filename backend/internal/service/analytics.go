@@ -61,6 +61,9 @@ var AnalyticsEventNames = map[string]bool{
 	"style_fetch":        true, // 测写作风格: read an article from its link
 	"style_analyze":      true, // … ran the AI portrait (props.articles)
 	"style_prompt_copy":  true, // … copied the style prompt
+	"game_start":         true, // 小游戏: started a game (props.game)
+	"game_finish":        true, // … finished it (props.game, props.type = result code, props.kind)
+	"game_cta":           true, // … clicked the result's next step (props.game, props.type, props.cta)
 	"guide_view":         true, // dashboard "get started" card shown
 	"guide_first_call":   true, // … and saw the first API call arrive
 	"guide_dismiss":      true,

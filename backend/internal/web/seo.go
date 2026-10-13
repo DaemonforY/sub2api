@@ -167,9 +167,19 @@ func mainNavLinks(ctx context.Context, content SEOContent) []seoLink {
 		{"/contests", "创作比赛"},
 		{"/editor/", "公众号排版"},
 		{"/style", "测写作风格"},
+		{"/games", "小游戏"},
+		{"/games/abti", "ABTI · AI 打工人格测试"},
 		{"/register", "注册"},
 		{"/login", "登录"},
 	}...)
+}
+
+// abtiCodes are the ABTI result codes, each with a picture at /games-media/abti/<code>.webp.
+// Keep in sync with frontend/src/games/abti/data.ts (score.spec.ts checks).
+var abtiCodes = map[string]bool{
+	"PROM": true, "BOSS": true, "LOOP": true, "FISH": true, "HUMN": true, "LUDD": true, "BETA": true, "DDLR": true,
+	"ZEN0": true, "PUAI": true, "MUTE": true, "HYPE": true, "ANXI": true, "SOLO": true, "OKOK": true, "GURU": true,
+	"BOTX": true, "NULL": true,
 }
 
 // mainStaticPages are the main site's fixed public pages, in sitemap order.
@@ -180,6 +190,8 @@ var mainStaticPages = []struct {
 	{"/pricing", "价格与套餐：按量计费与订阅对比", "看清 GPT、Codex、画图等模型怎么计费：按实际 token 用量扣费或购买订阅套餐，在售套餐的额度对比和按用量估算，充值与支付方式说明。"},
 	{"/model-plaza", "模型广场：可用 AI 模型与价格", "平台可调用的 AI 模型一览：模型能力、所属分组、输入输出 token 单价，以及如何用 API Key 调用。"},
 	{"/style", "测测你的写作风格：看清你是怎么写的", "贴 1–5 篇你写的公众号文章，免费看句长、口头禅和 AI 味；AI 写出你的写作风格画像，再给你一段让任何 AI 都写得像你的风格提示词。"},
+	{"/games", "小游戏：AI 主题的趣味测试", "几分钟就能玩完的 AI 主题小游戏：测测你是哪种 AI 打工人、你的写作风格是什么样，结果可以生成分享卡片发朋友圈。"},
+	{"/games/abti", "ABTI · AI 打工人格测试：你是哪种 AI 打工人？", "31 道题、15 个维度，测出你在 AI 时代的打工人格：提示词魔法师、赛博包工头、带薪摸鱼师……共 16 种人格和 2 种隐藏人格，免费，约 3 分钟。"},
 	{"/courses", "AI 课程：编程、画图与工作流实战", "精选 AI 实战课程：AI 编程工具、AI 画图、自动化工作流等，试看后购买，讲师答疑。"},
 	{"/contests", "AI 创作比赛", "参加 AI 画图、视频与编程创作比赛，投稿作品、查看榜单和获奖结果。"},
 	{"/register", "注册账号", "注册账号，创建 API Key，即可调用 GPT、Codex 等 AI 模型并接入编程工具。"},
@@ -275,6 +287,21 @@ func mainPageMeta(ctx context.Context, site seoSite, content SEOContent, path st
 				return m
 			}
 		}
+	case strings.HasPrefix(p, "/games/abti/"):
+		// A shared result (/games/abti/PROM): the test's own page, with that type's picture for link previews.
+		for _, sp := range mainStaticPages {
+			if sp.Path == "/games/abti" {
+				m.Path = sp.Path
+				m.Title = sp.Title + " | " + site.Name
+				m.Description = sp.Description
+				m.H1 = sp.Title
+				m.Paragraphs = []string{sp.Description}
+			}
+		}
+		if code := strings.ToUpper(strings.TrimPrefix(p, "/games/abti/")); abtiCodes[code] {
+			m.Image = site.abs("/games-media/abti/" + strings.ToLower(code) + ".webp")
+		}
+		return m
 	case strings.HasPrefix(p, "/contests/"):
 		m.Index = true
 		m.Title = "AI 创作比赛 | " + site.Name

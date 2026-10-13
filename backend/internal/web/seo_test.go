@@ -188,3 +188,21 @@ func TestModelPriceLinePerImage(t *testing.T) {
 		t.Fatalf("image line = %q", got)
 	}
 }
+
+func TestGamesPageMeta(t *testing.T) {
+	ctx := context.Background()
+	require.True(t, mainPageMeta(ctx, testSite, nil, "/games").Index)
+	abti := mainPageMeta(ctx, testSite, nil, "/games/abti")
+	require.True(t, abti.Index)
+	require.Contains(t, abti.Title, "ABTI")
+
+	// A shared result is the test's page with that type's picture, not a page of its own.
+	shared := mainPageMeta(ctx, testSite, nil, "/games/abti/prom")
+	require.False(t, shared.Index)
+	require.Equal(t, "/games/abti", shared.Path)
+	require.Equal(t, abti.Title, shared.Title)
+	require.Equal(t, "https://hivegpt.cn/games-media/abti/prom.webp", shared.Image)
+
+	unknown := mainPageMeta(ctx, testSite, nil, "/games/abti/ABCD")
+	require.Equal(t, testSite.Logo, unknown.Image)
+}

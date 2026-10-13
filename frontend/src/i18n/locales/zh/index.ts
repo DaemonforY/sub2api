@@ -21,6 +21,7 @@ import promoMascot from './promoMascot'
 import shareCard from './shareCard'
 import siteBuilder from './siteBuilder'
 import style from './style'
+import games from './games'
 
 export default {
   ...landing,
@@ -46,4 +47,5 @@ export default {
   ...shareCard,
   ...siteBuilder,
   ...style,
+  ...games,
 }

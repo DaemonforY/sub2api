@@ -278,6 +278,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/games',
+    name: 'Games',
+    component: () => import('@/views/games/GamesView.vue'),
+    meta: { requiresAuth: false, title: '小游戏', titleKey: 'games.title' }
+  },
+  {
+    path: '/games/abti/:code([A-Za-z0-9]{4})?',
+    name: 'GameAbti',
+    component: () => import('@/views/games/AbtiView.vue'),
+    meta: { requiresAuth: false, title: 'ABTI · AI 打工人格测试', titleKey: 'games.abti.title' }
+  },
+  {
     path: '/model-plaza',
     name: 'ModelPlaza',
     component: () => import('@/views/ModelPlazaView.vue'),
