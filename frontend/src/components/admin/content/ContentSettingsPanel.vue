@@ -1,15 +1,6 @@
 <template>
   <div class="space-y-4" data-testid="content-settings">
     <div class="card space-y-4 p-5">
-      <label class="flex items-start gap-2 text-sm">
-        <input v-model="form.enabled" type="checkbox" class="mt-0.5 h-4 w-4" data-testid="content-enabled" />
-        <span>
-          {{ t('admin.content.settings.enabled') }}
-          <span class="block text-xs text-gray-500 dark:text-dark-400">{{ t('admin.content.settings.enabledHint') }}</span>
-          <span v-if="form.last_run_day" class="block text-xs text-gray-400">{{ t('admin.content.settings.lastRun', { day: form.last_run_day }) }}</span>
-        </span>
-      </label>
-
       <div class="grid gap-4 md:grid-cols-2">
         <label class="text-sm">
           <span class="input-label">{{ t('admin.content.settings.key') }}</span>
@@ -27,16 +18,6 @@
           <span class="input-label">{{ t('admin.content.settings.model') }}</span>
           <input v-model.trim="form.model" class="input" placeholder="gpt-5.5" />
           <span class="input-hint">{{ t('admin.content.settings.modelHint') }}</span>
-        </label>
-        <label class="text-sm">
-          <span class="input-label">{{ t('admin.content.settings.dailyTime') }}</span>
-          <input v-model="form.daily_time" type="time" class="input" />
-        </label>
-        <label class="text-sm">
-          <span class="input-label">{{ t('admin.content.settings.dailyCount') }}</span>
-          <select v-model.number="form.daily_count" class="input">
-            <option v-for="n in [1, 2, 3]" :key="n" :value="n">{{ n }}</option>
-          </select>
         </label>
       </div>
 

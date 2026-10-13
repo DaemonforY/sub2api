@@ -138,6 +138,50 @@ func TestContentEngineRepository(t *testing.T) {
 	require.Equal(t, service.ContentVariantFailed, gv.Status)
 	require.Equal(t, "重启了", gv.Error)
 
+	// 写作台: persona, a desk article in lists with its step and job, versions, interrupted steps.
+	pr, err := repo.GetPersona(ctx, owner)
+	require.NoError(t, err)
+	require.Nil(t, pr)
+	require.NoError(t, repo.SavePersona(ctx, owner, &service.ContentPersona{Name: "老苗", Phrases: []string{"说真的"}}))
+	pr, err = repo.GetPersona(ctx, owner)
+	require.NoError(t, err)
+	require.Equal(t, []string{"说真的"}, pr.Phrases)
+
+	desk := &service.ContentItem{OwnerUserID: owner, KeyID: 3, Status: service.ContentDeskStatus, Title: "写作台稿",
+		ContentItemData: service.ContentItemData{Sources: []service.ArticleSource{}, Events: []service.ArticleEvent{},
+			Desk: &service.ContentDesk{Stage: service.ContentStageDrafts, Job: &service.ContentJob{Kind: "drafts", Status: service.ContentJobRunning, StartedAt: time.Now()}, Body: "正文"}}}
+	require.NoError(t, repo.CreateItem(ctx, desk))
+	desks, err := repo.ListItems(ctx, owner, service.ContentDeskStatus, 10)
+	require.NoError(t, err)
+	require.Len(t, desks, 1)
+	require.Equal(t, service.ContentStageDrafts, desks[0].Desk.Stage)
+	require.Equal(t, service.ContentJobRunning, desks[0].Desk.Job.Status)
+	require.Empty(t, desks[0].Desk.Body, "lists carry only the step")
+	n2, err := repo.FailDeskJobs(ctx, "重启了")
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, n2, int64(1))
+	gotDesk, err := repo.GetItem(ctx, owner, desk.ID)
+	require.NoError(t, err)
+	require.Equal(t, service.ContentJobFailed, gotDesk.Desk.Job.Status)
+	require.Equal(t, "重启了", gotDesk.Desk.Job.Error)
+	require.Equal(t, "正文", gotDesk.Desk.Body)
+
+	v1 := &service.ContentVersion{ItemID: desk.ID, OwnerUserID: owner, Kind: "draft", Label: "底稿", Markdown: "第一版"}
+	require.NoError(t, repo.CreateVersion(ctx, v1))
+	require.NoError(t, repo.CreateVersion(ctx, &service.ContentVersion{ItemID: desk.ID, OwnerUserID: owner, Kind: "manual", Markdown: "第二版更长"}))
+	vers, err := repo.ListVersions(ctx, owner, desk.ID)
+	require.NoError(t, err)
+	require.Len(t, vers, 2)
+	require.Equal(t, "manual", vers[0].Kind, "newest first")
+	require.Empty(t, vers[0].Markdown)
+	require.Equal(t, 5, vers[0].Chars)
+	gv1, err := repo.GetVersion(ctx, owner, v1.ID)
+	require.NoError(t, err)
+	require.Equal(t, "第一版", gv1.Markdown)
+	other, err := repo.GetVersion(ctx, owner+100000, v1.ID)
+	require.NoError(t, err)
+	require.Nil(t, other)
+
 	// Deleting the article puts its topic back in the pool.
 	require.NoError(t, repo.DeleteItem(ctx, owner, it.ID))
 	got, err = repo.GetTopic(ctx, owner, t1.ID)

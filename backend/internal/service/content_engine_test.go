@@ -29,17 +29,19 @@ type contentRepoStub struct {
 	items    map[int64]ContentItem
 	variants map[int64]ContentVariant
 	rules    map[int64]ContentRule
+	personas map[int64]ContentPersona
+	versions []ContentVersion
 }
 
 func newContentRepoStub() *contentRepoStub {
 	return &contentRepoStub{settings: map[int64]ContentOwnerRow{}, topics: map[int64]ContentTopic{}, items: map[int64]ContentItem{},
-		variants: map[int64]ContentVariant{}, rules: map[int64]ContentRule{}}
+		variants: map[int64]ContentVariant{}, rules: map[int64]ContentRule{}, personas: map[int64]ContentPersona{}}
 }
 
 func (r *contentRepoStub) id() int64 { r.next++; return r.next }
 
 // deep copies through JSON, like a database round trip
-func contentClone[T any](v T) T {
+func contentCloneT[T any](v T) T {
 	b, _ := json.Marshal(v)
 	var out T
 	_ = json.Unmarshal(b, &out)
@@ -53,7 +55,7 @@ func (r *contentRepoStub) GetSettings(_ context.Context, owner int64) (*ContentO
 	if !ok {
 		return nil, nil
 	}
-	row.Settings = contentClone(row.Settings)
+	row.Settings = contentCloneT(row.Settings)
 	return &row, nil
 }
 func (r *contentRepoStub) SaveSettings(_ context.Context, row *ContentOwnerRow) error {
@@ -61,7 +63,7 @@ func (r *contentRepoStub) SaveSettings(_ context.Context, row *ContentOwnerRow) 
 	defer r.mu.Unlock()
 	old := r.settings[row.OwnerUserID]
 	cp := *row
-	cp.Settings = contentClone(row.Settings)
+	cp.Settings = contentCloneT(row.Settings)
 	cp.LastRunDay = old.LastRunDay
 	r.settings[row.OwnerUserID] = cp
 	return nil
@@ -148,7 +150,7 @@ func (r *contentRepoStub) CreateItem(_ context.Context, it *ContentItem) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	it.ID, it.CreatedAt = r.id(), time.Now()
-	cp := contentClone(*it)
+	cp := contentCloneT(*it)
 	cp.OwnerUserID = it.OwnerUserID
 	r.items[it.ID] = cp
 	return nil
@@ -160,7 +162,7 @@ func (r *contentRepoStub) GetItem(_ context.Context, owner, id int64) (*ContentI
 	if !ok || it.OwnerUserID != owner {
 		return nil, nil
 	}
-	it = contentClone(it)
+	it = contentCloneT(it)
 	it.OwnerUserID = owner
 	return &it, nil
 }
@@ -178,7 +180,7 @@ func (r *contentRepoStub) ListItems(_ context.Context, owner int64, status strin
 func (r *contentRepoStub) SaveItem(_ context.Context, it *ContentItem) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	cp := contentClone(*it)
+	cp := contentCloneT(*it)
 	cp.OwnerUserID = it.OwnerUserID
 	r.items[it.ID] = cp
 	return nil
@@ -221,7 +223,7 @@ func (r *contentRepoStub) ListVariants(_ context.Context, owner, itemID int64) (
 	out := []ContentVariant{}
 	for _, v := range r.variants {
 		if v.OwnerUserID == owner && v.ItemID == itemID {
-			cp := contentClone(v)
+			cp := contentCloneT(v)
 			cp.OwnerUserID = owner
 			out = append(out, cp)
 		}
@@ -236,7 +238,7 @@ func (r *contentRepoStub) GetVariant(_ context.Context, owner, id int64) (*Conte
 	if !ok || v.OwnerUserID != owner {
 		return nil, nil
 	}
-	cp := contentClone(v)
+	cp := contentCloneT(v)
 	cp.OwnerUserID = owner
 	return &cp, nil
 }
@@ -251,7 +253,7 @@ func (r *contentRepoStub) UpsertVariant(_ context.Context, v *ContentVariant) er
 	if v.ID == 0 {
 		v.ID = r.id()
 	}
-	cp := contentClone(*v)
+	cp := contentCloneT(*v)
 	cp.OwnerUserID = v.OwnerUserID
 	r.variants[v.ID] = cp
 	return nil
@@ -259,7 +261,7 @@ func (r *contentRepoStub) UpsertVariant(_ context.Context, v *ContentVariant) er
 func (r *contentRepoStub) SaveVariant(_ context.Context, v *ContentVariant) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	cp := contentClone(*v)
+	cp := contentCloneT(*v)
 	cp.OwnerUserID = v.OwnerUserID
 	r.variants[v.ID] = cp
 	return nil
@@ -270,12 +272,58 @@ func (r *contentRepoStub) ListPublished(_ context.Context, owner int64, _ time.T
 	out := []ContentVariant{}
 	for _, v := range r.variants {
 		if v.OwnerUserID == owner && v.PublishedAt != nil {
-			out = append(out, contentClone(v))
+			out = append(out, contentCloneT(v))
 		}
 	}
 	return out, nil
 }
 func (r *contentRepoStub) FailGenerating(context.Context, string) (int64, error) { return 0, nil }
+func (r *contentRepoStub) FailDeskJobs(context.Context, string) (int64, error)   { return 0, nil }
+func (r *contentRepoStub) GetPersona(_ context.Context, owner int64) (*ContentPersona, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	p, ok := r.personas[owner]
+	if !ok {
+		return nil, nil
+	}
+	p = contentCloneT(p)
+	return &p, nil
+}
+func (r *contentRepoStub) SavePersona(_ context.Context, owner int64, p *ContentPersona) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.personas[owner] = contentCloneT(*p)
+	return nil
+}
+func (r *contentRepoStub) CreateVersion(_ context.Context, v *ContentVersion) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	v.ID, v.CreatedAt = r.id(), time.Now()
+	r.versions = append(r.versions, *v)
+	return nil
+}
+func (r *contentRepoStub) ListVersions(_ context.Context, owner, itemID int64) ([]ContentVersion, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := []ContentVersion{}
+	for i := len(r.versions) - 1; i >= 0; i-- {
+		if v := r.versions[i]; v.OwnerUserID == owner && v.ItemID == itemID {
+			v.Markdown = ""
+			out = append(out, v)
+		}
+	}
+	return out, nil
+}
+func (r *contentRepoStub) GetVersion(_ context.Context, owner, id int64) (*ContentVersion, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, v := range r.versions {
+		if v.ID == id && v.OwnerUserID == owner {
+			return &v, nil
+		}
+	}
+	return nil, nil
+}
 func (r *contentRepoStub) ListRules(_ context.Context, owner int64) ([]ContentRule, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -74,6 +74,9 @@ type contentRun struct {
 	rules    []string
 	passages []assistantHit
 	usageMu  sync.Mutex
+	// The 作者档案 as a prompt block ("" without one) and as data.
+	persona     string
+	personaData *ContentPersona
 }
 
 func (s *ContentEngineService) newRun(ctx context.Context, it *ContentItem, key string) (*contentRun, *ContentOwnerRow, error) {
@@ -84,6 +87,9 @@ func (s *ContentEngineService) newRun(ctx context.Context, it *ContentItem, key 
 	st := row.Settings
 	r := &contentRun{key: key, model: s.model(ctx, st), product: st.Product, style: st.StylePrompt, brand: s.siteName(ctx),
 		rules: s.activeRules(ctx, it.OwnerUserID)}
+	if p, err := s.persona(ctx, it.OwnerUserID); err == nil {
+		r.persona, r.personaData = contentPersonaBlock(p), p
+	}
 	if s.sources.Search != nil {
 		r.passages = s.sources.Search(it.Brief.Topic+" "+it.Brief.Angle, contentPassages)
 	}
@@ -381,7 +387,7 @@ func (s *ContentEngineService) writeVariant(ctx context.Context, it *ContentItem
 	var last error
 	for attempt := 0; attempt < 2; attempt++ {
 		var out contentAdaptOut
-		if err := s.callJSON(ctx, it, r, contentAdaptPrompt(v.Platform, r.product, r.style, r.brand, r.rules), contentAdaptRequest(it, feedback),
+		if err := s.callJSON(ctx, it, r, contentAdaptPrompt(v.Platform, r), contentAdaptRequest(it, feedback),
 			contentAdaptTokens, nil, 1, &out); err != nil {
 			if ctx.Err() != nil {
 				return err

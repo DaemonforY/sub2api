@@ -359,3 +359,323 @@ func (h *ContentEngineHandler) Stats(c *gin.Context) {
 	out, err := h.svc.Stats(c.Request.Context(), owner, days)
 	learnReply(c, out, err)
 }
+
+// --- 写作台 ------------------------------------------------------------------------------------
+
+// Persona GET /admin/content/persona
+func (h *ContentEngineHandler) Persona(c *gin.Context) {
+	if owner, ok := contentOwner(c); ok {
+		out, err := h.svc.Persona(c.Request.Context(), owner)
+		learnReply(c, out, err)
+	}
+}
+
+// SavePersona PUT /admin/content/persona
+func (h *ContentEngineHandler) SavePersona(c *gin.Context) {
+	owner, ok := contentOwner(c)
+	if !ok {
+		return
+	}
+	var in service.ContentPersona
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.SavePersona(c.Request.Context(), owner, in)
+	learnReply(c, out, err)
+}
+
+// AddSample POST /admin/content/persona/samples {url} or {title, text}
+func (h *ContentEngineHandler) AddSample(c *gin.Context) {
+	owner, ok := contentOwner(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		URL   string `json:"url"`
+		Title string `json:"title"`
+		Text  string `json:"text"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.AddPersonaSample(c.Request.Context(), owner, in.URL, in.Title, in.Text)
+	learnReply(c, out, err)
+}
+
+// DeleteSample DELETE /admin/content/persona/samples/:sid
+func (h *ContentEngineHandler) DeleteSample(c *gin.Context) {
+	if owner, ok := contentOwner(c); ok {
+		out, err := h.svc.DeletePersonaSample(c.Request.Context(), owner, c.Param("sid"))
+		learnReply(c, out, err)
+	}
+}
+
+// DistillPersona POST /admin/content/persona/distill — a proposed 作者档案 from the samples.
+func (h *ContentEngineHandler) DistillPersona(c *gin.Context) {
+	owner, ok := contentOwner(c)
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), contentSlowTimeout)
+	defer cancel()
+	out, err := h.svc.DistillPersona(ctx, owner)
+	learnReply(c, out, err)
+}
+
+// CreateDesk POST /admin/content/desk {topic_id | title, idea, notes}
+func (h *ContentEngineHandler) CreateDesk(c *gin.Context) {
+	owner, ok := contentOwner(c)
+	if !ok {
+		return
+	}
+	var in service.ContentDeskInput
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.CreateDesk(c.Request.Context(), owner, in)
+	learnReply(c, out, err)
+}
+
+// deskAction runs a desk step that takes no body.
+func (h *ContentEngineHandler) deskAction(c *gin.Context, fn func(ctx context.Context, owner, id int64) (*service.ContentItem, error)) {
+	if owner, id, ok := contentOwnerID(c); ok {
+		out, err := fn(c.Request.Context(), owner, id)
+		learnReply(c, out, err)
+	}
+}
+
+// Research POST /admin/content/items/:id/desk/research {hint}
+func (h *ContentEngineHandler) Research(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Hint string `json:"hint"`
+	}
+	_ = c.ShouldBindJSON(&in)
+	out, err := h.svc.Research(c.Request.Context(), owner, id, in.Hint)
+	learnReply(c, out, err)
+}
+
+// SaveMaterials PUT /admin/content/items/:id/desk/materials {facts, answers}
+func (h *ContentEngineHandler) SaveMaterials(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in service.ContentMaterialsInput
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.SaveMaterials(c.Request.Context(), owner, id, in)
+	learnReply(c, out, err)
+}
+
+// Angles POST /admin/content/items/:id/desk/angles
+func (h *ContentEngineHandler) Angles(c *gin.Context) { h.deskAction(c, h.svc.Angles) }
+
+// ChooseAngle PUT /admin/content/items/:id/desk/angle
+func (h *ContentEngineHandler) ChooseAngle(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in service.ContentAngle
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.ChooseAngle(c.Request.Context(), owner, id, in)
+	learnReply(c, out, err)
+}
+
+// Reference POST /admin/content/items/:id/desk/reference {url | text}
+func (h *ContentEngineHandler) Reference(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		URL  string `json:"url"`
+		Text string `json:"text"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.Reference(c.Request.Context(), owner, id, in.URL, in.Text)
+	learnReply(c, out, err)
+}
+
+// ClearReference DELETE /admin/content/items/:id/desk/reference
+func (h *ContentEngineHandler) ClearReference(c *gin.Context) { h.deskAction(c, h.svc.ClearReference) }
+
+// Drafts POST /admin/content/items/:id/desk/drafts
+func (h *ContentEngineHandler) Drafts(c *gin.Context) { h.deskAction(c, h.svc.Drafts) }
+
+// ChooseBase POST /admin/content/items/:id/desk/base {draft_id, highlights}
+func (h *ContentEngineHandler) ChooseBase(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		DraftID    string   `json:"draft_id"`
+		Highlights []string `json:"highlights"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.ChooseBase(c.Request.Context(), owner, id, in.DraftID, in.Highlights)
+	learnReply(c, out, err)
+}
+
+// SaveBody PUT /admin/content/items/:id/desk/body {body, label}
+func (h *ContentEngineHandler) SaveBody(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Body  string `json:"body"`
+		Label string `json:"label"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.SaveBody(c.Request.Context(), owner, id, in.Body, in.Label)
+	learnReply(c, out, err)
+}
+
+// Assist POST /admin/content/items/:id/desk/assist
+func (h *ContentEngineHandler) Assist(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in service.ContentAssistInput
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.Assist(c.Request.Context(), owner, id, in)
+	learnReply(c, out, err)
+}
+
+// AddFact POST /admin/content/items/:id/desk/facts
+func (h *ContentEngineHandler) AddFact(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in service.ContentFact
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.AddFact(c.Request.Context(), owner, id, in)
+	learnReply(c, out, err)
+}
+
+// Check POST /admin/content/items/:id/desk/check
+func (h *ContentEngineHandler) Check(c *gin.Context) { h.deskAction(c, h.svc.Check) }
+
+// SaveComments PUT /admin/content/items/:id/desk/comments {comments}
+func (h *ContentEngineHandler) SaveComments(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Comments []service.ContentComment `json:"comments"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.SaveComments(c.Request.Context(), owner, id, in.Comments)
+	learnReply(c, out, err)
+}
+
+// Finalize POST /admin/content/items/:id/desk/finalize
+func (h *ContentEngineHandler) Finalize(c *gin.Context) { h.deskAction(c, h.svc.Finalize) }
+
+// ApplyLearn POST /admin/content/items/:id/desk/learn {id, accept}
+func (h *ContentEngineHandler) ApplyLearn(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		ID     string `json:"id"`
+		Accept bool   `json:"accept"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.ApplyLearn(c.Request.Context(), owner, id, in.ID, in.Accept)
+	learnReply(c, out, err)
+}
+
+// Platforms POST /admin/content/items/:id/desk/platforms
+func (h *ContentEngineHandler) Platforms(c *gin.Context) { h.deskAction(c, h.svc.Platforms) }
+
+// CancelDeskJob POST /admin/content/items/:id/desk/cancel
+func (h *ContentEngineHandler) CancelDeskJob(c *gin.Context) {
+	if owner, id, ok := contentOwnerID(c); ok {
+		learnReply(c, gin.H{"ok": true}, h.svc.CancelDeskJob(c.Request.Context(), owner, id))
+	}
+}
+
+// SetStage POST /admin/content/items/:id/desk/stage {stage}
+func (h *ContentEngineHandler) SetStage(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Stage string `json:"stage"`
+	}
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.SetStage(c.Request.Context(), owner, id, in.Stage)
+	learnReply(c, out, err)
+}
+
+// Versions GET /admin/content/items/:id/versions
+func (h *ContentEngineHandler) Versions(c *gin.Context) {
+	if owner, id, ok := contentOwnerID(c); ok {
+		out, err := h.svc.Versions(c.Request.Context(), owner, id)
+		learnReply(c, out, err)
+	}
+}
+
+func contentVID(c *gin.Context) (int64, bool) {
+	v, err := strconv.ParseInt(c.Param("vid"), 10, 64)
+	if err != nil || v <= 0 {
+		response.BadRequest(c, "参数格式不正确（Invalid version id）")
+		return 0, false
+	}
+	return v, true
+}
+
+// Version GET /admin/content/items/:id/versions/:vid
+func (h *ContentEngineHandler) Version(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	if vid, ok := contentVID(c); ok {
+		out, err := h.svc.Version(c.Request.Context(), owner, id, vid)
+		learnReply(c, out, err)
+	}
+}
+
+// RestoreVersion POST /admin/content/items/:id/versions/:vid/restore
+func (h *ContentEngineHandler) RestoreVersion(c *gin.Context) {
+	owner, id, ok := contentOwnerID(c)
+	if !ok {
+		return
+	}
+	if vid, ok := contentVID(c); ok {
+		out, err := h.svc.RestoreVersion(c.Request.Context(), owner, id, vid)
+		learnReply(c, out, err)
+	}
+}

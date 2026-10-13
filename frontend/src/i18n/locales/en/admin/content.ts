@@ -1,7 +1,7 @@
 export default {
   content: {
     title: 'Content engine',
-    description: 'AI picks topics, writes, and adapts each article for WeChat / Zhihu / CSDN / Toutiao / Xiaohongshu; you review and publish, then see the visits and sign-ups each post brings.',
+    description: 'Write in your own voice: material, angle, three drafts, polish, final, then versions for WeChat / Zhihu / CSDN / Toutiao / Xiaohongshu, and the visits and sign-ups each post brings.',
     intro: 'Pipeline: topic → outline → draft → review → de-AI rewrite → one version per platform → automatic checks → waiting for review. Calls run on your own key and are billed to it as usual. Approving a version creates its channel link (a promo code on Toutiao and Xiaohongshu); record the post URL after publishing to see its results under Stats.',
     tabs: {
       review: 'To review',

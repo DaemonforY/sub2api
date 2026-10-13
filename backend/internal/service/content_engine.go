@@ -260,6 +260,7 @@ type ContentItemData struct {
 	Model            string           `json:"model,omitempty"`
 	PromptTokens     int              `json:"prompt_tokens"`
 	CompletionTokens int              `json:"completion_tokens"`
+	Desk             *ContentDesk     `json:"desk,omitempty"` // 写作台 articles only
 }
 
 // ContentVariantSummary is a version's platform and status, for lists.
@@ -385,6 +386,7 @@ type ContentStats struct {
 
 // ContentOverview is the page's header: counts and the specs.
 type ContentOverview struct {
+	Desk      int                   `json:"desk"` // articles on the 写作台
 	Pending   int                   `json:"pending"`
 	Running   int                   `json:"running"`
 	Topics    int                   `json:"topics"`
@@ -423,6 +425,13 @@ type ContentEngineRepository interface {
 	SaveVariant(ctx context.Context, v *ContentVariant) error
 	ListPublished(ctx context.Context, owner int64, since time.Time) ([]ContentVariant, error)
 	FailGenerating(ctx context.Context, message string) (int64, error)
+	FailDeskJobs(ctx context.Context, message string) (int64, error)
+
+	GetPersona(ctx context.Context, owner int64) (*ContentPersona, error) // nil when none
+	SavePersona(ctx context.Context, owner int64, p *ContentPersona) error
+	CreateVersion(ctx context.Context, v *ContentVersion) error
+	ListVersions(ctx context.Context, owner, itemID int64) ([]ContentVersion, error) // without the text
+	GetVersion(ctx context.Context, owner, id int64) (*ContentVersion, error)        // nil when unknown
 
 	ListRules(ctx context.Context, owner int64) ([]ContentRule, error)
 	CreateRule(ctx context.Context, r *ContentRule) error
@@ -461,6 +470,10 @@ type ContentEngineService struct {
 	promo     contentPromoter
 	sources   ContentSources
 	notifier  contentNotifier
+	fetcher   ContentArticleFetcher
+
+	locksMu sync.Mutex
+	locks   map[int64]*sync.Mutex
 
 	agent articleAgentFunc
 	now   func() time.Time
@@ -506,6 +519,9 @@ func (s *ContentEngineService) RecoverInterrupted(ctx context.Context) {
 	}
 	if _, err := s.repo.FailGenerating(ctx, msg); err != nil {
 		slog.Warn("content: failing interrupted versions", "err", err)
+	}
+	if _, err := s.repo.FailDeskJobs(ctx, "服务器重启，这一步中断了，再点一次"); err != nil {
+		slog.Warn("content: failing interrupted desk steps", "err", err)
 	}
 }
 
@@ -745,7 +761,7 @@ func (s *ContentEngineService) Overview(ctx context.Context, owner int64) (*Cont
 	if err != nil {
 		return nil, err
 	}
-	out := &ContentOverview{Platforms: ContentPlatformSpecs(), Pending: counts[ContentPending], Topics: counts["topics"], Published: counts["published"]}
+	out := &ContentOverview{Platforms: ContentPlatformSpecs(), Desk: counts[ContentDeskStatus], Pending: counts[ContentPending], Topics: counts["topics"], Published: counts["published"]}
 	for _, st := range []string{ContentOutlining, ContentDrafting, ContentReviewing, ContentHumanizing, ContentAdapting} {
 		out.Running += counts[st]
 	}

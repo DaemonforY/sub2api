@@ -349,6 +349,37 @@ func registerContentEngineRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.PUT("/rules/:id", ce.UpdateRule)
 		g.DELETE("/rules/:id", ce.DeleteRule)
 		g.GET("/stats", ce.Stats)
+
+		g.GET("/persona", ce.Persona)
+		g.PUT("/persona", ce.SavePersona)
+		g.POST("/persona/samples", ce.AddSample)
+		g.DELETE("/persona/samples/:sid", ce.DeleteSample)
+		g.POST("/persona/distill", ce.DistillPersona)
+		g.POST("/desk", ce.CreateDesk)
+		d := g.Group("/items/:id/desk")
+		{
+			d.POST("/research", ce.Research)
+			d.PUT("/materials", ce.SaveMaterials)
+			d.POST("/angles", ce.Angles)
+			d.PUT("/angle", ce.ChooseAngle)
+			d.POST("/reference", ce.Reference)
+			d.DELETE("/reference", ce.ClearReference)
+			d.POST("/drafts", ce.Drafts)
+			d.POST("/base", ce.ChooseBase)
+			d.PUT("/body", ce.SaveBody)
+			d.POST("/assist", ce.Assist)
+			d.POST("/facts", ce.AddFact)
+			d.POST("/check", ce.Check)
+			d.PUT("/comments", ce.SaveComments)
+			d.POST("/finalize", ce.Finalize)
+			d.POST("/learn", ce.ApplyLearn)
+			d.POST("/platforms", ce.Platforms)
+			d.POST("/cancel", ce.CancelDeskJob)
+			d.POST("/stage", ce.SetStage)
+		}
+		g.GET("/items/:id/versions", ce.Versions)
+		g.GET("/items/:id/versions/:vid", ce.Version)
+		g.POST("/items/:id/versions/:vid/restore", ce.RestoreVersion)
 	}
 }
 

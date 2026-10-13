@@ -402,7 +402,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	geoMonitorService := service.ProvideGeoMonitorService(geoMonitorRepository, settingRepository, secretEncryptor, geoRunState)
 	geoMonitorHandler := handler.NewGeoMonitorHandler(geoMonitorService)
 	contentEngineRepository := repository.NewContentEngineRepository(db)
-	contentEngineService := service.ProvideContentEngineService(contentEngineRepository, learnService, settingRepository, secretEncryptor, settingService, channelLinkService, promoService, assistantService, agentRunRepository, geoMonitorRepository)
+	contentEngineService := service.ProvideContentEngineService(contentEngineRepository, learnService, settingRepository, secretEncryptor, settingService, channelLinkService, promoService, assistantService, agentRunRepository, geoMonitorRepository, writingStyleService)
 	contentEngineHandler := handler.NewContentEngineHandler(contentEngineService)
 	tutorRepository := repository.NewTutorRepository(db)
 	tutorService := service.ProvideTutorService(tutorRepository, learnService, assistantQuotaCache, openAIGatewayService)

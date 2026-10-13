@@ -22,6 +22,7 @@ export interface PlatformSpec {
 }
 
 export interface ContentOverview {
+  desk: number
   pending: number
   running: number
   topics: number
@@ -80,7 +81,7 @@ export interface TopicInput {
   score?: number
 }
 
-export type ItemStatus = 'outlining' | 'drafting' | 'reviewing' | 'humanizing' | 'adapting' | 'pending_review' | 'done' | 'failed' | 'rejected' | 'canceled'
+export type ItemStatus = 'desk' | 'outlining' | 'drafting' | 'reviewing' | 'humanizing' | 'adapting' | 'pending_review' | 'done' | 'failed' | 'rejected' | 'canceled'
 export type VersionStatus = 'pending_review' | 'generating' | 'approved' | 'published' | 'skipped' | 'failed'
 
 export interface ContentCheck {
@@ -136,6 +137,7 @@ export interface ContentItem {
   completion_tokens: number
   variants?: { platform: ContentPlatform; status: VersionStatus }[]
   running: boolean
+  desk?: ContentDesk
 }
 
 export interface NoteCard {
@@ -314,4 +316,283 @@ export async function deleteRule(id: number): Promise<void> {
 
 export async function getStats(days = 30): Promise<ContentStats> {
   return (await apiClient.get('/admin/content/stats', { params: { days } })).data
+}
+
+// --- 写作台 ------------------------------------------------------------------------------------
+
+export interface PersonaSample {
+  id: string
+  title: string
+  url?: string
+  text: string
+  added_at: string
+}
+
+/** The owner's 作者档案: every 写作台 prompt writes as this person. */
+export interface Persona {
+  name: string
+  identity: string
+  experiences: string[]
+  stances: string[]
+  likes: string[]
+  dislikes: string[]
+  voice: string
+  phrases: string[]
+  taboos: string[]
+  samples: PersonaSample[]
+  updated_at?: string
+}
+
+export type DeskStage = 'materials' | 'angles' | 'drafts' | 'edit' | 'final'
+export type FactStatus = 'new' | 'ok' | 'doubt' | 'rejected'
+
+export interface Fact {
+  id: string
+  text: string
+  kind: 'user' | 'persona' | 'answer' | 'web'
+  source?: string
+  source_title?: string
+  status: FactStatus
+}
+
+export interface Question {
+  id: string
+  question: string
+  why?: string
+  answer?: string
+}
+
+export interface Angle {
+  id: string
+  title: string
+  angle: string
+  archetype: string
+  reader: string
+  hook: string
+  h: number
+  k: number
+  r: number
+  why: string
+  note?: string
+}
+
+export interface Skeleton {
+  source: string
+  opening: string
+  parts: { role: string; how: string }[]
+  emotion: string
+  escalation: string
+  callbacks: string
+  title_pattern: string
+}
+
+export interface ParaMark {
+  i: number
+  v: 'read' | 'skim' | 'leave'
+  why?: string
+}
+
+export interface DraftReview {
+  paras: ParaMark[]
+  hook: number
+  flow: number
+  voice: number
+  substance: number
+  best_line: string
+  problems: string[]
+  summary: string
+}
+
+export interface Draft {
+  id: string
+  structure: string
+  label: string
+  markdown: string
+  review?: DraftReview
+  error?: string
+}
+
+export interface Highlight {
+  id: string
+  draft_id: string
+  quote: string
+  why: string
+}
+
+export interface Issue {
+  id: string
+  para?: number
+  layer: 'rule' | 'voice' | 'flow' | 'content' | 'fact'
+  level: 'must' | 'should'
+  quote: string
+  problem: string
+  fix?: string
+}
+
+export interface ProseStats {
+  chars: number
+  paras: number
+  single_paras: number
+  single_ratio: number
+  headings: number
+  bullets: number
+  dashes: number
+  colons: number
+  placeholders: number
+}
+
+export interface CheckReport {
+  at: string
+  stats: ProseStats
+  issues: Issue[]
+  scores?: Record<string, number>
+  summary?: string
+}
+
+export interface Comment {
+  id: string
+  quote: string
+  text: string
+  at: string
+  resolved?: boolean
+}
+
+export interface Learn {
+  id: string
+  rule: string
+  evidence: string
+  status: 'new' | 'added' | 'dismissed'
+}
+
+export interface DeskJob {
+  kind: 'research' | 'angles' | 'reference' | 'drafts' | 'merge' | 'check' | 'learn' | 'platforms'
+  status: 'running' | 'done' | 'failed'
+  error?: string
+  started_at: string
+  finished_at?: string
+}
+
+export interface ContentDesk {
+  stage: DeskStage
+  job?: DeskJob
+  research_hint?: string
+  facts: Fact[]
+  questions: Question[]
+  angles: Angle[]
+  angle?: Angle
+  skeleton?: Skeleton
+  drafts: Draft[]
+  judge?: { ranking: string[]; reasons: string[]; highlights: Highlight[] }
+  base_id?: string
+  picked?: string[]
+  body: string
+  body_ai?: string
+  check?: CheckReport
+  comments: Comment[]
+  learn: Learn[]
+  final_at?: string
+}
+
+export interface TextVersion {
+  id: number
+  item_id: number
+  kind: 'draft' | 'merge' | 'manual' | 'ai' | 'restore' | 'final'
+  label: string
+  markdown?: string
+  chars: number
+  created_at: string
+}
+
+export type AssistAction = 'voice' | 'tighten' | 'expand' | 'sharper' | 'lighter' | 'plain' | 'custom' | 'analogy' | 'evidence'
+
+export interface AssistResult {
+  text?: string
+  note?: string
+  options?: { text: string; note?: string; source?: string; source_title?: string }[]
+}
+
+export async function getPersona(): Promise<Persona> {
+  return (await apiClient.get('/admin/content/persona')).data
+}
+export async function savePersona(p: Persona): Promise<Persona> {
+  return (await apiClient.put('/admin/content/persona', p)).data
+}
+export async function addSample(input: { url?: string; title?: string; text?: string }): Promise<Persona> {
+  return (await apiClient.post('/admin/content/persona/samples', input, { timeout: 60000 })).data
+}
+export async function deleteSample(id: string): Promise<Persona> {
+  return (await apiClient.delete(`/admin/content/persona/samples/${id}`)).data
+}
+export async function distillPersona(): Promise<Persona> {
+  return (await apiClient.post('/admin/content/persona/distill', {}, SLOW)).data
+}
+
+export async function createDesk(input: { topic_id?: number; title?: string; idea?: string; notes?: string }): Promise<ContentItem> {
+  return (await apiClient.post('/admin/content/desk', input)).data
+}
+
+const desk = (id: number, path: string) => `/admin/content/items/${id}/desk/${path}`
+
+export async function research(id: number, hint = ''): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'research'), { hint })).data
+}
+export async function saveMaterials(id: number, facts: Fact[], answers: Record<string, string>): Promise<ContentItem> {
+  return (await apiClient.put(desk(id, 'materials'), { facts, answers })).data
+}
+export async function makeAngles(id: number): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'angles'))).data
+}
+export async function chooseAngle(id: number, angle: Angle): Promise<ContentItem> {
+  return (await apiClient.put(desk(id, 'angle'), angle)).data
+}
+export async function addReference(id: number, input: { url?: string; text?: string }): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'reference'), input, { timeout: 60000 })).data
+}
+export async function clearReference(id: number): Promise<ContentItem> {
+  return (await apiClient.delete(desk(id, 'reference'))).data
+}
+export async function makeDrafts(id: number): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'drafts'))).data
+}
+export async function chooseBase(id: number, draftId: string, highlights: string[]): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'base'), { draft_id: draftId, highlights })).data
+}
+export async function saveBody(id: number, body: string, label = ''): Promise<ContentItem> {
+  return (await apiClient.put(desk(id, 'body'), { body, label })).data
+}
+export async function assist(id: number, input: { action: AssistAction; selection: string; before: string; after: string; instruction?: string }): Promise<AssistResult> {
+  return (await apiClient.post(desk(id, 'assist'), input, SLOW)).data
+}
+export async function addFact(id: number, fact: { text: string; source?: string; source_title?: string }): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'facts'), fact)).data
+}
+export async function runCheck(id: number): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'check'))).data
+}
+export async function saveComments(id: number, comments: Comment[]): Promise<ContentItem> {
+  return (await apiClient.put(desk(id, 'comments'), { comments })).data
+}
+export async function finalize(id: number): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'finalize'))).data
+}
+export async function applyLearn(id: number, learnId: string, accept: boolean): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'learn'), { id: learnId, accept })).data
+}
+export async function makePlatforms(id: number): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'platforms'))).data
+}
+export async function cancelDeskJob(id: number): Promise<void> {
+  await apiClient.post(desk(id, 'cancel'))
+}
+export async function setStage(id: number, stage: DeskStage): Promise<ContentItem> {
+  return (await apiClient.post(desk(id, 'stage'), { stage })).data
+}
+export async function listVersions(id: number): Promise<TextVersion[]> {
+  return (await apiClient.get(`/admin/content/items/${id}/versions`)).data
+}
+export async function getVersion(id: number, vid: number): Promise<TextVersion> {
+  return (await apiClient.get(`/admin/content/items/${id}/versions/${vid}`)).data
+}
+export async function restoreVersion(id: number, vid: number): Promise<ContentItem> {
+  return (await apiClient.post(`/admin/content/items/${id}/versions/${vid}/restore`)).data
 }

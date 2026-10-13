@@ -21,6 +21,7 @@ import opsAgent from './opsAgent'
 import analytics from './analytics'
 import geo from './geo'
 import content from './content'
+import contentDesk from './contentDesk'
 
 export default {
   ...overview,
@@ -46,4 +47,5 @@ export default {
   ...analytics,
   ...geo,
   ...content,
+  ...contentDesk,
 }

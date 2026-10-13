@@ -147,7 +147,7 @@ async function suggest() {
 async function start(tp: ContentTopic) {
   busyId.value = tp.id
   try {
-    const it = await contentAPI.startTopic(tp.id)
+    const it = await contentAPI.createDesk({ topic_id: tp.id })
     appStore.showSuccess(t('admin.content.topics.started'))
     emit('changed')
     emit('open-item', it.id)

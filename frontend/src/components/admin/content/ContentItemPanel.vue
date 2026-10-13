@@ -2,7 +2,10 @@
   <div class="space-y-4" data-testid="content-item-panel">
     <div class="flex items-center justify-between gap-2">
       <button type="button" class="btn btn-secondary btn-sm" @click="emit('close')">← {{ t('admin.content.review.back') }}</button>
-      <button type="button" class="btn btn-secondary btn-sm" :disabled="loading" @click="load">{{ t('admin.content.common.refresh') }}</button>
+      <div class="flex gap-2">
+        <button v-if="item?.desk" type="button" class="btn btn-secondary btn-sm" @click="emit('desk')">{{ t('admin.desk.view.openDesk') }}</button>
+        <button type="button" class="btn btn-secondary btn-sm" :disabled="loading" @click="load">{{ t('admin.content.common.refresh') }}</button>
+      </div>
     </div>
 
     <p v-if="!item && loading" class="py-8 text-center text-sm text-gray-400">{{ t('admin.content.common.loading') }}</p>
@@ -113,7 +116,7 @@ import type { ContentItemDetail, ContentPlatform, ContentVersion, ItemStatus, Pl
 import ContentVersionCard from './ContentVersionCard.vue'
 
 const props = defineProps<{ itemId: number; platforms: PlatformSpec[]; brand: string }>()
-const emit = defineEmits<{ (e: 'close'): void; (e: 'changed'): void }>()
+const emit = defineEmits<{ (e: 'close'): void; (e: 'changed'): void; (e: 'desk'): void }>()
 
 const { t } = useI18n()
 const appStore = useAppStore()

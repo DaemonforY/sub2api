@@ -221,7 +221,8 @@ func (r *contentEngineRepository) ListItems(ctx context.Context, owner int64, st
 	rows, err := r.db.QueryContext(ctx, `
 SELECT `+contentItemColumns+`, data->'brief', COALESCE(data->'checks', '[]'::jsonb),
        COALESCE((data->>'prompt_tokens')::bigint, 0), COALESCE((data->>'completion_tokens')::bigint, 0), COALESCE(data->>'landing_path', ''),
-       COALESCE((SELECT json_agg(json_build_object('platform', v.platform, 'status', v.status) ORDER BY v.id) FROM content_variants v WHERE v.item_id = i.id), '[]'::json)
+       COALESCE((SELECT json_agg(json_build_object('platform', v.platform, 'status', v.status) ORDER BY v.id) FROM content_variants v WHERE v.item_id = i.id), '[]'::json),
+       COALESCE(data#>>'{desk,stage}', ''), COALESCE(data#>'{desk,job}', 'null'::jsonb)
 FROM content_items i WHERE owner_user_id = $1 AND ($2 = '' OR status = $2)
 ORDER BY created_at DESC, id DESC LIMIT $3`, owner, status, limit)
 	if err != nil {
@@ -232,11 +233,17 @@ ORDER BY created_at DESC, id DESC LIMIT $3`, owner, status, limit)
 	for rows.Next() {
 		var it service.ContentItem
 		var topic sql.NullInt64
-		var brief, checks, variants []byte
+		var brief, checks, variants, job []byte
 		var prompt, completion int64
+		var stage string
 		if err := rows.Scan(&it.ID, &it.OwnerUserID, &topic, &it.KeyID, &it.Status, &it.Title, &it.Error, &it.CreatedAt, &it.UpdatedAt,
-			&brief, &checks, &prompt, &completion, &it.LandingPath, &variants); err != nil {
+			&brief, &checks, &prompt, &completion, &it.LandingPath, &variants, &stage, &job); err != nil {
 			return nil, err
+		}
+		if stage != "" {
+			// Lists only carry the desk's step and its running AI step.
+			it.Desk = &service.ContentDesk{Stage: stage}
+			_ = json.Unmarshal(job, &it.Desk.Job)
 		}
 		if topic.Valid {
 			it.TopicID = &topic.Int64
@@ -423,6 +430,86 @@ ORDER BY v.published_at DESC LIMIT 500`, owner, since)
 		out = append(out, v)
 	}
 	return out, rows.Err()
+}
+
+// FailDeskJobs marks 写作台 steps a previous process left running as failed.
+func (r *contentEngineRepository) FailDeskJobs(ctx context.Context, message string) (int64, error) {
+	out, err := r.db.ExecContext(ctx, `
+UPDATE content_items
+SET data = jsonb_set(jsonb_set(data, '{desk,job,status}', '"failed"'), '{desk,job,error}', to_jsonb($1::text)), updated_at = NOW()
+WHERE status = 'desk' AND data#>>'{desk,job,status}' = 'running'`, message)
+	if err != nil {
+		return 0, err
+	}
+	return out.RowsAffected()
+}
+
+// --- persona & versions ------------------------------------------------------------------------
+
+func (r *contentEngineRepository) GetPersona(ctx context.Context, owner int64) (*service.ContentPersona, error) {
+	var data []byte
+	err := r.db.QueryRowContext(ctx, `SELECT data FROM content_personas WHERE owner_user_id = $1`, owner).Scan(&data)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var p service.ContentPersona
+	if err := json.Unmarshal(data, &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (r *contentEngineRepository) SavePersona(ctx context.Context, owner int64, p *service.ContentPersona) error {
+	data, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.ExecContext(ctx, `
+INSERT INTO content_personas (owner_user_id, data, updated_at) VALUES ($1, $2::jsonb, NOW())
+ON CONFLICT (owner_user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`, owner, string(data))
+	return err
+}
+
+func (r *contentEngineRepository) CreateVersion(ctx context.Context, v *service.ContentVersion) error {
+	return r.db.QueryRowContext(ctx, `
+INSERT INTO content_item_versions (item_id, owner_user_id, kind, label, markdown) VALUES ($1, $2, $3, $4, $5)
+RETURNING id, created_at`, v.ItemID, v.OwnerUserID, v.Kind, v.Label, v.Markdown).Scan(&v.ID, &v.CreatedAt)
+}
+
+func (r *contentEngineRepository) ListVersions(ctx context.Context, owner, itemID int64) ([]service.ContentVersion, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT id, item_id, kind, label, char_length(markdown), created_at FROM content_item_versions
+WHERE owner_user_id = $1 AND item_id = $2 ORDER BY id DESC LIMIT 200`, owner, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.ContentVersion{}
+	for rows.Next() {
+		var v service.ContentVersion
+		if err := rows.Scan(&v.ID, &v.ItemID, &v.Kind, &v.Label, &v.Chars, &v.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+func (r *contentEngineRepository) GetVersion(ctx context.Context, owner, id int64) (*service.ContentVersion, error) {
+	var v service.ContentVersion
+	err := r.db.QueryRowContext(ctx, `
+SELECT id, item_id, owner_user_id, kind, label, markdown, char_length(markdown), created_at FROM content_item_versions
+WHERE id = $1 AND owner_user_id = $2`, id, owner).Scan(&v.ID, &v.ItemID, &v.OwnerUserID, &v.Kind, &v.Label, &v.Markdown, &v.Chars, &v.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &v, nil
 }
 
 func (r *contentEngineRepository) FailGenerating(ctx context.Context, message string) (int64, error) {

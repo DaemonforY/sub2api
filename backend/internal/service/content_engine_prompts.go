@@ -168,43 +168,49 @@ func contentHumanizeRequest(text string, notes []string) string {
 
 // --- platform versions -------------------------------------------------------------------------
 
-// contentPlatformGuide is what each platform's readers and rules want.
+// contentPlatformGuide is what each platform's readers and rules want. Every version is still the
+// author talking; only the length, the opening and the packaging change.
 var contentPlatformGuide = map[string]string{
-	ContentPlatformWechat: `平台：微信公众号（作者已有约 1000 粉丝，是私域主阵地）。
-- 长文，1500–3000 字，保留小标题和代码块；语气可以更像和老读者聊天，有作者自己的观点。
-- 标题不超过 30 字，可以有一点悬念，但不要标题党。digest 写 120 字以内的摘要。
-- 正文里不能放外链。结尾一句话引导读者点「阅读原文」看完整教程或去注册体验，不要写网址。
+	ContentPlatformWechat: `平台：微信公众号（作者的私域主阵地，读者大多是老读者）。
+- 长文，保持作者平时的写法；标题不超过 30 字，可以有一点悬念，不要标题党；digest 写 120 字以内的摘要，像作者在朋友圈转发时会配的那句话。
+- 正文里不能放外链。结尾用作者平时的方式收尾，可以提一句「阅读原文」里有完整教程或可以去体验，不写网址。
 - kind 填 "article"。`,
-	ContentPlatformZhihu: `平台：知乎（新号，没有粉丝，靠搜索和问题流量）。
-- 优先写成「回答」：kind 填 "answer"，question 写一个知乎上真实可能存在、搜索量大的问题（作者会去搜这个问题再回答）；如果选题更适合长文，kind 填 "article"，question 留空。
-- 第一段直接回答问题、给结论，知乎和 AI 搜索最常截取第一段。语气专业、克制，像有经验的人在分享，不要营销腔。
-- 600–2500 字，可以用小标题、列表和代码块。
-- 文末只放一次引流：一句话说明完整教程或工具在哪里，后面接 {{link}}（这是链接占位符，原样写出）。
-- tags 写 3–5 个知乎话题。title 不超过 50 字（回答也写一个标题，作者备用）。`,
-	ContentPlatformCSDN: `平台：CSDN（新号，靠百度和站内搜索流量）。
-- 技术教程风格：标题就是搜索词，包含技术名词和版本号，不超过 60 字。
-- 结构清楚：问题/背景 → 环境与准备 → 步骤（代码块要完整可运行）→ 常见报错和解决 → 小结。1500–5000 字。
-- 文末一句话引导读者去看完整教程或在线体验，后面接 {{link}}（链接占位符，原样写出），再另起一行写「本文由 AI 辅助创作，内容经作者审核」。
+	ContentPlatformZhihu: `平台：知乎（新号，靠搜索和问题流量；读者是来找答案的）。
+- 优先写成「回答」：kind 填 "answer"，question 写一个知乎上真实可能存在、搜的人多的问题（作者会去搜这个问题再回答）。选题更适合长文时 kind 填 "article"，question 留空。
+- 第一段直接回答问题、给出作者的判断，再讲作者自己是怎么知道的、踩过什么坑。像一个内行在认真回答朋友的问题，有判断、有细节，不要写成百科词条，也不要营销腔。
+- 600–2500 字，少用小标题。
+- 文末只放一次引流：一句话说明完整教程或工具在哪里，后面接 {{link}}（链接占位符，原样写出）。
+- tags 写 3–5 个知乎话题。title 不超过 50 字。`,
+	ContentPlatformCSDN: `平台：CSDN（新号，靠百度和站内搜索；读者是来解决具体技术问题的）。
+- 这是唯一可以写得接近教程的平台：标题就是搜索词，带技术名词和版本号，不超过 60 字。
+- 结构清楚：遇到的问题 → 环境 → 步骤（代码块要完整可运行）→ 常见报错和解决 → 一句作者自己的经验。步骤之外的叙述保持作者的口吻，别写成官方文档。
+- 1500–5000 字。文末一句话引导读者去看完整教程或在线体验，后面接 {{link}}（链接占位符，原样写出），再另起一行写「本文由 AI 辅助创作，内容经作者审核」。
 - tags 写 3–5 个技术标签，category 写一个分类（如「人工智能」）。kind 填 "article"。`,
-	ContentPlatformToutiao: `平台：今日头条（新号，推荐算法不看粉丝数，读者是泛科技兴趣人群）。
-- 标题 10–30 字，口语化、有信息量，讲清楚「对读者有什么用」，不要震惊体。
-- 正文 800–2000 字，短段落（每段 1–3 句），少用代码，多用通俗的比喻和场景；可以用小标题。
-- 正文绝对不能放链接或网址。结尾一句话引导读者搜索产品名注册，并提到注册时填优惠码 {{promo}} 多送体验额度（优惠码占位符，原样写出）。
-- micro 写一条 300 字以内的微头条，单独发：一个有用的观点或技巧 + 一句互动提问，同样不能有链接。
+	ContentPlatformToutiao: `平台：今日头条（新号，推荐算法不看粉丝；读者是泛科技兴趣人群，不一定懂技术）。
+- 标题 10–30 字，口语化、信息密，讲清楚「对读者有什么用」或「发生了什么反常的事」，不要震惊体。
+- 正文 800–2000 字，短段落，用作者自己的经历和大白话讲，少用代码和术语；需要解释概念时用读者熟悉的类比。
+- 正文绝对不能放链接或网址。结尾一句话提到可以搜索产品名注册，注册时填优惠码 {{promo}} 多送体验额度（优惠码占位符，原样写出）。
+- micro 写一条 300 字以内的微头条：一个作者的真实观察或小技巧，加一句引人回复的提问，同样不能有链接。
 - kind 填 "article"。`,
 	ContentPlatformXHS: `平台：小红书（新号，读者是年轻人和学生，靠搜索和推荐）。
-- 图文笔记：内容主要放在图卡上。cards 写 4–7 张：第 1 张是封面（title 是大字标题，points 写 1–2 句副标题），中间每张一个要点（title 不超过 12 字，points 2–4 条，每条不超过 25 字），最后一张是总结或行动建议。
-- title 不超过 20 字，口语化，可以带一个 emoji。
-- body 是笔记正文，300–800 字，分短段，可以适量用 emoji，结尾提一个问题引导评论。
+- 图文笔记，内容主要在图卡上。cards 写 4–7 张：第 1 张是封面（title 是大字标题，points 1–2 句副标题），中间每张讲一个点（title 不超过 12 字，points 2–4 条，每条不超过 25 字），最后一张是作者的一句真心话或行动建议。
+- title 不超过 20 字，第一人称、口语化，可以带一个 emoji。
+- body 300–800 字，第一人称，像作者在跟朋友分享自己刚发现的东西，第一句就是钩子；分短段，emoji 适量；结尾一个问题引导评论。
 - 正文和图卡都绝对不能放链接、网址、二维码或「私信我」。正文结尾写：搜「产品名」注册，填优惠码 {{promo}} 多送体验额度（优惠码占位符，原样写出）。
 - tags 写 5–8 个话题（不带 #）。kind 填 "note"。`,
 }
 
-func contentAdaptPrompt(platform, product, style, brand string, rules []string) string {
-	return contentWriterStance + contentProductBlock(product) + contentRulesBlock(style, rules) + `
+// contentAdaptPrompt asks for one platform's version of the master, written by the author.
+func contentAdaptPrompt(platform string, r *contentRun) string {
+	head := contentWriterStance
+	if r.persona != "" {
+		head = "你在把自己写好的一篇文章改成另一个平台的版本。" + r.persona + "\n\n" + contentPrinciples
+	}
+	return head + contentProductBlock(r.product) + contentRulesBlock(r.style, r.rules) + `
 
-任务：把母稿改写成下面这个平台的版本。必须真正改写（换标题、开头、结构、长度和语气），不能只是删减或换格式——多个平台同时发同一篇会被判搬运。
-产品名写作「` + brand + `」。
+任务：把母稿改写成下面这个平台的版本。要真正重写：换标题、换开头、换结构和长度，让这个平台的读者愿意读下去；多个平台同时发一模一样的内容会被判搬运。
+说的事实、经历和判断必须来自母稿，不能新加；「【这里需要你的真实经历：…】」这样的占位如果还在，原样保留。
+产品名写作「` + r.brand + `」。
 
 ` + contentPlatformGuide[platform] + `
 

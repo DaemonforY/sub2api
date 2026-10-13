@@ -10,7 +10,7 @@ import (
 // search; runs a previous process left behind are marked failed and the daily schedule starts.
 func ProvideContentEngineService(repo ContentEngineRepository, learn *LearnService, settings SettingRepository, encryptor SecretEncryptor,
 	settingService *SettingService, links *ChannelLinkService, promo *PromoService, assistant *AssistantService,
-	runs AgentRunRepository, geo GeoMonitorRepository) *ContentEngineService {
+	runs AgentRunRepository, geo GeoMonitorRepository, style *WritingStyleService) *ContentEngineService {
 	var store learnSettingStore
 	if settings != nil {
 		store = settings
@@ -33,6 +33,9 @@ func ProvideContentEngineService(repo ContentEngineRepository, learn *LearnServi
 		promoter = promo
 	}
 	svc.SetDeps(search, linker, promoter, sources)
+	if style != nil {
+		svc.SetFetcher(style)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	svc.RecoverInterrupted(ctx)
