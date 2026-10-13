@@ -88,6 +88,7 @@ export default {
       saved: 'Last result ({time})'
     },
     share: {
+      pageCta: 'Scan to find your writing style',
       brand: 'HiveGPT · Writing style test',
       title: 'My writing style: {archetype}',
       rhythm: 'Sentences: {n} chars on average, {label}',

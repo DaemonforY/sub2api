@@ -220,6 +220,18 @@ function openPanel() {
   nextTick(() => input.value?.focus())
 }
 
+/** Opens the chat with `text` waiting in the box, for a page's own "ask the assistant" button. */
+function openWith(text: string) {
+  draft.value = text
+  openPanel()
+  nextTick(() => {
+    const el = input.value
+    if (el) el.selectionStart = el.selectionEnd = el.value.length
+  })
+}
+
+defineExpose({ openWith, enabled: computed(() => !!config.value?.enabled) })
+
 function clear() {
   messages.value = []
   error.value = ''

@@ -5,7 +5,10 @@ export default {
     play: '开始玩',
     minutes: '约 {n} 分钟',
     soon: '更多小游戏正在做',
-    soonDesc: '想玩什么？在首页右下角的智能客服里告诉我们。',
+    soonDesc: '想玩什么小游戏？直接告诉智能客服，大家最想要的我们先做。',
+    ask: '告诉智能客服',
+    askDraft: '我想玩一个这样的小游戏：',
+    share: { brand: 'HiveGPT 小游戏', title: '几分钟一局的 AI 小游戏', cta: '扫码一起来玩' },
     list: {
       abti: { title: 'ABTI · AI 打工人格测试', desc: '31 道题、15 个维度，测出你在 AI 时代是哪种打工人。', tag: '人格测试' },
       style: { title: '测测你的写作风格', desc: '贴几篇你写的文章，看看你的句子节奏、口头禅和 AI 味。', tag: '写作' }
@@ -56,6 +59,7 @@ export default {
       },
       share: {
         brand: 'ABTI · AI 打工人格测试',
+        introTitle: '测测你是哪种 AI 打工人',
         title: '我是 {code}「{name}」',
         match: '匹配度 {n}%',
         cta: '扫码测测你是哪种 AI 打工人'

@@ -5,7 +5,10 @@ export default {
     play: 'Play',
     minutes: 'About {n} min',
     soon: 'More games on the way',
-    soonDesc: 'Want something? Tell us in the assistant at the bottom right of the home page.',
+    soonDesc: 'What would you like to play? Tell the assistant; the most wanted ones come first.',
+    ask: 'Tell the assistant',
+    askDraft: 'I would like a game where ',
+    share: { brand: 'HiveGPT Games', title: 'AI games, a few minutes a round', cta: 'Scan to play' },
     list: {
       abti: { title: 'ABTI · AI worker personality test', desc: '31 questions over 15 dimensions: what kind of worker are you in the AI era?', tag: 'Personality' },
       style: { title: 'Find your writing style', desc: 'Paste a few of your articles and see your rhythm, catchphrases and AI flavour.', tag: 'Writing' }
@@ -56,6 +59,7 @@ export default {
       },
       share: {
         brand: 'ABTI · AI worker personality test',
+        introTitle: 'What kind of AI worker are you?',
         title: 'I am {code} "{name}"',
         match: '{n}% match',
         cta: 'Scan to find your AI worker type'

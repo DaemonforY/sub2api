@@ -5,7 +5,10 @@
     <main class="mx-auto max-w-2xl px-4 pb-20 pt-6 sm:px-6">
       <!-- 开始 -->
       <section v-if="screen === 'intro'" data-testid="abti-intro">
-        <RouterLink to="/games" class="text-sm text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-white">← {{ t('games.title') }}</RouterLink>
+        <div class="flex items-center justify-between">
+          <RouterLink to="/games" class="text-sm text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-white">← {{ t('games.title') }}</RouterLink>
+          <PageShareButton :input="introShare" />
+        </div>
 
         <div v-if="friendType" class="card mt-4 flex items-center gap-4 p-4" data-testid="abti-friend">
           <img :src="imageOf(friendType.code)" :alt="friendType.name" class="h-20 w-20 flex-shrink-0 rounded-2xl object-cover" />
@@ -161,6 +164,8 @@
     </main>
 
     <ShareCardDialog :show="shareOpen" :input="shareInput" @close="shareOpen = false" />
+    <!-- Not while answering: the button would sit over the options on a phone. -->
+    <HomeAssistant v-if="screen !== 'quiz'" :site-name="siteName" />
   </div>
 </template>
 
@@ -171,7 +176,9 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
+import PageShareButton from '@/components/share/PageShareButton.vue'
 import ShareCardDialog, { type ShareCardInput } from '@/components/share/ShareCardDialog.vue'
 import { DIMENSIONS, FALLBACK_TYPE, GATE_FOLLOW_UP, GATE_QUESTION, HIDDEN_TYPE, TYPES, type CtaKind, type PersonaType, type Question } from '@/games/abti/data'
 import { computeResult, findType, questionOrder, visibleQuestions, type AbtiResult, type Answers } from '@/games/abti/score'
@@ -214,6 +221,7 @@ const current = computed(() => visible.value[index.value])
 const routeCode = computed(() => String(route.params.code || '').toUpperCase())
 // Someone else's result in the link: show it above the start button.
 const friendType = computed(() => (routeCode.value && routeCode.value !== saved.value?.type.code ? findType(routeCode.value) : undefined))
+const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'HiveGPT')
 const signupBonus = computed(() => Number(appStore.cachedPublicSettings?.signup_bonus || 0))
 
 function imageOf(code: string) {
@@ -358,6 +366,19 @@ const shareInput = computed<ShareCardInput | null>(() => {
     cta: t('games.abti.share.cta')
   }
 })
+
+// The test itself, before taking it: a few of the types as a teaser.
+const introShare = computed<ShareCardInput>(() => ({
+  kind: 'summary',
+  brand: t('games.abti.share.brand'),
+  title: t('games.abti.share.introTitle'),
+  summary: t('games.abti.subtitle'),
+  points: ['PROM', 'BOSS', 'FISH', 'HUMN'].map((code) => {
+    const type = findType(code)!
+    return `${type.code} ${type.name}：${type.intro}`
+  }),
+  cta: t('games.abti.share.cta')
+}))
 
 // --- Route -----------------------------------------------------------------------------------------
 

@@ -27,6 +27,20 @@ describe('home support assistant', () => {
     expect(wrapper.find('[data-testid="home-assistant"]').exists()).toBe(false)
   })
 
+  it('opens with a question waiting in the box when a page asks it to', async () => {
+    getAssistantConfig.mockResolvedValue(config())
+    const wrapper = mount(HomeAssistant, { props: { siteName: 'HiveGPT' }, attachTo: document.body })
+    await flushPromises()
+    const vm = wrapper.vm as unknown as { openWith: (text: string) => void; enabled: boolean }
+    expect(vm.enabled).toBe(true)
+    vm.openWith('我想玩一个这样的小游戏：')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="home-assistant-panel"]').exists()).toBe(true)
+    expect((wrapper.get('[data-testid="home-assistant-input"]').element as HTMLTextAreaElement).value).toBe('我想玩一个这样的小游戏：')
+    expect(streamAssistant).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('streams an answer as Markdown with its sources and the count left', async () => {
     getAssistantConfig.mockResolvedValue(config())
     streamAssistant.mockImplementation(async (messages, onDelta) => {

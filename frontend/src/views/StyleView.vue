@@ -13,6 +13,7 @@
             <span class="flex h-4 w-4 items-center justify-center rounded-full bg-gray-900 text-[10px] font-bold text-white dark:bg-white dark:text-dark-900">{{ i + 1 }}</span>{{ t(`style.steps.${k}`) }}
           </li>
         </ol>
+        <div class="mt-4 flex justify-center"><PageShareButton :input="pageShare" /></div>
       </section>
 
       <!-- 文章 -->
@@ -222,6 +223,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
+import PageShareButton from '@/components/share/PageShareButton.vue'
 import ShareCardDialog, { type ShareCardInput } from '@/components/share/ShareCardDialog.vue'
 import { analyze, fetchArticle, quote, type StyleAnalysis, type StyleArticle } from '@/api/style'
 import { listKeys } from '@/api/tutors'
@@ -446,6 +448,16 @@ const shareInput = computed<ShareCardInput | null>(() => {
     cta: t('style.share.cta')
   }
 })
+
+// The page itself, before any result.
+const pageShare = computed<ShareCardInput>(() => ({
+  kind: 'summary',
+  brand: t('style.share.brand'),
+  title: t('style.title'),
+  summary: t('style.subtitle'),
+  points: (['s1', 's2', 's3'] as const).map((k, i) => `${i + 1}. ${t(`style.steps.${k}`)}`),
+  cta: t('style.share.pageCta')
+}))
 
 watch(() => authStore.isAuthenticated, (v) => v && void loadKeys())
 onMounted(() => {

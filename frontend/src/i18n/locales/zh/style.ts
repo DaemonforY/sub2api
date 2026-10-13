@@ -88,6 +88,7 @@ export default {
       saved: '上次的结果（{time}）'
     },
     share: {
+      pageCta: '扫码测测你的写作风格',
       brand: 'HiveGPT · 写作风格测试',
       title: '我的写作风格：{archetype}',
       rhythm: '句子：平均 {n} 字，{label}',

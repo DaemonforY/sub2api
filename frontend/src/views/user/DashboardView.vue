@@ -13,6 +13,7 @@
         </div>
       </template>
     </div>
+    <HomeAssistant :site-name="siteName" />
   </AppLayout>
 </template>
 
@@ -23,11 +24,14 @@ import UserDashboardStats from '@/components/user/dashboard/UserDashboardStats.v
 import UserDashboardRecentUsage from '@/components/user/dashboard/UserDashboardRecentUsage.vue'; import UserDashboardQuickActions from '@/components/user/dashboard/UserDashboardQuickActions.vue'
 import UserDashboardApps from '@/components/user/dashboard/UserDashboardApps.vue'
 import UserDashboardGetStarted from '@/components/user/dashboard/UserDashboardGetStarted.vue'
+import HomeAssistant from '@/components/home/HomeAssistant.vue'
+import { useAppStore } from '@/stores/app'
 import type { UsageLog, TrendDataPoint, ModelStat, PlatformQuotaItem } from '@/types'
 import { getMyPlatformQuotas } from '@/api/user'
 import { formatDateLocalInput } from '@/utils/format'
 
 const authStore = useAuthStore(); const user = computed(() => authStore.user)
+const appStore = useAppStore(); const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'HiveGPT')
 const stats = ref<UserStatsType | null>(null); const loading = ref(false); const loadingUsage = ref(false); const loadingCharts = ref(false)
 const trendData = ref<TrendDataPoint[]>([]); const modelStats = ref<ModelStat[]>([]); const recentUsage = ref<UsageLog[]>([])
 const platformQuotas = ref<PlatformQuotaItem[] | null>(null)

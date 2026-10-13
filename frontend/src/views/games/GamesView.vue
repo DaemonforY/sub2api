@@ -6,6 +6,7 @@
       <section class="text-center">
         <h1 class="text-3xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-4xl">🎮 {{ t('games.title') }}</h1>
         <p class="mx-auto mt-3 max-w-xl text-[15px] leading-relaxed text-gray-600 dark:text-dark-300">{{ t('games.subtitle') }}</p>
+        <div class="mt-4 flex justify-center"><PageShareButton :input="shareInput" /></div>
       </section>
 
       <div class="mt-8 grid gap-5 sm:grid-cols-2">
@@ -35,21 +36,34 @@
           <div class="text-3xl">🧩</div>
           <div class="mt-2 font-semibold text-gray-800 dark:text-dark-200">{{ t('games.soon') }}</div>
           <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ t('games.soonDesc') }}</p>
+          <button v-if="assistant?.enabled" type="button" class="btn btn-secondary mt-4" data-testid="games-ask" @click="askForGame">💬 {{ t('games.ask') }}</button>
         </div>
       </div>
     </main>
+
+    <HomeAssistant ref="assistant" :site-name="siteName" />
   </div>
 </template>
 
 <script setup lang="ts">
 // 小游戏 (/games): the list of small games and tests. Each game is its own route.
-import { onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
+import PageShareButton from '@/components/share/PageShareButton.vue'
+import type { ShareCardInput } from '@/components/share/ShareCardDialog.vue'
 import { useAppStore } from '@/stores/app'
 
 const { t } = useI18n()
 const appStore = useAppStore()
+const siteName = computed(() => appStore.cachedPublicSettings?.site_name || appStore.siteName || 'HiveGPT')
+const assistant = ref<InstanceType<typeof HomeAssistant> | null>(null)
+
+// The chat is logged (后台「智能客服」记录), so what people ask for here is where the next game comes from.
+function askForGame() {
+  assistant.value?.openWith(t('games.askDraft'))
+}
 
 const GAMES = [
   {
@@ -69,6 +83,15 @@ const GAMES = [
     cover: 'bg-gradient-to-br from-amber-100 via-orange-100 to-rose-100 dark:from-amber-500/10 dark:via-orange-500/10 dark:to-rose-500/10'
   }
 ]
+
+const shareInput = computed<ShareCardInput>(() => ({
+  kind: 'summary',
+  brand: t('games.share.brand'),
+  title: t('games.share.title'),
+  summary: t('games.subtitle'),
+  points: GAMES.map((g) => `${t(`games.list.${g.key}.title`)}：${t(`games.list.${g.key}.desc`)}`),
+  cta: t('games.share.cta')
+}))
 
 onMounted(() => {
   if (!appStore.publicSettingsLoaded) void appStore.fetchPublicSettings().catch(() => undefined)
