@@ -96,6 +96,7 @@ type pageMeta struct {
 	Path        string // canonical path
 	Image       string
 	Index       bool
+	Preview     bool // noindex, but still give link previews (og:title / og:image)
 	OGType      string
 	H1          string
 	Paragraphs  []string
@@ -289,9 +290,9 @@ func mainPageMeta(ctx context.Context, site seoSite, content SEOContent, path st
 		}
 	case strings.HasPrefix(p, "/games/abti/"):
 		// A shared result (/games/abti/PROM): the test's own page, with that type's picture for link previews.
+		m.Preview = true
 		for _, sp := range mainStaticPages {
 			if sp.Path == "/games/abti" {
-				m.Path = sp.Path
 				m.Title = sp.Title + " | " + site.Name
 				m.Description = sp.Description
 				m.H1 = sp.Title
@@ -654,6 +655,16 @@ func applyPageMeta(html []byte, site seoSite, m pageMeta, nonce string) []byte {
 		}
 	} else {
 		_, _ = head.WriteString(`<meta name="robots" content="noindex,follow" />`)
+		if m.Preview {
+			_, _ = head.WriteString(`<meta property="og:type" content="website" />`)
+			_, _ = head.WriteString(`<meta property="og:site_name" content="` + esc(site.Name) + `" />`)
+			_, _ = head.WriteString(`<meta property="og:title" content="` + esc(m.Title) + `" />`)
+			_, _ = head.WriteString(`<meta property="og:description" content="` + esc(m.Description) + `" />`)
+			_, _ = head.WriteString(`<meta property="og:url" content="` + esc(site.abs(m.Path)) + `" />`)
+			if m.Image != "" {
+				_, _ = head.WriteString(`<meta property="og:image" content="` + esc(m.Image) + `" />`)
+			}
+		}
 	}
 	_, _ = head.WriteString(`<style>.seo-shell{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);border:0}</style>`)
 	html = bytes.Replace(html, []byte("</head>"), []byte(head.String()+"</head>"), 1)

@@ -199,9 +199,13 @@ func TestGamesPageMeta(t *testing.T) {
 	// A shared result is the test's page with that type's picture, not a page of its own.
 	shared := mainPageMeta(ctx, testSite, nil, "/games/abti/prom")
 	require.False(t, shared.Index)
-	require.Equal(t, "/games/abti", shared.Path)
 	require.Equal(t, abti.Title, shared.Title)
 	require.Equal(t, "https://hivegpt.cn/games-media/abti/prom.webp", shared.Image)
+	html := string(applyPageMeta([]byte(testIndexHTML), testSite, shared, "n"))
+	require.Contains(t, html, `<meta name="robots" content="noindex,follow" />`)
+	require.Contains(t, html, `<meta property="og:image" content="https://hivegpt.cn/games-media/abti/prom.webp" />`)
+	require.Contains(t, html, `<meta property="og:url" content="https://hivegpt.cn/games/abti/prom" />`)
+	require.NotContains(t, html, "canonical")
 
 	unknown := mainPageMeta(ctx, testSite, nil, "/games/abti/ABCD")
 	require.Equal(t, testSite.Logo, unknown.Image)
