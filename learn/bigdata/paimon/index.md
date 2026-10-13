@@ -53,6 +53,7 @@ description: "流式湖仓的存储内核：合并策略、提交与冲突检测
 - [第 9 讲：Flink 写入两阶段提交](/bigdata/paimon/s2-09)：第一季第八讲（下）讲过 Flink Sink V2 的两阶段提交：barrier 之前 prepareCommit，checkpoint 完成后 commit，恢复时“一律再提交一次”，所以提交必须幂等。Paimon 的
 - [第 10 讲：Flink 流读与 consumer-id](/bigdata/paimon/s2-10)：第一季第八讲（上）拆过 FLIP-27：JobManager 上的 Enumerator 发现并分配 split，TaskManager 上的 Reader 读 split。Paimon 的默认流读就是一个标准的 FLI
 - [第 11 讲：Spark MERGE INTO](/bigdata/paimon/s2-11)：Paimon 的 Spark MERGE INTO 有三条落地方式，但前半段是同一个引擎：source 和 target 做 full outer join，每一行按 MATCHED / NOT MATCHED / NO
+- [第 12 讲：REST Catalog](/bigdata/paimon/s2-12)：第 5 讲说过，文件系统 Catalog 靠“谁先把 snapshot-(N+1) 写成功”来决定提交顺序，对象存储上 rename 不可靠，只能再配一把外部锁。REST Catalog 换了思路：数据文件、manife
 
 ## 结业
 

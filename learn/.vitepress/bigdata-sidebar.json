@@ -434,6 +434,10 @@
       {
         "text": "第 11 讲：Spark MERGE INTO",
         "link": "/bigdata/paimon/s2-11"
+      },
+      {
+        "text": "第 12 讲：REST Catalog",
+        "link": "/bigdata/paimon/s2-12"
       }
     ]
   }

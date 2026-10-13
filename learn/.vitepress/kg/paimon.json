@@ -994,6 +994,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "code": [
@@ -1856,6 +1860,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "points": [
@@ -1873,6 +1881,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "points": [
@@ -1902,6 +1914,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "code": [
@@ -1919,6 +1935,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "core": true,
@@ -1938,6 +1958,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "lab": "实验 14：旧作业被拒后客户端重试 10 次才失败，报错写的是“多作业冲突”，根因在 Caused by 里。"
@@ -1952,6 +1976,10 @@
     {
      "title": "11 REST Catalog",
      "link": "/bigdata/paimon/11-rest-catalog"
+    },
+    {
+     "title": "S2 第 12 讲：REST Catalog",
+     "link": "/bigdata/paimon/s2-12"
     }
    ],
    "code": [
