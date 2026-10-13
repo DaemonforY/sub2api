@@ -141,6 +141,7 @@ func RegisterAdminRoutes(
 		registerAssistantAdminRoutes(admin, h)
 		registerOpsAgentRoutes(admin, h)
 		registerGeoMonitorRoutes(admin, h)
+		registerContentEngineRoutes(admin, h)
 		registerCanvasMembershipAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
@@ -308,6 +309,46 @@ func registerGeoMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.GET("/summary", h.GeoMonitor.Summary)
 		g.GET("/settings", h.GeoMonitor.Settings)
 		g.PUT("/settings", h.GeoMonitor.SaveSettings)
+	}
+}
+
+// registerContentEngineRoutes 内容运营：选题池、AI 生成的各平台版本、审核、发布登记、数据和设置。
+func registerContentEngineRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.ContentEngine == nil {
+		return
+	}
+	ce := h.ContentEngine
+	g := admin.Group("/content")
+	{
+		g.GET("/overview", ce.Overview)
+		g.GET("/settings", ce.Settings)
+		g.PUT("/settings", ce.SaveSettings)
+		g.GET("/keys", ce.Keys)
+		g.POST("/notify/test", ce.TestNotify)
+		g.POST("/run", ce.RunNow)
+		g.GET("/topics", ce.Topics)
+		g.POST("/topics", ce.CreateTopic)
+		g.POST("/topics/suggest", ce.SuggestTopics)
+		g.PUT("/topics/:id", ce.UpdateTopic)
+		g.POST("/topics/:id/status", ce.SetTopicStatus)
+		g.POST("/topics/:id/start", ce.StartTopic)
+		g.DELETE("/topics/:id", ce.DeleteTopic)
+		g.GET("/items", ce.Items)
+		g.GET("/items/:id", ce.Item)
+		g.POST("/items/:id/retry", ce.Retry)
+		g.POST("/items/:id/cancel", ce.Cancel)
+		g.POST("/items/:id/reject", ce.Reject)
+		g.DELETE("/items/:id", ce.DeleteItem)
+		g.PUT("/versions/:id", ce.UpdateVersion)
+		g.POST("/versions/:id/approve", ce.ApproveVersion)
+		g.POST("/versions/:id/skip", ce.SkipVersion)
+		g.POST("/versions/:id/publish", ce.PublishVersion)
+		g.POST("/versions/:id/regenerate", ce.RegenerateVersion)
+		g.GET("/rules", ce.Rules)
+		g.POST("/rules", ce.CreateRule)
+		g.PUT("/rules/:id", ce.UpdateRule)
+		g.DELETE("/rules/:id", ce.DeleteRule)
+		g.GET("/stats", ce.Stats)
 	}
 }
 

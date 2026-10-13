@@ -71,6 +71,7 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 		proxyExpirySvc,
 		subscriptionExpirySvc,
 		nil, // abandoned order reminder
+		nil, // content engine
 		nil, // trial exhausted reminder
 		nil, // win-back reminder
 		&service.UsageCleanupService{},

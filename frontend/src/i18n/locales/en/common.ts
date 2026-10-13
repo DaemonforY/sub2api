@@ -228,6 +228,7 @@ export default {
     analyticsAdmin: 'Analytics',
     channelLinksAdmin: 'Channel links',
     geoAdmin: 'GEO monitor',
+    contentAdmin: 'Content engine',
     marginAdmin: 'Plan margins',
   },
 

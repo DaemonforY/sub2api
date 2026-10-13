@@ -228,6 +228,7 @@ export default {
     analyticsAdmin: '数据看板',
     channelLinksAdmin: '渠道链接',
     geoAdmin: 'GEO 监测',
+    contentAdmin: '内容运营',
     marginAdmin: '套餐毛利',
   },
 

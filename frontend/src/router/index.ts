@@ -710,6 +710,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/content',
+    name: 'AdminContent',
+    component: () => import('@/views/admin/ContentView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Content engine',
+      titleKey: 'admin.content.title',
+      descriptionKey: 'admin.content.description'
+    }
+  },
+  {
     path: '/admin/ops-agent',
     name: 'AdminOpsAgent',
     component: () => import('@/views/admin/OpsAgentView.vue'),

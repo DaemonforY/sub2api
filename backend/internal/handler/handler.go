@@ -95,6 +95,7 @@ type Handlers struct {
 	Assistant        *AssistantHandler
 	OpsAgent         *OpsAgentHandler
 	GeoMonitor       *GeoMonitorHandler
+	ContentEngine    *ContentEngineHandler
 	Tutor            *TutorHandler
 	AccountDeletion  *AccountDeletionHandler
 	SiteBuilder      *SiteBuilderHandler

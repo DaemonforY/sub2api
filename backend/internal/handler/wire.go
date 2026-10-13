@@ -230,6 +230,7 @@ func ProvideHandlers(
 	assistantHandler *AssistantHandler,
 	opsAgentHandler *OpsAgentHandler,
 	geoMonitorHandler *GeoMonitorHandler,
+	contentEngineHandler *ContentEngineHandler,
 	tutorHandler *TutorHandler,
 	accountDeletionHandler *AccountDeletionHandler,
 	siteBuilderHandler *SiteBuilderHandler,
@@ -279,6 +280,7 @@ func ProvideHandlers(
 		Assistant:        assistantHandler,
 		OpsAgent:         opsAgentHandler,
 		GeoMonitor:       geoMonitorHandler,
+		ContentEngine:    contentEngineHandler,
 		Tutor:            tutorHandler,
 		AccountDeletion:  accountDeletionHandler,
 		SiteBuilder:      siteBuilderHandler,
@@ -340,6 +342,7 @@ var ProviderSet = wire.NewSet(
 	NewAssistantHandler,
 	NewOpsAgentHandler,
 	NewGeoMonitorHandler,
+	NewContentEngineHandler,
 	NewAnalyticsHandler,
 
 	// Admin handlers

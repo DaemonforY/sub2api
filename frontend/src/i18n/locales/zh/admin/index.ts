@@ -20,6 +20,7 @@ import assistant from './assistant'
 import opsAgent from './opsAgent'
 import analytics from './analytics'
 import geo from './geo'
+import content from './content'
 
 export default {
   ...overview,
@@ -44,4 +45,5 @@ export default {
   ...opsAgent,
   ...analytics,
   ...geo,
+  ...content,
 }

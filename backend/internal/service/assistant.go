@@ -201,6 +201,23 @@ func (s *AssistantService) knowledge() *assistantKB {
 	return s.kb
 }
 
+// SearchPages returns up to limit passages of the FAQ and the learning site for query, best first
+// (内容引擎 drafts from them and picks landing pages among them).
+func (s *AssistantService) SearchPages(query string, limit int) []assistantHit {
+	return s.knowledge().search(query, limit)
+}
+
+// PageCatalog lists the learning-site pages in the knowledge base (title and path).
+func (s *AssistantService) PageCatalog() []AssistantSource {
+	out := []AssistantSource{}
+	for _, p := range s.knowledge().pages {
+		if strings.HasPrefix(p.URL, "/learn/") {
+			out = append(out, AssistantSource{Title: p.Title, URL: p.URL})
+		}
+	}
+	return out
+}
+
 // siteInfo: the site name and the 客服联系方式 shown on the homepage.
 func (s *AssistantService) siteInfo(ctx context.Context) (string, string) {
 	site := "HiveGPT"
