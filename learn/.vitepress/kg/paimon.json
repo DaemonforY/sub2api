@@ -1,0 +1,2634 @@
+{
+ "topic": "paimon",
+ "title": "Paimon 知识图谱",
+ "version": "Paimon 2.0.0 / master @ d15d250cf；实验 Flink 2.2.0、Spark 3.5.8",
+ "intro": "从会用到读懂源码：存储布局 → 写路径 → LSM 合并与提交 → 读路径、删除向量与 Changelog → Flink / Spark 集成 → REST Catalog。每个结论都对应教程章节和可复现的实验。",
+ "groups": [
+  {
+   "id": "setup",
+   "title": "上手与环境",
+   "color": "#64748b"
+  },
+  {
+   "id": "layout",
+   "title": "存储布局",
+   "color": "#0891b2"
+  },
+  {
+   "id": "model",
+   "title": "核心模型",
+   "color": "#0d9488"
+  },
+  {
+   "id": "meta",
+   "title": "元数据树",
+   "color": "#059669"
+  },
+  {
+   "id": "write",
+   "title": "写路径",
+   "color": "#65a30d"
+  },
+  {
+   "id": "pick",
+   "title": "合并策略",
+   "color": "#2563eb"
+  },
+  {
+   "id": "compact",
+   "title": "合并执行",
+   "color": "#4f46e5"
+  },
+  {
+   "id": "commit",
+   "title": "提交",
+   "color": "#7c3aed"
+  },
+  {
+   "id": "read",
+   "title": "读路径",
+   "color": "#c026d3"
+  },
+  {
+   "id": "dv",
+   "title": "删除向量",
+   "color": "#db2777"
+  },
+  {
+   "id": "changelog",
+   "title": "Changelog",
+   "color": "#e11d48"
+  },
+  {
+   "id": "lifecycle",
+   "title": "快照生命周期",
+   "color": "#ea580c"
+  },
+  {
+   "id": "flink-sink",
+   "title": "Flink 写入",
+   "color": "#d97706"
+  },
+  {
+   "id": "flink-source",
+   "title": "Flink 流读",
+   "color": "#ca8a04"
+  },
+  {
+   "id": "spark",
+   "title": "Spark",
+   "color": "#f97316"
+  },
+  {
+   "id": "rest",
+   "title": "REST Catalog",
+   "color": "#475569"
+  }
+ ],
+ "layers": [
+  {
+   "id": "L0",
+   "title": "阶段 0 · 上手与表目录",
+   "weeks": "第 1 周",
+   "desc": "编译源码，用一个 Java 程序跑通 Flink SQL 读写 Paimon，对照系统表和表目录认识快照、文件和两种表。",
+   "goal": "能说出主键表和 Append 表的 3 个区别；打开任意表目录能说出每个子目录 / 文件的作用。"
+  },
+  {
+   "id": "L1",
+   "title": "阶段 1 · 核心概念 + 写路径",
+   "weeks": "第 2~3 周",
+   "desc": "建立 Paimon = LSM 数据树 + 快照元数据树 + 乐观并发提交的整体模型，跟一条记录从 TableWrite 走到 L0 文件。",
+   "goal": "手画 snapshot → manifest list → manifest → data file 的树；讲清一次写入经过哪些类；解释 sequenceNumber 的作用。"
+  },
+  {
+   "id": "L2",
+   "title": "阶段 2 · LSM 合并 + 提交",
+   "weeks": "第 4~6 周",
+   "desc": "合并选哪些 run、输出到哪层、怎么执行（升级还是重写），以及不加锁的提交如何抢号、检测冲突、保证幂等。",
+   "goal": "给一组 runs 能手算 UniversalCompaction 的结果和 outputLevel；看到任一提交冲突异常能说出谁和谁冲突、怎么解决。"
+  },
+  {
+   "id": "L3",
+   "title": "阶段 3 · 读与 Changelog",
+   "weeks": "第 7~8 周",
+   "desc": "读之前就决定要不要归并；删除向量把读时去重换成写时标记；lookup 在 L0 上推时算出 -U/+U。",
+   "goal": "能解释 DV 模式为什么读不需要归并、为什么 L0 不可见；给定 L0 和高层数据能推演 lookup 产生的 changelog。"
+  },
+  {
+   "id": "L4",
+   "title": "阶段 4 · Flink 集成",
+   "weeks": "第 9~10 周",
+   "desc": "写入端的 checkpoint 两阶段提交与故障恢复；读取端的 FLIP-27 Source、逐快照追踪和 consumer-id。",
+   "goal": "画出 checkpoint N 从 writer 到 committer 的时序；解释 4 种故障时刻下的 exactly-once；解释 source 并行度为何不该超过 bucket 数。"
+  },
+  {
+   "id": "L5",
+   "title": "阶段 5 · Spark 集成",
+   "weeks": "第 11~12 周",
+   "desc": "Spark MERGE INTO 的共享引擎和三条落地方式，以及它们在提交层面的差别。",
+   "goal": "任给一张表和一条 DML，能说出走哪条路径、产生什么类型的提交、会不会和流写冲突。"
+  },
+  {
+   "id": "L6",
+   "title": "阶段 6 · Catalog 与 REST",
+   "weeks": "第 13 周",
+   "desc": "元数据交给 HTTP 服务端：最新快照问服务端，提交由服务端 CAS 裁决，存储凭证按表临时下发。",
+   "goal": "能讲清 REST 模式下提交的 CAS 协议以及它和客户端幂等检查怎么配合；能讲清数据 token 的刷新与缓存。"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "embedded-run",
+   "label": "嵌入式运行",
+   "layer": "L0",
+   "group": "setup",
+   "summary": "Flink Table API 自带嵌入式 MiniCluster，一个普通 Java 程序就能执行 Flink SQL、读写 Paimon，不用装集群，还能直接在 IDE 里对 Paimon 源码下断点。",
+   "lessons": [
+    {
+     "title": "01 环境搭建与源码编译",
+     "link": "/bigdata/paimon/01-setup"
+    },
+    {
+     "title": "S1 第 1 期：一个 Java 程序跑通 Paimon",
+     "link": "/bigdata/paimon/s1-01"
+    }
+   ],
+   "points": [
+    "编译 Paimon 源码要显式加 -Pspark3,flink1（javadoc profile 会关掉默认激活的 profile）",
+    "嵌入式运行要自己补齐 flink-connector-files、log4j2 和 shaded Hadoop；Hadoop 连 Flink 发行版都不带"
+   ],
+   "lab": "实验 5：逐个去掉依赖 jar，复现出 4 种典型报错。"
+  },
+  {
+   "id": "table-types",
+   "label": "主键表 vs Append 表",
+   "layer": "L0",
+   "group": "layout",
+   "summary": "主键表按主键去重，底层是 LSM 树，读时要按主键归并；Append 表没有主键，写什么存什么，读时直接读文件。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 3 期：主键表 vs Append 表",
+     "link": "/bigdata/paimon/s1-03"
+    }
+   ],
+   "points": [
+    "主键表 → KeyValueFileStore（LSM）",
+    "Append 表 → AppendOnlyFileStore（不合并，只做小文件合并）",
+    "订单、维表、CDC 同步用主键表；日志、埋点用 Append 表"
+   ],
+   "code": [
+    "KeyValueFileStore",
+    "AppendOnlyFileStore"
+   ],
+   "lab": "实验 1：Append 表写入重复行，两行都保留。"
+  },
+  {
+   "id": "table-dir",
+   "label": "表目录结构",
+   "layer": "L0",
+   "group": "layout",
+   "summary": "一张表就是一个目录：snapshot/、manifest/、schema/、index/、consumer/，数据文件在 分区/bucket-N/ 下。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 2 期：表目录里都是什么",
+     "link": "/bigdata/paimon/s1-02"
+    }
+   ],
+   "points": [
+    "snapshot/snapshot-N：快照 JSON",
+    "manifest/：manifest list 与 manifest 文件",
+    "pt=xx/bucket-N/data-xxx.parquet：数据文件"
+   ]
+  },
+  {
+   "id": "system-tables",
+   "label": "系统表",
+   "layer": "L0",
+   "group": "layout",
+   "summary": "t$snapshots、t$files、t$manifests、t$options、t$schemas 等，用 SQL 就能看到快照、文件层级和统计信息，是做实验最常用的观察窗口。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 2 期：表目录里都是什么",
+     "link": "/bigdata/paimon/s1-02"
+    }
+   ],
+   "points": [
+    "$files 的 level 列看 LSM 层级，deleteRowCount 看删除行",
+    "$snapshots 的 commit_kind 区分 APPEND / COMPACT / OVERWRITE"
+   ],
+   "lab": "实验 1：total_record_count 是 8 而查询只有 5 行——统计的是物理记录（含旧版本和删除标记）。"
+  },
+  {
+   "id": "arch-layers",
+   "label": "四层架构",
+   "layer": "L1",
+   "group": "model",
+   "summary": "paimon-core 分四层：Catalog（管库表与 Schema）、Table（给引擎的 API）、FileStore（核心引擎）、存储结构（mergetree / manifest / io / index）。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S2 第 1 讲：全景图",
+     "link": "/bigdata/paimon/s2-01"
+    }
+   ],
+   "points": [
+    "入口先读 FileStore：newScan / newWrite / newCommit / newRead 与各包一一对应",
+    "Paimon = 按 bucket 组织的 LSM 树 + snapshot/manifest 元数据树 + 乐观并发提交"
+   ],
+   "code": [
+    "FileStore",
+    "FileStoreTable"
+   ]
+  },
+  {
+   "id": "bucket",
+   "label": "Bucket",
+   "layer": "L1",
+   "group": "model",
+   "summary": "读写并行的最小单元，每个 bucket 是一棵独立的 LSM 树；记录按 abs(主键哈希 % 桶数) 进 bucket。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S2 第 2 讲：一条数据的写入之旅",
+     "link": "/bigdata/paimon/s2-02"
+    }
+   ],
+   "core": true,
+   "points": [
+    "同一 bucket 同时只有一个合并任务",
+    "流读时同一 bucket 永远分给同一个 reader，保证同 key 变更有序"
+   ]
+  },
+  {
+   "id": "snapshot",
+   "label": "Snapshot 快照",
+   "layer": "L1",
+   "group": "meta",
+   "summary": "快照是某一时刻“哪些文件有效”的清单，一个几百字节的 JSON；文件本身不可变，被多个快照共享。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 6 期：时间旅行",
+     "link": "/bigdata/paimon/s1-06"
+    },
+    {
+     "title": "S2 第 1 讲：全景图",
+     "link": "/bigdata/paimon/s2-01"
+    }
+   ],
+   "core": true,
+   "points": [
+    "记录 baseManifestList、deltaManifestList、changelogManifestList、indexManifest",
+    "commitUser + commitIdentifier + commitKind 唯一标识一次提交"
+   ],
+   "code": [
+    "Snapshot",
+    "SnapshotManager"
+   ],
+   "lab": "实验 2：新快照复用旧快照的数据文件，只加入本次新写的。"
+  },
+  {
+   "id": "manifest-list",
+   "label": "Manifest List",
+   "layer": "L1",
+   "group": "meta",
+   "summary": "快照指向三类 manifest list：base 是上一版本的全量文件清单，delta 是本次新增 / 删除的文件，changelog 是本次产生的 changelog 文件。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 2 期：表目录里都是什么",
+     "link": "/bigdata/paimon/s1-02"
+    }
+   ],
+   "code": [
+    "ManifestList",
+    "ManifestFileMeta"
+   ]
+  },
+  {
+   "id": "manifest-entry",
+   "label": "ManifestEntry",
+   "layer": "L1",
+   "group": "meta",
+   "summary": "manifest 文件是 ManifestEntry 的列表；ManifestEntry = FileKind(ADD / DELETE) + 分区 + bucket + DataFileMeta。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    }
+   ],
+   "points": [
+    "把 ADD 和 DELETE 合并抵消，就得到当前有效的文件集合",
+    "提交冲突检测正是基于这个合并规则"
+   ],
+   "code": [
+    "ManifestFile",
+    "ManifestEntry",
+    "FileEntry.mergeEntries"
+   ]
+  },
+  {
+   "id": "data-file-meta",
+   "label": "DataFileMeta",
+   "layer": "L1",
+   "group": "meta",
+   "summary": "每个数据文件的元信息：fileName、level、minKey/maxKey、序列号范围、rowCount、deleteRowCount、valueStats。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    }
+   ],
+   "points": [
+    "合并选文件、读时裁剪、判断能否免归并都只看这些元信息，不用打开文件"
+   ],
+   "code": [
+    "DataFileMeta"
+   ]
+  },
+  {
+   "id": "keyvalue",
+   "label": "KeyValue 与序列号",
+   "layer": "L1",
+   "group": "model",
+   "summary": "主键表的记录是 KeyValue = key + sequenceNumber + RowKind + value；同 key 多个版本按 sequenceNumber 决定新旧。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 4 期：删一行为什么多了文件",
+     "link": "/bigdata/paimon/s1-04"
+    }
+   ],
+   "points": [
+    "sequenceNumber 在 bucket 内递增，writer 重启时从最新快照恢复并接续",
+    "删除写的是一条 -D 记录，不改旧文件"
+   ],
+   "code": [
+    "KeyValue"
+   ],
+   "lab": "实验 1：更新、删除都没改旧文件，而是各自新增 L0 文件。"
+  },
+  {
+   "id": "schema-evolution",
+   "label": "Schema 演进",
+   "layer": "L1",
+   "group": "model",
+   "summary": "列按字段 id 对应，而不是按名字；读旧文件时按 id 映射到新 schema。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    }
+   ],
+   "code": [
+    "SchemaManager"
+   ],
+   "lab": "实验 6：删列再加回同名列，旧数据回不来——新列是新的字段 id。"
+  },
+  {
+   "id": "table-write",
+   "label": "TableWrite",
+   "layer": "L1",
+   "group": "write",
+   "summary": "TableWriteImpl.write 把记录交给 KeyValueFileStoreWrite，按 (partition, bucket) 找到或创建该 bucket 的 writer。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S2 第 2 讲：一条数据的写入之旅",
+     "link": "/bigdata/paimon/s2-02"
+    }
+   ],
+   "points": [
+    "每个 (分区, bucket) 第一次出现时才创建 writer，并从最新快照恢复该 bucket 已有文件"
+   ],
+   "code": [
+    "TableWriteImpl.write",
+    "KeyValueFileStoreWrite"
+   ]
+  },
+  {
+   "id": "mergetree-writer",
+   "label": "MergeTreeWriter",
+   "layer": "L1",
+   "group": "write",
+   "summary": "一个 bucket 的 LSM 写入器：数据先进写缓冲，刷盘写出 L0 文件，再交给合并管理器触发异步合并。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S2 第 2 讲：一条数据的写入之旅",
+     "link": "/bigdata/paimon/s2-02"
+    }
+   ],
+   "core": true,
+   "code": [
+    "MergeTreeWriter.write",
+    "MergeTreeWriter.flushWriteBuffer"
+   ]
+  },
+  {
+   "id": "write-buffer",
+   "label": "写缓冲",
+   "layer": "L1",
+   "group": "write",
+   "summary": "内存排序缓冲；刷盘时按“主键 + 序列号”排好序，同一主键的多条记录交给合并引擎合成一条再写进 L0 文件。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "S1 第 5 期：3 行变 2 行",
+     "link": "/bigdata/paimon/s1-05"
+    }
+   ],
+   "points": [
+    "缓冲满时默认先溢写到本地磁盘；关掉 write-buffer-spillable 才会提前刷成 L0"
+   ],
+   "code": [
+    "SortBufferWriteBuffer"
+   ],
+   "conf": [
+    "write-buffer-size",
+    "write-buffer-spillable"
+   ],
+   "lab": "实验 4：写入时的合并只发生在同一个写缓冲内（同一次提交、同一个桶）。"
+  },
+  {
+   "id": "l0-file",
+   "label": "L0 文件",
+   "layer": "L1",
+   "group": "write",
+   "summary": "刷盘写出的新文件都在 level 0；L0 文件之间 key 范围可以重叠，每个 L0 文件单独算一个 sorted run。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    }
+   ],
+   "lab": "实验 1：没合并前 6 个文件全部在 level 0。"
+  },
+  {
+   "id": "merge-function",
+   "label": "合并引擎",
+   "layer": "L1",
+   "group": "write",
+   "summary": "决定同 key 多个版本怎么合成一条：deduplicate（默认，取最新）、partial-update、aggregation、first-row。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    }
+   ],
+   "code": [
+    "DeduplicateMergeFunction",
+    "PartialUpdateMergeFunction",
+    "FirstRowMergeFunction"
+   ],
+   "conf": [
+    "merge-engine"
+   ]
+  },
+  {
+   "id": "prepare-commit",
+   "label": "prepareCommit",
+   "layer": "L1",
+   "group": "write",
+   "summary": "提交前 writer 刷盘并返回 CommitIncrement（新文件 + 合并前后文件 + changelog），包装成 CommitMessage 交给提交端。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 2 讲：一条数据的写入之旅",
+     "link": "/bigdata/paimon/s2-02"
+    }
+   ],
+   "points": [
+    "批作业在输入结束时调用，流作业在 checkpoint 前调用",
+    "waitCompaction=true 时会等合并完成"
+   ],
+   "code": [
+    "MergeTreeWriter.prepareCommit",
+    "CommitIncrement",
+    "CommitMessage"
+   ]
+  },
+  {
+   "id": "levels",
+   "label": "层级与 Sorted Run",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "L0 每个文件一个 run，L1 及以上每层一个有序 run；不变式：level 越低数据越新，≥1 层内文件互不重叠。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "S2 第 3 讲：合并怎么选文件",
+     "link": "/bigdata/paimon/s2-03"
+    }
+   ],
+   "core": true,
+   "points": [
+    "runs 按新到旧排列：index 0 最新，最后一个通常是最高层（底座）",
+    "默认 num-levels = 6，maxLevel = 5"
+   ],
+   "code": [
+    "Levels",
+    "SortedRun",
+    "LevelSortedRun"
+   ]
+  },
+  {
+   "id": "compact-manager",
+   "label": "合并管理器",
+   "layer": "L2",
+   "group": "compact",
+   "summary": "调 strategy.pick() 选出 CompactUnit，计算 dropDelete，再把合并任务异步提交到线程池；一个 bucket 同时只有一个任务。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "04 MergeTreeCompactTask 合并执行",
+     "link": "/bigdata/paimon/04-compact-task"
+    },
+    {
+     "title": "S2 第 4 讲：合并怎么执行",
+     "link": "/bigdata/paimon/s2-04"
+    }
+   ],
+   "points": [
+    "单个文件且已在 outputLevel 的任务会被过滤",
+    "结果通过 levels.update(before, after) 更新内存视图"
+   ],
+   "code": [
+    "MergeTreeCompactManager.triggerCompaction"
+   ]
+  },
+  {
+   "id": "universal",
+   "label": "Universal 选文件",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "从最新的 run 开始挑一段连续前缀合成一个 run，按 4 级依次判断：提前全量合并 → 空间放大 → 大小比例 → 文件数兜底。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "S2 第 3 讲：合并怎么选文件",
+     "link": "/bigdata/paimon/s2-03"
+    }
+   ],
+   "core": true,
+   "code": [
+    "UniversalCompaction.pick()",
+    "createUnit"
+   ],
+   "conf": [
+    "num-sorted-run.compaction-trigger = 5"
+   ]
+  },
+  {
+   "id": "size-amp",
+   "label": "空间放大",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "除最老 run 外的总大小超过最老 run 的 2 倍（默认 200%）时，全量合并到 maxLevel；这是全量合并最主要的触发方式。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "S2 第 3 讲：合并怎么选文件",
+     "link": "/bigdata/paimon/s2-03"
+    }
+   ],
+   "conf": [
+    "compaction.max-size-amplification-percent = 200"
+   ]
+  },
+  {
+   "id": "size-ratio",
+   "label": "大小比例",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "累计大小 × (1 + 1%) 不小于下一个 run 就把它吸进来（滚雪球）；遇到明显更大的 L2 及以上 run 就停，L0/L1 则不管大小继续吸收。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "S2 第 3 讲：合并怎么选文件",
+     "link": "/bigdata/paimon/s2-03"
+    }
+   ],
+   "conf": [
+    "compaction.size-ratio = 1"
+   ]
+  },
+  {
+   "id": "file-num-trigger",
+   "label": "文件数兜底",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "run 数超过 trigger 时强制带上最新的 (runs − trigger + 1) 个，再按大小比例扩展，合并后 run 数回到 trigger。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "S2 第 3 讲：合并怎么选文件",
+     "link": "/bigdata/paimon/s2-03"
+    }
+   ],
+   "conf": [
+    "num-sorted-run.compaction-trigger = 5",
+    "num-sorted-run.stop-trigger = 8（超过则写入阻塞）"
+   ],
+   "lab": "S2 第 3 讲实验：4 次小提交就触发合并——计数里包含 L5 底座。"
+  },
+  {
+   "id": "output-level",
+   "label": "输出层 outputLevel",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "全选则输出到 maxLevel；否则输出到“下一个更老 run 的 level − 1”；不允许输出到 L0，会继续吸收直到碰到非 L0 的 run。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "S2 第 3 讲：合并怎么选文件",
+     "link": "/bigdata/paimon/s2-03"
+    }
+   ],
+   "points": [
+    "这就是只能选“最新连续前缀”的原因：要保持 level 越低越新"
+   ]
+  },
+  {
+   "id": "force-up-l0",
+   "label": "强制上推 L0",
+   "layer": "L2",
+   "group": "pick",
+   "summary": "lookup 类表（lookup changelog、删除向量、first-row）使用的包装策略：Universal 没选中也调用 forcePickL0 把 L0 推到高层。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "code": [
+    "ForceUpLevel0Compaction",
+    "forcePickL0"
+   ],
+   "conf": [
+    "lookup-compact = RADICAL / GENTLE",
+    "compaction.force-up-level-0"
+   ],
+   "lab": "实验 9：DV 表第一次写入就直接到了 L5。"
+  },
+  {
+   "id": "interval-partition",
+   "label": "IntervalPartition",
+   "layer": "L2",
+   "group": "compact",
+   "summary": "按 minKey 排序把文件切成 key 范围互不相交的 section，section 内再打包成最少的 sorted run。",
+   "lessons": [
+    {
+     "title": "04 MergeTreeCompactTask 合并执行",
+     "link": "/bigdata/paimon/04-compact-task"
+    },
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 4 讲：合并怎么执行",
+     "link": "/bigdata/paimon/s2-04"
+    }
+   ],
+   "points": [
+    "section 之间可独立处理；run 越少，归并时同时打开的 reader 越少",
+    "读路径的合并读也用它切 section"
+   ],
+   "code": [
+    "IntervalPartition.partition"
+   ]
+  },
+  {
+   "id": "compact-task",
+   "label": "合并任务 doCompact",
+   "layer": "L2",
+   "group": "compact",
+   "summary": "逐 section 决定升级还是重写：有重叠的必须归并，小文件跟着重写，大文件先把攒下的候选刷掉再直接升级。",
+   "lessons": [
+    {
+     "title": "04 MergeTreeCompactTask 合并执行",
+     "link": "/bigdata/paimon/04-compact-task"
+    },
+    {
+     "title": "S2 第 4 讲：合并怎么执行",
+     "link": "/bigdata/paimon/s2-04"
+    }
+   ],
+   "core": true,
+   "code": [
+    "MergeTreeCompactTask.doCompact"
+   ],
+   "conf": [
+    "target-file-size（主键表 128MB）",
+    "compaction.small-file-ratio = 0.7"
+   ]
+  },
+  {
+   "id": "upgrade",
+   "label": "升级不重写",
+   "layer": "L2",
+   "group": "compact",
+   "summary": "key 不重叠的大文件只改 level，文件名不变、零数据 IO；三种情况仍强制重写：到最高层且含 DELETE、强制重写、含行级 TTL 过期数据。",
+   "lessons": [
+    {
+     "title": "04 MergeTreeCompactTask 合并执行",
+     "link": "/bigdata/paimon/04-compact-task"
+    },
+    {
+     "title": "S2 第 4 讲：合并怎么执行",
+     "link": "/bigdata/paimon/s2-04"
+    }
+   ],
+   "core": true,
+   "code": [
+    "AbstractCompactRewriter.upgrade",
+    "DataFileMeta.upgrade"
+   ],
+   "lab": "S2 第 4 讲实验：升级后的文件名不变；INFO 日志的 outputBytes 也算上了升级的文件。"
+  },
+  {
+   "id": "merge-sort",
+   "label": "多路归并（败者树）",
+   "layer": "L2",
+   "group": "compact",
+   "summary": "section 内多个 run 用 SortMergeReader 归并，先按 key、同 key 按序列号；run 太多时先把最小的几个溢写到磁盘。",
+   "lessons": [
+    {
+     "title": "04 MergeTreeCompactTask 合并执行",
+     "link": "/bigdata/paimon/04-compact-task"
+    }
+   ],
+   "code": [
+    "SortMergeReaderWithLoserTree",
+    "MergeSorter.mergeSort",
+    "ReducerMergeFunctionWrapper"
+   ],
+   "conf": [
+    "sort-engine = loser-tree",
+    "sort-spill-threshold"
+   ]
+  },
+  {
+   "id": "drop-delete",
+   "label": "dropDelete",
+   "layer": "L2",
+   "group": "compact",
+   "summary": "输出层 ≥ 当前最高非空层（或 DV 模式）时，DELETE 记录可以物理丢弃，否则必须保留以覆盖更老层的旧版本。",
+   "lessons": [
+    {
+     "title": "03 UniversalCompaction 选文件策略",
+     "link": "/bigdata/paimon/03-universal-compaction"
+    },
+    {
+     "title": "04 MergeTreeCompactTask 合并执行",
+     "link": "/bigdata/paimon/04-compact-task"
+    },
+    {
+     "title": "S1 第 4 期：删一行为什么多了文件",
+     "link": "/bigdata/paimon/s1-04"
+    }
+   ],
+   "code": [
+    "DropDeleteReader"
+   ],
+   "lab": "实验 1：一个 bucket 里插入和删除相互抵消，合并后 2 → 0 个文件。"
+  },
+  {
+   "id": "commit-impl",
+   "label": "提交 commit()",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "不锁表：先写好 manifest，再尝试原子创建 snapshot-(N+1)，谁先创建谁赢；append 变更和 compact 变更分别提交，所以一次可能产生两个快照。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "S2 第 5 讲：并发提交",
+     "link": "/bigdata/paimon/s2-05"
+    }
+   ],
+   "core": true,
+   "points": [
+    "APPEND 只新增文件，默认不做冲突检测",
+    "COMPACT 要删除旧文件，必须检测冲突"
+   ],
+   "code": [
+    "FileStoreCommitImpl.tryCommit",
+    "tryCommitOnce"
+   ]
+  },
+  {
+   "id": "commit-retry",
+   "label": "抢号失败重试",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "被别人抢了快照号就重读最新快照、做冲突检测后指数退避重试；重试时复用上次读到的 base 和 manifest 合并结果，所以很便宜。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "S2 第 5 讲：并发提交",
+     "link": "/bigdata/paimon/s2-05"
+    }
+   ],
+   "conf": [
+    "commit.max-retries = 10",
+    "commit.min-retry-wait = 10ms",
+    "commit.max-retry-wait = 10s"
+   ],
+   "lab": "实验 7：两个线程各提交 30 次，抢号失败 18~25 次，最终 60 个快照、0 失败。"
+  },
+  {
+   "id": "conflict-detect",
+   "label": "冲突检测",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "抢号失败会重试，文件冲突直接抛异常：要删的文件已被别人删了（File deletion conflict）、≥1 层文件 key 重叠（LSM conflict）、bucket 数不一致。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "S2 第 5 讲：并发提交",
+     "link": "/bigdata/paimon/s2-05"
+    }
+   ],
+   "core": true,
+   "points": [
+    "两个作业写同一 bucket 且都做合并 → File deletion conflict",
+    "从旧 savepoint 恢复也会持续冲突"
+   ],
+   "code": [
+    "ConflictDetection.checkConflicts",
+    "PrimaryKeyConflictDetection"
+   ],
+   "lab": "实验 7：复现出 File deletion conflicts detected。"
+  },
+  {
+   "id": "commit-idempotent",
+   "label": "提交幂等",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "commitUser + identifier + commitKind 唯一标识一次提交：原子提交结果不确定时下次先查是否已成功；重启后 filterCommitted 跳过已提交的。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 5 讲：并发提交",
+     "link": "/bigdata/paimon/s2-05"
+    }
+   ],
+   "core": true,
+   "code": [
+    "FileStoreCommitImpl.filterCommitted"
+   ],
+   "lab": "实验 7：同一 identifier 重复提交只生效一次。"
+  },
+  {
+   "id": "snapshot-commit",
+   "label": "原子提交",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "文件系统 Catalog 用 RenamingSnapshotCommit 原子写 snapshot-N（对象存储要配外部锁）；REST Catalog 换成 CatalogSnapshotCommit，由服务端 CAS。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "code": [
+    "RenamingSnapshotCommit",
+    "CatalogSnapshotCommit"
+   ],
+   "lab": "实验 7：本地文件系统的 rename 原子性只靠 JVM 内的一把静态锁。"
+  },
+  {
+   "id": "commit-rollback",
+   "label": "回滚 COMPACT 快照",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "冲突时若最新快照是 COMPACT，就回滚到 latest−1 让用户的 DML 重试成功——合并结果可以重做，用户的写入不能丢。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    }
+   ],
+   "code": [
+    "CommitRollback.tryToRollback"
+   ]
+  },
+  {
+   "id": "write-only",
+   "label": "write-only",
+   "layer": "L2",
+   "group": "commit",
+   "summary": "多个作业写同一张表时，写入作业设 write-only=true 只写不合并，另起一个独立 compaction 作业，避免互删文件的冲突。",
+   "lessons": [
+    {
+     "title": "05 提交：冲突检测与重试",
+     "link": "/bigdata/paimon/05-commit"
+    },
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "附录：配置速查与调试技巧",
+     "link": "/bigdata/paimon/appendix"
+    }
+   ],
+   "conf": [
+    "write-only = true"
+   ]
+  },
+  {
+   "id": "scan-plan",
+   "label": "扫描规划 TableScan",
+   "layer": "L3",
+   "group": "read",
+   "summary": "DataTableScan 决定起点，SnapshotReader / FileStoreScan 读 manifest 并按分区、bucket、统计裁剪，生成 DataSplit。",
+   "lessons": [
+    {
+     "title": "02 paimon-core 整体架构",
+     "link": "/bigdata/paimon/02-architecture"
+    },
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 6 讲：读路径",
+     "link": "/bigdata/paimon/s2-06"
+    }
+   ],
+   "points": [
+    "Flink 批读的规划在 JobManager 的 SourceCoordinator 上执行"
+   ],
+   "code": [
+    "DataTableScan",
+    "SnapshotReaderImpl",
+    "KeyValueFileStoreScan"
+   ]
+  },
+  {
+   "id": "raw-convertible",
+   "label": "rawConvertible",
+   "layer": "L3",
+   "group": "read",
+   "summary": "合并与否在扫描规划时就定了：一个 split 的文件都不在 L0、没有删除行，且（开 DV / first-row / 都在同一层）时才能直接读。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 6 讲：读路径",
+     "link": "/bigdata/paimon/s2-06"
+    }
+   ],
+   "core": true,
+   "code": [
+    "MergeTreeSplitGenerator.splitForBatch",
+    "DataSplit.rawConvertible"
+   ],
+   "lab": "实验 8：决定单位是 split——不相交的小文件被装进同一个 split 也会走合并读。"
+  },
+  {
+   "id": "raw-read",
+   "label": "直接读",
+   "layer": "L3",
+   "group": "read",
+   "summary": "像 Append 表一样直接用原生格式 reader 读文件：向量化、谓词全下推、按文件任意拆并行度。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 6 讲：读路径",
+     "link": "/bigdata/paimon/s2-06"
+    }
+   ],
+   "code": [
+    "RawFileSplitRead"
+   ]
+  },
+  {
+   "id": "merge-read",
+   "label": "合并读",
+   "layer": "L3",
+   "group": "read",
+   "summary": "merge-on-read：切 section 多路归并，同 key 取最新，最后 DropDeleteReader 去掉删除；重叠的 section 只能下推主键过滤。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 6 讲：读路径",
+     "link": "/bigdata/paimon/s2-06"
+    }
+   ],
+   "points": [
+    "重叠 section 若下推 value 过滤，会把新版本过滤掉、错误地返回旧值",
+    "代价：CPU + 多 reader 内存，并行度受 section 限制"
+   ],
+   "code": [
+    "MergeFileSplitRead.createMergeReader"
+   ]
+  },
+  {
+   "id": "count-pushdown",
+   "label": "COUNT(*) 下推",
+   "layer": "L3",
+   "group": "read",
+   "summary": "所有 split 都能直接读时，COUNT(*) 直接用元数据里的行数算出来，不读数据文件。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 6 讲：读路径",
+     "link": "/bigdata/paimon/s2-06"
+    }
+   ],
+   "lab": "实验 8：要观察真实读路径得用 GROUP BY，不能用 COUNT(*)。"
+  },
+  {
+   "id": "dv",
+   "label": "删除向量",
+   "layer": "L3",
+   "group": "dv",
+   "summary": "每个数据文件一个位图（RoaringBitmap），标记哪些行已被删除；读时跳过这些行，不用归并。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 7 讲：删除向量",
+     "link": "/bigdata/paimon/s2-07"
+    }
+   ],
+   "code": [
+    "BitmapDeletionVector",
+    "Bitmap64DeletionVector"
+   ],
+   "conf": [
+    "deletion-vectors.enabled = true"
+   ],
+   "lab": "实验 9：DELETE 不产生新数据文件，只是 DV 文件从 28 B 变成 32 B。"
+  },
+  {
+   "id": "dv-invariant",
+   "label": "DV 不变式",
+   "layer": "L3",
+   "group": "dv",
+   "summary": "level ≥ 1 的文件应用 DV 之后，每个 key 只有一条存活记录，且没有 DELETE 记录——所以读的时候可以像 Append 表一样直接读。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 7 讲：删除向量",
+     "link": "/bigdata/paimon/s2-07"
+    }
+   ],
+   "core": true,
+   "points": [
+    "L0 上推时 lookup 旧版本并标记删除",
+    "DV 模式强制 dropDelete",
+    "重写文件后清理旧 DV"
+   ]
+  },
+  {
+   "id": "dv-maintainer",
+   "label": "DV 维护",
+   "layer": "L3",
+   "group": "dv",
+   "summary": "lookup 到旧值时拿到“文件名 + 行号”并标记删除；bucket 的 DV 索引文件随合并结果进入同一个快照的 index manifest。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 7 讲：删除向量",
+     "link": "/bigdata/paimon/s2-07"
+    }
+   ],
+   "code": [
+    "BucketedDvMaintainer.notifyNewDeletion",
+    "writeDeletionVectorsIndex"
+   ]
+  },
+  {
+   "id": "skip-l0",
+   "label": "批读跳过 L0",
+   "layer": "L3",
+   "group": "dv",
+   "summary": "DV 模式批读必须跳过 L0：L0 还没经过 lookup，高层旧版本没打标记，直接读会重复。代价是 L0 在合并前不可见。",
+   "lessons": [
+    {
+     "title": "06 读路径与删除向量",
+     "link": "/bigdata/paimon/06-read-path"
+    },
+    {
+     "title": "S2 第 7 讲：删除向量",
+     "link": "/bigdata/paimon/s2-07"
+    }
+   ],
+   "code": [
+    "CoreOptions.batchScanSkipLevel0"
+   ],
+   "conf": [
+    "deletion-vectors.merge-on-read（可见但读变慢）"
+   ],
+   "lab": "实验 9：写入 L0 后合并前查询到 0 行。"
+  },
+  {
+   "id": "changelog-producer",
+   "label": "changelog-producer",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "主键表怎么产生给流读的 changelog：none（下游自己补 -U）、input（输入即 changelog）、lookup（L0 上推时算）、full-compaction（全量合并时对比）。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "conf": [
+    "changelog-producer = none / input / lookup / full-compaction"
+   ]
+  },
+  {
+   "id": "lookup-changelog",
+   "label": "Lookup Changelog",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "每次 L0 数据合并到更高层时，对每个 key 去高层 lookup 出旧值（before），与新数据合并得到新值（after），比较二者产生 changelog。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "core": true,
+   "points": [
+    "不变式：每个 key 在 L1+ 的记录永远是完整最新状态",
+    "高层之间的合并不产 changelog"
+   ],
+   "lab": "实验 10：每次写入产生 APPEND + COMPACT 两个快照，changelog 在 COMPACT 快照里。"
+  },
+  {
+   "id": "lookup-levels",
+   "label": "LookupLevels",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "从 outputLevel + 1 开始逐层查，第一个命中即返回；每层按 min/max key 二分定位文件，为数据文件建本地 lookup file 缓存。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    }
+   ],
+   "code": [
+    "LookupLevels.lookup",
+    "LookupUtils"
+   ]
+  },
+  {
+   "id": "lookup-wrapper",
+   "label": "Lookup 合并包装器",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "挑参与合并的 level 最小的高层记录作 before，没有就 lookup；合并出 after；只有 L0 数据参与时才产 changelog。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "code": [
+    "LookupChangelogMergeFunctionWrapper.getResult"
+   ]
+  },
+  {
+   "id": "set-changelog",
+   "label": "+I / -U / +U / -D",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "before 不存在 → +I；after 是删除 → -D；两者都有 → -U(before) + +U(after)。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "points": [
+    "changelog 写成单独的 changelog 文件，进快照的 changelogManifestList"
+   ]
+  },
+  {
+   "id": "upgrade-strategy",
+   "label": "三种升级策略",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "L0 文件升级时：不是 L0 → 不产不写；到 maxLevel 或 deduplicate 无 sequence field → 产 changelog 不重写；其它合并引擎 → 产 changelog 并重写。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "code": [
+    "NO_CHANGELOG_NO_REWRITE",
+    "CHANGELOG_NO_REWRITE",
+    "CHANGELOG_WITH_REWRITE"
+   ],
+   "lab": "实验 10：deduplicate 升级保留文件名，aggregation 升级重写了文件。"
+  },
+  {
+   "id": "row-dedup",
+   "label": "row-deduplicate",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "值没变时默认仍输出 -U/+U；开 changelog-producer.row-deduplicate 才不输出。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "conf": [
+    "changelog-producer.row-deduplicate = true"
+   ],
+   "lab": "实验 10：2 行写入产生 4 条 changelog，其中一对值没变，开 row-deduplicate 后去掉。"
+  },
+  {
+   "id": "lookup-wait",
+   "label": "lookup-wait",
+   "layer": "L3",
+   "group": "changelog",
+   "summary": "默认 true：Flink sink 每次 prepareCommit 都等 L0 合并完成，保证 changelog 在同一个 checkpoint 内产生——代价是 checkpoint 变慢。",
+   "lessons": [
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    },
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 8 讲：Lookup Changelog",
+     "link": "/bigdata/paimon/s2-08"
+    }
+   ],
+   "code": [
+    "CoreOptions.prepareCommitWaitCompaction",
+    "StoreSinkWrite"
+   ],
+   "conf": [
+    "lookup-wait = true"
+   ]
+  },
+  {
+   "id": "flink-sink",
+   "label": "FlinkSink 拓扑",
+   "layer": "L4",
+   "group": "flink-sink",
+   "summary": "Source → 按 partition/bucket shuffle → Writer × N → Committer × 1；流作业要求 EXACTLY_ONCE 且不支持非对齐 checkpoint。",
+   "lessons": [
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 9 讲：Flink 写入两阶段提交",
+     "link": "/bigdata/paimon/s2-09"
+    }
+   ],
+   "code": [
+    "FlinkSink.sinkFrom",
+    "TableWriteOperator",
+    "CommitterOperator"
+   ]
+  },
+  {
+   "id": "two-phase-commit",
+   "label": "两阶段提交",
+   "layer": "L4",
+   "group": "flink-sink",
+   "summary": "Prepare：barrier 之前 writer 把数据刷成文件、把 committable 发给 committer，committer 存入 checkpoint 状态；Commit：checkpoint 完成后 committer 提交快照。",
+   "lessons": [
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 9 讲：Flink 写入两阶段提交",
+     "link": "/bigdata/paimon/s2-09"
+    }
+   ],
+   "core": true,
+   "code": [
+    "prepareSnapshotPreBarrier",
+    "notifyCheckpointComplete",
+    "commitUpToCheckpoint"
+   ],
+   "lab": "实验 11：不开 checkpoint，流作业写了数据也是 0 个快照。"
+  },
+  {
+   "id": "cp-identifier",
+   "label": "identifier = cpId",
+   "layer": "L4",
+   "group": "flink-sink",
+   "summary": "一个 checkpoint 的所有 CommitMessage 合成一个 ManifestCommittable，identifier 就是 checkpoint id；提交时用 headMap(≤N) 补上丢失通知的旧 checkpoint。",
+   "lessons": [
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 9 讲：Flink 写入两阶段提交",
+     "link": "/bigdata/paimon/s2-09"
+    }
+   ],
+   "code": [
+    "StoreCommitter.combine",
+    "ManifestCommittable"
+   ],
+   "lab": "实验 11：快照的 commitIdentifier 就是 checkpoint id，被放弃的 checkpoint 会跳号。"
+  },
+  {
+   "id": "commit-user",
+   "label": "commitUser",
+   "layer": "L4",
+   "group": "flink-sink",
+   "summary": "作业的稳定身份：新作业用随机 UUID 写进 union list state，重启和从 savepoint 恢复时读回不变（不用 job id）。",
+   "lessons": [
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 9 讲：Flink 写入两阶段提交",
+     "link": "/bigdata/paimon/s2-09"
+    }
+   ],
+   "points": [
+    "保持 sink 算子 UID 稳定，否则状态对不上、commitUser 丢失"
+   ]
+  },
+  {
+   "id": "failover-restore",
+   "label": "故障恢复",
+   "layer": "L4",
+   "group": "flink-sink",
+   "summary": "committer 从状态恢复未提交的内容 filterAndCommit；默认补提交后故意失败一次，让 writer 基于新快照重建 LSM；writer 不存数据，从最新快照恢复。",
+   "lessons": [
+    {
+     "title": "08 FlinkSink 与 Checkpoint 提交",
+     "link": "/bigdata/paimon/08-flink-sink"
+    },
+    {
+     "title": "S2 第 9 讲：Flink 写入两阶段提交",
+     "link": "/bigdata/paimon/s2-09"
+    }
+   ],
+   "code": [
+    "RestoreAndFailCommittableStateManager",
+    "RestoreCommittableStateManager"
+   ],
+   "lab": "实验 11：故障恢复后 200/200 不重不丢；无桶 Append 表用 RestoreCommittable，不会故意失败。"
+  },
+  {
+   "id": "flip27-source",
+   "label": "FLIP-27 Source",
+   "layer": "L4",
+   "group": "flink-source",
+   "summary": "JobManager 上的 Enumerator 逐快照追踪、生成 split；TaskManager 上的 Reader 用 TableRead 读 split。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S2 第 10 讲：Flink 流读与 consumer-id",
+     "link": "/bigdata/paimon/s2-10"
+    }
+   ],
+   "code": [
+    "ContinuousFileSplitEnumerator",
+    "FileStoreSourceReader"
+   ],
+   "lab": "实验 12：Enumerator 方法跑在 SourceCoordinator 线程上，plan() 跑在 worker 线程上。"
+  },
+  {
+   "id": "stream-scan",
+   "label": "流读规划 plan()",
+   "layer": "L4",
+   "group": "flink-source",
+   "summary": "两阶段：第一次按 scan.mode 决定起点（默认先读全量），之后逐快照追踪；流读位点本质上就是一个数字 nextSnapshotId。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S2 第 10 讲：Flink 流读与 consumer-id",
+     "link": "/bigdata/paimon/s2-10"
+    }
+   ],
+   "core": true,
+   "conf": [
+    "scan.mode = latest-full / latest / from-snapshot / from-timestamp",
+    "continuous.discovery-interval = 10s"
+   ],
+   "lab": "实验 12：nextSnapshotId 依次为 2 → 3 → 5，跳过了 COMPACT 快照。"
+  },
+  {
+   "id": "follow-up-scanner",
+   "label": "FollowUpScanner",
+   "layer": "L4",
+   "group": "flink-source",
+   "summary": "changelog-producer = none 时只读 APPEND 快照的新文件（Delta）；其它模式只读带 changelogManifestList 的快照的 changelog 文件。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S2 第 10 讲：Flink 流读与 consumer-id",
+     "link": "/bigdata/paimon/s2-10"
+    }
+   ],
+   "code": [
+    "DeltaFollowUpScanner",
+    "ChangelogFollowUpScanner"
+   ]
+  },
+  {
+   "id": "bucket-assign",
+   "label": "按 bucket 分配",
+   "layer": "L4",
+   "group": "flink-source",
+   "summary": "同一 bucket 永远分给同一个 reader，按快照顺序下发，保证同 key 的变更有序；所以 source 并行度超过 bucket 数是浪费。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S2 第 10 讲：Flink 流读与 consumer-id",
+     "link": "/bigdata/paimon/s2-10"
+    }
+   ],
+   "code": [
+    "PreAssignSplitAssigner",
+    "ChannelComputer.select"
+   ]
+  },
+  {
+   "id": "changelog-normalize",
+   "label": "ChangelogNormalize",
+   "layer": "L4",
+   "group": "flink-source",
+   "summary": "主键表 + changelog-producer = none 时 Flink 规划器插入 ChangelogNormalize，用 keyed state 存所有 key 的最新值来补 -U，状态很重。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "07 Lookup Changelog",
+     "link": "/bigdata/paimon/07-lookup-changelog"
+    }
+   ],
+   "lab": "实验 3：none 把去重 / 补 -U 的成本转嫁给每个下游作业，lookup 在写入端一次性产生。"
+  },
+  {
+   "id": "snapshot-expire",
+   "label": "快照过期",
+   "layer": "L4",
+   "group": "lifecycle",
+   "summary": "过期快照时只看后续快照标记成 DELETE 的文件，再排除仍被 Tag 引用的，剩下的才物理删除；流读要的快照被过期就会 OutOfRange。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S1 第 7 期：快照删了文件还在",
+     "link": "/bigdata/paimon/s1-07"
+    }
+   ],
+   "code": [
+    "ExpireSnapshotsImpl",
+    "SnapshotDeletion"
+   ],
+   "conf": [
+    "snapshot.time-retained",
+    "snapshot.num-retained.min / max"
+   ],
+   "lab": "实验 2：快照过期有“三道保险”；旧文件要等引用它的快照都过期才删除。"
+  },
+  {
+   "id": "tag",
+   "label": "Tag 与时间旅行",
+   "layer": "L4",
+   "group": "lifecycle",
+   "summary": "时间旅行就是按快照 id / 时间 / Tag 读某个历史快照；Tag 把快照 JSON 原样复制到 tag/ 目录，不复制数据，也不会被快照过期清理。",
+   "lessons": [
+    {
+     "title": "S1 第 6 期：时间旅行",
+     "link": "/bigdata/paimon/s1-06"
+    },
+    {
+     "title": "S1 第 8 期：Tag",
+     "link": "/bigdata/paimon/s1-08"
+    }
+   ],
+   "lab": "实验 2：rollback_to 会删掉更新的 Tag 并留下孤儿文件。"
+  },
+  {
+   "id": "consumer-id",
+   "label": "consumer-id",
+   "layer": "L4",
+   "group": "flink-source",
+   "summary": "把流读位点持久化到表里（consumer/consumer-<id>）：快照过期不会删掉它还要读的快照，新作业没有 Flink 状态也能续读。",
+   "lessons": [
+    {
+     "title": "09 FlinkSource 流式读取",
+     "link": "/bigdata/paimon/09-flink-source"
+    },
+    {
+     "title": "S2 第 10 讲：Flink 流读与 consumer-id",
+     "link": "/bigdata/paimon/s2-10"
+    }
+   ],
+   "core": true,
+   "code": [
+    "ConsumerManager",
+    "MonitorSource"
+   ],
+   "conf": [
+    "consumer-id",
+    "consumer.mode = exactly-once / at-least-once",
+    "consumer.expiration-time"
+   ],
+   "lab": "实验 12：配了 consumer-id 后拓扑换成 MonitorSource（…-Monitor → 读算子）。"
+  },
+  {
+   "id": "spark-merge-rule",
+   "label": "MERGE INTO 规则",
+   "layer": "L5",
+   "group": "spark",
+   "summary": "拦截目标为 Paimon 表的 MergeIntoTable：做合法性检查、对齐赋值，再决定交给 Spark 原生 V2 还是 Paimon 的 V1 命令。",
+   "lessons": [
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    },
+    {
+     "title": "S2 第 11 讲：Spark MERGE INTO",
+     "link": "/bigdata/paimon/s2-11"
+    }
+   ],
+   "points": [
+    "不能更新主键列；一行 target 匹配多行 source 直接报错",
+    "条件不能含子查询"
+   ],
+   "code": [
+    "PaimonMergeInto",
+    "MergeIntoPaimonTable"
+   ],
+   "lab": "实验 13：默认配置下三种表都走 V1 MergeIntoPaimonTable。"
+  },
+  {
+   "id": "changed-rows",
+   "label": "变化行引擎",
+   "layer": "L5",
+   "group": "spark",
+   "summary": "三条路径共用的引擎：source 与 target 做 full outer join，每行按 MATCHED / NOT MATCHED / NOT MATCHED BY SOURCE 找第一个命中的动作，输出变化行。",
+   "lessons": [
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    },
+    {
+     "title": "S2 第 11 讲：Spark MERGE INTO",
+     "link": "/bigdata/paimon/s2-11"
+    }
+   ],
+   "core": true,
+   "code": [
+    "constructChangedRows",
+    "MergeIntoProcessor.processRow"
+   ]
+  },
+  {
+   "id": "spark-pk-path",
+   "label": "主键表路径",
+   "layer": "L5",
+   "group": "spark",
+   "summary": "不重写任何文件，只把 +I / +U / -D 写成新的 L0 文件，剩下交给 LSM；提交是普通 APPEND，可以和 Flink 流写并发。",
+   "lessons": [
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    },
+    {
+     "title": "S2 第 11 讲：Spark MERGE INTO",
+     "link": "/bigdata/paimon/s2-11"
+    }
+   ],
+   "lab": "实验 13：一次 MERGE INTO 新增 1 个 L0 文件，提交类型 APPEND。"
+  },
+  {
+   "id": "spark-cow-path",
+   "label": "CoW 路径",
+   "layer": "L5",
+   "group": "spark",
+   "summary": "先找出含匹配行的文件，把这些文件的全部行连同变化一起重写，再删除旧文件；提交升级为 OVERWRITE 并强制冲突检测。",
+   "lessons": [
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    },
+    {
+     "title": "S2 第 11 讲：Spark MERGE INTO",
+     "link": "/bigdata/paimon/s2-11"
+    }
+   ],
+   "points": [
+    "写放大最高：大表只改少量行也要整文件重写"
+   ],
+   "lab": "实验 13：只重写被触及的那个文件，提交类型 OVERWRITE。"
+  },
+  {
+   "id": "spark-dv-path",
+   "label": "DV 路径",
+   "layer": "L5",
+   "group": "spark",
+   "summary": "被删 / 被改的行用（文件，行号）标进 DV，新值写新文件；不重写旧文件，提交同样是 OVERWRITE。",
+   "lessons": [
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    },
+    {
+     "title": "S2 第 11 讲：Spark MERGE INTO",
+     "link": "/bigdata/paimon/s2-11"
+    }
+   ],
+   "lab": "实验 13：新增一个 2 行的数据文件和一个 33 B 的 DV 文件。"
+  },
+  {
+   "id": "spark-v2-path",
+   "label": "V2 路径",
+   "layer": "L5",
+   "group": "spark",
+   "summary": "Spark ≥ 3.5、V2 写、无 DV 的 Append 表可以交给 Spark 原生 RewriteMergeIntoTable，运行时按 __paimon_file_path 只扫命中的文件。",
+   "lessons": [
+    {
+     "title": "10 Spark MERGE INTO",
+     "link": "/bigdata/paimon/10-spark-merge-into"
+    },
+    {
+     "title": "S2 第 11 讲：Spark MERGE INTO",
+     "link": "/bigdata/paimon/s2-11"
+    }
+   ],
+   "code": [
+    "PaimonSparkCopyOnWriteOperation",
+    "PaimonV2WriteBuilder"
+   ],
+   "conf": [
+    "spark.paimon.write.use-v2-write = true"
+   ],
+   "lab": "实验 13：要打开 V2 写，SET 带连字符的 key 必须加反引号。"
+  },
+  {
+   "id": "catalog",
+   "label": "Catalog 对比",
+   "layer": "L6",
+   "group": "rest",
+   "summary": "FileSystem Catalog 元数据全在文件里，靠原子 rename；Hive Catalog 用 HMS + Hive 锁；REST Catalog 把元数据交给 HTTP 服务端。",
+   "lessons": [
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "points": [
+    "最新快照：列目录 / 问服务端",
+    "存储凭证：客户端持长期密钥 / 按表临时 token"
+   ]
+  },
+  {
+   "id": "rest-catalog",
+   "label": "RESTCatalog",
+   "layer": "L6",
+   "group": "rest",
+   "summary": "每个 Catalog 方法翻译成一个 HTTP 调用；初始化先 GET /v1/config 拉服务端配置（prefix、默认参数、是否下发数据 token）。",
+   "lessons": [
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "points": [
+    "Bearer Token 或 DLF 签名鉴权",
+    "只重试响应头返回前的失败；不安全的 POST 只发一次",
+    "HTTP 状态码映射成 Catalog 异常"
+   ],
+   "code": [
+    "RESTCatalog",
+    "RESTApi",
+    "DefaultErrorHandler"
+   ],
+   "conf": [
+    "metastore = rest",
+    "uri",
+    "token.provider"
+   ],
+   "lab": "实验 14：一次 INSERT 发出 GET snapshot ×2、POST commit、GET snapshot，没有一个请求上传数据。"
+  },
+  {
+   "id": "catalog-env",
+   "label": "三个钩子",
+   "layer": "L6",
+   "group": "rest",
+   "summary": "REST 加载出来的仍是普通 FileStoreTable，前面所有章节的逻辑完全复用；差异只在注入的钩子：snapshotCommit、snapshotLoader、回滚 / schema 修改。",
+   "lessons": [
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "code": [
+    "CatalogEnvironment",
+    "SnapshotLoaderImpl"
+   ]
+  },
+  {
+   "id": "server-cas",
+   "label": "服务端 CAS 提交",
+   "layer": "L6",
+   "group": "rest",
+   "summary": "客户端自己写好数据文件和 manifest，只把 Snapshot 发给服务端；服务端比较 baseSnapshotUuid 与当前最新快照，不一致就返回 false，不需要外部锁。",
+   "lessons": [
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "core": true,
+   "code": [
+    "CatalogSnapshotCommit",
+    "RESTCatalogServer.commitSnapshot"
+   ],
+   "lab": "实验 14：拿过期的 base 提交，服务端返回 false，最新快照不变。"
+  },
+  {
+   "id": "table-uuid",
+   "label": "tableUuid",
+   "layer": "L6",
+   "group": "rest",
+   "summary": "提交带上表的 uuid，删表后同名重建的新表 uuid 不同，旧作业的提交会被拒绝。",
+   "lessons": [
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "lab": "实验 14：旧作业被拒后客户端重试 10 次才失败，报错写的是“多作业冲突”，根因在 Caused by 里。"
+  },
+  {
+   "id": "data-token",
+   "label": "数据凭证 token",
+   "layer": "L6",
+   "group": "rest",
+   "summary": "开启 data-token 后，计算引擎不持有长期存储密钥，读写前向服务端按表申请临时凭证，快过期自动刷新，FileIO 按 token 缓存。",
+   "lessons": [
+    {
+     "title": "11 REST Catalog",
+     "link": "/bigdata/paimon/11-rest-catalog"
+    }
+   ],
+   "code": [
+    "RESTTokenFileIO",
+    "GET …/tables/{t}/token"
+   ],
+   "conf": [
+    "data-token.enabled"
+   ],
+   "lab": "实验 14：第一次读数据前先请求了这张表的 token。"
+  }
+ ],
+ "edges": [
+  {
+   "from": "embedded-run",
+   "to": "system-tables",
+   "type": "prereq"
+  },
+  {
+   "from": "table-dir",
+   "to": "system-tables",
+   "type": "prereq"
+  },
+  {
+   "from": "table-types",
+   "to": "arch-layers",
+   "type": "prereq"
+  },
+  {
+   "from": "table-dir",
+   "to": "snapshot",
+   "type": "prereq"
+  },
+  {
+   "from": "system-tables",
+   "to": "levels",
+   "type": "prereq",
+   "label": "用 $files 观察层级"
+  },
+  {
+   "from": "manifest-list",
+   "to": "snapshot",
+   "type": "part"
+  },
+  {
+   "from": "manifest-entry",
+   "to": "manifest-list",
+   "type": "part"
+  },
+  {
+   "from": "data-file-meta",
+   "to": "manifest-entry",
+   "type": "part"
+  },
+  {
+   "from": "arch-layers",
+   "to": "bucket",
+   "type": "prereq"
+  },
+  {
+   "from": "table-types",
+   "to": "keyvalue",
+   "type": "prereq"
+  },
+  {
+   "from": "snapshot",
+   "to": "tag",
+   "type": "prereq"
+  },
+  {
+   "from": "snapshot",
+   "to": "snapshot-expire",
+   "type": "prereq"
+  },
+  {
+   "from": "snapshot-expire",
+   "to": "tag",
+   "type": "contrast",
+   "label": "Tag 不随快照过期"
+  },
+  {
+   "from": "arch-layers",
+   "to": "schema-evolution",
+   "type": "prereq"
+  },
+  {
+   "from": "bucket",
+   "to": "table-write",
+   "type": "prereq"
+  },
+  {
+   "from": "table-write",
+   "to": "mergetree-writer",
+   "type": "causes",
+   "label": "按 bucket 交给"
+  },
+  {
+   "from": "write-buffer",
+   "to": "mergetree-writer",
+   "type": "part"
+  },
+  {
+   "from": "keyvalue",
+   "to": "write-buffer",
+   "type": "prereq"
+  },
+  {
+   "from": "merge-function",
+   "to": "write-buffer",
+   "type": "causes",
+   "label": "刷盘时合并同 key"
+  },
+  {
+   "from": "write-buffer",
+   "to": "l0-file",
+   "type": "causes",
+   "label": "刷盘写出"
+  },
+  {
+   "from": "mergetree-writer",
+   "to": "prepare-commit",
+   "type": "causes"
+  },
+  {
+   "from": "l0-file",
+   "to": "prepare-commit",
+   "type": "part"
+  },
+  {
+   "from": "l0-file",
+   "to": "levels",
+   "type": "prereq"
+  },
+  {
+   "from": "data-file-meta",
+   "to": "levels",
+   "type": "prereq"
+  },
+  {
+   "from": "levels",
+   "to": "universal",
+   "type": "prereq"
+  },
+  {
+   "from": "size-amp",
+   "to": "universal",
+   "type": "part",
+   "label": "第 1 级"
+  },
+  {
+   "from": "size-ratio",
+   "to": "universal",
+   "type": "part",
+   "label": "第 2 级"
+  },
+  {
+   "from": "file-num-trigger",
+   "to": "universal",
+   "type": "part",
+   "label": "第 3 级"
+  },
+  {
+   "from": "universal",
+   "to": "output-level",
+   "type": "causes",
+   "label": "选出前缀后定输出层"
+  },
+  {
+   "from": "force-up-l0",
+   "to": "universal",
+   "type": "contrast",
+   "label": "包装策略，强制上推 L0"
+  },
+  {
+   "from": "compact-manager",
+   "to": "universal",
+   "type": "causes",
+   "label": "调用 pick()"
+  },
+  {
+   "from": "mergetree-writer",
+   "to": "compact-manager",
+   "type": "causes",
+   "label": "addNewFile 触发合并"
+  },
+  {
+   "from": "output-level",
+   "to": "drop-delete",
+   "type": "causes"
+  },
+  {
+   "from": "compact-manager",
+   "to": "compact-task",
+   "type": "causes",
+   "label": "异步提交任务"
+  },
+  {
+   "from": "interval-partition",
+   "to": "compact-task",
+   "type": "part"
+  },
+  {
+   "from": "compact-task",
+   "to": "upgrade",
+   "type": "causes",
+   "label": "大文件"
+  },
+  {
+   "from": "compact-task",
+   "to": "merge-sort",
+   "type": "causes",
+   "label": "重叠 / 小文件"
+  },
+  {
+   "from": "merge-function",
+   "to": "merge-sort",
+   "type": "part"
+  },
+  {
+   "from": "drop-delete",
+   "to": "merge-sort",
+   "type": "part"
+  },
+  {
+   "from": "upgrade",
+   "to": "merge-sort",
+   "type": "contrast",
+   "label": "改 level vs 重写"
+  },
+  {
+   "from": "prepare-commit",
+   "to": "commit-impl",
+   "type": "causes",
+   "label": "CommitMessage"
+  },
+  {
+   "from": "manifest-entry",
+   "to": "conflict-detect",
+   "type": "prereq",
+   "label": "ADD/DELETE 合并规则"
+  },
+  {
+   "from": "commit-retry",
+   "to": "commit-impl",
+   "type": "part"
+  },
+  {
+   "from": "conflict-detect",
+   "to": "commit-impl",
+   "type": "part"
+  },
+  {
+   "from": "commit-idempotent",
+   "to": "commit-impl",
+   "type": "part"
+  },
+  {
+   "from": "snapshot-commit",
+   "to": "commit-impl",
+   "type": "part"
+  },
+  {
+   "from": "commit-retry",
+   "to": "conflict-detect",
+   "type": "contrast",
+   "label": "抢号失败重试 vs 文件冲突抛异常"
+  },
+  {
+   "from": "compact-task",
+   "to": "conflict-detect",
+   "type": "causes",
+   "label": "合并要删旧文件"
+  },
+  {
+   "from": "conflict-detect",
+   "to": "commit-rollback",
+   "type": "causes"
+  },
+  {
+   "from": "conflict-detect",
+   "to": "write-only",
+   "type": "causes",
+   "label": "避免冲突的做法"
+  },
+  {
+   "from": "levels",
+   "to": "conflict-detect",
+   "type": "prereq",
+   "label": "LSM conflict"
+  },
+  {
+   "from": "snapshot",
+   "to": "scan-plan",
+   "type": "prereq"
+  },
+  {
+   "from": "scan-plan",
+   "to": "raw-convertible",
+   "type": "causes",
+   "label": "生成 DataSplit"
+  },
+  {
+   "from": "levels",
+   "to": "raw-convertible",
+   "type": "prereq"
+  },
+  {
+   "from": "raw-convertible",
+   "to": "raw-read",
+   "type": "causes",
+   "label": "true"
+  },
+  {
+   "from": "raw-convertible",
+   "to": "merge-read",
+   "type": "causes",
+   "label": "false"
+  },
+  {
+   "from": "raw-read",
+   "to": "merge-read",
+   "type": "contrast"
+  },
+  {
+   "from": "interval-partition",
+   "to": "merge-read",
+   "type": "prereq"
+  },
+  {
+   "from": "merge-sort",
+   "to": "merge-read",
+   "type": "prereq"
+  },
+  {
+   "from": "raw-convertible",
+   "to": "count-pushdown",
+   "type": "causes"
+  },
+  {
+   "from": "merge-read",
+   "to": "dv",
+   "type": "prereq",
+   "label": "DV 要解决的问题"
+  },
+  {
+   "from": "dv-invariant",
+   "to": "raw-read",
+   "type": "causes",
+   "label": "开 DV 也能直接读"
+  },
+  {
+   "from": "dv",
+   "to": "dv-invariant",
+   "type": "prereq"
+  },
+  {
+   "from": "dv-maintainer",
+   "to": "dv-invariant",
+   "type": "implements"
+  },
+  {
+   "from": "force-up-l0",
+   "to": "dv-maintainer",
+   "type": "causes",
+   "label": "L0 上推时 lookup"
+  },
+  {
+   "from": "lookup-levels",
+   "to": "dv-maintainer",
+   "type": "prereq",
+   "label": "lookup 返回文件名 + 行号"
+  },
+  {
+   "from": "dv-invariant",
+   "to": "skip-l0",
+   "type": "causes"
+  },
+  {
+   "from": "drop-delete",
+   "to": "dv-invariant",
+   "type": "part"
+  },
+  {
+   "from": "changelog-producer",
+   "to": "lookup-changelog",
+   "type": "prereq"
+  },
+  {
+   "from": "force-up-l0",
+   "to": "lookup-changelog",
+   "type": "causes",
+   "label": "保证 L0 及时上推"
+  },
+  {
+   "from": "output-level",
+   "to": "lookup-levels",
+   "type": "prereq",
+   "label": "从 outputLevel+1 查"
+  },
+  {
+   "from": "lookup-levels",
+   "to": "lookup-wrapper",
+   "type": "part"
+  },
+  {
+   "from": "merge-function",
+   "to": "lookup-wrapper",
+   "type": "prereq"
+  },
+  {
+   "from": "lookup-wrapper",
+   "to": "lookup-changelog",
+   "type": "implements"
+  },
+  {
+   "from": "lookup-wrapper",
+   "to": "set-changelog",
+   "type": "causes"
+  },
+  {
+   "from": "upgrade",
+   "to": "upgrade-strategy",
+   "type": "prereq"
+  },
+  {
+   "from": "upgrade-strategy",
+   "to": "lookup-changelog",
+   "type": "part"
+  },
+  {
+   "from": "row-dedup",
+   "to": "set-changelog",
+   "type": "causes",
+   "label": "值相同时不输出"
+  },
+  {
+   "from": "lookup-wait",
+   "to": "lookup-changelog",
+   "type": "part"
+  },
+  {
+   "from": "set-changelog",
+   "to": "manifest-list",
+   "type": "causes",
+   "label": "写入 changelogManifestList"
+  },
+  {
+   "from": "lookup-changelog",
+   "to": "dv-maintainer",
+   "type": "contrast",
+   "label": "同一套 lookup，一个产 changelog，一个标删除"
+  },
+  {
+   "from": "prepare-commit",
+   "to": "two-phase-commit",
+   "type": "prereq"
+  },
+  {
+   "from": "commit-impl",
+   "to": "two-phase-commit",
+   "type": "prereq"
+  },
+  {
+   "from": "flink-sink",
+   "to": "two-phase-commit",
+   "type": "prereq"
+  },
+  {
+   "from": "two-phase-commit",
+   "to": "cp-identifier",
+   "type": "causes"
+  },
+  {
+   "from": "cp-identifier",
+   "to": "commit-idempotent",
+   "type": "implements",
+   "label": "Flink 里的幂等键"
+  },
+  {
+   "from": "commit-user",
+   "to": "commit-idempotent",
+   "type": "part"
+  },
+  {
+   "from": "commit-idempotent",
+   "to": "failover-restore",
+   "type": "prereq"
+  },
+  {
+   "from": "two-phase-commit",
+   "to": "failover-restore",
+   "type": "prereq"
+  },
+  {
+   "from": "lookup-wait",
+   "to": "two-phase-commit",
+   "type": "causes",
+   "label": "lookup 表 checkpoint 更慢"
+  },
+  {
+   "from": "flip27-source",
+   "to": "stream-scan",
+   "type": "part"
+  },
+  {
+   "from": "stream-scan",
+   "to": "follow-up-scanner",
+   "type": "part"
+  },
+  {
+   "from": "changelog-producer",
+   "to": "follow-up-scanner",
+   "type": "causes",
+   "label": "决定读 delta 还是 changelog"
+  },
+  {
+   "from": "bucket",
+   "to": "bucket-assign",
+   "type": "prereq"
+  },
+  {
+   "from": "flip27-source",
+   "to": "bucket-assign",
+   "type": "part"
+  },
+  {
+   "from": "changelog-producer",
+   "to": "changelog-normalize",
+   "type": "causes",
+   "label": "none 时出现"
+  },
+  {
+   "from": "changelog-normalize",
+   "to": "lookup-changelog",
+   "type": "contrast",
+   "label": "下游补 -U vs 写入端产 -U"
+  },
+  {
+   "from": "snapshot-expire",
+   "to": "consumer-id",
+   "type": "prereq"
+  },
+  {
+   "from": "stream-scan",
+   "to": "consumer-id",
+   "type": "prereq"
+  },
+  {
+   "from": "consumer-id",
+   "to": "snapshot-expire",
+   "type": "causes",
+   "label": "阻止过期仍要读的快照"
+  },
+  {
+   "from": "scan-plan",
+   "to": "stream-scan",
+   "type": "prereq"
+  },
+  {
+   "from": "spark-merge-rule",
+   "to": "changed-rows",
+   "type": "causes"
+  },
+  {
+   "from": "changed-rows",
+   "to": "spark-pk-path",
+   "type": "causes"
+  },
+  {
+   "from": "changed-rows",
+   "to": "spark-cow-path",
+   "type": "causes"
+  },
+  {
+   "from": "changed-rows",
+   "to": "spark-dv-path",
+   "type": "causes"
+  },
+  {
+   "from": "spark-merge-rule",
+   "to": "spark-v2-path",
+   "type": "causes",
+   "label": "满足条件时交给 Spark"
+  },
+  {
+   "from": "spark-cow-path",
+   "to": "spark-v2-path",
+   "type": "contrast",
+   "label": "V1 自己重写 vs Spark 原生重写"
+  },
+  {
+   "from": "spark-pk-path",
+   "to": "spark-cow-path",
+   "type": "contrast"
+  },
+  {
+   "from": "spark-cow-path",
+   "to": "spark-dv-path",
+   "type": "contrast"
+  },
+  {
+   "from": "table-types",
+   "to": "spark-merge-rule",
+   "type": "prereq",
+   "label": "按表类型路由"
+  },
+  {
+   "from": "l0-file",
+   "to": "spark-pk-path",
+   "type": "prereq"
+  },
+  {
+   "from": "dv",
+   "to": "spark-dv-path",
+   "type": "prereq"
+  },
+  {
+   "from": "conflict-detect",
+   "to": "spark-cow-path",
+   "type": "prereq",
+   "label": "OVERWRITE 强制检测"
+  },
+  {
+   "from": "commit-rollback",
+   "to": "spark-cow-path",
+   "type": "causes",
+   "label": "DML 和后台合并冲突时让 DML 赢"
+  },
+  {
+   "from": "arch-layers",
+   "to": "catalog",
+   "type": "prereq"
+  },
+  {
+   "from": "catalog",
+   "to": "rest-catalog",
+   "type": "prereq"
+  },
+  {
+   "from": "rest-catalog",
+   "to": "catalog-env",
+   "type": "causes",
+   "label": "加载表"
+  },
+  {
+   "from": "catalog-env",
+   "to": "server-cas",
+   "type": "part",
+   "label": "snapshotCommit 钩子"
+  },
+  {
+   "from": "server-cas",
+   "to": "snapshot-commit",
+   "type": "implements",
+   "label": "CatalogSnapshotCommit"
+  },
+  {
+   "from": "snapshot-commit",
+   "to": "server-cas",
+   "type": "prereq"
+  },
+  {
+   "from": "commit-idempotent",
+   "to": "server-cas",
+   "type": "prereq",
+   "label": "CAS 返回 false 后靠幂等检查判定"
+  },
+  {
+   "from": "server-cas",
+   "to": "table-uuid",
+   "type": "part"
+  },
+  {
+   "from": "rest-catalog",
+   "to": "data-token",
+   "type": "causes",
+   "label": "data-token.enabled"
+  }
+ ]
+}

@@ -1,0 +1,2002 @@
+{
+ "topic": "flink",
+ "title": "Flink 知识图谱",
+ "version": "Apache Flink 2.3.0",
+ "intro": "把「Flink 2.x 源码精读」10 讲和 21 期踩坑实验室里的概念连成一张图：学习路线视图按推荐顺序排列，关系视图按主题分列，点任意概念查看它的要点、前置知识、相关概念和对应文章。",
+ "groups": [
+  {
+   "id": "env",
+   "title": "源码与方法",
+   "color": "#64748b"
+  },
+  {
+   "id": "exec",
+   "title": "作业执行",
+   "color": "#2563eb"
+  },
+  {
+   "id": "ckpt",
+   "title": "Checkpoint",
+   "color": "#d97706"
+  },
+  {
+   "id": "state",
+   "title": "状态",
+   "color": "#16a34a"
+  },
+  {
+   "id": "net",
+   "title": "网络与背压",
+   "color": "#dc2626"
+  },
+  {
+   "id": "sql",
+   "title": "Table / SQL",
+   "color": "#7c3aed"
+  },
+  {
+   "id": "time",
+   "title": "时间与窗口",
+   "color": "#0891b2"
+  },
+  {
+   "id": "conn",
+   "title": "Source / Sink",
+   "color": "#db2777"
+  },
+  {
+   "id": "sched",
+   "title": "调度与容错",
+   "color": "#ca8a04"
+  },
+  {
+   "id": "comm",
+   "title": "社区",
+   "color": "#475569"
+  }
+ ],
+ "layers": [
+  {
+   "id": "L0",
+   "title": "起步：把源码跑起来",
+   "desc": "编译 2.3.0 源码，在 IDE 里打下第一个断点。",
+   "goal": "能在 IDE 里运行 WordCount 并停在任意一行",
+   "weeks": "第 0 讲"
+  },
+  {
+   "id": "L1",
+   "title": "作业怎么跑起来",
+   "desc": "从 API 调用到 Task 线程里的 processElement()。",
+   "goal": "Web UI 上 Task 的个数，能说出是哪条规则决定的",
+   "weeks": "第 1 讲"
+  },
+  {
+   "id": "L2",
+   "title": "Checkpoint",
+   "desc": "不停数据流，怎么做全局一致的快照。",
+   "goal": "能解释背压下 Checkpoint 为什么慢、非对齐快在哪、代价是什么",
+   "weeks": "第 2 讲"
+  },
+  {
+   "id": "L3",
+   "title": "状态与扩缩容",
+   "desc": "状态存在哪，改了并行度状态怎么切。",
+   "goal": "能说清 maxParallelism 为什么不能改、RocksDB 为什么要 update()",
+   "weeks": "第 3 讲"
+  },
+  {
+   "id": "L4",
+   "title": "网络与背压",
+   "desc": "数据在 Task 之间怎么流，背压怎么传上去。",
+   "goal": "给一组背压指标，能找出真正的瓶颈",
+   "weeks": "第 4 讲"
+  },
+  {
+   "id": "L5",
+   "title": "Table / SQL",
+   "desc": "一条 SQL 怎么变成 Java 代码，-U/+U 从哪来。",
+   "goal": "能读懂执行计划，说出两阶段聚合为什么没生效",
+   "weeks": "第 5 讲"
+  },
+  {
+   "id": "L6",
+   "title": "时间与窗口",
+   "desc": "Watermark 从哪来、怎么传，窗口什么时候触发、什么时候清理。",
+   "goal": "窗口不出结果、出了两次、晚了，都能定位原因",
+   "weeks": "第 7 讲"
+  },
+  {
+   "id": "L7",
+   "title": "Source / Sink 与端到端 exactly-once",
+   "desc": "split 怎么分、怎么收回，两阶段提交怎么和 Checkpoint 配合。",
+   "goal": "能说出端到端 exactly-once 需要哪三个条件，以及 Committer 为什么要幂等",
+   "weeks": "第 8 讲"
+  },
+  {
+   "id": "L8",
+   "title": "调度与容错",
+   "desc": "Task 失败后重启谁、等多久、从哪恢复。",
+   "goal": "能说出一次失败会重启几个 Task、隔多久重启",
+   "weeks": "第 6 讲"
+  },
+  {
+   "id": "L9",
+   "title": "参与社区",
+   "desc": "从读者到贡献者：提 JIRA、提 PR、AI 辅助的规则。",
+   "goal": "按社区规则提交第一个 PR",
+   "weeks": "第 9 讲"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "build-source",
+   "label": "编译 2.3.0 源码",
+   "layer": "L0",
+   "group": "env",
+   "summary": "基于 release-2.3.0 新建自己的分支，用仓库自带的 ./mvnw 编译；第一次编译先跳过 Web UI 前端。",
+   "lessons": [
+    {
+     "title": "零：从哪里开始读",
+     "link": "/bigdata/flink/post-00"
+    }
+   ],
+   "conf": [
+    "./mvnw clean install -DskipTests -Dfast -Pskip-webui-build -T1C"
+   ],
+   "lab": "本机编译 172 个模块，用时 5 分 20 秒（依赖已在本地）。"
+  },
+  {
+   "id": "read-method",
+   "label": "读源码的方法",
+   "layer": "L0",
+   "group": "env",
+   "summary": "带着问题读、跟着断点走；读测试、读提交记录（JIRA 编号），读到结论就写个最小实验验证。",
+   "lessons": [
+    {
+     "title": "零：从哪里开始读",
+     "link": "/bigdata/flink/post-00"
+    }
+   ],
+   "points": [
+    "断点的 Suspend 改成 Thread，避免心跳超时",
+    "git log --follow 查一段代码为什么这样写"
+   ]
+  },
+  {
+   "id": "minicluster",
+   "label": "MiniCluster 本地模式",
+   "layer": "L0",
+   "group": "exec",
+   "summary": "在 IDE 里运行 main，JobManager 和 TaskManager 都在同一个 JVM 里，从客户端到 Task 的任何一行都能打断点。",
+   "lessons": [
+    {
+     "title": "零：从哪里开始读",
+     "link": "/bigdata/flink/post-00"
+    },
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    }
+   ]
+  },
+  {
+   "id": "transformation",
+   "label": "Transformation 列表",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "调用 API 时只是记账，不做计算；WordCount 的列表里只有 3 项，Source 不在列表里。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·上：作业图怎么生成",
+     "link": "/bigdata/flink/post-01a"
+    }
+   ],
+   "code": [
+    "StreamExecutionEnvironment.addOperator()"
+   ]
+  },
+  {
+   "id": "stream-graph",
+   "label": "StreamGraph",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "客户端生成的逻辑图，一个节点是一个算子，每条边上标着分区器（REBALANCE / HASH / FORWARD）。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·上：作业图怎么生成",
+     "link": "/bigdata/flink/post-01a"
+    }
+   ],
+   "code": [
+    "StreamGraphGenerator"
+   ]
+  },
+  {
+   "id": "partitioner",
+   "label": "分区器",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "决定一条数据发给下游哪个子任务。没写分区方式而并行度不同时，Flink 自动用 rebalance；显式写了 forward 但并行度不同，直接抛异常。",
+   "lessons": [
+    {
+     "title": "一·上：作业图怎么生成",
+     "link": "/bigdata/flink/post-01a"
+    },
+    {
+     "title": "踩坑 #18 算子为什么没链在一起",
+     "link": "/bigdata/flink/pitfall-18"
+    }
+   ],
+   "code": [
+    "StreamGraph.addEdgeInternal()"
+   ],
+   "lab": "ChainBreakDemo 8 种写法实测。"
+  },
+  {
+   "id": "operator-chain",
+   "label": "算子链",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "满足条件的相邻算子合成一个 Task，同一个线程里直接调用，省掉序列化和网络。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·上：作业图怎么生成",
+     "link": "/bigdata/flink/post-01a"
+    },
+    {
+     "title": "踩坑 #18 算子为什么没链在一起",
+     "link": "/bigdata/flink/pitfall-18"
+    }
+   ],
+   "points": [
+    "条件：FORWARD 边、并行度相同、同一个 slot sharing group、没有禁用链",
+    "disableChaining() 两侧都断开，startNewChain() 只断开前面"
+   ],
+   "code": [
+    "StreamingJobGraphGenerator.isChainable()"
+   ],
+   "core": true
+  },
+  {
+   "id": "job-graph",
+   "label": "JobGraph",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "一个节点是一条算子链，决定切成几个 Task。2.x 里本地和 Session 模式直接提交 StreamGraph，JobGraph 在 JobManager 上生成。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·上：作业图怎么生成",
+     "link": "/bigdata/flink/post-01a"
+    }
+   ],
+   "lab": "同一份 WordCount：IDE 里 3 个节点，并行度 1 的集群上 2 个。",
+   "core": true
+  },
+  {
+   "id": "execution-graph",
+   "label": "ExecutionGraph",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "JobGraph 按并行度展开，每个 ExecutionVertex 持有一个 Execution，代表一次执行尝试；失败重启时创建新的 Execution（#0、#1……）。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·下：算子为什么不用加锁",
+     "link": "/bigdata/flink/post-01b"
+    }
+   ],
+   "code": [
+    "DefaultExecutionGraph.attachJobGraph()"
+   ]
+  },
+  {
+   "id": "deploy",
+   "label": "调度与部署",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "调度器构造时生成 ExecutionGraph，按 Pipelined Region 申请 slot，再把 Task 部署到 TaskManager。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·下：算子为什么不用加锁",
+     "link": "/bigdata/flink/post-01b"
+    }
+   ],
+   "code": [
+    "SchedulerBase",
+    "DefaultScheduler"
+   ]
+  },
+  {
+   "id": "mailbox",
+   "label": "Mailbox 模型",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "一个 Task 只有一个线程：循环里先处理邮箱里的邮件，再处理一批数据。定时器、Checkpoint、完成通知都变成邮件，所以算子代码不需要加锁。",
+   "lessons": [
+    {
+     "title": "课 1：作业执行全链路",
+     "link": "/bigdata/flink/01-execution"
+    },
+    {
+     "title": "一·下：算子为什么不用加锁",
+     "link": "/bigdata/flink/post-01b"
+    },
+    {
+     "title": "踩坑 #19 单线程的两个坑",
+     "link": "/bigdata/flink/pitfall-19"
+    }
+   ],
+   "code": [
+    "MailboxProcessor.runMailboxLoop()",
+    "StreamTask.processInput()"
+   ],
+   "lab": "6 个回调里打印线程名，全是同一个线程。",
+   "core": true
+  },
+  {
+   "id": "mailbox-pitfalls",
+   "label": "单线程的两个坑",
+   "layer": "L1",
+   "group": "exec",
+   "summary": "processElement 里阻塞会推迟定时器和 Checkpoint；自己开线程读写 keyed state，会读写到当时的「当前 key」，而不是你想要的 key。",
+   "lessons": [
+    {
+     "title": "踩坑 #19 单线程的两个坑",
+     "link": "/bigdata/flink/pitfall-19"
+    }
+   ],
+   "lab": "sleep 5 秒：处理时间定时器晚了 4333 毫秒，那次 Checkpoint 耗时 5011 毫秒（平时 3～29 毫秒）。"
+  },
+  {
+   "id": "barrier",
+   "label": "Checkpoint Barrier",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "Source 插进数据流的标记，和数据走同一条通道、不超车；Barrier 之前的数据都处理完、之后的一条都没处理，就是一致的切面。",
+   "lessons": [
+    {
+     "title": "课 2：Checkpoint 全流程",
+     "link": "/bigdata/flink/02-checkpoint"
+    },
+    {
+     "title": "二·上：背压下的 Checkpoint",
+     "link": "/bigdata/flink/post-02a"
+    }
+   ],
+   "core": true
+  },
+  {
+   "id": "ckpt-coordinator",
+   "label": "CheckpointCoordinator",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "JobManager 上触发 Checkpoint：先做 OperatorCoordinator 的快照，再让 Source 发 Barrier；所有 Task ack 之后写 _metadata，才算完成。",
+   "lessons": [
+    {
+     "title": "课 2：Checkpoint 全流程",
+     "link": "/bigdata/flink/02-checkpoint"
+    },
+    {
+     "title": "二·上：背压下的 Checkpoint",
+     "link": "/bigdata/flink/post-02a"
+    }
+   ],
+   "code": [
+    "CheckpointCoordinator.triggerCheckpoint()",
+    "PendingCheckpoint"
+   ]
+  },
+  {
+   "id": "snapshot",
+   "label": "同步 / 异步快照",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "同步阶段会挡住数据处理，所以尽量短；耗时的上传放到异步阶段。Web UI 上的 Sync / Async Duration 就是这两段。",
+   "lessons": [
+    {
+     "title": "课 2：Checkpoint 全流程",
+     "link": "/bigdata/flink/02-checkpoint"
+    },
+    {
+     "title": "二·上：背压下的 Checkpoint",
+     "link": "/bigdata/flink/post-02a"
+    }
+   ]
+  },
+  {
+   "id": "aligned-ckpt",
+   "label": "对齐 Checkpoint",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "算子要等所有输入通道的 Barrier 都到齐才做快照。背压时 Barrier 排在积压的数据后面，Checkpoint 就慢了。",
+   "lessons": [
+    {
+     "title": "课 2：Checkpoint 全流程",
+     "link": "/bigdata/flink/02-checkpoint"
+    },
+    {
+     "title": "二·上：背压下的 Checkpoint",
+     "link": "/bigdata/flink/post-02a"
+    }
+   ],
+   "lab": "有背压时 Checkpoint 从 15 毫秒涨到 3 秒，而同步、异步快照都只花了 0～1 毫秒。",
+   "core": true
+  },
+  {
+   "id": "ckpt-timeout",
+   "label": "超时与容忍失败",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "Checkpoint 超时计入失败；tolerable-failed-checkpoints 默认 0，所以默认情况下一次超时就让作业失败、全部 Task 重启。",
+   "lessons": [
+    {
+     "title": "二·上：背压下的 Checkpoint",
+     "link": "/bigdata/flink/post-02a"
+    }
+   ],
+   "conf": [
+    "execution.checkpointing.tolerable-failed-checkpoints = 0（默认）"
+   ],
+   "lab": "超时设 1 秒：日志出现 Exceeded checkpoint tolerable failure threshold，4 个 Task 全部重启。"
+  },
+  {
+   "id": "unaligned-ckpt",
+   "label": "非对齐 Checkpoint",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "Barrier 直接插到队首，被越过的数据复制一份作为 channel state 存进 Checkpoint。快了，但大了；背压本身还在。",
+   "lessons": [
+    {
+     "title": "课 2：Checkpoint 全流程",
+     "link": "/bigdata/flink/02-checkpoint"
+    },
+    {
+     "title": "二·下：非对齐 Checkpoint",
+     "link": "/bigdata/flink/post-02b"
+    },
+    {
+     "title": "踩坑 #14 非对齐 Checkpoint 快在哪",
+     "link": "/bigdata/flink/pitfall-14"
+    }
+   ],
+   "conf": [
+    "execution.checkpointing.unaligned.enabled",
+    "execution.checkpointing.aligned-checkpoint-timeout"
+   ],
+   "lab": "同样的背压：3 秒 → 16 毫秒，5.7KB → 约 600KB。",
+   "core": true
+  },
+  {
+   "id": "ckpt-notify",
+   "label": "Checkpoint 完成通知",
+   "layer": "L2",
+   "group": "ckpt",
+   "summary": "所有 Task 确认后，JobManager 通知各 Task；Task 把它当成邮件处理，依次调用每个算子的 notifyCheckpointComplete()。两阶段提交的第二阶段就在这里。",
+   "lessons": [
+    {
+     "title": "课 2：Checkpoint 全流程",
+     "link": "/bigdata/flink/02-checkpoint"
+    },
+    {
+     "title": "二·上：背压下的 Checkpoint",
+     "link": "/bigdata/flink/post-02a"
+    }
+   ],
+   "code": [
+    "notifyCheckpointComplete()"
+   ]
+  },
+  {
+   "id": "keyed-state",
+   "label": "Keyed State",
+   "layer": "L3",
+   "group": "state",
+   "summary": "按 key 访问的状态。「当前 key」由 Task 线程在处理每条数据、触发每个定时器前设置，不按线程隔离。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·上：读懂 KeyGroup",
+     "link": "/bigdata/flink/post-03a"
+    },
+    {
+     "title": "踩坑 #19 单线程的两个坑",
+     "link": "/bigdata/flink/pitfall-19"
+    }
+   ]
+  },
+  {
+   "id": "keygroup",
+   "label": "KeyGroup",
+   "layer": "L3",
+   "group": "state",
+   "summary": "key 先映射到 KeyGroup（只取决于 maxParallelism），每个子任务负责一段连续的 KeyGroup；扩缩容时只重新划分区间。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·上：读懂 KeyGroup",
+     "link": "/bigdata/flink/post-03a"
+    }
+   ],
+   "code": [
+    "KeyGroupRangeAssignment.assignToKeyGroup()"
+   ],
+   "core": true
+  },
+  {
+   "id": "max-parallelism",
+   "label": "maxParallelism",
+   "layer": "L3",
+   "group": "state",
+   "summary": "KeyGroup 的个数。设置之后就不能改，改了作业起不来；没设置时 Flink 按并行度推算，之后一直沿用第一次的值。",
+   "lessons": [
+    {
+     "title": "三·上：读懂 KeyGroup",
+     "link": "/bigdata/flink/post-03a"
+    },
+    {
+     "title": "踩坑 #12 最大并行度改了恢复不了",
+     "link": "/bigdata/flink/pitfall-12"
+    }
+   ],
+   "conf": [
+    "pipeline.max-parallelism"
+   ],
+   "lab": "128 改成 256：报 Max parallelism mismatch，作业起不来。",
+   "core": true
+  },
+  {
+   "id": "rescale",
+   "label": "扩缩容",
+   "layer": "L3",
+   "group": "state",
+   "summary": "从 Checkpoint 恢复成新的并行度，状态以 KeyGroup 为单位整块搬迁。并行度不是整数倍时，有的子任务要读两份旧状态。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·上：读懂 KeyGroup",
+     "link": "/bigdata/flink/post-03a"
+    },
+    {
+     "title": "踩坑 #13 扩缩容时状态怎么切",
+     "link": "/bigdata/flink/pitfall-13"
+    }
+   ],
+   "lab": "并行度 2 → 3：三段区间 [0,42] / [43,85] / [86,127]，1000 个 key 一个不少。"
+  },
+  {
+   "id": "hashmap-backend",
+   "label": "HashMap 状态后端",
+   "layer": "L3",
+   "group": "state",
+   "summary": "状态是 JVM 堆上的对象，value() 返回的是它本身；快照时用写时复制，异步阶段遍历旧的桶数组。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·上：读懂 KeyGroup",
+     "link": "/bigdata/flink/post-03a"
+    }
+   ]
+  },
+  {
+   "id": "rocksdb-backend",
+   "label": "RocksDB 状态后端",
+   "layer": "L3",
+   "group": "state",
+   "summary": "每条状态序列化后存在 RocksDB，key 由 KeyGroup 前缀、key、namespace 拼成。每次读写都要序列化，value() 拿到的是副本，改完必须 update()。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·下：换成 RocksDB 之后",
+     "link": "/bigdata/flink/post-03b"
+    }
+   ],
+   "lab": "同一段不调用 update() 的代码：HashMap 计数 1000，RocksDB 全是 0。",
+   "core": true
+  },
+  {
+   "id": "incremental-ckpt",
+   "label": "增量 Checkpoint",
+   "layer": "L3",
+   "group": "state",
+   "summary": "RocksDB 的 SST 文件能复用就复用，放在 shared/ 目录里，按被哪些 Checkpoint 引用来决定什么时候删。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·下：换成 RocksDB 之后",
+     "link": "/bigdata/flink/post-03b"
+    }
+   ]
+  },
+  {
+   "id": "forst",
+   "label": "ForSt 与异步状态",
+   "layer": "L3",
+   "group": "state",
+   "summary": "2.x 的存算分离：状态主存储放到远端，配合异步状态 API；同一个 key 的处理顺序仍然有保证。",
+   "lessons": [
+    {
+     "title": "课 3：状态存储与扩缩容",
+     "link": "/bigdata/flink/03-state-backend"
+    },
+    {
+     "title": "三·下：换成 RocksDB 之后",
+     "link": "/bigdata/flink/post-03b"
+    }
+   ]
+  },
+  {
+   "id": "network-buffer",
+   "label": "网络缓冲区",
+   "layer": "L4",
+   "group": "net",
+   "summary": "上游每个子分区有自己的缓冲区；只要有一个子分区占满 10 个缓冲区，整个输出池就不可用，上游 Task 停下来。",
+   "lessons": [
+    {
+     "title": "课 4：网络栈与背压",
+     "link": "/bigdata/flink/04-network"
+    },
+    {
+     "title": "四：一个下游慢，另一个也停",
+     "link": "/bigdata/flink/post-04"
+    }
+   ],
+   "lab": "只让 key 0 变慢：另一个本来每 5 秒处理 3000 多万条的子任务，只处理了几千条，全程空等。",
+   "core": true
+  },
+  {
+   "id": "credit",
+   "label": "Credit 流控",
+   "layer": "L4",
+   "group": "net",
+   "summary": "下游告诉上游自己还能收多少（credit），上游才发。数据缓冲区要消耗 credit，排在后面的 Barrier 也只能跟着等。",
+   "lessons": [
+    {
+     "title": "课 4：网络栈与背压",
+     "link": "/bigdata/flink/04-network"
+    },
+    {
+     "title": "四：一个下游慢，另一个也停",
+     "link": "/bigdata/flink/post-04"
+    }
+   ],
+   "code": [
+    "RemoteInputChannel",
+    "PartitionRequestQueue"
+   ]
+  },
+  {
+   "id": "backpressure",
+   "label": "背压",
+   "layer": "L4",
+   "group": "net",
+   "summary": "下游处理不过来，缓冲区和 credit 用完，背压一级一级传回 Source。背压最严重的算子往往不是瓶颈，瓶颈是「不被背压但很忙」的那个。",
+   "lessons": [
+    {
+     "title": "课 4：网络栈与背压",
+     "link": "/bigdata/flink/04-network"
+    },
+    {
+     "title": "四：一个下游慢，另一个也停",
+     "link": "/bigdata/flink/post-04"
+    },
+    {
+     "title": "踩坑 #15 背压一级一级传上去",
+     "link": "/bigdata/flink/pitfall-15"
+    }
+   ],
+   "core": true
+  },
+  {
+   "id": "bp-metrics",
+   "label": "背压指标",
+   "layer": "L4",
+   "group": "net",
+   "summary": "busy、idle、backPressured 三个时间之和是每秒 1000 毫秒；再看 outPoolUsage / inPoolUsage 判断数据堵在哪一侧。",
+   "lessons": [
+    {
+     "title": "四：一个下游慢，另一个也停",
+     "link": "/bigdata/flink/post-04"
+    },
+    {
+     "title": "踩坑 #15 背压一级一级传上去",
+     "link": "/bigdata/flink/pitfall-15"
+    }
+   ],
+   "points": [
+    "busy = 1000 − min(idle + backPressured, 1000)"
+   ],
+   "code": [
+    "TaskIOMetricGroup.getBusyTimePerSecond()"
+   ]
+  },
+  {
+   "id": "debloating",
+   "label": "Buffer Debloating",
+   "layer": "L4",
+   "group": "net",
+   "summary": "按下游实际的处理速度，动态调整每个缓冲区装多少数据，让在途数据刚好够处理约 1 秒。默认关闭；它减少了在途数据，但没有消除背压。",
+   "lessons": [
+    {
+     "title": "课 4：网络栈与背压",
+     "link": "/bigdata/flink/04-network"
+    },
+    {
+     "title": "四：一个下游慢，另一个也停",
+     "link": "/bigdata/flink/post-04"
+    },
+    {
+     "title": "踩坑 #05 背压时窗口迟迟不出结果",
+     "link": "/bigdata/flink/pitfall-05"
+    }
+   ],
+   "conf": [
+    "taskmanager.network.memory.buffer-debloat.enabled = false（默认）"
+   ],
+   "lab": "Checkpoint 从约 2.8 秒降到约 1 秒，缓冲区从 32KB 缩到约 11KB。"
+  },
+  {
+   "id": "removed-net-options",
+   "label": "2.0 删掉的网络参数",
+   "layer": "L4",
+   "group": "net",
+   "summary": "buffers-per-channel、floating-buffers-per-gate 等四个参数在 2.0 已删除，变成代码里的常量；照着老教程配置，不报错也不生效。",
+   "lessons": [
+    {
+     "title": "踩坑 #21 配置项已删除不报错",
+     "link": "/bigdata/flink/pitfall-21"
+    }
+   ],
+   "lab": "四个参数都配成 abc，作业照常跑完；还存在的参数配成 abc，立刻报 NumberFormatException。"
+  },
+  {
+   "id": "sql-pipeline",
+   "label": "SQL 到 Transformation",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "五步：解析成语法树 → 校验并转成逻辑计划 → 优化成物理计划 → 翻译成 ExecNode → 生成 Transformation。之后就和 DataStream 作业一样。",
+   "lessons": [
+    {
+     "title": "课 5：Table/SQL",
+     "link": "/bigdata/flink/05-table-sql"
+    },
+    {
+     "title": "五·上：SQL 到 Transformation",
+     "link": "/bigdata/flink/post-05a"
+    }
+   ],
+   "code": [
+    "CalciteParser",
+    "FlinkPlannerImpl",
+    "FlinkStreamProgram",
+    "ExecNodeGraphGenerator"
+   ],
+   "core": true
+  },
+  {
+   "id": "optimizer",
+   "label": "优化器的阶段",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "流模式的优化由 FlinkStreamProgram 里的多个阶段依次执行，有的是 HEP（规则改写），有的是 Volcano（基于代价）。Changelog 推导排在两阶段聚合规则之前。",
+   "lessons": [
+    {
+     "title": "课 5：Table/SQL",
+     "link": "/bigdata/flink/05-table-sql"
+    },
+    {
+     "title": "五·上：SQL 到 Transformation",
+     "link": "/bigdata/flink/post-05a"
+    }
+   ]
+  },
+  {
+   "id": "two-phase-agg",
+   "label": "两阶段聚合",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "GroupAggregate 拆成 Local（Exchange 之前）和 Global（之后）。要同时满足四个条件，第一个就是开启了 MiniBatch。",
+   "lessons": [
+    {
+     "title": "课 5：Table/SQL",
+     "link": "/bigdata/flink/05-table-sql"
+    },
+    {
+     "title": "五·上：SQL 到 Transformation",
+     "link": "/bigdata/flink/post-05a"
+    },
+    {
+     "title": "踩坑 #16 两阶段聚合没生效",
+     "link": "/bigdata/flink/pitfall-16"
+    }
+   ],
+   "code": [
+    "TwoStageOptimizedAggregateRule.matches()"
+   ],
+   "conf": [
+    "table.optimizer.agg-phase-strategy"
+   ],
+   "lab": "只设 TWO_PHASE：执行计划和默认配置一模一样，也没有警告。",
+   "core": true
+  },
+  {
+   "id": "minibatch",
+   "label": "MiniBatch",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "攒一批再处理：给局部聚合提供「一批」的边界，也能合并同一个 key 的多次更新，减少输出。只开 enabled、不设时间或条数会直接报错。",
+   "lessons": [
+    {
+     "title": "课 5：Table/SQL",
+     "link": "/bigdata/flink/05-table-sql"
+    },
+    {
+     "title": "五·下：Changelog 为什么输出两条",
+     "link": "/bigdata/flink/post-05b"
+    },
+    {
+     "title": "踩坑 #16 两阶段聚合没生效",
+     "link": "/bigdata/flink/pitfall-16"
+    }
+   ],
+   "conf": [
+    "table.exec.mini-batch.enabled",
+    "table.exec.mini-batch.allow-latency",
+    "table.exec.mini-batch.size"
+   ]
+  },
+  {
+   "id": "codegen",
+   "label": "代码生成",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "planner 在客户端生成 Java 源码字符串，TaskManager 在算子 open() 时用 Janino 编译；相同的代码有缓存。",
+   "lessons": [
+    {
+     "title": "课 5：Table/SQL",
+     "link": "/bigdata/flink/05-table-sql"
+    },
+    {
+     "title": "五·上：SQL 到 Transformation",
+     "link": "/bigdata/flink/post-05a"
+    }
+   ],
+   "code": [
+    "AggsHandlerCodeGenerator",
+    "CompileUtils.compile()"
+   ],
+   "lab": "日志里的 Compiling 行，线程名是 Task 线程。"
+  },
+  {
+   "id": "changelog",
+   "label": "Changelog（RowKind）",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "四种消息：+I 新增、-U 撤回旧值、+U 新值、-D 删除。聚合结果更新时，下游可能先收到 -U 再收到 +U。",
+   "lessons": [
+    {
+     "title": "课 5：Table/SQL",
+     "link": "/bigdata/flink/05-table-sql"
+    },
+    {
+     "title": "五·下：Changelog 为什么输出两条",
+     "link": "/bigdata/flink/post-05b"
+    },
+    {
+     "title": "踩坑 #17 print 出来的 -U 和 +U",
+     "link": "/bigdata/flink/pitfall-17"
+    }
+   ],
+   "lab": "6 条输入，print 出来 9 行。",
+   "core": true
+  },
+  {
+   "id": "changelog-inference",
+   "label": "Changelog 推导",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "要不要发 -U 由下游的 Sink 决定：print 原样要，blackhole 声明不要；推导在优化阶段完成，代码生成时已经知道要不要 retract。",
+   "lessons": [
+    {
+     "title": "五·下：Changelog 为什么输出两条",
+     "link": "/bigdata/flink/post-05b"
+    },
+    {
+     "title": "踩坑 #17 print 出来的 -U 和 +U",
+     "link": "/bigdata/flink/pitfall-17"
+    }
+   ],
+   "code": [
+    "FlinkChangelogModeInferenceProgram"
+   ]
+  },
+  {
+   "id": "on-conflict",
+   "label": "ON CONFLICT",
+   "layer": "L5",
+   "group": "sql",
+   "summary": "Flink 2.3 的新变化：写入有主键的 Sink 时，一些情况下必须用 ON CONFLICT 声明主键冲突怎么处理，否则报错。",
+   "lessons": [
+    {
+     "title": "五·下：Changelog 为什么输出两条",
+     "link": "/bigdata/flink/post-05b"
+    }
+   ],
+   "conf": [
+    "table.exec.sink.require-on-conflict"
+   ]
+  },
+  {
+   "id": "watermark-gen",
+   "label": "Watermark 生成",
+   "layer": "L6",
+   "group": "time",
+   "summary": "Watermark = 见过的最大事件时间 − 乱序容忍 − 1 毫秒，表示「时间戳不超过它的数据不会再来」。来数据时只记录最大值，按周期发出（默认 200 毫秒）。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·上：Watermark 从哪来",
+     "link": "/bigdata/flink/post-07a"
+    },
+    {
+     "title": "踩坑 #03 Watermark 差 1 毫秒",
+     "link": "/bigdata/flink/pitfall-03"
+    }
+   ],
+   "code": [
+    "BoundedOutOfOrdernessWatermarks"
+   ],
+   "conf": [
+    "pipeline.auto-watermark-interval = 200ms（默认）"
+   ],
+   "core": true
+  },
+  {
+   "id": "split-watermark",
+   "label": "Split 级 Watermark",
+   "layer": "L6",
+   "group": "time",
+   "summary": "WatermarkStrategy 写在 fromSource 里，每个 split 一个生成器，最后取最小值；写在算子上，整个 subtask 只有一个生成器，慢的 split 会变成迟到数据。",
+   "lessons": [
+    {
+     "title": "七·上：Watermark 从哪来",
+     "link": "/bigdata/flink/post-07a"
+    }
+   ],
+   "lab": "同样的策略：写在 Source 里迟到 0 条，写在算子上迟到 197 条。"
+  },
+  {
+   "id": "watermark-min",
+   "label": "取最小值与空闲",
+   "layer": "L6",
+   "group": "time",
+   "summary": "Source 内合并 split、下游合并输入通道，都取最小值；一个分区没有数据，就会拖住整个作业，withIdleness 让它暂时不参与。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·上：Watermark 从哪来",
+     "link": "/bigdata/flink/post-07a"
+    },
+    {
+     "title": "踩坑 #01 窗口不出结果",
+     "link": "/bigdata/flink/pitfall-01"
+    }
+   ],
+   "code": [
+    "StatusWatermarkValve",
+    "CombinedWatermarkStatus"
+   ],
+   "lab": "一个子任务没有分片：12 秒内窗口触发 0 次。",
+   "core": true
+  },
+  {
+   "id": "timer",
+   "label": "Timer",
+   "layer": "L6",
+   "group": "time",
+   "summary": "事件时间 Timer 按 (时间, key, 窗口) 去重；Watermark 到达时先触发到期的 Timer，再把 Watermark 往下游发。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·上：Watermark 从哪来",
+     "link": "/bigdata/flink/post-07a"
+    }
+   ],
+   "code": [
+    "InternalTimerServiceImpl"
+   ]
+  },
+  {
+   "id": "window-assign",
+   "label": "窗口分配",
+   "layer": "L6",
+   "group": "time",
+   "summary": "滚动窗口的起点按 1970-01-01 UTC 对齐；按北京时间的整天开窗，要加 offset −8 小时。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·下：窗口从分配到触发",
+     "link": "/bigdata/flink/post-07b"
+    },
+    {
+     "title": "踩坑 #04 一天的窗口早上 8 点才关",
+     "link": "/bigdata/flink/pitfall-04"
+    }
+   ],
+   "code": [
+    "TimeWindow.getWindowStartWithOffset()"
+   ],
+   "lab": "不加 offset：一天的窗口是北京时间早上 8 点到第二天早上 8 点。"
+  },
+  {
+   "id": "window-trigger",
+   "label": "窗口触发与清理",
+   "layer": "L6",
+   "group": "time",
+   "summary": "每个窗口两个 Timer：maxTimestamp（结束 − 1 毫秒）时触发，FIRE 不清状态；maxTimestamp + allowedLateness 时清理。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·下：窗口从分配到触发",
+     "link": "/bigdata/flink/post-07b"
+    }
+   ],
+   "code": [
+    "EventTimeTrigger",
+    "WindowOperator.cleanupTime()"
+   ],
+   "core": true
+  },
+  {
+   "id": "late-data",
+   "label": "迟到数据",
+   "layer": "L6",
+   "group": "time",
+   "summary": "按数据到达时的 Watermark 分四种结局：正常、迟到但被接受（窗口再输出一次）、进侧输出、被丢弃（只让 numLateRecordsDropped 加 1）。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·下：窗口从分配到触发",
+     "link": "/bigdata/flink/post-07b"
+    },
+    {
+     "title": "踩坑 #02 窗口输出两次",
+     "link": "/bigdata/flink/pitfall-02"
+    }
+   ],
+   "conf": [
+    "allowedLateness",
+    "sideOutputLateData"
+   ],
+   "lab": "allowedLateness = 3s 时，同一个窗口输出了两次。"
+  },
+  {
+   "id": "session-window",
+   "label": "会话窗口合并",
+   "layer": "L6",
+   "group": "time",
+   "summary": "每条数据先得到一个 [t, t+gap) 的窗口，再和相交的窗口合并；合并后的状态仍放在原来某个窗口的 namespace 下。",
+   "lessons": [
+    {
+     "title": "课 8：时间、Watermark 与窗口",
+     "link": "/bigdata/flink/08-watermark-window"
+    },
+    {
+     "title": "七·下：窗口从分配到触发",
+     "link": "/bigdata/flink/post-07b"
+    }
+   ],
+   "code": [
+    "MergingWindowSet"
+   ]
+  },
+  {
+   "id": "flip27",
+   "label": "FLIP-27 Source",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "发现和分配 split 集中在 JobManager 上的 Enumerator，TaskManager 上的 Reader 只读分给自己的 split；split 对象本身就是「读到哪了」。",
+   "lessons": [
+    {
+     "title": "课 9：Source / Sink 新架构",
+     "link": "/bigdata/flink/09-source-sink"
+    },
+    {
+     "title": "八·上：Source 分片",
+     "link": "/bigdata/flink/post-08a"
+    }
+   ],
+   "code": [
+    "SplitEnumerator",
+    "SourceReader",
+    "SourceCoordinator"
+   ],
+   "core": true
+  },
+  {
+   "id": "split-tracking",
+   "label": "split 回收",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "每个 split 在任一 Checkpoint 里只在一处：要么在 Enumerator，要么在某个 Reader。Checkpoint 之后才分出去的 split，Reader 失败时还给 Enumerator 重新分配。",
+   "lessons": [
+    {
+     "title": "课 9：Source / Sink 新架构",
+     "link": "/bigdata/flink/09-source-sink"
+    },
+    {
+     "title": "八·上：Source 分片",
+     "link": "/bigdata/flink/post-08a"
+    },
+    {
+     "title": "踩坑 #20 分区会不会读两次",
+     "link": "/bigdata/flink/pitfall-20"
+    }
+   ],
+   "code": [
+    "SplitAssignmentTracker",
+    "SplitEnumerator.addSplitsBack()"
+   ],
+   "lab": "在记录 80 上注入故障：split-2 被收回、重新分配，160 条记录 duplicates=0。"
+  },
+  {
+   "id": "sink-v2",
+   "label": "Sink V2 两阶段提交",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "第一阶段 prepareCommit 在 Barrier 之前交出待提交内容；第二阶段 commit 在 Checkpoint 完成之后。提交之前，外部系统里的数据「已写入、未提交」。",
+   "lessons": [
+    {
+     "title": "课 9：Source / Sink 新架构",
+     "link": "/bigdata/flink/09-source-sink"
+    },
+    {
+     "title": "八·下：Sink 与 exactly-once",
+     "link": "/bigdata/flink/post-08b"
+    }
+   ],
+   "code": [
+    "SinkWriterOperator.prepareSnapshotPreBarrier()",
+    "CommitterOperator.notifyCheckpointComplete()"
+   ],
+   "core": true
+  },
+  {
+   "id": "idempotent-commit",
+   "label": "Committer 幂等",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "提交发生在 Checkpoint 之后，Checkpoint 里记不下「已提交」；恢复后会再提交一次，所以 Committer 必须能识别并跳过已提交的事务。",
+   "lessons": [
+    {
+     "title": "八·下：Sink 与 exactly-once",
+     "link": "/bigdata/flink/post-08b"
+    },
+    {
+     "title": "踩坑 #06 exactly-once 还重复",
+     "link": "/bigdata/flink/pitfall-06"
+    }
+   ],
+   "lab": "去掉幂等检查：同样的故障，重复了一整个事务（12～13 条）。"
+  },
+  {
+   "id": "retry-later",
+   "label": "retryLater 重试",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "Committer 调用 retryLater() 后，Flink 在同一次完成通知里立即同步重试，默认 10 次，用完就让作业失败。",
+   "lessons": [
+    {
+     "title": "八·下：Sink 与 exactly-once",
+     "link": "/bigdata/flink/post-08b"
+    },
+    {
+     "title": "踩坑 #08 retryLater 不会稍后",
+     "link": "/bigdata/flink/pitfall-08"
+    }
+   ],
+   "conf": [
+    "sink.committer.retries = 10（默认）"
+   ],
+   "lab": "11 次调用在几毫秒内全部用完。"
+  },
+  {
+   "id": "filesink-rolling",
+   "label": "FileSink 滚动策略",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "Row 格式默认不到 128MB 不在 Checkpoint 时关闭文件，要等按时间滚动（检查定时器每 60 秒一次），数据要一两分钟后才可见。",
+   "lessons": [
+    {
+     "title": "八·下：Sink 与 exactly-once",
+     "link": "/bigdata/flink/post-08b"
+    },
+    {
+     "title": "踩坑 #11 FileSink 数据等了 120 秒",
+     "link": "/bigdata/flink/pitfall-11"
+    }
+   ],
+   "conf": [
+    "OnCheckpointRollingPolicy",
+    "DefaultRollingPolicy"
+   ],
+   "lab": "Checkpoint 每 2 秒：默认最早的数据等了 120 秒；OnCheckpoint 最多 2.1 秒。"
+  },
+  {
+   "id": "no-ckpt-no-commit",
+   "label": "不开 Checkpoint 不提交",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "两阶段提交的两步都挂在 Checkpoint 上；无界作业不开 Checkpoint，事务型 Sink 一次都不会提交。",
+   "lessons": [
+    {
+     "title": "八·下：Sink 与 exactly-once",
+     "link": "/bigdata/flink/post-08b"
+    },
+    {
+     "title": "踩坑 #07 不开 Checkpoint 不提交",
+     "link": "/bigdata/flink/pitfall-07"
+    }
+   ],
+   "lab": "写入 160 条，提交 0 条。"
+  },
+  {
+   "id": "e2e-exactly-once",
+   "label": "端到端 exactly-once",
+   "layer": "L7",
+   "group": "conn",
+   "summary": "Source 可以回退 + Checkpoint 把 Source 进度和 Sink 待提交事务记在同一个切面 + Sink 两阶段提交且幂等，三者缺一不可。",
+   "lessons": [
+    {
+     "title": "课 9：Source / Sink 新架构",
+     "link": "/bigdata/flink/09-source-sink"
+    },
+    {
+     "title": "八·下：Sink 与 exactly-once",
+     "link": "/bigdata/flink/post-08b"
+    },
+    {
+     "title": "踩坑 #20 分区会不会读两次",
+     "link": "/bigdata/flink/pitfall-20"
+    }
+   ],
+   "core": true
+  },
+  {
+   "id": "region-failover",
+   "label": "Pipelined Region 局部重启",
+   "layer": "L8",
+   "group": "sched",
+   "summary": "一个 Task 失败，只重启它所在的 region。keyBy / rebalance 是全连接，整个作业连成一个 region；全部 forward 时每个并行实例自成一个 region。",
+   "lessons": [
+    {
+     "title": "课 6：调度与容错",
+     "link": "/bigdata/flink/06-scheduling"
+    },
+    {
+     "title": "六：Task 失败之后",
+     "link": "/bigdata/flink/post-06"
+    },
+    {
+     "title": "踩坑 #09 只重启了一部分",
+     "link": "/bigdata/flink/pitfall-09"
+    }
+   ],
+   "lab": "同样一个 Task 失败：有 keyBy 重启 4 个，全部链在一起只重启 1 个。",
+   "core": true
+  },
+  {
+   "id": "restart-strategy",
+   "label": "重启策略",
+   "layer": "L8",
+   "group": "sched",
+   "summary": "开 Checkpoint 时默认指数退避，第一次约 1 秒后重启；不开 Checkpoint 时默认不重启，一次异常作业就结束。",
+   "lessons": [
+    {
+     "title": "课 6：调度与容错",
+     "link": "/bigdata/flink/06-scheduling"
+    },
+    {
+     "title": "六：Task 失败之后",
+     "link": "/bigdata/flink/post-06"
+    },
+    {
+     "title": "踩坑 #10 不开 Checkpoint 不重启",
+     "link": "/bigdata/flink/pitfall-10"
+    }
+   ],
+   "conf": [
+    "restart-strategy.type"
+   ],
+   "lab": "不开 Checkpoint：一次异常，作业直接失败。"
+  },
+  {
+   "id": "state-restore",
+   "label": "从 Checkpoint 恢复",
+   "layer": "L8",
+   "group": "sched",
+   "summary": "重启时作废进行中的 Checkpoint，从最近一次完成的 Checkpoint 取出状态分给各个 Task；Source 回到当时的进度重读。",
+   "lessons": [
+    {
+     "title": "课 6：调度与容错",
+     "link": "/bigdata/flink/06-scheduling"
+    },
+    {
+     "title": "六：Task 失败之后",
+     "link": "/bigdata/flink/post-06"
+    }
+   ],
+   "code": [
+    "SchedulerBase.restoreState()",
+    "CheckpointCoordinator.restoreLatestCheckpointedStateInternal()"
+   ]
+  },
+  {
+   "id": "adaptive-scheduler",
+   "label": "AdaptiveScheduler",
+   "layer": "L8",
+   "group": "sched",
+   "summary": "按可用资源决定并行度：资源够了自动扩容（在 Checkpoint 完成后触发），TaskManager 少了就按失败处理再缩容。",
+   "lessons": [
+    {
+     "title": "课 6：调度与容错",
+     "link": "/bigdata/flink/06-scheduling"
+    },
+    {
+     "title": "六：Task 失败之后",
+     "link": "/bigdata/flink/post-06"
+    }
+   ]
+  },
+  {
+   "id": "agents-md",
+   "label": "AGENTS.md 与 AI 声明",
+   "layer": "L9",
+   "group": "comm",
+   "summary": "Flink 仓库的 AGENTS.md 规定：AI 辅助的提交用 Generated-by 声明，不要把 AI 写成 Co-Authored-By；最近一个月约四分之一的 commit 声明用了 AI。",
+   "lessons": [
+    {
+     "title": "课 7：从读者到贡献者",
+     "link": "/bigdata/flink/07-contributor"
+    },
+    {
+     "title": "九：从读者到贡献者",
+     "link": "/bigdata/flink/post-09"
+    }
+   ]
+  },
+  {
+   "id": "contribute-flow",
+   "label": "贡献流程",
+   "layer": "L9",
+   "group": "comm",
+   "summary": "先开 JIRA 讨论，再提 PR、接受 review；改 bug 时做红绿验证：先还原修复看测试变红，再恢复看它变绿。",
+   "lessons": [
+    {
+     "title": "课 7：从读者到贡献者",
+     "link": "/bigdata/flink/07-contributor"
+    },
+    {
+     "title": "九：从读者到贡献者",
+     "link": "/bigdata/flink/post-09"
+    }
+   ],
+   "core": true
+  }
+ ],
+ "edges": [
+  {
+   "from": "build-source",
+   "to": "minicluster",
+   "type": "prereq",
+   "label": "编译好之后在 IDE 里跑"
+  },
+  {
+   "from": "read-method",
+   "to": "minicluster",
+   "type": "prereq",
+   "label": "用断点读源码"
+  },
+  {
+   "from": "minicluster",
+   "to": "transformation",
+   "type": "prereq"
+  },
+  {
+   "from": "transformation",
+   "to": "stream-graph",
+   "type": "prereq",
+   "label": "生成"
+  },
+  {
+   "from": "stream-graph",
+   "to": "job-graph",
+   "type": "prereq",
+   "label": "合并算子链"
+  },
+  {
+   "from": "partitioner",
+   "to": "stream-graph",
+   "type": "part",
+   "label": "标在 StreamGraph 的边上"
+  },
+  {
+   "from": "partitioner",
+   "to": "operator-chain",
+   "type": "causes",
+   "label": "只有 FORWARD 边能链接"
+  },
+  {
+   "from": "operator-chain",
+   "to": "job-graph",
+   "type": "part",
+   "label": "一个 JobVertex = 一条链"
+  },
+  {
+   "from": "stream-graph",
+   "to": "operator-chain",
+   "type": "prereq"
+  },
+  {
+   "from": "job-graph",
+   "to": "execution-graph",
+   "type": "prereq",
+   "label": "按并行度展开"
+  },
+  {
+   "from": "execution-graph",
+   "to": "deploy",
+   "type": "prereq"
+  },
+  {
+   "from": "deploy",
+   "to": "mailbox",
+   "type": "prereq",
+   "label": "Task 线程启动后进入循环"
+  },
+  {
+   "from": "mailbox",
+   "to": "mailbox-pitfalls",
+   "type": "causes",
+   "label": "一个线程，所以一个阻塞全都等"
+  },
+  {
+   "from": "minicluster",
+   "to": "deploy",
+   "type": "part",
+   "label": "本地模式里同一个 JVM"
+  },
+  {
+   "from": "mailbox",
+   "to": "ckpt-notify",
+   "type": "prereq",
+   "label": "完成通知以邮件方式执行"
+  },
+  {
+   "from": "ckpt-coordinator",
+   "to": "barrier",
+   "type": "causes",
+   "label": "让 Source 插入 Barrier"
+  },
+  {
+   "from": "barrier",
+   "to": "aligned-ckpt",
+   "type": "prereq"
+  },
+  {
+   "from": "aligned-ckpt",
+   "to": "unaligned-ckpt",
+   "type": "prereq"
+  },
+  {
+   "from": "aligned-ckpt",
+   "to": "unaligned-ckpt",
+   "type": "contrast",
+   "label": "等齐 vs 插队"
+  },
+  {
+   "from": "barrier",
+   "to": "snapshot",
+   "type": "causes",
+   "label": "到齐后做快照"
+  },
+  {
+   "from": "snapshot",
+   "to": "ckpt-notify",
+   "type": "prereq"
+  },
+  {
+   "from": "ckpt-coordinator",
+   "to": "ckpt-timeout",
+   "type": "part",
+   "label": "超时和失败计数由它管理"
+  },
+  {
+   "from": "ckpt-coordinator",
+   "to": "ckpt-notify",
+   "type": "causes",
+   "label": "全部 ack 后发通知"
+  },
+  {
+   "from": "execution-graph",
+   "to": "ckpt-coordinator",
+   "type": "prereq",
+   "label": "构建 ExecutionGraph 时创建"
+  },
+  {
+   "from": "keyed-state",
+   "to": "keygroup",
+   "type": "prereq"
+  },
+  {
+   "from": "keygroup",
+   "to": "max-parallelism",
+   "type": "part",
+   "label": "KeyGroup 的个数 = maxParallelism"
+  },
+  {
+   "from": "keygroup",
+   "to": "rescale",
+   "type": "prereq",
+   "label": "按区间重新划分"
+  },
+  {
+   "from": "max-parallelism",
+   "to": "rescale",
+   "type": "causes",
+   "label": "决定能扩到多大，改了就恢复不了"
+  },
+  {
+   "from": "keyed-state",
+   "to": "hashmap-backend",
+   "type": "prereq"
+  },
+  {
+   "from": "keyed-state",
+   "to": "rocksdb-backend",
+   "type": "prereq"
+  },
+  {
+   "from": "hashmap-backend",
+   "to": "rocksdb-backend",
+   "type": "contrast",
+   "label": "对象引用 vs 每次序列化"
+  },
+  {
+   "from": "rocksdb-backend",
+   "to": "incremental-ckpt",
+   "type": "implements",
+   "label": "SST 复用实现增量"
+  },
+  {
+   "from": "rocksdb-backend",
+   "to": "forst",
+   "type": "contrast",
+   "label": "本地盘 vs 存算分离"
+  },
+  {
+   "from": "snapshot",
+   "to": "hashmap-backend",
+   "type": "prereq",
+   "label": "同步阶段写时复制"
+  },
+  {
+   "from": "snapshot",
+   "to": "incremental-ckpt",
+   "type": "prereq"
+  },
+  {
+   "from": "mailbox-pitfalls",
+   "to": "keyed-state",
+   "type": "causes",
+   "label": "当前 key 不按线程隔离"
+  },
+  {
+   "from": "operator-chain",
+   "to": "network-buffer",
+   "type": "prereq",
+   "label": "链与链之间才走网络"
+  },
+  {
+   "from": "network-buffer",
+   "to": "credit",
+   "type": "prereq"
+  },
+  {
+   "from": "credit",
+   "to": "backpressure",
+   "type": "causes",
+   "label": "没有 credit 就发不出去"
+  },
+  {
+   "from": "network-buffer",
+   "to": "backpressure",
+   "type": "causes",
+   "label": "一个子分区占满，整个输出池不可用"
+  },
+  {
+   "from": "backpressure",
+   "to": "bp-metrics",
+   "type": "prereq"
+  },
+  {
+   "from": "backpressure",
+   "to": "aligned-ckpt",
+   "type": "causes",
+   "label": "Barrier 排在积压的数据后面"
+  },
+  {
+   "from": "backpressure",
+   "to": "debloating",
+   "type": "prereq"
+  },
+  {
+   "from": "debloating",
+   "to": "unaligned-ckpt",
+   "type": "contrast",
+   "label": "减少排在前面的数据 vs 直接跳过"
+  },
+  {
+   "from": "network-buffer",
+   "to": "removed-net-options",
+   "type": "prereq",
+   "label": "2.x 改成常量"
+  },
+  {
+   "from": "debloating",
+   "to": "removed-net-options",
+   "type": "contrast",
+   "label": "2.x 自动调大小 vs 1.x 手动调个数"
+  },
+  {
+   "from": "job-graph",
+   "to": "sql-pipeline",
+   "type": "prereq",
+   "label": "SQL 最终也生成 Transformation"
+  },
+  {
+   "from": "sql-pipeline",
+   "to": "optimizer",
+   "type": "part"
+  },
+  {
+   "from": "optimizer",
+   "to": "two-phase-agg",
+   "type": "part",
+   "label": "physical_rewrite 阶段的一条规则"
+  },
+  {
+   "from": "minibatch",
+   "to": "two-phase-agg",
+   "type": "causes",
+   "label": "第一个条件"
+  },
+  {
+   "from": "sql-pipeline",
+   "to": "codegen",
+   "type": "part",
+   "label": "第 ⑤ 步"
+  },
+  {
+   "from": "optimizer",
+   "to": "changelog-inference",
+   "type": "part",
+   "label": "排在两阶段聚合之前"
+  },
+  {
+   "from": "changelog",
+   "to": "changelog-inference",
+   "type": "prereq"
+  },
+  {
+   "from": "changelog-inference",
+   "to": "codegen",
+   "type": "causes",
+   "label": "决定要不要生成 retract"
+  },
+  {
+   "from": "minibatch",
+   "to": "changelog",
+   "type": "causes",
+   "label": "合并更新，输出变少"
+  },
+  {
+   "from": "changelog-inference",
+   "to": "on-conflict",
+   "type": "prereq"
+  },
+  {
+   "from": "sql-pipeline",
+   "to": "minibatch",
+   "type": "prereq"
+  },
+  {
+   "from": "sql-pipeline",
+   "to": "changelog",
+   "type": "prereq"
+  },
+  {
+   "from": "watermark-gen",
+   "to": "split-watermark",
+   "type": "prereq"
+  },
+  {
+   "from": "watermark-gen",
+   "to": "watermark-min",
+   "type": "prereq"
+  },
+  {
+   "from": "split-watermark",
+   "to": "watermark-min",
+   "type": "causes",
+   "label": "每个 split 一个，取最小值"
+  },
+  {
+   "from": "backpressure",
+   "to": "watermark-min",
+   "type": "causes",
+   "label": "Watermark 和数据同通道，背压会推迟它"
+  },
+  {
+   "from": "mailbox",
+   "to": "timer",
+   "type": "prereq",
+   "label": "定时器回调也是邮件"
+  },
+  {
+   "from": "watermark-min",
+   "to": "timer",
+   "type": "causes",
+   "label": "Watermark 推进，触发到期的 Timer"
+  },
+  {
+   "from": "timer",
+   "to": "window-trigger",
+   "type": "implements",
+   "label": "每个窗口两个 Timer"
+  },
+  {
+   "from": "window-assign",
+   "to": "window-trigger",
+   "type": "prereq"
+  },
+  {
+   "from": "window-trigger",
+   "to": "late-data",
+   "type": "prereq"
+  },
+  {
+   "from": "window-trigger",
+   "to": "late-data",
+   "type": "causes",
+   "label": "清理之前到的迟到数据会让窗口再输出一次"
+  },
+  {
+   "from": "window-assign",
+   "to": "session-window",
+   "type": "prereq"
+  },
+  {
+   "from": "watermark-gen",
+   "to": "window-trigger",
+   "type": "prereq"
+  },
+  {
+   "from": "keyed-state",
+   "to": "session-window",
+   "type": "prereq",
+   "label": "窗口状态的 namespace 是窗口"
+  },
+  {
+   "from": "split-watermark",
+   "to": "flip27",
+   "type": "prereq",
+   "label": "Source 内部的 split"
+  },
+  {
+   "from": "ckpt-coordinator",
+   "to": "flip27",
+   "type": "part",
+   "label": "先给 SourceCoordinator 做快照"
+  },
+  {
+   "from": "flip27",
+   "to": "split-tracking",
+   "type": "prereq"
+  },
+  {
+   "from": "ckpt-notify",
+   "to": "sink-v2",
+   "type": "implements",
+   "label": "第二阶段在完成通知里提交"
+  },
+  {
+   "from": "barrier",
+   "to": "sink-v2",
+   "type": "causes",
+   "label": "第一阶段在 Barrier 之前"
+  },
+  {
+   "from": "sink-v2",
+   "to": "idempotent-commit",
+   "type": "causes",
+   "label": "提交结果不在任何 Checkpoint 里"
+  },
+  {
+   "from": "sink-v2",
+   "to": "retry-later",
+   "type": "part"
+  },
+  {
+   "from": "sink-v2",
+   "to": "filesink-rolling",
+   "type": "prereq"
+  },
+  {
+   "from": "sink-v2",
+   "to": "no-ckpt-no-commit",
+   "type": "causes",
+   "label": "两步都挂在 Checkpoint 上"
+  },
+  {
+   "from": "split-tracking",
+   "to": "e2e-exactly-once",
+   "type": "part",
+   "label": "Source 能回退"
+  },
+  {
+   "from": "idempotent-commit",
+   "to": "e2e-exactly-once",
+   "type": "part",
+   "label": "Sink 幂等"
+  },
+  {
+   "from": "sink-v2",
+   "to": "e2e-exactly-once",
+   "type": "part",
+   "label": "Sink 两阶段提交"
+  },
+  {
+   "from": "aligned-ckpt",
+   "to": "e2e-exactly-once",
+   "type": "prereq"
+  },
+  {
+   "from": "unaligned-ckpt",
+   "to": "filesink-rolling",
+   "type": "contrast"
+  },
+  {
+   "from": "execution-graph",
+   "to": "region-failover",
+   "type": "prereq",
+   "label": "region 按 ExecutionGraph 的边划分"
+  },
+  {
+   "from": "partitioner",
+   "to": "region-failover",
+   "type": "causes",
+   "label": "全连接的边把 region 连成一个"
+  },
+  {
+   "from": "region-failover",
+   "to": "restart-strategy",
+   "type": "prereq"
+  },
+  {
+   "from": "restart-strategy",
+   "to": "state-restore",
+   "type": "prereq"
+  },
+  {
+   "from": "ckpt-timeout",
+   "to": "restart-strategy",
+   "type": "causes",
+   "label": "超时失败后由重启策略接管"
+  },
+  {
+   "from": "no-ckpt-no-commit",
+   "to": "restart-strategy",
+   "type": "contrast",
+   "label": "不开 Checkpoint：既不提交，也不重启"
+  },
+  {
+   "from": "rescale",
+   "to": "adaptive-scheduler",
+   "type": "prereq",
+   "label": "自动扩缩容也要切状态"
+  },
+  {
+   "from": "state-restore",
+   "to": "adaptive-scheduler",
+   "type": "prereq"
+  },
+  {
+   "from": "split-tracking",
+   "to": "state-restore",
+   "type": "causes",
+   "label": "恢复时还回 Checkpoint 之后分出去的 split"
+  },
+  {
+   "from": "idempotent-commit",
+   "to": "state-restore",
+   "type": "causes",
+   "label": "恢复后再提交一次"
+  },
+  {
+   "from": "read-method",
+   "to": "contribute-flow",
+   "type": "prereq",
+   "label": "读懂源码，才能提出改进"
+  },
+  {
+   "from": "contribute-flow",
+   "to": "agents-md",
+   "type": "part"
+  },
+  {
+   "from": "removed-net-options",
+   "to": "contribute-flow",
+   "type": "causes",
+   "label": "文档里残留的旧参数，可以作为第一个贡献"
+  }
+ ]
+}

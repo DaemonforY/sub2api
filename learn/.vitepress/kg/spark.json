@@ -1,0 +1,2541 @@
+{
+ "topic": "spark",
+ "title": "Spark 知识图谱",
+ "intro": "把《Spark 源码学习》13 课里的 94 个概念串成一张图：分组看模块，连线看关系，按阶段看学习顺序。点任意概念，可以看到要点、源码入口、4.2.0 的默认配置、实验结论，以及讲它的那一课。",
+ "version": "Spark 4.2.0",
+ "groups": [
+  {
+   "id": "core",
+   "title": "核心抽象"
+  },
+  {
+   "id": "sched",
+   "title": "调度"
+  },
+  {
+   "id": "shuffle",
+   "title": "Shuffle"
+  },
+  {
+   "id": "memory",
+   "title": "内存"
+  },
+  {
+   "id": "storage",
+   "title": "存储"
+  },
+  {
+   "id": "rpc",
+   "title": "RPC 与部署"
+  },
+  {
+   "id": "fault",
+   "title": "容错"
+  },
+  {
+   "id": "catalyst",
+   "title": "Catalyst"
+  },
+  {
+   "id": "codegen",
+   "title": "代码生成"
+  },
+  {
+   "id": "aqe",
+   "title": "AQE"
+  },
+  {
+   "id": "dsv2",
+   "title": "DataSource V2"
+  },
+  {
+   "id": "connect",
+   "title": "Spark Connect"
+  },
+  {
+   "id": "community",
+   "title": "社区贡献"
+  }
+ ],
+ "layers": [
+  {
+   "id": "L1",
+   "title": "L1 入门 · 一个 Job 的一生",
+   "desc": "RDD、宽窄依赖，Action → Job → Stage → Task 的拆分。",
+   "goal": "能在 IDEA 里断点跟踪 SparkPi，从 rdd.reduce() 跟到 Task 执行完、结果回到 Driver",
+   "weeks": "面试拆解 01 · 宽窄依赖 · L1 练习"
+  },
+  {
+   "id": "L2-1",
+   "title": "L2 Core · 调度",
+   "desc": "DAGScheduler、TaskScheduler、SchedulerBackend 三层分工，本地性和推测执行。",
+   "goal": "能说清楚 Stage 何时提交、Task 被分到哪个 Executor、失败后怎么办",
+   "weeks": "第 2 讲"
+  },
+  {
+   "id": "L2-2",
+   "title": "L2 Core · Shuffle",
+   "desc": "Map 端写、Reduce 端读，三种 Writer 的选择条件。",
+   "goal": "给定一个算子和分区数，能判断走哪种 Writer",
+   "weeks": "第 3 讲"
+  },
+  {
+   "id": "L2-3",
+   "title": "L2 Core · 内存",
+   "desc": "统一内存模型、借用规则、Task 之间怎么分内存。",
+   "goal": "给定 Executor 内存，能算出 Storage / Execution 各多少；遇到 OOM 知道调哪个参数",
+   "weeks": "第 4 讲"
+  },
+  {
+   "id": "L2-4",
+   "title": "L2 Core · 存储",
+   "desc": "一切皆块：BlockManager、存储级别、缓存和广播。",
+   "goal": "能说清楚 cache() 之后数据存在哪、怎么被读出来、什么时候被清理",
+   "weeks": "第 5 讲"
+  },
+  {
+   "id": "L2-5",
+   "title": "L2 Core · RPC 与部署",
+   "desc": "RPC 框架、Executor 的一生、动态资源分配。",
+   "goal": "能说清楚 spark-submit 之后 Driver 和 Executor 怎样建立联系",
+   "weeks": "第 6 讲"
+  },
+  {
+   "id": "L2-6",
+   "title": "L2 Core · 容错",
+   "desc": "Task 重试、Executor 丢失、非确定性 Stage、Checkpoint。",
+   "goal": "能说清楚每种故障由谁发现、重算哪一部分",
+   "weeks": "第 7 讲"
+  },
+  {
+   "id": "L3-1",
+   "title": "L3 SQL · Catalyst",
+   "desc": "解析、分析、优化、物理计划四个阶段，以及规则执行器。",
+   "goal": "能读懂 explain(\"extended\") 的四段输出",
+   "weeks": "第 8 讲"
+  },
+  {
+   "id": "L3-2",
+   "title": "L3 SQL · 代码生成",
+   "desc": "火山模型、全阶段代码生成、UnsafeRow、向量化读取。",
+   "goal": "能解释物理计划里的 *(n)，以及什么情况下会放弃代码生成",
+   "weeks": "第 9 讲"
+  },
+  {
+   "id": "L3-3",
+   "title": "L3 SQL · AQE",
+   "desc": "运行时用真实统计信息重新优化：合并分区、切换 Join、处理倾斜。",
+   "goal": "能指出 AQE 改了计划的哪一处、依据是什么",
+   "weeks": "第 10 讲 · 上"
+  },
+  {
+   "id": "L3-4",
+   "title": "L3 SQL · DataSource V2 与 Connect",
+   "desc": "外部数据源的接入接口和下推；客户端与 Driver 分离。",
+   "goal": "能说清楚 Paimon 这类数据源怎么接入 Spark，以及 Connect 和经典模式的本质区别",
+   "weeks": "第 10 讲 · 下"
+  },
+  {
+   "id": "L4",
+   "title": "L4 · 走向 Committer",
+   "desc": "用源码发现问题、按社区规范提 PR，长期在一个领域持续贡献。",
+   "goal": "第一个 PR 被合入，之后在一个领域持续贡献",
+   "weeks": "Committer 之路"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "rdd",
+   "label": "RDD",
+   "layer": "L1",
+   "group": "core",
+   "summary": "Spark Core 的数据抽象：一组分区，加上每个分区的计算函数和对父 RDD 的依赖。RDD 本身不存数据，只记录“怎么算”。",
+   "lessons": [
+    {
+     "title": "宽窄依赖",
+     "link": "/bigdata/spark/03-dependency#一、源码里的依赖-一共就这几种"
+    }
+   ],
+   "code": [
+    "RDD.getPartitions / compute / getDependencies"
+   ],
+   "core": true
+  },
+  {
+   "id": "transformation",
+   "label": "转换与 Action",
+   "layer": "L1",
+   "group": "core",
+   "summary": "Transformation（map、filter、reduceByKey……）是惰性的，只生成新的 RDD；Action（count、collect……）才会通过 SparkContext.runJob 提交 Job。",
+   "lessons": [
+    {
+     "title": "面试拆解 01：Job、Stage、Task",
+     "link": "/bigdata/spark/02-job-stage-task#一、先把基本关系讲清楚"
+    }
+   ]
+  },
+  {
+   "id": "lineage",
+   "label": "血缘（Lineage）",
+   "layer": "L1",
+   "group": "core",
+   "summary": "RDD 之间的依赖链。分区丢失时按血缘重算；血缘过长时可以用 Checkpoint 切断。",
+   "lessons": [
+    {
+     "title": "第 7 讲：容错机制 · Checkpoint 切断血缘",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_5-checkpoint-切断血缘"
+    }
+   ]
+  },
+  {
+   "id": "narrow",
+   "label": "窄依赖",
+   "layer": "L1",
+   "group": "core",
+   "summary": "父 RDD 的每个分区最多被子 RDD 的一个分区使用（OneToOneDependency、RangeDependency）。窄依赖不切 Stage，多个窄依赖可以在一个 Task 里流水线执行。",
+   "lessons": [
+    {
+     "title": "宽窄依赖",
+     "link": "/bigdata/spark/03-dependency#二、误区-1-窄依赖-一对一"
+    }
+   ],
+   "points": [
+    "窄依赖不等于“一对一”：union 产生的 RangeDependency 也是窄依赖"
+   ]
+  },
+  {
+   "id": "wide",
+   "label": "宽依赖",
+   "layer": "L1",
+   "group": "core",
+   "summary": "子 RDD 的一个分区依赖父 RDD 的多个分区，需要 Shuffle。DAGScheduler 在宽依赖处切开 Stage。",
+   "lessons": [
+    {
+     "title": "宽窄依赖",
+     "link": "/bigdata/spark/03-dependency#三、stage-到底在哪里切开-看源码"
+    },
+    {
+     "title": "宽窄依赖",
+     "link": "/bigdata/spark/03-dependency#四、误区-2-reducebykey、join-一定是宽依赖"
+    }
+   ],
+   "points": [
+    "reduceByKey、join 不一定产生宽依赖：如果上游已经按相同的分区器分好区，就不需要 Shuffle"
+   ],
+   "core": true
+  },
+  {
+   "id": "job",
+   "label": "Job",
+   "layer": "L1",
+   "group": "core",
+   "summary": "每个 Action 提交一个 Job。Job 由 DAGScheduler 从最后一个 RDD 往前回溯，按宽依赖切成若干 Stage。",
+   "lessons": [
+    {
+     "title": "面试拆解 01：Job、Stage、Task",
+     "link": "/bigdata/spark/02-job-stage-task#一、先把基本关系讲清楚"
+    }
+   ],
+   "code": [
+    "SparkContext.runJob()"
+   ],
+   "core": true
+  },
+  {
+   "id": "stage",
+   "label": "Stage",
+   "layer": "L1",
+   "group": "core",
+   "summary": "以宽依赖为边界划分的一组可以流水线执行的计算。最后一个是 ResultStage，其余是 ShuffleMapStage。已经算过的 ShuffleMapStage 会被跳过（skipped）。",
+   "lessons": [
+    {
+     "title": "面试拆解 01：Job、Stage、Task",
+     "link": "/bigdata/spark/02-job-stage-task#三、追问-stage-是从前往后切-还是从后往前切"
+    }
+   ],
+   "lab": "实验 02：对已经 reduceByKey 过的 RDD 再 count 一次，新 Job 规划了 2 个 Stage，实际只执行了 1 个，上游的 ShuffleMapStage 被跳过",
+   "core": true
+  },
+  {
+   "id": "task",
+   "label": "Task",
+   "layer": "L1",
+   "group": "core",
+   "summary": "Stage 的每个分区对应一个 Task，是调度和执行的最小单位：ShuffleMapStage 里是 ShuffleMapTask，ResultStage 里是 ResultTask。",
+   "lessons": [
+    {
+     "title": "面试拆解 01：Job、Stage、Task",
+     "link": "/bigdata/spark/02-job-stage-task#二、7-个实验-验证每一个结论"
+    }
+   ],
+   "core": true
+  },
+  {
+   "id": "driver-executor",
+   "label": "Driver/Executor",
+   "layer": "L1",
+   "group": "core",
+   "summary": "Driver 运行用户的 main 函数和全部调度逻辑；Executor 是执行 Task 的进程。一个 Job 的生命周期跨越 main 线程、dag-scheduler-event-loop 线程、RPC 线程和 Executor 的 Task 线程。",
+   "lessons": [
+    {
+     "title": "L1 练习：跟踪 SparkPi",
+     "link": "/bigdata/spark/l1-sparkpi#第-0-步-先看-标准答案-——-真实线程栈"
+    },
+    {
+     "title": "L1 练习：跟踪 SparkPi",
+     "link": "/bigdata/spark/l1-sparkpi#第-5-步-时序图-先自己画-再对照"
+    }
+   ]
+  },
+  {
+   "id": "sparkcontext",
+   "label": "SparkContext",
+   "layer": "L1",
+   "group": "core",
+   "summary": "Spark Core 的入口。初始化时创建 SparkEnv（RpcEnv、BlockManager 等）、DAGScheduler、TaskScheduler 和 SchedulerBackend。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_2-从-spark-submit-到-sparkcontext"
+    }
+   ]
+  },
+  {
+   "id": "dagscheduler",
+   "label": "DAGScheduler",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "逻辑调度：负责切分 Stage、管理 Stage 之间的依赖，以及 Stage 失败后的重算。所有事件都在单线程的 dag-scheduler-event-loop 里处理，内部状态因此不需要加锁。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_2-dagscheduler-逻辑调度"
+    }
+   ],
+   "points": [
+    "一句话分工：DAGScheduler 决定“跑什么”，TaskScheduler 决定“在哪跑、谁先跑”，SchedulerBackend 负责“送过去”"
+   ],
+   "code": [
+    "DAGScheduler.submitMissingTasks()",
+    "DAGSchedulerEventProcessLoop"
+   ],
+   "core": true
+  },
+  {
+   "id": "taskset",
+   "label": "TaskSetManager",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "一个 Stage 的一次尝试会生成一个 TaskSet，由一个 TaskSetManager 管理：负责数据本地性、失败重试和推测执行。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_3-taskscheduler-谁先跑"
+    }
+   ],
+   "code": [
+    "TaskSetManager"
+   ]
+  },
+  {
+   "id": "taskscheduler",
+   "label": "TaskScheduler",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "物理调度：通过 resourceOffers 把空闲的 CPU 核分配给 TaskSet，生成 TaskDescription。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_3-taskscheduler-谁先跑"
+    }
+   ],
+   "code": [
+    "TaskSchedulerImpl.resourceOffers()"
+   ],
+   "core": true
+  },
+  {
+   "id": "pool",
+   "label": "FIFO / FAIR",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "多个 Job 同时提交时，决定哪个 TaskSet 先拿到资源。默认是 FIFO；FAIR 会按调度池的权重和最小份额分配资源。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_3-taskscheduler-谁先跑"
+    }
+   ]
+  },
+  {
+   "id": "locality",
+   "label": "本地性与延迟调度",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "本地性有五个级别：PROCESS_LOCAL、NODE_LOCAL、NO_PREF、RACK_LOCAL、ANY。为了等到更好的本地性，调度器会先等待一段时间再降级，这就是延迟调度。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_4-数据本地性与延迟调度"
+    }
+   ],
+   "conf": [
+    "spark.locality.wait 默认 3s"
+   ]
+  },
+  {
+   "id": "backend",
+   "label": "SchedulerBackend",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "通信层：掌握有哪些 Executor、各有多少空闲的核，把 Task 发给 Executor，并接收 Task 的状态汇报。集群模式下是 CoarseGrainedSchedulerBackend。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_7-schedulerbackend-通信层"
+    }
+   ],
+   "code": [
+    "CoarseGrainedSchedulerBackend"
+   ]
+  },
+  {
+   "id": "speculation",
+   "label": "推测执行",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "给运行特别慢的 Task 再启动一个副本，谁先完成就用谁的结果。它解决的是“机器慢”的问题，解决不了数据倾斜。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_6-推测执行-speculation"
+    }
+   ],
+   "points": [
+    "默认关闭：spark.speculation=false",
+    "4.2.0 默认 quantile=0.9、multiplier=3（很多资料写的 0.75 / 1.5 是旧版本的值）"
+   ],
+   "code": [
+    "TaskSetManager.checkSpeculatableTasks()"
+   ]
+  },
+  {
+   "id": "exclude",
+   "label": "失败节点排除",
+   "layer": "L2-1",
+   "group": "sched",
+   "summary": "某个 Executor 或节点上反复失败的 Task，会让调度器暂时不再往那里分配 Task（Exclude On Failure）。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_5-失败与重试"
+    }
+   ]
+  },
+  {
+   "id": "shuffle",
+   "label": "Shuffle",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "按 key 把数据在 Executor 之间重新分布：Map 端写本地文件，Reduce 端跨网络拉取。它涉及磁盘、网络和序列化，是 Spark 中最昂贵的操作。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_1-shuffle-是什么-为什么贵"
+    }
+   ],
+   "core": true
+  },
+  {
+   "id": "hash-shuffle",
+   "label": "Hash Shuffle",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "每个 Map Task 为每个 Reduce 分区各写一个文件，文件数是 M × R，会产生海量小文件，已被 Sort Shuffle 取代。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_2-演进史-从-hash-到-sort"
+    }
+   ]
+  },
+  {
+   "id": "sort-shuffle",
+   "label": "Sort Shuffle",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "唯一的 Shuffle 实现。每个 Map Task 只输出一个数据文件和一个索引文件。注册 Shuffle 时（registerShuffle）就决定了用哪种 Writer。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_4-三种-writer-在什么条件下被选用"
+    }
+   ],
+   "conf": [
+    "spark.shuffle.manager 默认 sort"
+   ],
+   "code": [
+    "SortShuffleManager.registerShuffle()"
+   ],
+   "core": true
+  },
+  {
+   "id": "bypass-writer",
+   "label": "Bypass Writer",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "不需要 map 端预聚合、且分区数不超过 200 时使用：每个分区先写一个临时文件，最后拼接，不做排序。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_4-三种-writer-在什么条件下被选用"
+    }
+   ],
+   "conf": [
+    "spark.shuffle.sort.bypassMergeThreshold 默认 200，正好等于 spark.sql.shuffle.partitions 的默认值 200"
+   ],
+   "lab": "实验 04：groupByKey(3) 走 Bypass；SQL repartition(200) 走 Bypass，repartition(201) 就换成了 tungsten-sort"
+  },
+  {
+   "id": "unsafe-writer",
+   "label": "Unsafe Writer",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "排序时不移动数据本身，只排 8 字节的 PackedRecordPointer。条件：序列化器支持重定位、不需要 map 端预聚合、分区数 ≤ 2^24。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_4-三种-writer-在什么条件下被选用"
+    }
+   ]
+  },
+  {
+   "id": "sort-writer",
+   "label": "Sort Writer",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "通用路径：用 ExternalSorter 在内存里聚合、排序，内存不够时溢写到磁盘，最后合并成一个文件。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_4-三种-writer-在什么条件下被选用"
+    }
+   ]
+  },
+  {
+   "id": "packed-pointer",
+   "label": "8 字节记录指针",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "把 24 位分区号、13 位页号和 27 位页内偏移打包进一个 long。因此单页最多 2^27 字节 = 128 MB。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_8-彩蛋-你的第一个-pr-候选"
+    }
+   ],
+   "points": [
+    "它的类注释把 2^27 bytes 误写成了 2^27 bits，这是 X老师第一个 PR 修正的内容"
+   ],
+   "code": [
+    "PackedRecordPointer.packPointer()"
+   ]
+  },
+  {
+   "id": "shuffle-files",
+   "label": "数据文件 + 索引文件",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "每个 Map Task 输出一个 .data 文件（按分区顺序排列）和一个 .index 文件（各分区的偏移量）。Reduce 端根据索引只读自己那一段。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_3-map-端输出-数据文件-索引文件"
+    }
+   ]
+  },
+  {
+   "id": "shuffle-read",
+   "label": "Shuffle 读取",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "Reduce 端先问 MapOutputTracker 数据在哪，再由 ShuffleBlockFetcherIterator 拉取本地块和远程块，然后按需聚合、排序。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_5-reduce-端-数据怎么拉过来"
+    }
+   ],
+   "conf": [
+    "spark.reducer.maxSizeInFlight 默认 48m"
+   ],
+   "code": [
+    "ShuffleBlockFetcherIterator",
+    "MapOutputTracker"
+   ]
+  },
+  {
+   "id": "ess",
+   "label": "外部 Shuffle 服务",
+   "layer": "L2-2",
+   "group": "shuffle",
+   "summary": "由节点上独立的服务提供 Shuffle 文件，Executor 退出后文件仍然可读。Push-based Shuffle 则是在 Map 端主动把数据推送到远端合并。",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_6-外部-shuffle-服务与-push-based-shuffle"
+    }
+   ],
+   "conf": [
+    "spark.shuffle.service.enabled 默认 false",
+    "spark.shuffle.push.enabled 默认 false"
+   ]
+  },
+  {
+   "id": "unified-memory",
+   "label": "统一内存模型",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "堆内存先扣除 300MB 预留，剩下的 60% 是统一内存，由 Storage 和 Execution 共享，初始各占一半。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_2-堆内存怎么划分-统一内存模型"
+    }
+   ],
+   "points": [
+    "统一内存 = (堆 − 300MB) × spark.memory.fraction(0.6)",
+    "堆内存至少要 450MB，否则直接报错"
+   ],
+   "conf": [
+    "spark.memory.storageFraction 默认 0.5"
+   ],
+   "code": [
+    "UnifiedMemoryManager.getMaxMemory()"
+   ],
+   "core": true
+  },
+  {
+   "id": "static-memory",
+   "label": "静态内存模型",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "早期的静态内存模型，Storage 和 Execution 各自固定大小、不能互借。Spark 3.0 中被移除。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_2-堆内存怎么划分-统一内存模型"
+    }
+   ]
+  },
+  {
+   "id": "borrow",
+   "label": "不对称的借用规则",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "Storage 只能借 Execution 空闲的内存；Execution 可以驱逐缓存块，把借出去的收回来，但最多只收回到 Storage 区域的边界。原因是：缓存丢了可以重算，计算用的内存被拿走 Task 就会失败。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_3-storage-和-execution-怎么互相借-不对称的借用规则"
+    }
+   ],
+   "code": [
+    "UnifiedMemoryManager.acquireStorageMemory()",
+    "UnifiedMemoryManager.maybeGrowExecutionPool"
+   ],
+   "lab": "实验 05：1g 堆下统一内存 434.4 MB，Storage 区域 217.2 MB"
+  },
+  {
+   "id": "exec-pool",
+   "label": "Task 间分内存",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "一个 Executor 上 N 个活跃 Task 共享 Execution 池：每个 Task 至少能拿到 1/2N（拿不到就等待），最多只能拿 1/N（超过就溢写）。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_4-多个-task-怎么分-execution-内存-1-2n-到-1-n"
+    }
+   ],
+   "points": [
+    "推论：Executor 的核数越多，每个 Task 能用的内存越少"
+   ],
+   "code": [
+    "ExecutionMemoryPool"
+   ]
+  },
+  {
+   "id": "task-memory",
+   "label": "Task 内存与溢写",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "每个 Task 独有一个 TaskMemoryManager，用来协调 ExternalSorter 等 MemoryConsumer。内存不够时，让占用最多的消费者溢写（spill）到磁盘。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_5-task-内部-taskmemorymanager-和-memoryconsumer"
+    }
+   ],
+   "code": [
+    "TaskMemoryManager",
+    "MemoryConsumer.spill()"
+   ]
+  },
+  {
+   "id": "memory-store",
+   "label": "MemoryStore",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "Storage 内存里的缓存块按 LRU 淘汰。缓存块是边展开边申请内存的（unroll），放不下就缓存失败或落盘。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_6-storage-内部-memorystore-与-lru-淘汰"
+    }
+   ]
+  },
+  {
+   "id": "offheap",
+   "label": "堆外内存",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "Tungsten 用“页号 + 页内偏移”统一编码堆内和堆外地址。开启堆外内存可以减少 GC 压力。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_7-堆外内存与-tungsten"
+    }
+   ],
+   "conf": [
+    "spark.memory.offHeap.enabled 默认 false"
+   ]
+  },
+  {
+   "id": "overhead",
+   "label": "容器内存",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "容器向资源管理器申请的内存 = 堆内存 + overhead（+ 堆外内存等）。overhead 用于 JVM 自身、直接内存等堆外开销。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_1-从容器视角看-一个-executor-占多少内存"
+    },
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_9-oom-排查地图"
+    }
+   ],
+   "points": [
+    "overhead = max(堆 × 0.1, 384m)"
+   ]
+  },
+  {
+   "id": "unmanaged-memory",
+   "label": "非托管内存",
+   "layer": "L2-3",
+   "group": "memory",
+   "summary": "把 RocksDB 等原生库使用的、Spark 内存管理器看不到的内存纳入统计（SPARK-53001）。",
+   "lessons": [
+    {
+     "title": "第 4 讲：内存管理",
+     "link": "/bigdata/spark/lecture-04-memory#_8-新机制-非托管内存-4-1"
+    }
+   ],
+   "conf": [
+    "spark.memory.unmanagedMemoryPollingInterval 默认 0s，即不开启"
+   ]
+  },
+  {
+   "id": "block",
+   "label": "Block",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "缓存的 RDD 分区、Shuffle 文件、广播变量、过大的 Task 结果，统统是“块”，由同一套存储体系管理。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_1-一切皆块-block"
+    }
+   ],
+   "code": [
+    "BlockId"
+   ]
+  },
+  {
+   "id": "block-manager",
+   "label": "BlockManager",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "每个 Driver 和 Executor 上都有一个 BlockManager，负责块的本地读写和远程拉取；Driver 上的 BlockManagerMaster 记录每个块在哪里。BlockInfoManager 为块提供读写锁。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_2-架构-master-slave-结构"
+    }
+   ],
+   "code": [
+    "BlockManager",
+    "BlockManagerMaster",
+    "BlockInfoManager"
+   ],
+   "core": true
+  },
+  {
+   "id": "disk-store",
+   "label": "磁盘块目录",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "块文件按文件名哈希分散到 spark.local.dir 下的多个子目录里。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_2-架构-master-slave-结构"
+    }
+   ],
+   "conf": [
+    "spark.diskStore.subDirectories 默认 64",
+    "spark.local.dir 在 YARN 上会被忽略，改用 YARN 配置的本地目录"
+   ]
+  },
+  {
+   "id": "storage-level",
+   "label": "存储级别",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "由五个维度组合而成：磁盘、内存、堆外、是否反序列化、副本数。RDD.cache() 默认 MEMORY_ONLY；Dataset.cache() 默认 MEMORY_AND_DISK。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_4-存储级别"
+    }
+   ],
+   "conf": [
+    "spark.sql.defaultCacheStorageLevel 默认 MEMORY_AND_DISK（4.0 新增）"
+   ],
+   "lab": "实验 06：RDD.cache() 是 MEMORY_ONLY，Dataset.cache() 是 MEMORY_AND_DISK"
+  },
+  {
+   "id": "cache",
+   "label": "cache / persist",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "第一次计算时把分区存成块，之后先查缓存，命中就直接读。缓存会保留血缘，丢了可以重算。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_3-一个缓存块的一生-从-cache-到读取"
+    }
+   ],
+   "points": [
+    "缓存可见性追踪（3.5+）：spark.rdd.cache.visibilityTracking.enabled 默认 false"
+   ]
+  },
+  {
+   "id": "broadcast",
+   "label": "Torrent 广播",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "广播变量被切成多块，Executor 按随机顺序逐块拉取，拉到的块自己也成为数据源，像 BitTorrent 一样分摊 Driver 的压力。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_5-广播变量-torrentbroadcast"
+    }
+   ],
+   "points": [
+    "HttpBroadcast 在 Spark 2.0 中被移除"
+   ],
+   "conf": [
+    "spark.broadcast.blockSize 默认 4m"
+   ],
+   "code": [
+    "TorrentBroadcast.writeBlocks() / readBlocks()"
+   ],
+   "lab": "实验 06：10MB 随机字节按 4m 分块，被切成 3 块"
+  },
+  {
+   "id": "cleaner",
+   "label": "ContextCleaner",
+   "layer": "L2-4",
+   "group": "storage",
+   "summary": "RDD、Shuffle、广播变量在 Driver 端不再被引用（被 GC 回收）后，异步清理对应的块和文件。",
+   "lessons": [
+    {
+     "title": "第 5 讲：存储体系",
+     "link": "/bigdata/spark/lecture-05-storage#_6-清理-什么时候删除这些块"
+    }
+   ],
+   "conf": [
+    "spark.cleaner.periodicGC.interval 默认 30min"
+   ],
+   "code": [
+    "ContextCleaner"
+   ]
+  },
+  {
+   "id": "rpc-env",
+   "label": "RpcEnv",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "Spark 自研的 RPC 框架，基于 Netty，取代了早期的 Akka。负责网络通信，以及注册和查找端点。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_1-spark-的-rpc-框架"
+    }
+   ],
+   "code": [
+    "NettyRpcEnv"
+   ],
+   "core": true
+  },
+  {
+   "id": "rpc-endpoint",
+   "label": "RpcEndpoint",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "端点用 receive 处理 send 发来的单向消息，用 receiveAndReply 处理 ask 发来的请求；Dispatcher 把消息分发到各端点的收件箱（Inbox）。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_1-spark-的-rpc-框架"
+    }
+   ],
+   "code": [
+    "RpcEndpoint.receive / receiveAndReply",
+    "RpcEndpointRef.send / ask",
+    "Dispatcher"
+   ]
+  },
+  {
+   "id": "spark-submit",
+   "label": "spark-submit",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "spark-submit 准备好参数和 classpath 后启动主类。client 模式下 Driver 跑在提交的机器上；cluster 模式下 Driver 跑在集群里。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_2-从-spark-submit-到-sparkcontext"
+    }
+   ]
+  },
+  {
+   "id": "cluster-manager",
+   "label": "集群管理器",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "Standalone、YARN、Kubernetes。Mesos 支持在 4.0 中被移除。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_2-从-spark-submit-到-sparkcontext"
+    }
+   ]
+  },
+  {
+   "id": "executor-life",
+   "label": "Executor 注册",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "CoarseGrainedExecutorBackend 进程启动后，向 Driver 注册，注册成功后才创建 Executor，开始接收 Task。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_3-executor-的一生"
+    }
+   ],
+   "code": [
+    "CoarseGrainedExecutorBackend"
+   ]
+  },
+  {
+   "id": "heartbeat",
+   "label": "心跳",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "Executor 定期向 Driver 的 HeartbeatReceiver 发送心跳，同时汇报 Task 的度量信息。超时未收到心跳，Driver 就认为这个 Executor 丢失了。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_3-executor-的一生"
+    }
+   ],
+   "conf": [
+    "spark.executor.heartbeatInterval 默认 10s",
+    "spark.network.timeout 默认 120s"
+   ],
+   "code": [
+    "HeartbeatReceiver"
+   ]
+  },
+  {
+   "id": "dynamic-allocation",
+   "label": "动态资源分配",
+   "layer": "L2-5",
+   "group": "rpc",
+   "summary": "Task 有积压时按 1、2、4、8 翻倍申请 Executor；Executor 空闲超时后释放。前提是 Executor 被释放后，它上面的 Shuffle 数据仍然可用。",
+   "lessons": [
+    {
+     "title": "第 6 讲：RPC 与部署",
+     "link": "/bigdata/spark/lecture-06-rpc-deploy#_4-动态资源分配"
+    }
+   ],
+   "conf": [
+    "spark.dynamicAllocation.enabled 默认 false",
+    "executorIdleTimeout 默认 60s",
+    "shuffleTracking.enabled 默认 true",
+    "maxExecutors 默认不限，生产环境一定要设"
+   ],
+   "code": [
+    "ExecutorAllocationManager"
+   ]
+  },
+  {
+   "id": "task-retry",
+   "label": "Task 重试",
+   "layer": "L2-6",
+   "group": "fault",
+   "summary": "一个 Task 最多失败 spark.task.maxFailures 次，超过后整个 Job 失败。失败尝试中的累加器更新会被丢弃。",
+   "lessons": [
+    {
+     "title": "第 7 讲：容错机制",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_2-task-级别-重试"
+    }
+   ],
+   "conf": [
+    "spark.task.maxFailures 默认 4；local[N] 模式下固定为 1"
+   ]
+  },
+  {
+   "id": "fetch-failed",
+   "label": "FetchFailed",
+   "layer": "L2-6",
+   "group": "fault",
+   "summary": "下游读不到上游的 Shuffle 输出时，不是重试这个 Task，而是由 DAGScheduler 注销丢失的输出，重新提交上游 Stage，只重算丢失的分区。",
+   "lessons": [
+    {
+     "title": "第 2 讲：调度体系",
+     "link": "/bigdata/spark/lecture-02-scheduling#_5-失败与重试"
+    },
+    {
+     "title": "第 7 讲：容错机制",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_3-executor-丢失-shuffle-输出怎么办"
+    }
+   ],
+   "conf": [
+    "spark.stage.maxConsecutiveAttempts 默认 4"
+   ],
+   "core": true
+  },
+  {
+   "id": "executor-lost",
+   "label": "Executor 丢失",
+   "layer": "L2-6",
+   "group": "fault",
+   "summary": "只有丢失的 Executor 上还有正在运行的 Task 时，才会立即通知 DAGScheduler；如果它是空闲的，要等下游读 Shuffle 时报 FetchFailed 才会被发现。两条路径最终都只重算丢失的部分。",
+   "lessons": [
+    {
+     "title": "第 7 讲：容错机制",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_3-executor-丢失-shuffle-输出怎么办"
+    }
+   ],
+   "code": [
+    "TaskSchedulerImpl.executorLost()",
+    "DAGScheduler.handleExecutorLost()"
+   ],
+   "lab": "实验 08：杀掉一个空闲的 Executor，Driver 没有立即发现，下一次读取时才报 FetchFailed"
+  },
+  {
+   "id": "indeterminate",
+   "label": "非确定性 Stage 回滚",
+   "layer": "L2-6",
+   "group": "fault",
+   "summary": "上游输出不确定（比如 repartition）时，上游重算后，下游 Stage 必须全部重跑；如果 ResultStage 已有部分完成，无法回滚，Job 直接失败。",
+   "lessons": [
+    {
+     "title": "第 7 讲：容错机制",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_4-非确定性-stage-一个隐蔽的正确性问题"
+    }
+   ],
+   "conf": [
+    "spark.sql.execution.sortBeforeRepartition 默认 true：SQL 的 repartition 前先局部排序，让输出确定"
+   ],
+   "code": [
+    "DAGScheduler.rollbackSucceedingStages()",
+    "RDD.outputDeterministicLevel"
+   ]
+  },
+  {
+   "id": "checkpoint",
+   "label": "Checkpoint",
+   "layer": "L2-6",
+   "group": "fault",
+   "summary": "把 RDD 写到可靠存储并切断血缘。RDD 的 checkpoint 会在 Action 结束后额外提交一个 Job 来写数据，所以要先 cache，否则会重算一遍。",
+   "lessons": [
+    {
+     "title": "第 7 讲：容错机制",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_5-checkpoint-切断血缘"
+    }
+   ],
+   "points": [
+    "localCheckpoint 存在 Executor 本地，Executor 丢失后无法恢复",
+    "Dataset.checkpoint() 默认立即执行（eager = true）"
+   ],
+   "code": [
+    "RDD.checkpoint() / localCheckpoint()",
+    "ReliableCheckpointRDD"
+   ],
+   "lab": "实验 08：50 次 map 的血缘从 52 层变成 2 层，一次 count() 触发了 2 个 Job",
+   "core": true
+  },
+  {
+   "id": "driver-ft",
+   "label": "Driver 容错",
+   "layer": "L2-6",
+   "group": "fault",
+   "summary": "Driver 挂掉，整个应用就失败了。只能靠集群管理器重新启动应用，例如 YARN 的 maxAppAttempts，或 Standalone cluster 模式的 supervise。",
+   "lessons": [
+    {
+     "title": "第 7 讲：容错机制",
+     "link": "/bigdata/spark/lecture-07-fault-tolerance#_6-driver-容错"
+    }
+   ]
+  },
+  {
+   "id": "spark-sql",
+   "label": "Spark SQL",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "声明式 API：用户只描述要什么，由 Catalyst 决定怎么算。最终仍然会变成 RDD[InternalRow] 执行。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_1-为什么需要-spark-sql"
+    }
+   ]
+  },
+  {
+   "id": "query-execution",
+   "label": "QueryExecution",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "串起 SQL 执行的各个阶段：analyzed → optimizedPlan → sparkPlan → executedPlan → toRdd。每个阶段都是惰性计算的。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_2-全景-一条-sql-的旅程"
+    }
+   ],
+   "points": [
+    "4.0 起用 LazyTry 取代 lazy val：缓存异常、不重复执行，也不会锁住整个外层对象"
+   ],
+   "code": [
+    "QueryExecution",
+    "LazyTry"
+   ],
+   "core": true
+  },
+  {
+   "id": "tree-rule",
+   "label": "树与规则",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "逻辑计划、物理计划、表达式都是树；优化就是用规则（Rule）改写树。RuleExecutor 按批次执行规则，每批是 Once 或 FixedPoint（反复执行直到计划不再变化）。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_3-catalyst-的地基-树和规则"
+    }
+   ],
+   "code": [
+    "TreeNode",
+    "RuleExecutor"
+   ],
+   "lab": "实验 09：242 条规则被调用，只有 8 条真正改变了计划"
+  },
+  {
+   "id": "parser",
+   "label": "解析（Parsing）",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "由 ANTLR 4 生成的解析器把 SQL 文本解析成语法树，再由 AstBuilder 构造成未解析的逻辑计划。DataFrame API 跳过这一步。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "points": [
+    "4.0 引入 SQL 管道语法：FROM t |> WHERE … |> SELECT …"
+   ],
+   "code": [
+    "AstBuilder",
+    "SqlBaseParser.g4"
+   ]
+  },
+  {
+   "id": "analyzer",
+   "label": "分析（Analyzer）",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "通过 Catalog 绑定表、列、函数，检查类型；最后由 CheckAnalysis 报出列不存在、类型不匹配等错误。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "points": [
+    "4.2.0 中共 19 个批次，核心是 Resolution 批次（FixedPoint）"
+   ],
+   "code": [
+    "Analyzer",
+    "CheckAnalysis"
+   ]
+  },
+  {
+   "id": "single-pass",
+   "label": "单遍分析器",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "新的分析器，一次后序遍历就完成解析，不再靠 FixedPoint 反复执行规则。目前仍在开发中，代码新、改动多，适合关注和参与。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "conf": [
+    "spark.sql.analyzer.singlePassResolver.enabled：内部配置，默认 false"
+   ],
+   "code": [
+    "catalyst/analysis/resolver/"
+   ]
+  },
+  {
+   "id": "optimizer",
+   "label": "优化（Optimizer）",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "一批批基于规则的改写：谓词下推、列裁剪、常量折叠、合并算子、约束推导、子查询改写等。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "points": [
+    "调试：spark.sql.planChangeLog.level=WARN 可以打印每条规则对计划的改动"
+   ],
+   "code": [
+    "Optimizer",
+    "SparkOptimizer"
+   ],
+   "core": true
+  },
+  {
+   "id": "planner",
+   "label": "物理计划",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "一组策略（Strategy）把逻辑算子翻译成物理算子。目前只取第一个候选计划，不按代价比较。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "code": [
+    "SparkPlanner",
+    "QueryExecution.createSparkPlan()"
+   ],
+   "core": true
+  },
+  {
+   "id": "join-selection",
+   "label": "JoinSelection",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "用启发式规则选择 Join 的物理实现：一侧小于广播阈值就用 BroadcastHashJoin，否则通常用 SortMergeJoin。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "conf": [
+    "spark.sql.autoBroadcastJoinThreshold 默认 10MB"
+   ],
+   "code": [
+    "JoinSelection"
+   ]
+  },
+  {
+   "id": "ensure-requirements",
+   "label": "插入 Exchange",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "准备规则之一：检查每个算子对输入分区和排序的要求，不满足就插入 Exchange（Shuffle）或 Sort。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_5-四个阶段详解"
+    }
+   ],
+   "code": [
+    "EnsureRequirements"
+   ]
+  },
+  {
+   "id": "explain",
+   "label": "读懂 explain",
+   "layer": "L3-1",
+   "group": "catalyst",
+   "summary": "explain 可以输出四个阶段的计划；物理计划里的 *(n) 表示全阶段代码生成的阶段，Exchange 表示一次 Shuffle。",
+   "lessons": [
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_6-怎么读-explain"
+    }
+   ]
+  },
+  {
+   "id": "volcano",
+   "label": "火山模型",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "每个算子实现 next()，每处理一行都要逐层进行虚函数调用，CPU 时间大量花在调用开销上。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_2-火山模型-每一行都要层层调用"
+    }
+   ]
+  },
+  {
+   "id": "wscg",
+   "label": "全阶段代码生成",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "把一个 Stage 里能融合的算子生成为一个 Java 方法里的循环，消除虚函数调用，中间结果留在 CPU 寄存器里。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_3-全阶段代码生成-whole-stage-codegen"
+    }
+   ],
+   "conf": [
+    "spark.sql.codegen.wholeStage 默认 true"
+   ],
+   "code": [
+    "WholeStageCodegenExec",
+    "CollapseCodegenStages"
+   ],
+   "lab": "实验 10（3 亿行，单线程）：全阶段代码生成 347ms，关闭后 5943ms，纯解释执行 25999ms，差 17 倍和 75 倍",
+   "core": true
+  },
+  {
+   "id": "produce-consume",
+   "label": "produce / consume",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "生成代码的方式：从上往下调用 produce，再从下往上调用 consume，把各个算子的代码片段拼成一个循环。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_3-全阶段代码生成-whole-stage-codegen"
+    }
+   ],
+   "code": [
+    "CodegenSupport.produce() / consume()"
+   ]
+  },
+  {
+   "id": "janino",
+   "label": "Janino 编译",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "生成的 Java 源码在运行时由 Janino 编译成字节码，编译结果会被缓存。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_3-全阶段代码生成-whole-stage-codegen"
+    }
+   ],
+   "conf": [
+    "spark.sql.codegen.cache.maxEntries 默认 100"
+   ],
+   "code": [
+    "CodeGenerator"
+   ]
+  },
+  {
+   "id": "codegen-fallback",
+   "label": "放弃代码生成",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "输出字段过多、生成的方法过大或编译失败时，回退为普通执行。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_4-什么时候放弃代码生成"
+    }
+   ],
+   "conf": [
+    "spark.sql.codegen.maxFields 默认 100",
+    "hugeMethodLimit 默认 65535；但 HotSpot 不会 JIT 编译超过 8000 字节的方法，可以考虑设为 8000"
+   ],
+   "lab": "实验 10：50 列时有 *，120 列时 * 消失"
+  },
+  {
+   "id": "unsafe-row",
+   "label": "UnsafeRow",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "行的二进制格式：null 位图 + 每个字段 8 字节的定长区 + 变长区。可以按位置直接访问字段，排序、哈希、Shuffle 都直接作用在字节上。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_5-unsaferow-行的二进制格式"
+    }
+   ],
+   "code": [
+    "UnsafeRow"
+   ],
+   "lab": "实验 10：(7, 100L, \"spark\") 占 40 字节，字符串存为“偏移 32、长度 5”",
+   "core": true
+  },
+  {
+   "id": "vectorized",
+   "label": "向量化读取",
+   "layer": "L3-2",
+   "group": "codegen",
+   "summary": "读 Parquet、ORC 时一次解码一批（ColumnarBatch），再由 ColumnarToRow 转成行，交给后续按行处理的算子。",
+   "lessons": [
+    {
+     "title": "第 9 讲：代码生成与 Tungsten",
+     "link": "/bigdata/spark/lecture-09-codegen#_6-向量化执行-一次处理一批"
+    }
+   ],
+   "conf": [
+    "spark.sql.parquet.columnarReaderBatchSize 默认 4096"
+   ],
+   "code": [
+    "VectorizedParquetRecordReader",
+    "ColumnarBatch",
+    "ColumnarToRowExec"
+   ]
+  },
+  {
+   "id": "aqe",
+   "label": "AQE",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "把物理计划包进 AdaptiveSparkPlanExec，先执行 Shuffle 和广播这些查询阶段，用真实的统计信息重新优化剩下的计划。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_3-工作原理"
+    }
+   ],
+   "points": [
+    "Spark 3.0 引入，3.2 起默认开启：spark.sql.adaptive.enabled 默认 true"
+   ],
+   "code": [
+    "AdaptiveSparkPlanExec",
+    "ShuffleQueryStageExec"
+   ],
+   "core": true
+  },
+  {
+   "id": "reoptimize",
+   "label": "重新优化",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "每批查询阶段完成后调用 reOptimize，重新生成计划；SimpleCostEvaluator 以 Shuffle 的个数作为代价，新计划更好才会采用。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_3-工作原理"
+    }
+   ],
+   "code": [
+    "AdaptiveSparkPlanExec.reOptimize()",
+    "SimpleCostEvaluator"
+   ]
+  },
+  {
+   "id": "coalesce",
+   "label": "合并 Shuffle 分区",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "200 个 Shuffle 分区加起来也很小时，把它们合并成少数几个，减少空 Task。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_4-1-合并-shuffle-分区"
+    }
+   ],
+   "conf": [
+    "parallelismFirst 默认 true，即优先保证并行度；繁忙集群建议设为 false",
+    "advisoryPartitionSizeInBytes 默认 64MB"
+   ],
+   "code": [
+    "CoalesceShufflePartitions"
+   ],
+   "lab": "实验 11：200 个分区被合并成 1 个，下游 Task 数从 200 变成 1"
+  },
+  {
+   "id": "switch-join",
+   "label": "动态切换 Join 策略",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "SortMergeJoin 换成 BroadcastHashJoin，靠的是重新优化：小表一侧的查询阶段报告了真实大小，普通的 JoinSelection 重新选择了广播。这不是 DynamicJoinSelection 做的。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_4-2-动态切换-join-策略"
+    }
+   ],
+   "lab": "实验 11：初始计划 SortMergeJoin，执行后变成 BroadcastHashJoin"
+  },
+  {
+   "id": "dynamic-join-selection",
+   "label": "Join 提示规则",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "只负责添加 Join 提示：空分区很多就避免广播；每个分区都很小就倾向 Shuffle Hash Join。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_4-2-动态切换-join-策略"
+    }
+   ],
+   "code": [
+    "DynamicJoinSelection"
+   ]
+  },
+  {
+   "id": "skew-join",
+   "label": "倾斜 Join 优化",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "把倾斜的分区拆成多份，每份和另一侧对应分区的完整数据做 Join。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_4-3-处理倾斜-join"
+    }
+   ],
+   "points": [
+    "倾斜阈值 = max(256MB, 中位数 × 5)",
+    "advisoryPartitionSizeInBytes 不参与是否倾斜的判定，只决定拆成多大的块"
+   ],
+   "code": [
+    "OptimizeSkewedJoin"
+   ],
+   "lab": "实验 11：倾斜分区被拆成 4 份，Join 阶段的 Task 从 20 个变成 23 个"
+  },
+  {
+   "id": "local-read",
+   "label": "本地读 Shuffle",
+   "layer": "L3-3",
+   "group": "aqe",
+   "summary": "切换成广播后，大表一侧的 Shuffle 往往已经执行完了，下游直接读本地的 Shuffle 输出，尽量挽回已经付出的代价。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_4-2-动态切换-join-策略"
+    }
+   ],
+   "code": [
+    "OptimizeShuffleWithLocalRead"
+   ]
+  },
+  {
+   "id": "dsv1",
+   "label": "DataSource V1",
+   "layer": "L3-4",
+   "group": "dsv2",
+   "summary": "旧的数据源 API：能下推的只有列裁剪和简单过滤，没有 Catalog 概念，也没有统一的写入语义。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_6-为什么要-v2"
+    }
+   ],
+   "points": [
+    "4.2.0 中内置的 parquet、orc、csv、json 等文件源默认仍走 V1（spark.sql.sources.useV1SourceList）"
+   ]
+  },
+  {
+   "id": "dsv2-catalog",
+   "label": "Catalog 插件",
+   "layer": "L3-4",
+   "group": "dsv2",
+   "summary": "CatalogPlugin、TableCatalog（3.0）让外部系统像数据库一样管理库和表。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_7-1-catalog-管理-库、表"
+    }
+   ],
+   "code": [
+    "CatalogPlugin",
+    "TableCatalog"
+   ]
+  },
+  {
+   "id": "scan-builder",
+   "label": "V2 读取链路",
+   "layer": "L3-4",
+   "group": "dsv2",
+   "summary": "ScanBuilder 接受下推，构建 Scan；Scan 产出 Batch，Batch 规划出 InputPartition，最后在 Executor 上由 PartitionReader 读取数据。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_7-2-读-从-scanbuilder-到-partitionreader"
+    }
+   ],
+   "code": [
+    "ScanBuilder",
+    "Scan",
+    "Batch",
+    "PartitionReader"
+   ],
+   "core": true
+  },
+  {
+   "id": "pushdown",
+   "label": "下推接口",
+   "layer": "L3-4",
+   "group": "dsv2",
+   "summary": "SupportsPushDown* 系列接口：列裁剪、过滤、聚合、Limit、TopN、采样……让数据源尽可能多地承担计算。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_7-2-读-从-scanbuilder-到-partitionreader"
+    },
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_9-实验-d-v1-和-v2-的差别"
+    }
+   ],
+   "points": [
+    "4.1 新增 Join 下推和 Variant 字段提取下推"
+   ],
+   "code": [
+    "SupportsPushDownFilters",
+    "SupportsPushDownAggregates",
+    "SupportsPushDownJoin"
+   ],
+   "lab": "实验 11：V2 的 BatchScan 显示 PushedAggregation: [MAX(id), MIN(id), COUNT(*)]"
+  },
+  {
+   "id": "paimon-case",
+   "label": "Paimon 接入案例",
+   "layer": "L3-4",
+   "group": "dsv2",
+   "summary": "Paimon 通过 Catalog、ScanBuilder 和下推接口接入 Spark，是理解 DSv2 的好例子。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_8-真实案例-paimon-是怎么接入的"
+    }
+   ]
+  },
+  {
+   "id": "connect",
+   "label": "Spark Connect",
+   "layer": "L3-4",
+   "group": "connect",
+   "summary": "客户端和 Driver 分离，中间用 gRPC + protobuf 通信。客户端是一个很薄的库，只负责构造未解析的计划和接收 Arrow 格式的结果。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_10-为什么需要-spark-connect"
+    },
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_11-架构"
+    }
+   ],
+   "points": [
+    "3.4.0 引入，默认端口 15002"
+   ],
+   "code": [
+    "SparkConnectService"
+   ],
+   "core": true
+  },
+  {
+   "id": "connect-plan",
+   "label": "protobuf 计划",
+   "layer": "L3-4",
+   "group": "connect",
+   "summary": "客户端发出的计划里，过滤条件可能还只是一个字符串；服务端的 SparkConnectPlanner 把它转换成 Catalyst 逻辑计划。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_12-实验-e-亲手跑一次"
+    }
+   ],
+   "code": [
+    "SparkConnectPlanner"
+   ]
+  },
+  {
+   "id": "api-mode",
+   "label": "spark.api.mode",
+   "layer": "L3-4",
+   "group": "connect",
+   "summary": "4.0 新增，取值 classic 或 connect。经典应用设为 connect 后，会自动在本地启动一个 Connect 服务，改用 Connect API 运行。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_10-为什么需要-spark-connect"
+    }
+   ]
+  },
+  {
+   "id": "no-sparkcontext",
+   "label": "无 SparkContext",
+   "layer": "L3-4",
+   "group": "connect",
+   "summary": "Connect 客户端会话访问 sparkContext 会报 UNSUPPORTED_CONNECT_FEATURE。依赖 RDD API 的老代码不能直接迁移到 Connect。",
+   "lessons": [
+    {
+     "title": "第 10 讲：AQE、DSv2 与 Spark Connect",
+     "link": "/bigdata/spark/lecture-10-aqe-dsv2#_12-实验-e-亲手跑一次"
+    }
+   ],
+   "lab": "实验 11：在 Connect 会话上访问 sparkContext 报 UNSUPPORTED_CONNECT_FEATURE"
+  },
+  {
+   "id": "find-pr",
+   "label": "从源码里找 PR",
+   "layer": "L4",
+   "group": "community",
+   "summary": "认真读源码一定会发现可以改进的地方：注释错误、文档过时、报错信息不清楚、测试覆盖不足……",
+   "lessons": [
+    {
+     "title": "第 3 讲：Shuffle 原理",
+     "link": "/bigdata/spark/lecture-03-shuffle#_8-彩蛋-你的第一个-pr-候选"
+    },
+    {
+     "title": "第 8 讲：Spark SQL 与 Catalyst",
+     "link": "/bigdata/spark/lecture-08-catalyst#_7-和贡献的关系"
+    }
+   ]
+  },
+  {
+   "id": "contrib-flow",
+   "label": "贡献流程",
+   "layer": "L4",
+   "group": "community",
+   "summary": "用源码验证 → 确认最新 master 仍存在 → 查重（GitHub + JIRA）→ 读贡献指南 → 基于 master 修改 → fork 并启用 Actions → 按模板写 PR，并如实声明 AI 使用。",
+   "lessons": [
+    {
+     "title": "学习路线",
+     "link": "/bigdata/spark/roadmap#社区-第一批-pr-本阶段关键里程碑"
+    }
+   ],
+   "points": [
+    "小改动不需要建 JIRA，PR 标题用 [MINOR] 开头",
+    "Spark 的 CI 跑在你自己 fork 的仓库里，fork 的 Actions 默认关闭"
+   ],
+   "core": true
+  },
+  {
+   "id": "committer",
+   "label": "成为 Committer",
+   "layer": "L4",
+   "group": "community",
+   "summary": "Committer 看重的是长期、持续、高质量的贡献和社区信誉：在一个领域持续贡献、参与 Review、答疑和设计讨论。",
+   "lessons": [
+    {
+     "title": "学习路线",
+     "link": "/bigdata/spark/roadmap#l4-专家-→-committer-12-个月"
+    },
+    {
+     "title": "学习路线",
+     "link": "/bigdata/spark/roadmap#committer-是怎么产生的"
+    }
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "from": "rdd",
+   "to": "lineage",
+   "type": "causes",
+   "label": "依赖构成血缘"
+  },
+  {
+   "from": "narrow",
+   "to": "rdd",
+   "type": "part",
+   "label": "依赖类型之一"
+  },
+  {
+   "from": "wide",
+   "to": "rdd",
+   "type": "part",
+   "label": "依赖类型之一"
+  },
+  {
+   "from": "narrow",
+   "to": "wide",
+   "type": "contrast",
+   "label": "是否需要 Shuffle"
+  },
+  {
+   "from": "transformation",
+   "to": "job",
+   "type": "causes",
+   "label": "Action 提交 Job"
+  },
+  {
+   "from": "stage",
+   "to": "job",
+   "type": "part",
+   "label": "Job 切成多个 Stage"
+  },
+  {
+   "from": "task",
+   "to": "stage",
+   "type": "part",
+   "label": "每个分区一个 Task"
+  },
+  {
+   "from": "wide",
+   "to": "stage",
+   "type": "causes",
+   "label": "在宽依赖处切开 Stage"
+  },
+  {
+   "from": "rdd",
+   "to": "transformation",
+   "type": "prereq"
+  },
+  {
+   "from": "sparkcontext",
+   "to": "driver-executor",
+   "type": "part",
+   "label": "运行在 Driver 中"
+  },
+  {
+   "from": "driver-executor",
+   "to": "task",
+   "type": "causes",
+   "label": "Executor 执行 Task"
+  },
+  {
+   "from": "job",
+   "to": "dagscheduler",
+   "type": "causes",
+   "label": "runJob 提交给"
+  },
+  {
+   "from": "dagscheduler",
+   "to": "stage",
+   "type": "causes",
+   "label": "从后往前回溯切分 Stage"
+  },
+  {
+   "from": "dagscheduler",
+   "to": "taskset",
+   "type": "causes",
+   "label": "submitMissingTasks 生成"
+  },
+  {
+   "from": "taskset",
+   "to": "taskscheduler",
+   "type": "causes",
+   "label": "submitTasks"
+  },
+  {
+   "from": "taskscheduler",
+   "to": "pool",
+   "type": "part",
+   "label": "调度池决定顺序"
+  },
+  {
+   "from": "taskscheduler",
+   "to": "locality",
+   "type": "causes",
+   "label": "按本地性分配"
+  },
+  {
+   "from": "taskscheduler",
+   "to": "backend",
+   "type": "causes",
+   "label": "resourceOffers → 发送 Task"
+  },
+  {
+   "from": "speculation",
+   "to": "taskset",
+   "type": "part",
+   "label": "由 TaskSetManager 检查"
+  },
+  {
+   "from": "exclude",
+   "to": "taskscheduler",
+   "type": "part"
+  },
+  {
+   "from": "sparkcontext",
+   "to": "dagscheduler",
+   "type": "causes",
+   "label": "初始化时创建"
+  },
+  {
+   "from": "wide",
+   "to": "shuffle",
+   "type": "causes",
+   "label": "宽依赖意味着 Shuffle"
+  },
+  {
+   "from": "hash-shuffle",
+   "to": "sort-shuffle",
+   "type": "contrast",
+   "label": "被取代"
+  },
+  {
+   "from": "bypass-writer",
+   "to": "sort-shuffle",
+   "type": "implements",
+   "label": "Writer 之一"
+  },
+  {
+   "from": "unsafe-writer",
+   "to": "sort-shuffle",
+   "type": "implements",
+   "label": "Writer 之一"
+  },
+  {
+   "from": "sort-writer",
+   "to": "sort-shuffle",
+   "type": "implements",
+   "label": "Writer 之一"
+  },
+  {
+   "from": "bypass-writer",
+   "to": "unsafe-writer",
+   "type": "contrast",
+   "label": "选择条件不同"
+  },
+  {
+   "from": "packed-pointer",
+   "to": "unsafe-writer",
+   "type": "part",
+   "label": "只排 8 字节指针"
+  },
+  {
+   "from": "sort-shuffle",
+   "to": "shuffle-files",
+   "type": "causes",
+   "label": "每个 Map Task 输出"
+  },
+  {
+   "from": "shuffle-files",
+   "to": "shuffle-read",
+   "type": "prereq"
+  },
+  {
+   "from": "shuffle",
+   "to": "sort-shuffle",
+   "type": "prereq"
+  },
+  {
+   "from": "ess",
+   "to": "shuffle-read",
+   "type": "causes",
+   "label": "Executor 退出后仍可读"
+  },
+  {
+   "from": "static-memory",
+   "to": "unified-memory",
+   "type": "contrast",
+   "label": "3.0 移除，被取代"
+  },
+  {
+   "from": "borrow",
+   "to": "unified-memory",
+   "type": "part"
+  },
+  {
+   "from": "exec-pool",
+   "to": "unified-memory",
+   "type": "part",
+   "label": "Execution 区域的分配"
+  },
+  {
+   "from": "memory-store",
+   "to": "unified-memory",
+   "type": "part",
+   "label": "Storage 区域"
+  },
+  {
+   "from": "task-memory",
+   "to": "exec-pool",
+   "type": "causes",
+   "label": "向 Execution 池申请内存"
+  },
+  {
+   "from": "sort-writer",
+   "to": "task-memory",
+   "type": "causes",
+   "label": "ExternalSorter 是 MemoryConsumer，会溢写"
+  },
+  {
+   "from": "unsafe-writer",
+   "to": "task-memory",
+   "type": "causes",
+   "label": "申请内存页"
+  },
+  {
+   "from": "packed-pointer",
+   "to": "offheap",
+   "type": "causes",
+   "label": "压缩 Tungsten 地址（13 位页号）"
+  },
+  {
+   "from": "overhead",
+   "to": "unified-memory",
+   "type": "prereq",
+   "label": "先看容器总内存"
+  },
+  {
+   "from": "unmanaged-memory",
+   "to": "unified-memory",
+   "type": "causes",
+   "label": "补充统计原生库内存"
+  },
+  {
+   "from": "borrow",
+   "to": "memory-store",
+   "type": "causes",
+   "label": "Execution 收回时驱逐缓存块"
+  },
+  {
+   "from": "block-manager",
+   "to": "block",
+   "type": "causes",
+   "label": "管理所有块"
+  },
+  {
+   "from": "shuffle-files",
+   "to": "block",
+   "type": "implements",
+   "label": "Shuffle 块"
+  },
+  {
+   "from": "cache",
+   "to": "block",
+   "type": "implements",
+   "label": "RDD 块"
+  },
+  {
+   "from": "broadcast",
+   "to": "block",
+   "type": "implements",
+   "label": "广播块（分片）"
+  },
+  {
+   "from": "disk-store",
+   "to": "block-manager",
+   "type": "part"
+  },
+  {
+   "from": "storage-level",
+   "to": "cache",
+   "type": "part",
+   "label": "决定缓存放在哪"
+  },
+  {
+   "from": "cache",
+   "to": "memory-store",
+   "type": "causes",
+   "label": "写入 MemoryStore"
+  },
+  {
+   "from": "cleaner",
+   "to": "block-manager",
+   "type": "causes",
+   "label": "不再被引用时删除块"
+  },
+  {
+   "from": "shuffle-read",
+   "to": "block-manager",
+   "type": "causes",
+   "label": "通过 BlockManager 拉取块"
+  },
+  {
+   "from": "dagscheduler",
+   "to": "broadcast",
+   "type": "causes",
+   "label": "Task 二进制用广播发送"
+  },
+  {
+   "from": "rpc-endpoint",
+   "to": "rpc-env",
+   "type": "part"
+  },
+  {
+   "from": "backend",
+   "to": "rpc-endpoint",
+   "type": "implements",
+   "label": "DriverEndpoint"
+  },
+  {
+   "from": "spark-submit",
+   "to": "sparkcontext",
+   "type": "causes",
+   "label": "启动用户主类"
+  },
+  {
+   "from": "sparkcontext",
+   "to": "rpc-env",
+   "type": "causes",
+   "label": "创建 SparkEnv"
+  },
+  {
+   "from": "cluster-manager",
+   "to": "executor-life",
+   "type": "causes",
+   "label": "启动 Executor 进程"
+  },
+  {
+   "from": "executor-life",
+   "to": "backend",
+   "type": "causes",
+   "label": "向 Driver 注册"
+  },
+  {
+   "from": "heartbeat",
+   "to": "rpc-endpoint",
+   "type": "implements",
+   "label": "HeartbeatReceiver"
+  },
+  {
+   "from": "dynamic-allocation",
+   "to": "executor-life",
+   "type": "causes",
+   "label": "增减 Executor"
+  },
+  {
+   "from": "ess",
+   "to": "dynamic-allocation",
+   "type": "prereq",
+   "label": "释放 Executor 的前提之一"
+  },
+  {
+   "from": "task-retry",
+   "to": "taskset",
+   "type": "part",
+   "label": "由 TaskSetManager 计数"
+  },
+  {
+   "from": "fetch-failed",
+   "to": "dagscheduler",
+   "type": "causes",
+   "label": "重新提交上游 Stage"
+  },
+  {
+   "from": "fetch-failed",
+   "to": "shuffle-read",
+   "type": "part",
+   "label": "读取失败时抛出"
+  },
+  {
+   "from": "heartbeat",
+   "to": "executor-lost",
+   "type": "causes",
+   "label": "心跳超时判定丢失"
+  },
+  {
+   "from": "executor-lost",
+   "to": "fetch-failed",
+   "type": "causes",
+   "label": "空闲 Executor：被动发现"
+  },
+  {
+   "from": "executor-lost",
+   "to": "dagscheduler",
+   "type": "causes",
+   "label": "有运行中 Task：主动通知"
+  },
+  {
+   "from": "ess",
+   "to": "executor-lost",
+   "type": "contrast",
+   "label": "开启后 Shuffle 输出不丢"
+  },
+  {
+   "from": "indeterminate",
+   "to": "dagscheduler",
+   "type": "causes",
+   "label": "回滚下游 Stage"
+  },
+  {
+   "from": "checkpoint",
+   "to": "lineage",
+   "type": "causes",
+   "label": "切断血缘"
+  },
+  {
+   "from": "checkpoint",
+   "to": "indeterminate",
+   "type": "causes",
+   "label": "固定输入，消除非确定性"
+  },
+  {
+   "from": "checkpoint",
+   "to": "cache",
+   "type": "contrast",
+   "label": "切断血缘 vs 保留血缘"
+  },
+  {
+   "from": "lineage",
+   "to": "fetch-failed",
+   "type": "prereq",
+   "label": "按血缘重算"
+  },
+  {
+   "from": "driver-ft",
+   "to": "cluster-manager",
+   "type": "causes",
+   "label": "依赖集群管理器重启"
+  },
+  {
+   "from": "speculation",
+   "to": "task-retry",
+   "type": "contrast",
+   "label": "副本 vs 重试"
+  },
+  {
+   "from": "spark-sql",
+   "to": "query-execution",
+   "type": "causes"
+  },
+  {
+   "from": "parser",
+   "to": "query-execution",
+   "type": "part",
+   "label": "①"
+  },
+  {
+   "from": "analyzer",
+   "to": "query-execution",
+   "type": "part",
+   "label": "②"
+  },
+  {
+   "from": "optimizer",
+   "to": "query-execution",
+   "type": "part",
+   "label": "③"
+  },
+  {
+   "from": "planner",
+   "to": "query-execution",
+   "type": "part",
+   "label": "④"
+  },
+  {
+   "from": "parser",
+   "to": "analyzer",
+   "type": "prereq"
+  },
+  {
+   "from": "analyzer",
+   "to": "optimizer",
+   "type": "prereq"
+  },
+  {
+   "from": "optimizer",
+   "to": "planner",
+   "type": "prereq"
+  },
+  {
+   "from": "tree-rule",
+   "to": "analyzer",
+   "type": "implements",
+   "label": "规则批次"
+  },
+  {
+   "from": "tree-rule",
+   "to": "optimizer",
+   "type": "implements",
+   "label": "规则批次"
+  },
+  {
+   "from": "single-pass",
+   "to": "analyzer",
+   "type": "contrast",
+   "label": "一次遍历 vs FixedPoint"
+  },
+  {
+   "from": "join-selection",
+   "to": "planner",
+   "type": "part",
+   "label": "策略之一"
+  },
+  {
+   "from": "ensure-requirements",
+   "to": "planner",
+   "type": "part",
+   "label": "准备规则"
+  },
+  {
+   "from": "ensure-requirements",
+   "to": "shuffle",
+   "type": "causes",
+   "label": "插入 Exchange"
+  },
+  {
+   "from": "join-selection",
+   "to": "broadcast",
+   "type": "causes",
+   "label": "BroadcastHashJoin 用广播"
+  },
+  {
+   "from": "query-execution",
+   "to": "rdd",
+   "type": "causes",
+   "label": "toRdd：变成 RDD[InternalRow]"
+  },
+  {
+   "from": "planner",
+   "to": "explain",
+   "type": "prereq"
+  },
+  {
+   "from": "rdd",
+   "to": "spark-sql",
+   "type": "prereq"
+  },
+  {
+   "from": "volcano",
+   "to": "wscg",
+   "type": "contrast",
+   "label": "被全阶段代码生成取代"
+  },
+  {
+   "from": "produce-consume",
+   "to": "wscg",
+   "type": "part"
+  },
+  {
+   "from": "janino",
+   "to": "wscg",
+   "type": "part",
+   "label": "运行时编译"
+  },
+  {
+   "from": "codegen-fallback",
+   "to": "wscg",
+   "type": "contrast",
+   "label": "回退为普通执行"
+  },
+  {
+   "from": "planner",
+   "to": "wscg",
+   "type": "causes",
+   "label": "CollapseCodegenStages 合并成 *(n)"
+  },
+  {
+   "from": "unsafe-row",
+   "to": "unsafe-writer",
+   "type": "causes",
+   "label": "支持重定位，SQL Shuffle 可走 tungsten-sort"
+  },
+  {
+   "from": "unsafe-row",
+   "to": "offheap",
+   "type": "implements",
+   "label": "Tungsten 二进制格式"
+  },
+  {
+   "from": "vectorized",
+   "to": "wscg",
+   "type": "contrast",
+   "label": "按批 vs 按行"
+  },
+  {
+   "from": "explain",
+   "to": "wscg",
+   "type": "prereq",
+   "label": "*(n) 标记"
+  },
+  {
+   "from": "planner",
+   "to": "aqe",
+   "type": "causes",
+   "label": "InsertAdaptiveSparkPlan 包装"
+  },
+  {
+   "from": "reoptimize",
+   "to": "aqe",
+   "type": "part"
+  },
+  {
+   "from": "coalesce",
+   "to": "aqe",
+   "type": "part"
+  },
+  {
+   "from": "switch-join",
+   "to": "aqe",
+   "type": "part"
+  },
+  {
+   "from": "skew-join",
+   "to": "aqe",
+   "type": "part"
+  },
+  {
+   "from": "local-read",
+   "to": "aqe",
+   "type": "part"
+  },
+  {
+   "from": "dynamic-join-selection",
+   "to": "aqe",
+   "type": "part"
+  },
+  {
+   "from": "reoptimize",
+   "to": "switch-join",
+   "type": "causes",
+   "label": "真正完成切换的是重新优化"
+  },
+  {
+   "from": "join-selection",
+   "to": "switch-join",
+   "type": "causes",
+   "label": "重新优化时再次选择"
+  },
+  {
+   "from": "dynamic-join-selection",
+   "to": "switch-join",
+   "type": "contrast",
+   "label": "常被误认为是它切换的"
+  },
+  {
+   "from": "switch-join",
+   "to": "local-read",
+   "type": "causes"
+  },
+  {
+   "from": "coalesce",
+   "to": "bypass-writer",
+   "type": "contrast",
+   "label": "默认 200 个分区"
+  },
+  {
+   "from": "skew-join",
+   "to": "speculation",
+   "type": "contrast",
+   "label": "推测执行解决不了倾斜，AQE 可以"
+  },
+  {
+   "from": "shuffle",
+   "to": "aqe",
+   "type": "prereq",
+   "label": "查询阶段以 Shuffle 为界"
+  },
+  {
+   "from": "dsv1",
+   "to": "scan-builder",
+   "type": "contrast",
+   "label": "V1 → V2"
+  },
+  {
+   "from": "dsv2-catalog",
+   "to": "analyzer",
+   "type": "causes",
+   "label": "分析时查表"
+  },
+  {
+   "from": "pushdown",
+   "to": "scan-builder",
+   "type": "part",
+   "label": "在 ScanBuilder 上下推"
+  },
+  {
+   "from": "optimizer",
+   "to": "pushdown",
+   "type": "causes",
+   "label": "优化阶段执行下推"
+  },
+  {
+   "from": "paimon-case",
+   "to": "scan-builder",
+   "type": "implements"
+  },
+  {
+   "from": "paimon-case",
+   "to": "dsv2-catalog",
+   "type": "implements"
+  },
+  {
+   "from": "connect-plan",
+   "to": "connect",
+   "type": "part"
+  },
+  {
+   "from": "connect-plan",
+   "to": "analyzer",
+   "type": "causes",
+   "label": "服务端交给 Catalyst 解析"
+  },
+  {
+   "from": "api-mode",
+   "to": "connect",
+   "type": "causes"
+  },
+  {
+   "from": "no-sparkcontext",
+   "to": "connect",
+   "type": "part"
+  },
+  {
+   "from": "no-sparkcontext",
+   "to": "sparkcontext",
+   "type": "contrast",
+   "label": "经典模式才有"
+  },
+  {
+   "from": "spark-sql",
+   "to": "connect",
+   "type": "prereq"
+  },
+  {
+   "from": "packed-pointer",
+   "to": "find-pr",
+   "type": "causes",
+   "label": "第一个 PR 的来源"
+  },
+  {
+   "from": "find-pr",
+   "to": "contrib-flow",
+   "type": "prereq"
+  },
+  {
+   "from": "contrib-flow",
+   "to": "committer",
+   "type": "prereq"
+  },
+  {
+   "from": "single-pass",
+   "to": "find-pr",
+   "type": "causes",
+   "label": "活跃开发方向，适合参与"
+  }
+ ]
+}

@@ -8,6 +8,10 @@
         "link": "/bigdata/spark/"
       },
       {
+        "text": "知识图谱",
+        "link": "/bigdata/graph/spark"
+      },
+      {
         "text": "1. 从零编译 Spark 4.2.0 源码",
         "link": "/bigdata/spark/01-build"
       },
@@ -72,6 +76,10 @@
       {
         "text": "路线介绍",
         "link": "/bigdata/flink/"
+      },
+      {
+        "text": "知识图谱",
+        "link": "/bigdata/graph/flink"
       },
       {
         "text": "1. 作业执行全链路",
@@ -278,6 +286,10 @@
       {
         "text": "路线介绍",
         "link": "/bigdata/paimon/"
+      },
+      {
+        "text": "知识图谱",
+        "link": "/bigdata/graph/paimon"
       },
       {
         "text": "1. 环境搭建与源码编译",

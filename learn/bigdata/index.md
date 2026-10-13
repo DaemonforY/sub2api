@@ -11,6 +11,14 @@ description: Apache Spark、Flink、Paimon 源码学习：基于最新版本源�
 
 三条都是正式的学习路线：每课读完有 4 道小测验，读的时候可以随时问 AI 助教；学完全部课程、测验总正确率不低于 80%，再通过这条路线的模拟面试（60 分以上），就能领取结业证书。
 
+## 知识图谱
+
+三条路线各有一张知识图谱：概念按学习阶段排成路线，按主题分成模块，标出它们之间的前置、组成、影响、对比、实现关系。点任意概念，能看到要点、源码入口、实测结论、学它之前要先学什么，以及讲它的文章。
+
+- [Spark 知识图谱](/bigdata/graph/spark)
+- [Flink 知识图谱](/bigdata/graph/flink)
+- [Paimon 知识图谱](/bigdata/graph/paimon)
+
 ## 怎么学
 
 - **有 Spark 使用经验**：从 [Spark 学习路线](/bigdata/spark/roadmap) 开始，先编译源码、跟一遍 SparkPi，再按讲次往下读。

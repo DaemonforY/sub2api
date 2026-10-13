@@ -14,6 +14,7 @@ import AgentLoop from './components/AgentLoop.vue'
 import Showcase from './components/Showcase.vue'
 import CampusPerks from './components/CampusPerks.vue'
 import BigdataHub from './components/BigdataHub.vue'
+import KnowledgeGraph from './components/KnowledgeGraph.vue'
 import { initAnalytics, trackPageView } from './analytics'
 import './style.css'
 import './heroui.css'
@@ -54,6 +55,7 @@ export default {
     app.component('RunBox', RunBox)
     app.component('TryInCanvas', TryInCanvas)
     app.component('Mermaid', Mermaid)
+    app.component('KnowledgeGraph', KnowledgeGraph)
     app.component('LearnHome', LearnHome)
     app.component('TrackPage', TrackPage)
     app.component('Checkpoint', Checkpoint)
