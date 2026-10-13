@@ -46,7 +46,7 @@ FIRE window=[5s,10s) count=2 elements=[6s, 8s] watermark=10.999s
 FIRE window=[10s,15s) count=2 elements=[11s, 13s] watermark=MAX
 ```
 
-| 配置 | `0s,5s)` 输出次数 | 迟到数据 |
+| 配置 | `[0s,5s)` 输出次数 | 迟到数据 |
 |---|---|---|
 | `allowedLateness = 3s` | **2 次**（4 条 → 5 条） | 2s 的那条被接受；1s 的那条进侧输出 |
 | `allowedLateness = 0` | 1 次 | 2s、1s 两条都进侧输出 |
@@ -74,7 +74,7 @@ FIRE window=[10s,15s) count=2 elements=[11s, 13s] watermark=MAX
 | 过了清理时间，配置了侧输出 | 进入侧输出 |
 | 过了清理时间，没配侧输出 | **静默丢弃**，只计入 `numLateRecordsDropped` |
 
-![触发不等于清理：两条竖线之间，窗口已经输出过，但还能改结果
+![触发不等于清理：两条竖线之间，窗口已经输出过，但还能改结果](/bigdata-img/src/content-plan/assets/png/ep02/xhs-P3.webp)
 
 ## 怎么解决
 

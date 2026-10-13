@@ -53,9 +53,9 @@ head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bi
 | `s1-chk7`（恢复后） | 37～39 和 80～87，共 11 条 |
 | 最终 | total=160、distinct=160、duplicates=0 |
 
-连续跑了两次，过程和结果完全相同（时间戳相差零点几秒）。第八讲上篇写作时也跑过一次：那次同样是 subtask 1 在记录 80 上故障，但它当时手里是 split-1，恢复后拿回的是 `split-176,80)`，被重读的是 76～79，结论相同。
+连续跑了两次，过程和结果完全相同（时间戳相差零点几秒）。第八讲上篇写作时也跑过一次：那次同样是 subtask 1 在记录 80 上故障，但它当时手里是 split-1，恢复后拿回的是 `split-1[76,80)`，被重读的是 76～79，结论相同。
 
-![split-2 分出去后故障，被还给 Enumerator 再重新分配（本机实测）
+![split-2 分出去后故障，被还给 Enumerator 再重新分配（本机实测）](/bigdata-img/src/content-plan/assets/png/ep20/xhs-P3.webp)
 
 ## 原因
 
@@ -63,11 +63,11 @@ head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bi
 
 **分片为什么不会被两个人同时读。** 分片由 JobManager 上的 Enumerator 分配，每次分配都会记账（`SourceCoordinatorContext.java:305` 的 `recordSplitAssignment`）。某个 subtask 失败、回滚到 Checkpoint N 时，它在 N 之后才拿到的分片会被还给 Enumerator，重新分配（`SplitAssignmentTracker.java:120`、`SourceCoordinator.java:372-389` 的 `addSplitsBack`）。本例中 split-2 在 Checkpoint 5 之后才分给 subtask 1，subtask 1 挂了，split-2 就被还了回去，之后再分出去。背后的不变式是：任意一个 Checkpoint 里，每个分片要么在 Enumerator 的状态里，要么在某个 Reader 的状态里，而且只在一处。
 
-**数据为什么会被读两次。** N 之前拿到的分片随 Reader 自己的状态恢复，从 N 记录的位置接着读（`SourceOperator.java:443-451`）。Checkpoint 5 时 subtask 1 记录的位置是 `split-036,40)`，也就是"下一条读 36"。故障前它已经把 36～39 读完了（5.27s 的 `finished split-0`），恢复后又从 36 开始读了一遍。
+**数据为什么会被读两次。** N 之前拿到的分片随 Reader 自己的状态恢复，从 N 记录的位置接着读（`SourceOperator.java:443-451`）。Checkpoint 5 时 subtask 1 记录的位置是 `split-0[36,40)`，也就是"下一条读 36"。故障前它已经把 36～39 读完了（5.27s 的 `finished split-0`），恢复后又从 36 开始读了一遍。
 
 **结果为什么不重复。** 故障前，36～39 还没赶上任何一次 `prepareCommit`，只存在于 Writer 尚未提交的事务里，故障时随事务一起丢弃。恢复后，36 在 `s1-chk6` 里提交，37～39 在 `s1-chk7` 里提交（`n=11` 是 37、38、39 加上 80～87）。读了两次，只提交了一次。
 
-![36～39 第一次读的结果随未提交事务丢弃，只有重读那次被提交（本机实测）
+![36～39 第一次读的结果随未提交事务丢弃，只有重读那次被提交（本机实测）](/bigdata-img/src/content-plan/assets/png/ep20/xhs-P5.webp)
 
 ## 怎么解决
 

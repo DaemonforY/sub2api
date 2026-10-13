@@ -125,7 +125,7 @@ public void notifyCheckpointComplete(long checkpointId) throws Exception {   // 
 
 **只有 Checkpoint N 全局完成后，才提交 N 及之前的 committable**（`commitAndEmitCheckpoints`，`:164`）。在此之前，外部系统里的数据处于"已写入、未提交"的状态：Kafka 的 `read_committed` 消费者看不到它们，FileSink 的文件是以 `.` 开头的隐藏文件。
 
-
+![两阶段提交](/bigdata-img/src/content-plan/assets/png/lesson8b/L8b-fig1-2pc.webp)
 
 ### 2.3 那么版本 A 为什么不提交？
 
@@ -188,7 +188,7 @@ private void registerNextBucketInspectionTimer() {
 
 > Bulk 格式（Parquet 等）默认就是 `OnCheckpointRollingPolicy`（`FileSink.java:546`），没有这个问题。
 
-
+![默认滚动策略下的时间线](/bigdata-img/src/content-plan/assets/png/lesson8b/L8b-fig2-rolling.webp)
 
 ---
 
@@ -233,7 +233,7 @@ private void registerNextBucketInspectionTimer() {
 
 第 ⑤ 步是整个链条里最微妙的一步：Checkpoint N 已经完成了，提交却发生在它**之后**。如果提交到一半作业挂了，从 Checkpoint N 恢复时，Flink 不知道这个事务到底提交了没有。
 
-
+![一条记录的完整旅程](/bigdata-img/src/content-plan/assets/png/lesson8b/L8b-fig3-journey.webp)
 
 ---
 

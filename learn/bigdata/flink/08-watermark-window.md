@@ -323,7 +323,7 @@ if (timestamp > Long.MIN_VALUE) {
 
 `getWindowStartWithOffset`（`RT/streaming/api/windowing/windows/TimeWindow.java:264`）就是 `timestamp - (timestamp - offset) % size`，负数单独处理。窗口是**对齐到 1970-01-01 00:00:00 UTC 的**，与作业何时启动、第一条数据是什么时间无关。所以用 1 天的窗口统计北京时间的"每天"时，需要设置 `offset = -8h`。
 
-`TimeWindow.maxTimestamp()` 是 `end - 1`（`:84-86`）：窗口是左闭右开的 `start, end)`，Timer 注册在 `end - 1` 上。
+`TimeWindow.maxTimestamp()` 是 `end - 1`（`:84-86`）：窗口是左闭右开的 `[start, end)`，Timer 注册在 `end - 1` 上。
 
 ### 4.3 `processElement`：非合并窗口
 
@@ -460,7 +460,7 @@ SourceOperator（每个 subtask）                              SourceCoordinato
 
 ## 7. 动手实验
 
-示例：[`WindowDemo.java`，一共三种模式。
+示例：`WindowDemo.java`，一共三种模式。
 
 ### 7.1 迟到数据（`late`）
 

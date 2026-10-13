@@ -41,7 +41,7 @@ FIRE  window=[5s,10s) maxTimestamp=9.999s elements=[6s, 6.999s, 7s, 5s] watermar
 
 每行 `EVENT` 打印的是这条记录**到达时**的 Watermark，也就是上一条记录之后发出的那个，所以要错一行看：
 
-| 已经见过的最大事件时间 | 之后发出的 Watermark | `0s,5s)` 窗口 |
+| 已经见过的最大事件时间 | 之后发出的 Watermark | `[0s,5s)` 窗口 |
 |---|---|---|
 | 1000 | 1000 − 2000 − 1 = **−1001** | 等待 |
 | 4500 | **2499** | 等待 |
@@ -51,7 +51,7 @@ FIRE  window=[5s,10s) maxTimestamp=9.999s elements=[6s, 6.999s, 7s, 5s] watermar
 
 还没有任何数据时，Watermark 恰好是 `Long.MIN_VALUE`（第一条记录看到的 `MIN`，源码 `BoundedOutOfOrdernessWatermarks.java:57`）。
 
-![实测输出：数据到 6.999 秒时 Watermark 是 4.998，到 7 秒才变成 4.999 并触发窗口
+![实测输出：数据到 6.999 秒时 Watermark 是 4.998，到 7 秒才变成 4.999 并触发窗口](/bigdata-img/src/content-plan/assets/png/ep03/xhs-P2.webp)
 
 ## 原因
 
@@ -61,13 +61,13 @@ FIRE  window=[5s,10s) maxTimestamp=9.999s elements=[6s, 6.999s, 7s, 5s] watermar
 
 `forMonotonousTimestamps()` 是乱序容忍为 0 的特例：`AscendingTimestampsWatermarks` 继承 `BoundedOutOfOrdernessWatermarks`，传入 `Duration.ofMillis(0)`，Watermark = 最大事件时间 − 1。
 
-**第二个“减 1”在窗口上。** 窗口是左闭右开的 `start, end)`，`maxTimestamp = end − 1`（`TimeWindow.java:84-86`）。触发 Timer 注册在 `maxTimestamp` 上（`EventTimeTrigger.java:44`），Timer 在“时间 ≤ Watermark”时执行（`InternalTimerServiceImpl.java:334-335`），所以窗口在 **Watermark ≥ end − 1** 时触发。
+**第二个“减 1”在窗口上。** 窗口是左闭右开的 `[start, end)`，`maxTimestamp = end − 1`（`TimeWindow.java:84-86`）。触发 Timer 注册在 `maxTimestamp` 上（`EventTimeTrigger.java:44`），Timer 在“时间 ≤ Watermark”时执行（`InternalTimerServiceImpl.java:334-335`），所以窗口在 **Watermark ≥ end − 1** 时触发。
 
 两个“减 1”合起来：`最大时间 − d − 1 ≥ end − 1`，也就是**某条数据的事件时间 ≥ end + d**，窗口 `[start, end)` 才会触发。5 秒窗口、乱序 2 秒，就要等到事件时间 7 秒的数据。
 
 还有一个边界：Watermark 已经等于 `end − 1` 时，再来一条时间戳正好是 4.999 秒的数据，它就在窗口的最后 1 毫秒，但窗口已经关闭（`allowedLateness = 0` 时，`WindowOperator.java:609-612` 以“清理时间 ≤ Watermark”判定窗口已关闭），只能当作迟到数据进侧输出。
 
-![第一个“减 1”：见过 7000、乱序 2000，5000 还可能来，Watermark 只能是 4999
+![第一个“减 1”：见过 7000、乱序 2000，5000 还可能来，Watermark 只能是 4999](/bigdata-img/src/content-plan/assets/png/ep03/xhs-P3.webp)
 
 ## 怎么解决
 

@@ -50,7 +50,7 @@ head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bi
 [+  4.037s] COMMIT  txn-1(n=1) attempt #2 (getNumberOfRetries=1, since last call 0.877ms) -> retryLater()
 ...
 [+  4.042s] COMMIT  txn-1(n=1) attempt #11 (getNumberOfRetries=10, since last call 0.322ms) -> retryLater()
-[+  4.133s] MAIN    job FAILED: IOException: Failed to commit 1 committables after 10 retries: CommitRequestImpl{state=RETRY, numRetries=11, committable=t...
+[+  4.133s] MAIN    job FAILED: IOException: Failed to commit 1 committables after 10 retries: [CommitRequestImpl{state=RETRY, numRetries=11, committable=t...
 ```
 
 `flaky 3` 跑了 3 次，`down` 跑了 4 次，结论一致：
@@ -62,7 +62,7 @@ head: [["meta", {"property": "og:image", "content": "https://hivegpt.cn/learn/bi
 | `down` 模式 11 次调用的间隔合计 | 约 2～6 毫秒（四次分别约 5.8、2.1、2.2、2.1 毫秒） |
 | 对照：正常两次提交之间 | 约 1 秒（`since last call 948.907ms`），即 Checkpoint 间隔 |
 
-![flaky 3 模式：前 3 次失败、第 4 次成功，每次重试的间隔都不到 1 毫秒
+![flaky 3 模式：前 3 次失败、第 4 次成功，每次重试的间隔都不到 1 毫秒](/bigdata-img/src/content-plan/assets/png/ep08/xhs-P2.webp)
 
 ![down 模式：11 次调用在几毫秒内用完，作业失败](/bigdata-img/src/content-plan/assets/png/ep08/xhs-P3.webp)
 

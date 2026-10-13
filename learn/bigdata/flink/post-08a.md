@@ -86,7 +86,7 @@ FLIP-27 把**发现和分配**集中到 JobManager 上的 Enumerator，Reader �
 
 本篇的示例用的是"拉"。
 
-
+![Enumerator 与 Reader](/bigdata-img/src/content-plan/assets/png/lesson8a/L8a-fig1-roles.webp)
 
 ---
 
@@ -175,7 +175,7 @@ Checkpoint 5 时，subtask 1 手上是 `split-1[76,80)`（下一条要读 76）�
 
 于是有一个不变式：**每个 split 在任意一个 Checkpoint 里，要么在 Enumerator 的状态里，要么在某个 Reader 的状态里，而且只在一处。** N 之后才分出去的 split，在 Checkpoint N 里属于 Enumerator（`pending` 里还有它），所以恢复时要还给 Enumerator。
 
-
+![split 只在一处](/bigdata-img/src/content-plan/assets/png/lesson8a/L8a-fig2-tracker.webp)
 
 ### 3.4 Flink 2.2 起的另一种做法
 
