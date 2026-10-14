@@ -33,7 +33,7 @@ const (
 )
 
 // canvasCloudPathRe: <domain>/manifest.json or <domain>/files/<name>.
-var canvasCloudPathRe = regexp.MustCompile(`^(canvas|assets|image-workbench|video-workbench)/(manifest\.json|files/[A-Za-z0-9._-]{1,200})$`)
+var canvasCloudPathRe = regexp.MustCompile(`^(canvas|assets|image-workbench|video-workbench|comic)/(manifest\.json|files/[A-Za-z0-9._-]{1,200})$`)
 
 var canvasCloudMimes = map[string]bool{"application/json": true, "application/octet-stream": true}
 
