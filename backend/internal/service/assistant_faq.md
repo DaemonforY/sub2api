@@ -5,7 +5,7 @@
 
 ## HiveGPT 是什么
 链接：/
-HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册账号、创建一个 API Key，就能调用 GPT、Codex、gpt-image-2 等模型，按实际用量计费，出错不扣费；可以接入 Codex、OpenCode、Cherry Studio 等工具（暂不支持 Claude Code），在无限画布里画图。站内还有 AI 学习站、公众号排版工具、创作比赛和付费课程。目前只提供 GPT 系列模型，不提供 Claude、Gemini。
+HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册账号、创建一个 API Key，就能调用 GPT、Codex、gpt-image-2 等模型，按实际用量计费，出错不扣费；可以接入 Codex、OpenCode、Cherry Studio 等工具，在无限画布里画图。Claude 模型也能用，但只支持在 Claude Code 里用（见「能用 Claude Code 吗」）。站内还有 AI 学习站、公众号排版工具、创作比赛和付费课程。目前不提供 Gemini。
 
 ## 怎么注册和登录
 链接：/register
@@ -23,9 +23,13 @@ HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册�
 链接：/learn/connect/
 在「API 密钥」页点某个 Key 的「使用密钥」，会生成 Codex、OpenCode 等工具的配置，复制粘贴即可。各种用法的教程在 AI 学习站「接入教程」（/learn/connect/）：Codex 看「接入 HiveGPT」（/learn/codex/hivegpt）；OpenCode、CodeBuddy、Cherry Studio、Chatbox 等支持 OpenAI 兼容接口的工具看「在常用工具里配置」（/learn/connect/tools）；Python、Node.js、curl 看「用 SDK 调用」（/learn/connect/sdk）。Codex 要用 GPT 分组的 Key。
 
-## 能用 Claude Code 吗
-链接：/learn/connect/
-暂不支持 Claude Code。编程工具请用 Codex（教程 /learn/codex/hivegpt）或 OpenCode（/learn/connect/tools），对话客户端可以用 Cherry Studio（/learn/connect/cherry-studio）、Chatbox（/learn/connect/chatbox）。以后开放会在首页和学习站说明。
+## 能用 Claude Code 吗、Claude 怎么收费
+链接：/pricing
+能用。在「API 密钥」页创建 Key 时选「Claude-按量」分组，然后点这个 Key 的「使用密钥」，复制 Claude Code 的配置（ANTHROPIC_BASE_URL 和 ANTHROPIC_AUTH_TOKEN）按提示设置即可。Claude 分组只支持 Claude Code 客户端，Cherry Studio、Chatbox、Codex 或自己写代码调用 Claude 都会被拒绝；这些工具请用 GPT 分组的 Key。
+收费有两种：
+- 按量：Claude-按量分组按模型官方美元标价的 2 倍从余额扣费（充值 ¥1 = $1 额度），用多少扣多少。
+- 订阅：「Claude 重度月卡」，适合每天大量用 Claude Code 的人，订阅期内按每日 / 每周 / 每月额度使用，价格和额度以购买页（/purchase）为准。买了月卡后不用换 Key：Claude-按量分组的 Key 会先用月卡额度，额度用完或到期后自动改用余额。
+Claude Code 每次提问会带上很长的上下文，再加上多轮工具调用，一次对话通常要几十次请求，比在网页上问一句话费得多。Opus 最贵，Sonnet、Haiku 便宜很多，同样的余额或额度能用更久，可以在 Claude Code 里用 /model 切换。每次请求的模型和扣费在「使用记录」里能查到。
 
 ## 网关地址（Base URL）是什么
 链接：/keys
@@ -37,7 +41,7 @@ HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册�
 
 ## 怎么收费、怎么充值
 链接：/purchase
-按实际用量计费：按模型的官方美元标价算出每次请求的金额，按量分组再乘 0.6 倍扣费，用多少扣多少。充值按 ¥1 = $1 额度到账，在「充值 / 订阅」页选择金额，用页面提供的方式支付。每次调用的模型、token 数和扣费都能在「使用记录」里查到。按量和订阅怎么选，可以看价格页（/pricing），那里有在售套餐的额度对比和按用量估算。具体价格以页面显示为准。
+按实际用量计费：按模型的官方美元标价算出每次请求的金额，再乘所在分组的倍率扣费（GPT-按量 0.6 倍，Claude-按量 2 倍），用多少扣多少。充值按 ¥1 = $1 额度到账，在「充值 / 订阅」页选择金额，用页面提供的方式支付。每次调用的模型、token 数和扣费都能在「使用记录」里查到。按量和订阅怎么选，可以看价格页（/pricing），那里有在售套餐的额度对比和按用量估算。具体价格以页面显示为准。
 
 ## 画图、生图怎么收费
 链接：/pricing
@@ -45,7 +49,7 @@ HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册�
 
 ## 订阅套餐、订阅和按量怎么选
 链接：/pricing
-经常用 Codex 等编程工具，可以选订阅套餐：订阅期内按套餐的每日 / 每周 / 每月额度使用，用量大且稳定时比按量划算；偶尔用或想先试试，用按量付费。价格页（/pricing）列出在售套餐的价格、额度和折算，还能按每天的请求次数估算哪种更省。买了订阅后不用换 Key：同一个 Key（按量分组的也行）在对话和 Codex 请求里会先用订阅额度，订阅额度用完或到期后自动改用余额继续，余额不足才会报错；画图、视频等仍按 Key 所在分组计费。每次请求实际用的分组在「使用记录」里能看到。套餐种类、价格和额度以购买页为准；已购订阅在「我的订阅」查看。
+经常用 Codex 等编程工具，可以选订阅套餐（每天大量用 Claude Code 的，有单独的「Claude 重度月卡」）：订阅期内按套餐的每日 / 每周 / 每月额度使用，用量大且稳定时比按量划算；偶尔用或想先试试，用按量付费。价格页（/pricing）列出在售套餐的价格、额度和折算，还能按每天的请求次数估算哪种更省。买了订阅后不用换 Key：同一个 Key（按量分组的也行）在对话和 Codex 请求里会先用订阅额度，订阅额度用完或到期后自动改用余额继续，余额不足才会报错；画图、视频等仍按 Key 所在分组计费。每次请求实际用的分组在「使用记录」里能看到。套餐种类、价格和额度以购买页为准；已购订阅在「我的订阅」查看。
 
 ## 学生、教师优惠（教育认证）
 链接：/profile
