@@ -192,6 +192,7 @@
             v-if="wechatOAuthEnabled"
             :disabled="authActionDisabled"
             :show-divider="false"
+            :request-proof="acquireWeChatPanelProof"
             @start="handleOAuthStart"
           />
           <OidcOAuthSection
@@ -718,6 +719,21 @@ function maybeAutoStartWeChat(settings: Parameters<typeof resolveWeChatOAuthStar
   if (resolveWeChatOAuthStart(settings).mode !== 'mp') return
   storeOAuthAffiliateCode(resolveAffiliateReferralCode(undefined, query.aff, query.aff_code))
   void handleOAuthStart({ provider: 'wechat', params: { mode: 'mp', redirect: (query.redirect as string) || '/dashboard' } })
+}
+
+// The WeChat QR / code panels (outside WeChat) pass the same captcha the /start redirect asks for.
+async function acquireWeChatPanelProof(): Promise<ActionCaptchaRequestProof | null> {
+  if (authActionDisabled.value) return null
+  if (!actionCaptchaEnabled.value) return {}
+  try {
+    const proof = await turnstileRef.value?.verifyAction()
+    if (!proof) return null
+    return tencentCaptchaEnabled.value
+      ? { tencent_captcha_ticket: proof.token, tencent_captcha_randstr: proof.randstr }
+      : { turnstile_token: proof.token }
+  } finally {
+    resetCaptchaProof()
+  }
 }
 
 async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {

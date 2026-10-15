@@ -25,6 +25,23 @@ vi.mock('vue-router', () => ({
   useRoute: () => routeState,
 }))
 
+const authApiMocks = vi.hoisted(() => ({
+  createWeChatQRLogin: vi.fn(),
+  getWeChatQRLoginStatus: vi.fn(),
+  prepareOAuthBindAccessTokenCookie: vi.fn(),
+}))
+
+vi.mock('@/api/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/auth')>()
+  return {
+    ...actual,
+    createWeChatQRLogin: (...args: any[]) => authApiMocks.createWeChatQRLogin(...args),
+    getWeChatQRLoginStatus: (...args: any[]) => authApiMocks.getWeChatQRLoginStatus(...args),
+    prepareOAuthBindAccessTokenCookie: (...args: any[]) =>
+      authApiMocks.prepareOAuthBindAccessTokenCookie(...args),
+  }
+})
+
 vi.mock('@/api/user', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/user')>()
   return {
@@ -108,6 +125,7 @@ describe('ProfileIdentityBindingsSection', () => {
     setActivePinia(pinia)
     routeState.fullPath = '/profile'
     locationState.current = { href: 'http://localhost/profile' }
+    sessionStorage.clear()
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: locationState.current,
@@ -196,6 +214,112 @@ describe('ProfileIdentityBindingsSection', () => {
         wechatOpenEnabled: false,
         wechatMpEnabled: true,
       },
+    })
+
+    expect(wrapper.find('[data-testid="profile-binding-wechat-action"]').exists()).toBe(false)
+  })
+
+  it('binds WeChat through the 公众号 QR panel outside WeChat, after setting the bind cookie', async () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 Safari/605.1.15',
+    })
+    const appStore = useAppStore()
+    appStore.cachedPublicSettings = {
+      wechat_oauth_enabled: true,
+      wechat_oauth_open_enabled: false,
+      wechat_oauth_mp_enabled: true,
+      wechat_qr_login_enabled: true,
+      wechat_code_login_enabled: true,
+    } as any
+    appStore.publicSettingsLoaded = true
+    const calls: string[] = []
+    authApiMocks.prepareOAuthBindAccessTokenCookie.mockReset().mockImplementation(async () => {
+      calls.push('bind-cookie')
+    })
+    authApiMocks.createWeChatQRLogin.mockReset().mockImplementation(async () => {
+      calls.push('qr-create')
+      return { ticket_id: 't-1', qr_url: 'https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=t', expires_in: 300, poll_interval: 2 }
+    })
+    authApiMocks.getWeChatQRLoginStatus.mockReset().mockResolvedValue({ status: 'pending' })
+    routeState.fullPath = '/profile?tab=security'
+
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: { user: createUser(), wechatEnabled: true, wechatOpenEnabled: false, wechatMpEnabled: true },
+    })
+
+    await wrapper.get('[data-testid="profile-binding-wechat-action"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="wechat-qr-panel"]').exists()).toBe(true)
+    expect(calls).toEqual(['bind-cookie', 'qr-create'])
+    expect(authApiMocks.createWeChatQRLogin).toHaveBeenCalledWith(
+      { redirect: '/profile?tab=security', intent: 'bind_current_user' },
+      {},
+    )
+    expect(locationState.current.href).toBe('http://localhost/profile')
+    wrapper.unmount()
+  })
+
+  it('binds WeChat with the QR panel (never the code panel) in a phone browser outside WeChat', async () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
+    })
+    const appStore = useAppStore()
+    appStore.cachedPublicSettings = {
+      wechat_oauth_enabled: true,
+      wechat_oauth_open_enabled: false,
+      wechat_oauth_mp_enabled: true,
+      wechat_qr_login_enabled: true,
+      wechat_code_login_enabled: true,
+    } as any
+    appStore.publicSettingsLoaded = true
+    authApiMocks.prepareOAuthBindAccessTokenCookie.mockReset().mockResolvedValue(undefined)
+    authApiMocks.createWeChatQRLogin.mockReset().mockResolvedValue({
+      ticket_id: 't-2', qr_url: 'https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=m', expires_in: 300, poll_interval: 2,
+    })
+    authApiMocks.getWeChatQRLoginStatus.mockReset().mockResolvedValue({ status: 'pending' })
+
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: { user: createUser(), wechatEnabled: true, wechatOpenEnabled: false, wechatMpEnabled: true },
+    })
+
+    await wrapper.get('[data-testid="profile-binding-wechat-action"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="wechat-qr-panel"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="wechat-code-panel"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="wechat-switch-code"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="wechat-qr-save-hint"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="wechat-open-in-wechat"]').exists()).toBe(true)
+    expect(authApiMocks.createWeChatQRLogin).toHaveBeenCalledWith(
+      { redirect: '/profile', intent: 'bind_current_user' },
+      {},
+    )
+    wrapper.unmount()
+  })
+
+  it('offers no WeChat binding on a phone when only the code login is on', () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36',
+    })
+    const appStore = useAppStore()
+    appStore.cachedPublicSettings = {
+      wechat_oauth_enabled: true,
+      wechat_oauth_open_enabled: false,
+      wechat_oauth_mp_enabled: true,
+      wechat_qr_login_enabled: false,
+      wechat_code_login_enabled: true,
+    } as any
+    appStore.publicSettingsLoaded = true
+
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: { user: createUser(), wechatEnabled: true, wechatOpenEnabled: false, wechatMpEnabled: true },
     })
 
     expect(wrapper.find('[data-testid="profile-binding-wechat-action"]').exists()).toBe(false)

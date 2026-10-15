@@ -388,6 +388,12 @@ export type WeChatOAuthPublicSettings = {
   wechat_oauth_open_enabled?: boolean
   wechat_oauth_mp_enabled?: boolean
   wechat_oauth_mobile_enabled?: boolean
+  /** 公众号扫码登录 (PC browsers); on only when the message server and mp are set up too. */
+  wechat_qr_login_enabled?: boolean
+  /** 公众号验证码登录 (phone browsers outside WeChat, and the PC fallback). */
+  wechat_code_login_enabled?: boolean
+  wechat_mp_account_name?: string
+  wechat_mp_follow_qr_url?: string
 }
 
 export function isWeChatWebOAuthEnabled(
@@ -397,6 +403,11 @@ export function isWeChatWebOAuthEnabled(
   const hasExplicitCapabilities =
     typeof settings?.wechat_oauth_open_enabled === 'boolean' ||
     typeof settings?.wechat_oauth_mp_enabled === 'boolean'
+
+  // The QR / code flows run on the 公众号 too, so either flag makes WeChat sign-in available.
+  if (settings?.wechat_qr_login_enabled === true || settings?.wechat_code_login_enabled === true) {
+    return true
+  }
 
   if (!hasExplicitCapabilities) {
     return legacyEnabled
@@ -474,6 +485,134 @@ export function resolveWeChatOAuthStartStrict(
   }
 
   return resolveWeChatOAuthStart(settings, normalizedUserAgent)
+}
+
+// ==================== WeChat login on every terminal ====================
+
+/** Where the page runs: inside WeChat, a phone browser outside WeChat, or a desktop browser. */
+export type WeChatLoginTerminal = 'wechat' | 'mobile' | 'pc'
+/** Inline panel used outside WeChat: QR scan (PC) or a 6-digit code sent by the 公众号 (phones). */
+export type WeChatLoginPanel = 'qr' | 'code'
+export type WeChatLoginIntent = 'login' | 'bind_current_user'
+
+const MOBILE_UA_PATTERN = /Android|iPhone|iPod|iPad|Mobile|HarmonyOS|OpenHarmony|Windows Phone/i
+
+export function detectWeChatLoginTerminal(userAgent?: string): WeChatLoginTerminal {
+  const ua = (userAgent ?? (typeof navigator !== 'undefined' ? navigator.userAgent : '') ?? '').trim()
+  if (/MicroMessenger/i.test(ua)) return 'wechat'
+  return MOBILE_UA_PATTERN.test(ua) ? 'mobile' : 'pc'
+}
+
+export interface ResolvedWeChatLoginPanels {
+  terminal: WeChatLoginTerminal
+  qrEnabled: boolean
+  codeEnabled: boolean
+  /** Panel to open on this terminal; null = keep the existing redirect flow (or nothing). */
+  panel: WeChatLoginPanel | null
+}
+
+/**
+ * Picks the WeChat sign-in surface for this terminal. Inside WeChat the 网页授权 (mode=mp) redirect
+ * stays as it is. In a desktop browser an 开放平台 PC app (mode=open) keeps priority when configured;
+ * otherwise the QR panel (the code panel when only codes are on). A phone browser outside WeChat gets
+ * the code panel (the QR one when only QR is on: it can be saved and scanned from the album).
+ */
+export function resolveWeChatLoginPanels(
+  settings: WeChatOAuthPublicSettings | null | undefined,
+  userAgent?: string,
+): ResolvedWeChatLoginPanels {
+  const terminal = detectWeChatLoginTerminal(userAgent)
+  const qrEnabled = settings?.wechat_qr_login_enabled === true
+  const codeEnabled = settings?.wechat_code_login_enabled === true
+  let panel: WeChatLoginPanel | null = null
+  if (terminal === 'pc') {
+    const openMode = resolveWeChatOAuthStart(settings, 'Mozilla/5.0').mode === 'open'
+    if (!openMode) panel = qrEnabled ? 'qr' : codeEnabled ? 'code' : null
+  } else if (terminal === 'mobile') {
+    panel = codeEnabled ? 'code' : qrEnabled ? 'qr' : null
+  }
+  return { terminal, qrEnabled, codeEnabled, panel }
+}
+
+export interface WeChatLoginRequest {
+  /** Where to land after the pending-session flow on /auth/wechat/callback. */
+  redirect: string
+  intent?: WeChatLoginIntent
+  aff_code?: string
+  promo_code?: string
+}
+
+export interface WeChatQRLoginCreateResponse {
+  ticket_id: string
+  qr_url: string
+  expires_in: number
+  poll_interval: number
+}
+
+export type WeChatQRLoginStatus = 'pending' | 'scanned' | 'expired' | 'done' | 'error'
+
+/** Status of a QR or code login ticket (both are polled through qr/status). */
+export interface WeChatQRLoginStatusResponse {
+  status: WeChatQRLoginStatus
+  redirect?: string
+  /** With status "error": why the sign-in could not finish. */
+  message?: string
+}
+
+function buildWeChatLoginBody(
+  request: WeChatLoginRequest,
+  proof?: ActionCaptchaRequestProof | null,
+): Record<string, unknown> {
+  const affCode = request.aff_code?.trim()
+  const promoCode = request.promo_code?.trim()
+  return {
+    redirect: request.redirect,
+    intent: request.intent || 'login',
+    ...(affCode ? { aff_code: affCode } : {}),
+    ...(promoCode ? { promo_code: promoCode } : {}),
+    ...signupAttribution(),
+    ...(proof || {}),
+  }
+}
+
+/** PC: creates a temporary 公众号 QR code tied to this browser. */
+export async function createWeChatQRLogin(
+  request: WeChatLoginRequest,
+  proof?: ActionCaptchaRequestProof | null,
+): Promise<WeChatQRLoginCreateResponse> {
+  const { data } = await apiClient.post<WeChatQRLoginCreateResponse>(
+    '/auth/oauth/wechat/qr/create',
+    buildWeChatLoginBody(request, proof),
+  )
+  return data
+}
+
+/** Polled every poll_interval seconds for QR and code tickets; `done` carries the callback page to go to. */
+export async function getWeChatQRLoginStatus(ticketId: string): Promise<WeChatQRLoginStatusResponse> {
+  const { data } = await apiClient.get<WeChatQRLoginStatusResponse>('/auth/oauth/wechat/qr/status', {
+    params: { ticket_id: ticketId },
+  })
+  return data
+}
+
+export interface WeChatCodeLoginCreateResponse {
+  ticket_id: string
+  /** 6 digits the user sends to the 公众号; the ticket status is polled like the QR one. */
+  code: string
+  expires_in: number
+  poll_interval: number
+}
+
+/** Phone browsers (and the PC fallback): a login ticket shown as a code to send to the 公众号. */
+export async function createWeChatCodeLogin(
+  request: WeChatLoginRequest,
+  proof?: ActionCaptchaRequestProof | null,
+): Promise<WeChatCodeLoginCreateResponse> {
+  const { data } = await apiClient.post<WeChatCodeLoginCreateResponse>(
+    '/auth/oauth/wechat/code/create',
+    buildWeChatLoginBody(request, proof),
+  )
+  return data
 }
 
 /**
@@ -642,6 +781,7 @@ export async function quickRegisterWeChatOAuth(
   const { data } = await apiClient.post<PendingOAuthCreateAccountResponse>('/auth/oauth/wechat/quick-register', {
     ...(invitationCode?.trim() ? { invitation_code: invitationCode.trim() } : {}),
     ...(normalizedAffiliateCode ? { aff_code: normalizedAffiliateCode } : {}),
+    ...signupAttribution(),
     ...serializeOAuthAdoptionDecision(decision)
   })
   return data
@@ -659,6 +799,8 @@ async function createPendingOAuthAccount(
     {
       invitation_code: invitationCode,
       ...(normalizedAffiliateCode ? { aff_code: normalizedAffiliateCode } : {}),
+      // WeChat sign-ups record the visitor and attribution like the email register does.
+      ...(provider === 'wechat' ? signupAttribution() : {}),
       ...serializeOAuthAdoptionDecision(decision)
     }
   )

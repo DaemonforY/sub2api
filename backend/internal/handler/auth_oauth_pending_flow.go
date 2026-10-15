@@ -76,6 +76,9 @@ type createPendingOAuthAccountRequest struct {
 	AffCode               string `json:"aff_code,omitempty"`
 	AdoptDisplayName      *bool  `json:"adopt_display_name,omitempty"`
 	AdoptAvatar           *bool  `json:"adopt_avatar,omitempty"`
+	// First-touch source kept by the browser, as with the email register.
+	VisitorID   string                        `json:"visitor_id,omitempty"`
+	Attribution *service.AnalyticsAttribution `json:"attribution,omitempty"`
 }
 
 type sendPendingOAuthVerifyCodeRequest struct {
@@ -242,6 +245,9 @@ func (h *AuthHandler) createOAuthPendingSession(c *gin.Context, payload oauthPen
 	}
 	if promoCode := readOAuthPromoCode(c); promoCode != "" {
 		localFlowState[oauthPromoCodeStateKey] = promoCode
+	}
+	for key, value := range oauthPendingLocalFlowExtras(c) {
+		localFlowState[key] = value
 	}
 
 	session, err := svc.CreatePendingSession(c.Request.Context(), service.CreatePendingAuthSessionInput{
@@ -1765,6 +1771,8 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 		response.ErrorFrom(c, err)
 		return
 	}
+	signupData := resolveOAuthSignupData(session, req.VisitorID, req.Attribution, req.AffCode)
+	withOAuthSignupClient(c, signupData.visitorID)
 
 	tokenPair, user, err := h.authService.RegisterOAuthEmailAccount(
 		c.Request.Context(),
@@ -1846,7 +1854,7 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 		user,
 		strings.TrimSpace(req.InvitationCode),
 		strings.TrimSpace(session.ProviderType),
-		strings.TrimSpace(req.AffCode),
+		signupData.affCode,
 	); err != nil {
 		_ = tx.Rollback()
 		if rollbackCreatedUser(err) {
@@ -1887,6 +1895,7 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 
 	h.authService.ApplyOAuthSignupPromoCode(c.Request.Context(), user.ID, pendingOAuthPromoCode(session))
 	h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
+	h.recordSignupAttribution(c, user, signupData.visitorID, signupData.attribution, signupData.affCode)
 	// createPendingOAuthAccount = 注册新账户，需要把钉钉昵称同步到 users.username 作为初始值
 	h.maybeSyncDingTalkAfterRegistration(c.Request.Context(), session, user.ID)
 	clearCookies()

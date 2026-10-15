@@ -1214,6 +1214,7 @@ var ProviderSet = wire.NewSet(
 	ProvideContentEngineService,
 	NewLoginGuardService,
 	ProvideAnalyticsService,
+	NewWeChatMPLoginService,
 	ProvideActivationReminderService,
 	ProvideAbandonedOrderReminderService,
 	ProvideTrialExhaustedReminderService,

@@ -3118,6 +3118,321 @@
                     {{ t("admin.settings.wechatConnect.frontendRedirectUrlHint") }}
                   </p>
                 </div>
+
+                <!-- 公众号消息服务器 + 扫码 / 验证码登录 (PC and phone browsers outside WeChat) -->
+                <div
+                  class="space-y-5 rounded-lg border border-gray-200 p-4 dark:border-dark-700"
+                  data-testid="wechat-mp-login-settings"
+                >
+                  <div class="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 class="font-medium text-gray-900 dark:text-white">
+                        {{ t("admin.settings.wechatConnect.mpLogin.title") }}
+                      </h3>
+                      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.wechatConnect.mpLogin.description") }}
+                      </p>
+                    </div>
+                    <Toggle
+                      v-model="form.wechat_mp_message_enabled"
+                      data-testid="wechat-mp-message-enabled"
+                    />
+                  </div>
+
+                  <template v-if="form.wechat_mp_message_enabled">
+                    <!-- 服务器配置 instructions -->
+                    <div
+                      class="space-y-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-900/40 dark:bg-sky-900/10 dark:text-sky-200"
+                    >
+                      <p class="font-medium">
+                        {{ t("admin.settings.wechatConnect.mpLogin.serverConfigTitle") }}
+                      </p>
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <code
+                          class="select-all break-all rounded bg-white px-2 py-1 font-mono text-xs text-gray-700 dark:bg-dark-800 dark:text-gray-200"
+                          data-testid="wechat-mp-message-url"
+                        >{{ wechatMpMessageUrl }}</code>
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-sm w-fit"
+                          @click="copyToClipboard(wechatMpMessageUrl)"
+                        >
+                          {{ t("admin.settings.wechatConnect.mpLogin.copy") }}
+                        </button>
+                      </div>
+                      <ul class="list-disc space-y-1 pl-5 text-xs leading-5">
+                        <li>{{ t("admin.settings.wechatConnect.mpLogin.serverConfigStep1") }}</li>
+                        <li>{{ t("admin.settings.wechatConnect.mpLogin.serverConfigSafeMode") }}</li>
+                        <li>{{ t("admin.settings.wechatConnect.mpLogin.serverConfigIpWhitelist") }}</li>
+                        <li v-if="form.wechat_mp_message_forward_url?.trim()" class="font-medium">
+                          {{ t("admin.settings.wechatConnect.mpLogin.serverConfigWithForward") }}
+                        </li>
+                      </ul>
+                      <p
+                        class="rounded-md bg-amber-100 px-3 py-2 text-xs font-medium leading-5 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+                      >
+                        {{ t("admin.settings.wechatConnect.mpLogin.menuWarning") }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ t("admin.settings.wechatConnect.mpLogin.forwardUrl") }}
+                      </label>
+                      <input
+                        v-model="form.wechat_mp_message_forward_url"
+                        data-testid="wechat-mp-message-forward-url"
+                        type="url"
+                        class="input font-mono text-sm"
+                        :placeholder="t('admin.settings.wechatConnect.mpLogin.forwardUrlPlaceholder')"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.wechatConnect.mpLogin.forwardUrlHint") }}
+                      </p>
+                    </div>
+
+                    <div
+                      :class="[
+                        'rounded-lg border px-4 py-3 text-sm',
+                        form.wechat_mp_message_forward_url?.trim()
+                          ? 'border-red-200 bg-red-50 font-medium text-red-700 dark:border-red-900/40 dark:bg-red-900/10 dark:text-red-300'
+                          : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/10 dark:text-amber-300',
+                      ]"
+                      data-testid="wechat-mp-shared-secret-warning"
+                    >
+                      {{ t("admin.settings.wechatConnect.mpLogin.sharedSecretWarning") }}
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Token
+                        </label>
+                        <div class="flex gap-2">
+                          <input
+                            v-model="form.wechat_mp_message_token"
+                            data-testid="wechat-mp-message-token"
+                            type="text"
+                            autocomplete="off"
+                            spellcheck="false"
+                            class="input min-w-0 flex-1 font-mono text-sm"
+                            :placeholder="
+                              form.wechat_mp_message_token_configured
+                                ? t('admin.settings.wechatConnect.mpLogin.secretConfigured')
+                                : t('admin.settings.wechatConnect.mpLogin.tokenPlaceholder')
+                            "
+                          />
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm shrink-0"
+                            data-testid="wechat-mp-message-token-generate"
+                            @click="generateWeChatMpSecret('token')"
+                          >
+                            {{ t("admin.settings.wechatConnect.mpLogin.generate") }}
+                          </button>
+                        </div>
+                        <p
+                          v-if="wechatMpTokenError"
+                          class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                        >
+                          {{ wechatMpTokenError }}
+                        </p>
+                      </div>
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          EncodingAESKey
+                        </label>
+                        <div class="flex gap-2">
+                          <input
+                            v-model="form.wechat_mp_message_aes_key"
+                            data-testid="wechat-mp-message-aes-key"
+                            type="text"
+                            autocomplete="off"
+                            spellcheck="false"
+                            maxlength="43"
+                            class="input min-w-0 flex-1 font-mono text-sm"
+                            :placeholder="
+                              form.wechat_mp_message_aes_key_configured
+                                ? t('admin.settings.wechatConnect.mpLogin.secretConfigured')
+                                : t('admin.settings.wechatConnect.mpLogin.aesKeyPlaceholder')
+                            "
+                          />
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm shrink-0"
+                            data-testid="wechat-mp-message-aes-key-generate"
+                            @click="generateWeChatMpSecret('aes_key')"
+                          >
+                            {{ t("admin.settings.wechatConnect.mpLogin.generate") }}
+                          </button>
+                        </div>
+                        <p
+                          v-if="wechatMpAesKeyError"
+                          class="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                        >
+                          {{ wechatMpAesKeyError }}
+                        </p>
+                      </div>
+                    </div>
+                    <p class="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.wechatConnect.mpLogin.secretHint") }}
+                    </p>
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ t("admin.settings.wechatConnect.mpLogin.accountName") }}
+                        </label>
+                        <input
+                          v-model="form.wechat_mp_account_name"
+                          data-testid="wechat-mp-account-name"
+                          type="text"
+                          class="input text-sm"
+                          :placeholder="t('admin.settings.wechatConnect.mpLogin.accountNamePlaceholder')"
+                        />
+                      </div>
+                      <div>
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ t("admin.settings.wechatConnect.mpLogin.originalId") }}
+                        </label>
+                        <input
+                          v-model="form.wechat_mp_original_id"
+                          data-testid="wechat-mp-original-id"
+                          type="text"
+                          class="input font-mono text-sm"
+                          placeholder="gh_xxxxxxxxxxxx"
+                        />
+                        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ t("admin.settings.wechatConnect.mpLogin.originalIdHint") }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div class="flex items-start justify-between gap-4 rounded-lg bg-gray-50 p-3 dark:bg-dark-800/60">
+                        <div>
+                          <p class="text-sm font-medium text-gray-900 dark:text-white">
+                            {{ t("admin.settings.wechatConnect.mpLogin.qrLogin") }}
+                          </p>
+                          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.wechatConnect.mpLogin.qrLoginHint") }}
+                          </p>
+                        </div>
+                        <Toggle
+                          v-model="form.wechat_qr_login_enabled"
+                          data-testid="wechat-qr-login-enabled"
+                        />
+                      </div>
+                      <div class="flex items-start justify-between gap-4 rounded-lg bg-gray-50 p-3 dark:bg-dark-800/60">
+                        <div>
+                          <p class="text-sm font-medium text-gray-900 dark:text-white">
+                            {{ t("admin.settings.wechatConnect.mpLogin.codeLogin") }}
+                          </p>
+                          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {{ t("admin.settings.wechatConnect.mpLogin.codeLoginHint") }}
+                          </p>
+                        </div>
+                        <Toggle
+                          v-model="form.wechat_code_login_enabled"
+                          data-testid="wechat-code-login-enabled"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {{ t("admin.settings.wechatConnect.mpLogin.keywords") }}
+                      </label>
+                      <input
+                        v-model="form.wechat_mp_login_keywords"
+                        data-testid="wechat-mp-login-keywords"
+                        type="text"
+                        class="input text-sm"
+                        placeholder="登录,验证码,login"
+                      />
+                      <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ t("admin.settings.wechatConnect.mpLogin.keywordsHint") }}
+                      </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      <div v-for="reply in wechatMpReplyFields" :key="reply.key">
+                        <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {{ reply.label }}
+                        </label>
+                        <textarea
+                          v-model="form[reply.key]"
+                          :data-testid="`wechat-mp-${reply.key}`"
+                          rows="3"
+                          class="input text-sm"
+                          :placeholder="reply.placeholder"
+                        ></textarea>
+                        <p v-if="reply.hint" class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                          {{ reply.hint }}
+                        </p>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- 公众号 domain verify files (MP_verify_xxx.txt) for 网页授权 -->
+                <div
+                  class="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-dark-700"
+                  data-testid="wechat-domain-verify-files"
+                >
+                  <div>
+                    <h3 class="font-medium text-gray-900 dark:text-white">
+                      {{ t("admin.settings.wechatConnect.mpLogin.verifyFilesTitle") }}
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {{ t("admin.settings.wechatConnect.mpLogin.verifyFilesHint") }}
+                    </p>
+                  </div>
+                  <div
+                    v-for="(row, index) in wechatDomainVerifyRows"
+                    :key="index"
+                    class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                  >
+                    <div>
+                      <input
+                        v-model="row.filename"
+                        :data-testid="`wechat-verify-filename-${index}`"
+                        type="text"
+                        class="input font-mono text-sm"
+                        :class="{ 'input-error': wechatVerifyFilenameInvalid(row.filename) }"
+                        placeholder="MP_verify_xxxxxxxxxxxx.txt"
+                      />
+                      <p
+                        v-if="wechatVerifyFilenameInvalid(row.filename)"
+                        class="mt-1 text-xs text-red-600 dark:text-red-400"
+                      >
+                        {{ t("admin.settings.wechatConnect.mpLogin.verifyFilenameInvalid") }}
+                      </p>
+                    </div>
+                    <input
+                      v-model="row.content"
+                      :data-testid="`wechat-verify-content-${index}`"
+                      type="text"
+                      class="input font-mono text-sm"
+                      :placeholder="t('admin.settings.wechatConnect.mpLogin.verifyContentPlaceholder')"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      @click="wechatDomainVerifyRows.splice(index, 1)"
+                    >
+                      {{ t("admin.settings.wechatConnect.mpLogin.remove") }}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    data-testid="wechat-verify-add"
+                    @click="wechatDomainVerifyRows.push({ filename: '', content: '' })"
+                  >
+                    {{ t("admin.settings.wechatConnect.mpLogin.addVerifyFile") }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -8843,6 +9158,7 @@ import type {
   DefaultPlatformQuotasMap,
   OpenAIFastPolicyRule,
   WeChatConnectMode,
+  WeChatDomainVerifyFile,
   WebSearchEmulationConfig,
   WebSearchProviderConfig,
   WebSearchTestResult,
@@ -9534,6 +9850,9 @@ type SettingsForm = Omit<
   | "wechat_connect_open_enabled"
   | "wechat_connect_mp_enabled"
   | "wechat_connect_mobile_enabled"
+  | "wechat_mp_message_enabled"
+  | "wechat_qr_login_enabled"
+  | "wechat_code_login_enabled"
 > & {
   /** Form always binds a concrete boolean (SystemSettings marks this optional). */
   channel_monitor_hide_throughput: boolean;
@@ -9550,6 +9869,11 @@ type SettingsForm = Omit<
   wechat_connect_open_app_secret: string;
   wechat_connect_mp_app_secret: string;
   wechat_connect_mobile_app_secret: string;
+  wechat_mp_message_token: string;
+  wechat_mp_message_aes_key: string;
+  wechat_mp_message_enabled: boolean;
+  wechat_qr_login_enabled: boolean;
+  wechat_code_login_enabled: boolean;
   wechat_connect_open_enabled: boolean;
   wechat_connect_mp_enabled: boolean;
   wechat_connect_mobile_enabled: boolean;
@@ -9741,6 +10065,22 @@ const form = reactive<SettingsForm>({
   wechat_connect_scopes: "snsapi_login",
   wechat_connect_redirect_url: "",
   wechat_connect_frontend_redirect_url: "/auth/wechat/callback",
+  wechat_mp_message_enabled: false,
+  wechat_mp_message_token: "",
+  wechat_mp_message_token_configured: false,
+  wechat_mp_message_aes_key: "",
+  wechat_mp_message_aes_key_configured: false,
+  wechat_mp_message_forward_url: "",
+  wechat_mp_login_keywords: "登录,验证码,login",
+  wechat_mp_reply_welcome: "",
+  wechat_mp_reply_default: "",
+  wechat_mp_reply_scan_ok: "",
+  wechat_mp_reply_code: "",
+  wechat_mp_account_name: "",
+  wechat_mp_original_id: "",
+  wechat_qr_login_enabled: false,
+  wechat_code_login_enabled: false,
+  wechat_domain_verify_files: [],
   // Generic OIDC OAuth 登录
   oidc_connect_enabled: false,
   oidc_connect_provider_name: "OIDC",
@@ -10611,6 +10951,157 @@ async function setAndCopyWeChatRedirectUrl() {
   );
 }
 
+// ---------- 公众号消息服务器 / 扫码 + 验证码登录 ----------
+const wechatMpMessageUrl = computed(() => buildApiCallbackUrl("/wechat/mp/message"));
+const WECHAT_VERIFY_FILENAME_PATTERN = /^MP_verify_[A-Za-z0-9]{8,32}\.txt$/;
+const WECHAT_MP_TOKEN_PATTERN = /^[A-Za-z0-9]{3,32}$/;
+const WECHAT_MP_AES_KEY_PATTERN = /^[A-Za-z0-9]{43}$/;
+const wechatDomainVerifyRows = ref<WeChatDomainVerifyFile[]>([]);
+
+type WeChatMpReplyKey =
+  | "wechat_mp_reply_welcome"
+  | "wechat_mp_reply_default"
+  | "wechat_mp_reply_scan_ok"
+  | "wechat_mp_reply_code";
+const wechatMpReplyFields = computed<
+  { key: WeChatMpReplyKey; label: string; placeholder: string; hint?: string }[]
+>(() => [
+  {
+    key: "wechat_mp_reply_welcome",
+    label: t("admin.settings.wechatConnect.mpLogin.replyWelcome"),
+    placeholder: t("admin.settings.wechatConnect.mpLogin.replyWelcomePlaceholder"),
+  },
+  {
+    key: "wechat_mp_reply_code",
+    label: t("admin.settings.wechatConnect.mpLogin.replyCode"),
+    placeholder: t("admin.settings.wechatConnect.mpLogin.replyCodePlaceholder"),
+    hint: t("admin.settings.wechatConnect.mpLogin.replyCodeHint"),
+  },
+  {
+    key: "wechat_mp_reply_scan_ok",
+    label: t("admin.settings.wechatConnect.mpLogin.replyScanOk"),
+    placeholder: t("admin.settings.wechatConnect.mpLogin.replyScanOkPlaceholder"),
+  },
+  {
+    key: "wechat_mp_reply_default",
+    label: t("admin.settings.wechatConnect.mpLogin.replyDefault"),
+    placeholder: t("admin.settings.wechatConnect.mpLogin.replyDefaultPlaceholder"),
+    hint: t("admin.settings.wechatConnect.mpLogin.replyDefaultHint"),
+  },
+]);
+
+const wechatMpTokenError = computed(() => {
+  const value = form.wechat_mp_message_token.trim();
+  return value && !WECHAT_MP_TOKEN_PATTERN.test(value)
+    ? t("admin.settings.wechatConnect.mpLogin.tokenInvalid")
+    : "";
+});
+const wechatMpAesKeyError = computed(() => {
+  const value = form.wechat_mp_message_aes_key.trim();
+  return value && !WECHAT_MP_AES_KEY_PATTERN.test(value)
+    ? t("admin.settings.wechatConnect.mpLogin.aesKeyInvalid")
+    : "";
+});
+
+function wechatVerifyFilenameInvalid(filename: string): boolean {
+  const value = filename.trim();
+  return value !== "" && !WECHAT_VERIFY_FILENAME_PATTERN.test(value);
+}
+
+function normalizeWeChatDomainVerifyFiles(value: unknown): WeChatDomainVerifyFile[] {
+  let list: unknown = value;
+  if (typeof value === "string") {
+    try {
+      list = value.trim() ? JSON.parse(value) : [];
+    } catch {
+      list = [];
+    }
+  }
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      filename: String(item.filename ?? ""),
+      content: String(item.content ?? ""),
+    }));
+}
+
+/** Secrets come back masked: keep the inputs empty and only remember whether they are set. */
+function applyWeChatMpSettings(source: SystemSettings): void {
+  const raw = source as unknown as Record<string, unknown>;
+  const tokenFromServer = typeof raw.wechat_mp_message_token === "string" ? raw.wechat_mp_message_token : "";
+  const aesKeyFromServer = typeof raw.wechat_mp_message_aes_key === "string" ? raw.wechat_mp_message_aes_key : "";
+  form.wechat_mp_message_token_configured = Boolean(
+    source.wechat_mp_message_token_configured || tokenFromServer,
+  );
+  form.wechat_mp_message_aes_key_configured = Boolean(
+    source.wechat_mp_message_aes_key_configured || aesKeyFromServer,
+  );
+  form.wechat_mp_message_token = "";
+  form.wechat_mp_message_aes_key = "";
+  wechatDomainVerifyRows.value = normalizeWeChatDomainVerifyFiles(source.wechat_domain_verify_files);
+}
+
+function randomAlphanumeric(length: number): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const out: string[] = [];
+  // Rejection sampling keeps every character equally likely.
+  while (out.length < length) {
+    const bytes = crypto.getRandomValues(new Uint8Array(length * 2));
+    for (const byte of bytes) {
+      if (byte < 248 && out.length < length) out.push(alphabet[byte % 62]);
+    }
+  }
+  return out.join("");
+}
+
+function generateWeChatMpSecret(kind: "token" | "aes_key"): void {
+  // Another site sharing this 公众号 must keep working: its Token / Key have to stay the same.
+  if (
+    form.wechat_mp_message_forward_url?.trim() &&
+    !confirm(t("admin.settings.wechatConnect.mpLogin.generateWithForwardConfirm"))
+  ) {
+    return;
+  }
+  if (kind === "token") {
+    form.wechat_mp_message_token = randomAlphanumeric(32);
+  } else {
+    form.wechat_mp_message_aes_key = randomAlphanumeric(43);
+  }
+}
+
+/** Returns an error message, or "" when the WeChat login settings can be saved. */
+function validateWeChatMpSettings(): string {
+  if (wechatMpTokenError.value) return wechatMpTokenError.value;
+  if (wechatMpAesKeyError.value) return wechatMpAesKeyError.value;
+  const forward = form.wechat_mp_message_forward_url?.trim() || "";
+  if (forward && !/^https?:\/\//i.test(forward)) {
+    return t("admin.settings.wechatConnect.mpLogin.forwardUrlInvalid");
+  }
+  const seen = new Set<string>();
+  for (const row of wechatDomainVerifyRows.value) {
+    const filename = row.filename.trim();
+    if (!filename && !row.content.trim()) continue;
+    if (!WECHAT_VERIFY_FILENAME_PATTERN.test(filename)) {
+      return t("admin.settings.wechatConnect.mpLogin.verifyFilenameInvalid");
+    }
+    if (!row.content.trim()) {
+      return t("admin.settings.wechatConnect.mpLogin.verifyContentRequired");
+    }
+    if (seen.has(filename)) {
+      return t("admin.settings.wechatConnect.mpLogin.verifyFilenameDuplicate");
+    }
+    seen.add(filename);
+  }
+  return "";
+}
+
+function wechatDomainVerifyFilesForSave(): WeChatDomainVerifyFile[] {
+  return wechatDomainVerifyRows.value
+    .map((row) => ({ filename: row.filename.trim(), content: row.content.trim() }))
+    .filter((row) => row.filename && row.content);
+}
+
 const oidcRedirectUrlSuggestion = computed(() => {
   return buildApiCallbackUrl("/auth/oauth/oidc/callback");
 });
@@ -10908,6 +11399,7 @@ async function loadSettings() {
     form.wechat_connect_open_app_secret = "";
     form.wechat_connect_mp_app_secret = "";
     form.wechat_connect_mobile_app_secret = "";
+    applyWeChatMpSettings(settings);
     const wechatCapabilities = resolveWeChatConnectModeCapabilities(
       settings.wechat_connect_open_enabled,
       settings.wechat_connect_mp_enabled,
@@ -11089,6 +11581,12 @@ async function saveSettings() {
           max: tablePageSizeMax,
         }),
       );
+      return;
+    }
+
+    const wechatMpError = validateWeChatMpSettings();
+    if (wechatMpError) {
+      appStore.showError(wechatMpError);
       return;
     }
 
@@ -11337,6 +11835,20 @@ async function saveSettings() {
       wechat_connect_redirect_url: form.wechat_connect_redirect_url,
       wechat_connect_frontend_redirect_url:
         form.wechat_connect_frontend_redirect_url,
+      wechat_mp_message_enabled: form.wechat_mp_message_enabled,
+      wechat_mp_message_token: form.wechat_mp_message_token.trim() || undefined,
+      wechat_mp_message_aes_key: form.wechat_mp_message_aes_key.trim() || undefined,
+      wechat_mp_message_forward_url: form.wechat_mp_message_forward_url?.trim() || "",
+      wechat_mp_login_keywords: form.wechat_mp_login_keywords,
+      wechat_mp_reply_welcome: form.wechat_mp_reply_welcome,
+      wechat_mp_reply_default: form.wechat_mp_reply_default,
+      wechat_mp_reply_scan_ok: form.wechat_mp_reply_scan_ok,
+      wechat_mp_reply_code: form.wechat_mp_reply_code,
+      wechat_mp_account_name: form.wechat_mp_account_name,
+      wechat_mp_original_id: form.wechat_mp_original_id?.trim() || "",
+      wechat_qr_login_enabled: form.wechat_qr_login_enabled,
+      wechat_code_login_enabled: form.wechat_code_login_enabled,
+      wechat_domain_verify_files: wechatDomainVerifyFilesForSave(),
       oidc_connect_enabled: form.oidc_connect_enabled,
       oidc_connect_provider_name: form.oidc_connect_provider_name,
       oidc_connect_client_id: form.oidc_connect_client_id,
@@ -11605,6 +12117,7 @@ async function saveSettings() {
     form.wechat_connect_open_app_secret = "";
     form.wechat_connect_mp_app_secret = "";
     form.wechat_connect_mobile_app_secret = "";
+    applyWeChatMpSettings(updated);
     const updatedWechatCapabilities = resolveWeChatConnectModeCapabilities(
       updated.wechat_connect_open_enabled,
       updated.wechat_connect_mp_enabled,

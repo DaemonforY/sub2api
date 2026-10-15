@@ -311,6 +311,23 @@ const (
 	SettingKeyWeChatConnectRedirectURL         = "wechat_connect_redirect_url"
 	SettingKeyWeChatConnectFrontendRedirectURL = "wechat_connect_frontend_redirect_url"
 
+	// 公众号消息服务器 + 扫码登录 / 验证码登录（每个终端都用同一个公众号）
+	SettingKeyWeChatMPMessageEnabled  = "wechat_mp_message_enabled"
+	SettingKeyWeChatMPMessageToken    = "wechat_mp_message_token"
+	SettingKeyWeChatMPMessageAESKey   = "wechat_mp_message_aes_key"
+	SettingKeyWeChatMPLoginKeywords   = "wechat_mp_login_keywords"
+	SettingKeyWeChatMPReplyWelcome    = "wechat_mp_reply_welcome"
+	SettingKeyWeChatMPReplyDefault    = "wechat_mp_reply_default"
+	SettingKeyWeChatMPReplyScanOK     = "wechat_mp_reply_scan_ok"
+	SettingKeyWeChatMPReplyCode       = "wechat_mp_reply_code"
+	SettingKeyWeChatMPAccountName     = "wechat_mp_account_name"
+	SettingKeyWeChatMPOriginalID      = "wechat_mp_original_id"
+	SettingKeyWeChatQRLoginEnabled    = "wechat_qr_login_enabled"
+	SettingKeyWeChatCodeLoginEnabled  = "wechat_code_login_enabled"
+	SettingKeyWeChatDomainVerifyFiles = "wechat_domain_verify_files"
+	// 同一个公众号的「服务器配置」只有一个 URL：我们不处理的消息原样转发到这里（留空 = 不转发）
+	SettingKeyWeChatMPMessageForwardURL = "wechat_mp_message_forward_url"
+
 	// Generic OIDC OAuth 登录设置
 	SettingKeyOIDCConnectEnabled              = "oidc_connect_enabled"
 	SettingKeyOIDCConnectProviderName         = "oidc_connect_provider_name"

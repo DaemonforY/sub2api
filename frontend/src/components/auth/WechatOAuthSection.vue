@@ -1,6 +1,13 @@
 <template>
   <div class="space-y-4">
-    <button type="button" :disabled="buttonDisabled" :class="primary ? 'btn btn-primary w-full py-3 text-base' : 'btn btn-secondary w-full'" @click="startLogin">
+    <button
+      type="button"
+      :disabled="buttonDisabled"
+      :class="primary ? 'btn btn-primary w-full py-3 text-base' : 'btn btn-secondary w-full'"
+      :aria-expanded="panel ? panelOpen : undefined"
+      data-testid="wechat-oauth-button"
+      @click="startLogin"
+    >
       <span
         class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300"
       >
@@ -8,6 +15,19 @@
       </span>
       {{ label || t('auth.oidc.signIn', { providerName }) }}
     </button>
+
+    <WechatLoginPanel
+      v-if="panel && panelOpen"
+      :initial-panel="panel"
+      :terminal="panels.terminal"
+      :qr-enabled="panels.qrEnabled"
+      :code-enabled="panels.codeEnabled"
+      :request="panelRequest"
+      :request-proof="requestProof"
+      :account-name="accountName"
+      :follow-qr-url="followQrUrl"
+      :disabled="disabled"
+    />
 
     <p
       v-if="disabledHint"
@@ -28,22 +48,42 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { resolveWeChatOAuthStart, type OAuthLoginStart } from '@/api/auth'
+import {
+  resolveWeChatLoginPanels,
+  resolveWeChatOAuthStart,
+  type OAuthLoginStart,
+  type WeChatLoginIntent,
+  type WeChatLoginRequest,
+} from '@/api/auth'
+import WechatLoginPanel from '@/components/auth/WechatLoginPanel.vue'
 import { useAppStore } from '@/stores'
 import { resolveAffiliateReferralCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
+import type { ActionCaptchaRequestProof } from '@/types'
 
 const props = withDefaults(defineProps<{
   disabled?: boolean
   affCode?: string
+  promoCode?: string
   showDivider?: boolean
   /** Main call to action (e.g. the register page inside WeChat) instead of a secondary button. */
   primary?: boolean
   label?: string
+  intent?: WeChatLoginIntent
+  /**
+   * Runs the page's captcha before a QR / code request (the same gate the /start redirect uses).
+   * Resolve null to cancel; omit when the page has no captcha.
+   */
+  requestProof?: () => Promise<ActionCaptchaRequestProof | null | undefined>
+  /** Open the QR / code panel right away (e.g. arriving from the home page's 微信注册). */
+  autoOpen?: boolean
 }>(), {
   showDivider: true,
+  intent: 'login',
+  requestProof: undefined,
+  autoOpen: false,
 })
 const emit = defineEmits<{
   start: [request: OAuthLoginStart]
@@ -59,9 +99,20 @@ function localizeWeChatHint(zh: string, en: string): string {
 }
 
 const resolvedStart = computed(() => resolveWeChatOAuthStart(appStore.cachedPublicSettings))
-const buttonDisabled = computed(() => props.disabled || resolvedStart.value.mode === null)
+// Outside WeChat the 公众号 QR / code panels replace the "WeChat browser only" dead end.
+// Inside WeChat 网页授权 (mode=mp) stays the way in.
+const panels = computed(() => resolveWeChatLoginPanels(appStore.cachedPublicSettings))
+const panel = computed(() => (resolvedStart.value.mode === 'mp' ? null : panels.value.panel))
+const panelOpen = ref(false)
+const panelAffCode = ref('')
+const accountName = computed(() => appStore.cachedPublicSettings?.wechat_mp_account_name?.trim() || '')
+const followQrUrl = computed(() => appStore.cachedPublicSettings?.wechat_mp_follow_qr_url?.trim() || '')
+
+const buttonDisabled = computed(
+  () => props.disabled || (resolvedStart.value.mode === null && panel.value === null),
+)
 const disabledHint = computed(() => {
-  if (props.disabled) {
+  if (props.disabled || panel.value) {
     return ''
   }
   switch (resolvedStart.value.unavailableReason) {
@@ -81,17 +132,59 @@ const disabledHint = computed(() => {
   }
 })
 
+function redirectTarget(): string {
+  return (route.query.redirect as string) || '/dashboard'
+}
+
+const panelRequest = computed<WeChatLoginRequest>(() => {
+  const signingIn = props.intent === 'login'
+  return {
+    redirect: redirectTarget(),
+    intent: props.intent,
+    aff_code: signingIn ? panelAffCode.value || undefined : undefined,
+    promo_code: signingIn ? props.promoCode?.trim() || undefined : undefined,
+  }
+})
+
+function openPanel(): void {
+  if (props.intent === 'login') {
+    // The callback page reads the stored code for 用微信直接注册, as after 网页授权.
+    panelAffCode.value = resolveAffiliateReferralCode(props.affCode, route.query.aff, route.query.aff_code)
+    storeOAuthAffiliateCode(panelAffCode.value)
+  }
+  panelOpen.value = true
+}
+
 onMounted(() => {
   if (!appStore.cachedPublicSettings && !appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
   }
 })
 
+watch(
+  () => [props.autoOpen, panel.value, props.disabled] as const,
+  ([autoOpen, available, disabled]) => {
+    if (autoOpen && available && !disabled && !panelOpen.value) openPanel()
+  },
+  { immediate: true },
+)
+
 function startLogin(): void {
-  if (buttonDisabled.value || !resolvedStart.value.mode) {
+  if (buttonDisabled.value) {
     return
   }
-  const redirectTo = (route.query.redirect as string) || '/dashboard'
+  if (panel.value) {
+    if (panelOpen.value) {
+      panelOpen.value = false
+    } else {
+      openPanel()
+    }
+    return
+  }
+  if (!resolvedStart.value.mode) {
+    return
+  }
+  const redirectTo = redirectTarget()
   storeOAuthAffiliateCode(resolveAffiliateReferralCode(props.affCode, route.query.aff, route.query.aff_code))
   const mode = resolvedStart.value.mode
   emit('start', {

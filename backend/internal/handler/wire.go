@@ -292,10 +292,11 @@ func ProvideHandlers(
 }
 
 // ProvideAuthHandler builds the auth handler with the login brute-force guard and sign-up attribution.
-func ProvideAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, userAttributeService *service.UserAttributeService, loginGuard *service.LoginGuardService, analytics *service.AnalyticsService) *AuthHandler {
+func ProvideAuthHandler(cfg *config.Config, authService *service.AuthService, userService *service.UserService, settingService *service.SettingService, promoService *service.PromoService, redeemService *service.RedeemService, totpService *service.TotpService, userAttributeService *service.UserAttributeService, loginGuard *service.LoginGuardService, analytics *service.AnalyticsService, wechatMP *service.WeChatMPLoginService) *AuthHandler {
 	h := NewAuthHandler(cfg, authService, userService, settingService, promoService, redeemService, totpService, userAttributeService)
 	h.SetLoginGuard(loginGuard)
 	h.analytics = analytics
+	h.SetWeChatMPLogin(wechatMP)
 	return h
 }
 

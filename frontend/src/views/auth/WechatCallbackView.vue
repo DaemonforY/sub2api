@@ -336,6 +336,7 @@ import PendingOAuthCreateAccountForm, {
   type PendingOAuthCreateAccountPayload
 } from '@/components/auth/PendingOAuthCreateAccountForm.vue'
 import { apiClient } from '@/api/client'
+import { signupAttribution } from '@/utils/analytics'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
   completeWeChatOAuthRegistration,
@@ -889,6 +890,7 @@ async function handleSubmitInvitation() {
             pending_oauth_token: legacyPendingOAuthToken.value,
             invitation_code: invitationCode.value.trim(),
             ...oauthAffiliatePayload(affCode),
+            ...signupAttribution(),
             ...serializeAdoptionDecision(decision)
           })
         ).data
@@ -960,6 +962,8 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
         : {}),
       invitation_code: payload.invitationCode || undefined,
       ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
+      // Sign-up attribution (visitor ID + first touch), as the email register sends it.
+      ...signupAttribution(),
       ...serializeAdoptionDecision(currentAdoptionDecision())
     })
     await finalizePendingAccountResponse(data)

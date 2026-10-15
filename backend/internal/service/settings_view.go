@@ -110,6 +110,24 @@ type SystemSettings struct {
 	WeChatConnectRedirectURL               string
 	WeChatConnectFrontendRedirectURL       string
 
+	// 公众号消息服务器 + 扫码 / 验证码登录
+	WeChatMPMessageEnabled          bool
+	WeChatMPMessageToken            string
+	WeChatMPMessageTokenConfigured  bool
+	WeChatMPMessageAESKey           string
+	WeChatMPMessageAESKeyConfigured bool
+	WeChatMPLoginKeywords           string
+	WeChatMPReplyWelcome            string
+	WeChatMPReplyDefault            string
+	WeChatMPReplyScanOK             string
+	WeChatMPReplyCode               string
+	WeChatMPAccountName             string
+	WeChatMPOriginalID              string
+	WeChatQRLoginEnabled            bool
+	WeChatCodeLoginEnabled          bool
+	WeChatDomainVerifyFiles         []WeChatDomainVerifyFile
+	WeChatMPMessageForwardURL       string
+
 	// Generic OIDC OAuth 登录
 	OIDCConnectEnabled                bool
 	OIDCConnectProviderName           string
@@ -364,13 +382,18 @@ type PublicSettings struct {
 	WeChatOAuthOpenEnabled   bool
 	WeChatOAuthMPEnabled     bool
 	WeChatOAuthMobileEnabled bool
-	BackendModeEnabled       bool
-	PaymentEnabled           bool
-	OIDCOAuthEnabled         bool
-	OIDCOAuthProviderName    string
-	GitHubOAuthEnabled       bool
-	GoogleOAuthEnabled       bool
-	Version                  string
+	// 公众号扫码 / 验证码登录（不含任何密钥）
+	WeChatQRLoginEnabled   bool
+	WeChatCodeLoginEnabled bool
+	WeChatMPAccountName    string
+	WeChatMPFollowQRURL    string
+	BackendModeEnabled     bool
+	PaymentEnabled         bool
+	OIDCOAuthEnabled       bool
+	OIDCOAuthProviderName  string
+	GitHubOAuthEnabled     bool
+	GoogleOAuthEnabled     bool
+	Version                string
 
 	BalanceLowNotifyEnabled     bool
 	AccountQuotaNotifyEnabled   bool

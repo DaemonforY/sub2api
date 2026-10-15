@@ -113,19 +113,71 @@ export function signOut() {
   localStorage.removeItem(KEY_STORAGE)
 }
 
+const CONNECT_STATE_STORAGE = 'hivegpt-video:connect-state'
+const CONNECT_STATE_TTL_MS = 30 * 60 * 1000
+
+function randomState() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function connectURL(state, returnPath) {
+  const params = new URLSearchParams({ state, utm_source: 'video', utm_medium: 'sign-in' })
+  if (returnPath) params.set('return', returnPath)
+  return `${MAIN_SITE_URL}/video-connect?${params.toString()}`
+}
+
+/**
+ * Full-page sign-in for the WeChat in-app browser (no popups) or when the popup was blocked: the
+ * main site's /video-connect?return= sends the user back here with the key in the URL fragment,
+ * which consumeConnectRedirect() checks against the state saved now.
+ */
+function signInByRedirect(state) {
+  try {
+    localStorage.setItem(CONNECT_STATE_STORAGE, JSON.stringify({ state, at: Date.now() }))
+  } catch {
+    // storage unavailable: the state check on return will fail and the user can try again
+  }
+  const returnPath = `${window.location.pathname}${window.location.search}` || '/'
+  window.location.href = connectURL(state, returnPath)
+  // The page is leaving; never settle so callers keep their "signing in" state.
+  return new Promise(() => {})
+}
+
+/**
+ * Picks up the key handed back by the main site's full-page sign-in (see signInByRedirect) and
+ * removes it from the address bar right away. Returns true when it signed in.
+ */
+export async function consumeConnectRedirect() {
+  const hash = window.location.hash.replace(/^#/, '')
+  if (!hash.includes('hivegpt_video_key=')) return false
+  const params = new URLSearchParams(hash)
+  window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`)
+  let saved = null
+  try {
+    saved = JSON.parse(localStorage.getItem(CONNECT_STATE_STORAGE) || 'null')
+    localStorage.removeItem(CONNECT_STATE_STORAGE)
+  } catch {
+    saved = null
+  }
+  const state = params.get('hivegpt_video_state') || ''
+  const key = params.get('hivegpt_video_key') || ''
+  const fresh = saved && typeof saved.at === 'number' && Date.now() - saved.at < CONNECT_STATE_TTL_MS
+  if (!key || !state || !fresh || saved.state !== state) return false
+  await setKey(key)
+  return true
+}
+
 /**
  * Opens the main site's 授权 popup; resolves when the user picked a key there. The key arrives by
- * postMessage from the main site's origin with the random state we sent.
+ * postMessage from the main site's origin with the random state we sent. Inside WeChat, or when the
+ * popup is blocked, it signs in with a full-page round trip instead.
  */
 export function signIn() {
-  const state = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(16).padStart(2, '0')).join('')
-  const url = `${MAIN_SITE_URL}/video-connect?state=${state}&utm_source=video&utm_medium=sign-in`
-  const popup = window.open(url, 'hivegpt-video-connect', 'width=480,height=720')
-  return new Promise((resolve, reject) => {
-    if (!popup) {
-      reject(new ApiError('浏览器拦截了登录窗口，请允许弹窗后再试', 0))
-      return
-    }
+  const state = randomState()
+  if (/MicroMessenger/i.test(navigator.userAgent || '')) return signInByRedirect(state)
+  const popup = window.open(connectURL(state), 'hivegpt-video-connect', 'width=480,height=720')
+  if (!popup) return signInByRedirect(state)
+  return new Promise((resolve) => {
     const origin = new URL(MAIN_SITE_URL).origin
     const timer = setInterval(() => {
       if (popup.closed) {

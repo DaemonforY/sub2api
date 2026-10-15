@@ -133,6 +133,9 @@ type SettingService struct {
 	codexRestrictionPolicyCache atomic.Value // *cachedCodexRestrictionPolicy
 	codexRestrictionPolicySF    singleflight.Group
 
+	// wechatVerifyFilesCache holds *cachedWeChatDomainVerifyFiles (60 s, dropped on settings save).
+	wechatVerifyFilesCache atomic.Value
+
 	cyberSessionBlockRuntimeCache atomic.Value // *cachedCyberSessionBlockRuntime
 	cyberSessionBlockRuntimeSF    singleflight.Group
 

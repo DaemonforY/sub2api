@@ -25,6 +25,30 @@ type CustomEndpoint struct {
 	Description string `json:"description"`
 }
 
+// WeChatDomainVerifyFile is a 公众号 domain verify file served at the site root.
+type WeChatDomainVerifyFile struct {
+	Filename string `json:"filename"`
+	Content  string `json:"content"`
+}
+
+// WeChatDomainVerifyFilesFromService converts the stored verify files for the admin API.
+func WeChatDomainVerifyFilesFromService(files []service.WeChatDomainVerifyFile) []WeChatDomainVerifyFile {
+	out := make([]WeChatDomainVerifyFile, 0, len(files))
+	for _, f := range files {
+		out = append(out, WeChatDomainVerifyFile{Filename: f.Filename, Content: f.Content})
+	}
+	return out
+}
+
+// WeChatDomainVerifyFilesToService converts the admin's verify files for saving.
+func WeChatDomainVerifyFilesToService(files []WeChatDomainVerifyFile) []service.WeChatDomainVerifyFile {
+	out := make([]service.WeChatDomainVerifyFile, 0, len(files))
+	for _, f := range files {
+		out = append(out, service.WeChatDomainVerifyFile{Filename: f.Filename, Content: f.Content})
+	}
+	return out
+}
+
 // SystemSettings represents the admin settings API response payload.
 type SystemSettings struct {
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
@@ -113,6 +137,22 @@ type SystemSettings struct {
 	WeChatConnectScopes                    string `json:"wechat_connect_scopes"`
 	WeChatConnectRedirectURL               string `json:"wechat_connect_redirect_url"`
 	WeChatConnectFrontendRedirectURL       string `json:"wechat_connect_frontend_redirect_url"`
+
+	// 公众号消息服务器 + 扫码 / 验证码登录（令牌和 EncodingAESKey 只回 *_configured）
+	WeChatMPMessageEnabled          bool                     `json:"wechat_mp_message_enabled"`
+	WeChatMPMessageTokenConfigured  bool                     `json:"wechat_mp_message_token_configured"`
+	WeChatMPMessageAESKeyConfigured bool                     `json:"wechat_mp_message_aes_key_configured"`
+	WeChatMPLoginKeywords           string                   `json:"wechat_mp_login_keywords"`
+	WeChatMPReplyWelcome            string                   `json:"wechat_mp_reply_welcome"`
+	WeChatMPReplyDefault            string                   `json:"wechat_mp_reply_default"`
+	WeChatMPReplyScanOK             string                   `json:"wechat_mp_reply_scan_ok"`
+	WeChatMPReplyCode               string                   `json:"wechat_mp_reply_code"`
+	WeChatMPAccountName             string                   `json:"wechat_mp_account_name"`
+	WeChatMPOriginalID              string                   `json:"wechat_mp_original_id"`
+	WeChatQRLoginEnabled            bool                     `json:"wechat_qr_login_enabled"`
+	WeChatCodeLoginEnabled          bool                     `json:"wechat_code_login_enabled"`
+	WeChatDomainVerifyFiles         []WeChatDomainVerifyFile `json:"wechat_domain_verify_files"`
+	WeChatMPMessageForwardURL       string                   `json:"wechat_mp_message_forward_url"`
 
 	OIDCConnectEnabled                bool   `json:"oidc_connect_enabled"`
 	OIDCConnectProviderName           string `json:"oidc_connect_provider_name"`
@@ -398,6 +438,10 @@ type PublicSettings struct {
 	WeChatOAuthOpenEnabled              bool                     `json:"wechat_oauth_open_enabled"`
 	WeChatOAuthMPEnabled                bool                     `json:"wechat_oauth_mp_enabled"`
 	WeChatOAuthMobileEnabled            bool                     `json:"wechat_oauth_mobile_enabled"`
+	WeChatQRLoginEnabled                bool                     `json:"wechat_qr_login_enabled"`
+	WeChatCodeLoginEnabled              bool                     `json:"wechat_code_login_enabled"`
+	WeChatMPAccountName                 string                   `json:"wechat_mp_account_name"`
+	WeChatMPFollowQRURL                 string                   `json:"wechat_mp_follow_qr_url"`
 	OIDCOAuthEnabled                    bool                     `json:"oidc_oauth_enabled"`
 	OIDCOAuthProviderName               string                   `json:"oidc_oauth_provider_name"`
 	GitHubOAuthEnabled                  bool                     `json:"github_oauth_enabled"`

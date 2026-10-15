@@ -134,6 +134,8 @@ describe('oauth adoption auth api', () => {
 
     expect(post).toHaveBeenCalledWith('/auth/oauth/wechat/complete-registration', {
       invitation_code: 'invite-code',
+      visitor_id: expect.any(String),
+      attribution: expect.any(Object),
       adopt_display_name: true,
       adopt_avatar: true
     })
@@ -149,6 +151,8 @@ describe('oauth adoption auth api', () => {
 
     expect(post).toHaveBeenCalledWith('/auth/oauth/wechat/complete-registration', {
       invitation_code: 'invite-code',
+      visitor_id: expect.any(String),
+      attribution: expect.any(Object),
       adopt_display_name: false,
       adopt_avatar: false
     })
@@ -168,10 +172,27 @@ describe('oauth adoption auth api', () => {
 
     expect(post).toHaveBeenCalledWith('/auth/oauth/wechat/complete-registration', {
       invitation_code: 'invite-code',
+      visitor_id: expect.any(String),
+      attribution: expect.any(Object),
       aff_code: 'WXAFF',
       adopt_display_name: false,
       adopt_avatar: true
     })
+  })
+
+  it('sends the visitor ID and attribution with 用微信直接注册', async () => {
+    localStorage.setItem('hg_vid', 'visitor-123')
+    const { quickRegisterWeChatOAuth } = await import('@/api/auth')
+
+    await quickRegisterWeChatOAuth({ adoptDisplayName: true, adoptAvatar: false }, 'WXAFF')
+
+    expect(post).toHaveBeenCalledWith('/auth/oauth/wechat/quick-register', expect.objectContaining({
+      aff_code: 'WXAFF',
+      visitor_id: 'visitor-123',
+      attribution: expect.objectContaining({ landing: expect.any(String) }),
+      adopt_display_name: true,
+      adopt_avatar: false
+    }))
   })
 
   it('classifies oauth completion results as login or bind', async () => {

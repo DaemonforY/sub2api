@@ -393,6 +393,12 @@ export function deriveWeChatConnectStoredMode(
 /**
  * System settings interface
  */
+/** A 公众号 domain verify file (MP_verify_xxx.txt) served at the site root. */
+export interface WeChatDomainVerifyFile {
+  filename: string;
+  content: string;
+}
+
 export interface SystemSettings {
   // Registration settings
   registration_enabled: boolean;
@@ -554,6 +560,22 @@ export interface SystemSettings {
   wechat_connect_scopes: string;
   wechat_connect_redirect_url: string;
   wechat_connect_frontend_redirect_url: string;
+  // 公众号消息服务器 + 扫码 / 验证码登录 (WeChat login on every terminal)
+  wechat_mp_message_enabled?: boolean;
+  /** Masked like other secrets: only whether it is set. */
+  wechat_mp_message_token_configured?: boolean;
+  wechat_mp_message_aes_key_configured?: boolean;
+  wechat_mp_message_forward_url?: string;
+  wechat_mp_login_keywords?: string;
+  wechat_mp_reply_welcome?: string;
+  wechat_mp_reply_default?: string;
+  wechat_mp_reply_scan_ok?: string;
+  wechat_mp_reply_code?: string;
+  wechat_mp_account_name?: string;
+  wechat_mp_original_id?: string;
+  wechat_qr_login_enabled?: boolean;
+  wechat_code_login_enabled?: boolean;
+  wechat_domain_verify_files?: WeChatDomainVerifyFile[];
 
   // Generic OIDC OAuth settings
   oidc_connect_enabled: boolean;
@@ -887,6 +909,21 @@ export interface UpdateSettingsRequest {
   wechat_connect_scopes?: string;
   wechat_connect_redirect_url?: string;
   wechat_connect_frontend_redirect_url?: string;
+  wechat_mp_message_enabled?: boolean;
+  /** Empty / omitted keeps the stored value. */
+  wechat_mp_message_token?: string;
+  wechat_mp_message_aes_key?: string;
+  wechat_mp_message_forward_url?: string;
+  wechat_mp_login_keywords?: string;
+  wechat_mp_reply_welcome?: string;
+  wechat_mp_reply_default?: string;
+  wechat_mp_reply_scan_ok?: string;
+  wechat_mp_reply_code?: string;
+  wechat_mp_account_name?: string;
+  wechat_mp_original_id?: string;
+  wechat_qr_login_enabled?: boolean;
+  wechat_code_login_enabled?: boolean;
+  wechat_domain_verify_files?: WeChatDomainVerifyFile[];
   oidc_connect_enabled?: boolean;
   oidc_connect_provider_name?: string;
   oidc_connect_client_id?: string;

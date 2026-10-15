@@ -21,7 +21,7 @@
       </ul>
       <router-link
         v-if="registrationEnabled"
-        :to="{ path: '/register', query: { redirect: REDIRECT } }"
+        :to="{ path: '/register', query: wechatPanel ? { redirect: REDIRECT, wechat: '1' } : { redirect: REDIRECT } }"
         :class="['btn mt-6 w-full py-3 text-base', wechat ? 'bg-[#07c160] text-white hover:bg-[#06ad56]' : 'btn-primary']"
         data-testid="home-signup-sheet-register"
         @click="track('cta_click', { where: 'sheet-register' })"
@@ -43,7 +43,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { isWeChatWebOAuthEnabled } from '@/api/auth'
+import { isWeChatWebOAuthEnabled, resolveWeChatLoginPanels } from '@/api/auth'
 import { useAppStore } from '@/stores'
 import { track } from '@/utils/analytics'
 
@@ -66,8 +66,11 @@ watch(
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 const bonusText = computed(() => String(Math.round(props.bonus * 100) / 100))
-// Inside WeChat the register page leads with WeChat sign-in, so say so on the button.
+// The register page leads with WeChat sign-in inside WeChat (网页授权) and, when the 公众号 QR / code
+// login is on, in other browsers too (?wechat=1 opens that panel), so say so on the button.
+const inWeChat = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')
+const wechatPanel = computed(() => !inWeChat && resolveWeChatLoginPanels(appStore.cachedPublicSettings).panel !== null)
 const wechat = computed(
-  () => typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '') && isWeChatWebOAuthEnabled(appStore.cachedPublicSettings)
+  () => (inWeChat && isWeChatWebOAuthEnabled(appStore.cachedPublicSettings)) || wechatPanel.value
 )
 </script>

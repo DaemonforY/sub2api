@@ -271,6 +271,14 @@ export interface PublicSettings {
   wechat_oauth_open_enabled?: boolean
   wechat_oauth_mp_enabled?: boolean
   wechat_oauth_mobile_enabled?: boolean
+  /** 公众号扫码登录 for PC browsers (the server turns it on only with the message server and mp set up). */
+  wechat_qr_login_enabled?: boolean
+  /** 公众号验证码登录 for phone browsers outside WeChat (and the PC fallback). */
+  wechat_code_login_enabled?: boolean
+  /** The 公众号's display name, shown in the code-login steps. */
+  wechat_mp_account_name?: string
+  /** Follow QR image of the 公众号 (https://open.weixin.qq.com/qr/code?username=gh_…). */
+  wechat_mp_follow_qr_url?: string
   oidc_oauth_enabled: boolean
   oidc_oauth_provider_name: string
   github_oauth_enabled: boolean

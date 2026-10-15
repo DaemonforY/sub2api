@@ -758,6 +758,7 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 	result.WeChatConnectScopes = weChatEffective.Scopes
 	result.WeChatConnectRedirectURL = weChatEffective.RedirectURL
 	result.WeChatConnectFrontendRedirectURL = weChatEffective.FrontendRedirectURL
+	s.applyWeChatMPSystemSettings(result, settings)
 
 	// Model fallback settings
 	result.EnableModelFallback = settings[SettingKeyEnableModelFallback] == "true"

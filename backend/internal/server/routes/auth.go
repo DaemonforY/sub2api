@@ -134,6 +134,17 @@ func RegisterAuthRoutes(
 			h.Auth.WeChatOAuthStart(c)
 		})
 		auth.GET("/oauth/wechat/callback", h.Auth.WeChatOAuthCallback)
+		// 公众号扫码登录（PC）与验证码登录（手机浏览器，网页出码、用户发给公众号），两者都轮询 qr/status
+		auth.POST("/oauth/wechat/qr/create", rateLimiter.LimitWithOptions("oauth-wechat-qr-create", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.WeChatQRLoginCreate)
+		// 每 2 秒轮询一次；一个机房共用出口 IP，所以上限放得很宽
+		auth.GET("/oauth/wechat/qr/status", rateLimiter.LimitWithOptions("oauth-wechat-qr-status", 600, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailOpen,
+		}), h.Auth.WeChatQRLoginStatus)
+		auth.POST("/oauth/wechat/code/create", rateLimiter.LimitWithOptions("oauth-wechat-code-create", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Auth.WeChatCodeLoginCreate)
 		auth.GET("/oauth/wechat/payment/start", h.Auth.WeChatPaymentOAuthStart)
 		auth.GET("/oauth/wechat/payment/callback", h.Auth.WeChatPaymentOAuthCallback)
 		auth.POST("/oauth/pending/exchange",
@@ -260,6 +271,14 @@ func RegisterAuthRoutes(
 			}),
 			h.Auth.CreateDingTalkOAuthAccount,
 		)
+	}
+
+	// 公众号消息服务器（服务器配置 URL）：微信服务器直接调用，不走任何登录态；请求体很小。
+	wechatMP := v1.Group("/wechat/mp")
+	wechatMP.Use(servermiddleware.RequestBodyLimit(64 << 10))
+	{
+		wechatMP.GET("/message", h.Auth.WeChatMPMessage)
+		wechatMP.POST("/message", h.Auth.WeChatMPMessage)
 	}
 
 	// 公开设置（无需认证）：每次请求都会查询 DB，按客户端 IP 兜底限流，

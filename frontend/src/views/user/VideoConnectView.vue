@@ -95,7 +95,19 @@ const videoOrigin = new URL(VIDEO_SITE_URL).origin
 
 const state = typeof route.query.state === 'string' ? route.query.state : ''
 const hasOpener = typeof window !== 'undefined' && Boolean(window.opener) && !window.opener.closed
-const canHandOff = /^[A-Za-z0-9_-]{16,128}$/.test(state) && hasOpener
+// Full-page mode (?return=/p/123): inside WeChat, or when the browser blocked the popup. The key
+// goes back in the URL fragment of a page on the video origin (fragments never reach a server),
+// and the video app checks the state it saved before leaving, then drops the fragment.
+const returnPath = safeReturnPath(route.query.return)
+const redirectMode = !hasOpener && Boolean(returnPath)
+const canHandOff = /^[A-Za-z0-9_-]{16,128}$/.test(state) && (hasOpener || redirectMode)
+
+function safeReturnPath(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const path = value.trim()
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('://') || /[\r\n\\#]/.test(path) || path.length > 512) return ''
+  return path
+}
 
 const loading = ref(true)
 const creating = ref(false)
@@ -148,7 +160,15 @@ async function createKey() {
 
 function authorize() {
   const key = selectedKey.value
-  if (!key || authorizing.value || !canHandOff || !window.opener || window.opener.closed) return
+  if (!key || authorizing.value || !canHandOff) return
+  if (redirectMode) {
+    authorizing.value = true
+    done.value = true
+    const fragment = new URLSearchParams({ hivegpt_video_state: state, hivegpt_video_key: key.key, hivegpt_video_key_name: key.name })
+    window.location.href = `${videoOrigin}${returnPath}#${fragment.toString()}`
+    return
+  }
+  if (!window.opener || window.opener.closed) return
   authorizing.value = true
   window.opener.postMessage({ type: VIDEO_CONNECT_MESSAGE_TYPE, state, apiKey: key.key, keyName: key.name }, videoOrigin)
   done.value = true
@@ -156,7 +176,8 @@ function authorize() {
 }
 
 function cancel() {
-  window.close()
+  if (redirectMode) window.location.href = `${videoOrigin}${returnPath}`
+  else window.close()
 }
 
 onMounted(() => {

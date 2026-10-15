@@ -216,6 +216,13 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyWeChatConnectScopes,
 		SettingKeyWeChatConnectRedirectURL,
 		SettingKeyWeChatConnectFrontendRedirectURL,
+		SettingKeyWeChatMPMessageEnabled,
+		SettingKeyWeChatMPMessageToken,
+		SettingKeyWeChatMPMessageAESKey, // read only to decide availability; never exposed
+		SettingKeyWeChatMPAccountName,
+		SettingKeyWeChatMPOriginalID,
+		SettingKeyWeChatQRLoginEnabled,
+		SettingKeyWeChatCodeLoginEnabled,
 		SettingKeyBackendModeEnabled,
 		SettingPaymentEnabled,
 		SettingKeyOIDCConnectEnabled,
@@ -277,6 +284,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	gitHubEnabled := s.emailOAuthPublicEnabled(settings, "github")
 	googleEnabled := s.emailOAuthPublicEnabled(settings, "google")
 	weChatEnabled, weChatOpenEnabled, weChatMPEnabled, weChatMobileEnabled := s.weChatOAuthCapabilitiesFromSettings(settings)
+	weChatMP := s.weChatMPConfigFromSettings(settings)
 
 	// Password reset requires email verification to be enabled
 	emailVerifyEnabled := settings[SettingKeyEmailVerifyEnabled] == "true"
@@ -345,6 +353,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		WeChatOAuthOpenEnabled:              weChatOpenEnabled,
 		WeChatOAuthMPEnabled:                weChatMPEnabled,
 		WeChatOAuthMobileEnabled:            weChatMobileEnabled,
+		WeChatQRLoginEnabled:                weChatMP.QRLoginAvailable(),
+		WeChatCodeLoginEnabled:              weChatMP.CodeLoginAvailable(),
+		WeChatMPAccountName:                 weChatMP.AccountName,
+		WeChatMPFollowQRURL:                 WeChatMPFollowQRURL(weChatMP.OriginalID),
 		BackendModeEnabled:                  settings[SettingKeyBackendModeEnabled] == "true",
 		PaymentEnabled:                      settings[SettingPaymentEnabled] == "true",
 		OIDCOAuthEnabled:                    oidcEnabled,
@@ -598,6 +610,10 @@ type PublicSettingsInjectionPayload struct {
 	WeChatOAuthOpenEnabled              bool                     `json:"wechat_oauth_open_enabled"`
 	WeChatOAuthMPEnabled                bool                     `json:"wechat_oauth_mp_enabled"`
 	WeChatOAuthMobileEnabled            bool                     `json:"wechat_oauth_mobile_enabled"`
+	WeChatQRLoginEnabled                bool                     `json:"wechat_qr_login_enabled"`
+	WeChatCodeLoginEnabled              bool                     `json:"wechat_code_login_enabled"`
+	WeChatMPAccountName                 string                   `json:"wechat_mp_account_name"`
+	WeChatMPFollowQRURL                 string                   `json:"wechat_mp_follow_qr_url"`
 	OIDCOAuthEnabled                    bool                     `json:"oidc_oauth_enabled"`
 	OIDCOAuthProviderName               string                   `json:"oidc_oauth_provider_name"`
 	GitHubOAuthEnabled                  bool                     `json:"github_oauth_enabled"`
@@ -688,6 +704,10 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		WeChatOAuthOpenEnabled:              settings.WeChatOAuthOpenEnabled,
 		WeChatOAuthMPEnabled:                settings.WeChatOAuthMPEnabled,
 		WeChatOAuthMobileEnabled:            settings.WeChatOAuthMobileEnabled,
+		WeChatQRLoginEnabled:                settings.WeChatQRLoginEnabled,
+		WeChatCodeLoginEnabled:              settings.WeChatCodeLoginEnabled,
+		WeChatMPAccountName:                 settings.WeChatMPAccountName,
+		WeChatMPFollowQRURL:                 settings.WeChatMPFollowQRURL,
 		OIDCOAuthEnabled:                    settings.OIDCOAuthEnabled,
 		OIDCOAuthProviderName:               settings.OIDCOAuthProviderName,
 		GitHubOAuthEnabled:                  settings.GitHubOAuthEnabled,

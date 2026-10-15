@@ -352,6 +352,8 @@ describe('WechatCallbackView', () => {
     expect(apiClientPostMock).toHaveBeenCalledWith('/auth/oauth/wechat/complete-registration', {
       pending_oauth_token: 'legacy-pending-token',
       invitation_code: 'invite-code',
+      visitor_id: expect.any(String),
+      attribution: expect.any(Object),
       adopt_display_name: true,
       adopt_avatar: true,
     })
@@ -655,6 +657,8 @@ describe('WechatCallbackView', () => {
   })
 
   it('collects email, password, and verify code for pending oauth account creation and submits adoption decisions', async () => {
+    // The analytics module's visitor ID goes with the sign-up, as the email register sends it.
+    localStorage.setItem('hg_vid', 'visitor-wx-1')
     getPublicSettingsMock.mockResolvedValue({
       invitation_code_enabled: true,
       turnstile_enabled: false,
@@ -705,6 +709,8 @@ describe('WechatCallbackView', () => {
       password: 'secret-123',
       verify_code: '246810',
       invitation_code: 'INVITE123',
+      visitor_id: 'visitor-wx-1',
+      attribution: expect.objectContaining({ landing: expect.any(String) }),
       adopt_display_name: true,
       adopt_avatar: false,
     })

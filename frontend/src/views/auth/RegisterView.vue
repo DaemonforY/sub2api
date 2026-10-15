@@ -25,9 +25,12 @@
         <WechatOAuthSection
           :disabled="registrationActionDisabled"
           :aff-code="formData.aff_code"
+          :promo-code="formData.promo_code"
           :show-divider="false"
           primary
           :label="t('auth.perks.wechatOneTap')"
+          :request-proof="acquireWeChatPanelProof"
+          :auto-open="wechatAutoOpen"
           @start="handleOAuthStart"
         />
         <div class="flex items-center gap-3">
@@ -382,7 +385,9 @@
           v-if="wechatOAuthEnabled && !wechatFirst"
           :disabled="registrationActionDisabled"
           :aff-code="formData.aff_code"
+          :promo-code="formData.promo_code"
           :show-divider="false"
+          :request-proof="acquireWeChatPanelProof"
           @start="handleOAuthStart"
         />
         <OidcOAuthSection
@@ -431,6 +436,7 @@ import {
   buildOAuthLoginStartURL,
   getPublicSettings,
   isWeChatWebOAuthEnabled,
+  resolveWeChatLoginPanels,
   startOAuthLogin,
   type OAuthLoginStart,
   validatePromoCode,
@@ -449,7 +455,7 @@ import {
   loadAffiliateReferralCode,
   resolveAffiliateReferralCode
 } from '@/utils/oauthAffiliate'
-import type { LoginAgreementDocument } from '@/types'
+import type { ActionCaptchaRequestProof, LoginAgreementDocument } from '@/types'
 import { growthAPI } from '@/api/growth'
 
 const { t, locale } = useI18n()
@@ -643,9 +649,14 @@ const perks = computed(() => {
   return out
 })
 
-// WeChat's in-app browser can sign in with WeChat directly (no email code to fetch).
+// WeChat signs up without an email code: inside WeChat through 网页授权, elsewhere through the
+// 公众号 QR (PC) or code (phones) panel. Either way it leads the page.
 const inWechatBrowser = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')
-const wechatFirst = computed(() => wechatOAuthEnabled.value && inWechatBrowser)
+const wechatPanelAvailable = ref(false)
+const wechatFirst = computed(() => wechatOAuthEnabled.value && (inWechatBrowser || wechatPanelAvailable.value))
+// ?wechat=1 (the home page's 微信一键注册) opens the QR / code panel right away when no captcha
+// has to be answered first.
+const wechatAutoOpen = computed(() => route.query.wechat === '1' && !actionCaptchaEnabled.value)
 const onlyWechatOAuth = computed(
   () => !linuxdoOAuthEnabled.value && !oidcOAuthEnabled.value && !githubOAuthEnabled.value && !googleOAuthEnabled.value
 )
@@ -694,6 +705,7 @@ onMounted(async () => {
     signupBonus.value = Number(settings.signup_bonus || 0)
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)
+    wechatPanelAvailable.value = !inWechatBrowser && resolveWeChatLoginPanels(settings).panel !== null
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'
     githubOAuthEnabled.value = settings.github_oauth_enabled
@@ -1035,6 +1047,21 @@ async function acquireActionProof(): Promise<boolean> {
   turnstileToken.value = proof.token
   tencentCaptchaRandstr.value = proof.randstr
   return true
+}
+
+// The WeChat QR / code panels (outside WeChat) pass the same captcha the /start redirect asks for.
+async function acquireWeChatPanelProof(): Promise<ActionCaptchaRequestProof | null> {
+  if (registrationActionDisabled.value) return null
+  if (!actionCaptchaEnabled.value) return {}
+  try {
+    const proof = await turnstileRef.value?.verifyAction()
+    if (!proof) return null
+    return tencentCaptchaEnabled.value
+      ? { tencent_captcha_ticket: proof.token, tencent_captcha_randstr: proof.randstr }
+      : { turnstile_token: proof.token }
+  } finally {
+    resetCaptchaProof()
+  }
 }
 
 async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {

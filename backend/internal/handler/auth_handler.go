@@ -30,6 +30,7 @@ type AuthHandler struct {
 	userAttributeService *service.UserAttributeService
 	loginGuard           *service.LoginGuardService
 	analytics            *service.AnalyticsService
+	wechatMP             *service.WeChatMPLoginService
 
 	dingTalkClientInstance *DingTalkClient
 	dingTalkClientMu       sync.Mutex

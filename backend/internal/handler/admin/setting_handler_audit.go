@@ -251,6 +251,7 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.WeChatConnectFrontendRedirectURL != after.WeChatConnectFrontendRedirectURL {
 		changed = append(changed, "wechat_connect_frontend_redirect_url")
 	}
+	changed = appendWeChatMPSettingChanges(changed, before, after, req)
 	if before.OIDCConnectEnabled != after.OIDCConnectEnabled {
 		changed = append(changed, "oidc_connect_enabled")
 	}
@@ -863,4 +864,56 @@ func stringSetting(value *string, fallback string) string {
 		return fallback
 	}
 	return *value
+}
+
+func appendWeChatMPSettingChanges(changed []string, before *service.SystemSettings, after *service.SystemSettings, req UpdateSettingsRequest) []string {
+	if before.WeChatMPMessageEnabled != after.WeChatMPMessageEnabled {
+		changed = append(changed, "wechat_mp_message_enabled")
+	}
+	if req.WeChatMPMessageToken != "" {
+		changed = append(changed, "wechat_mp_message_token")
+	}
+	if req.WeChatMPMessageAESKey != "" {
+		changed = append(changed, "wechat_mp_message_aes_key")
+	}
+	pairs := []struct {
+		key           string
+		before, after string
+	}{
+		{"wechat_mp_login_keywords", before.WeChatMPLoginKeywords, after.WeChatMPLoginKeywords},
+		{"wechat_mp_reply_welcome", before.WeChatMPReplyWelcome, after.WeChatMPReplyWelcome},
+		{"wechat_mp_reply_default", before.WeChatMPReplyDefault, after.WeChatMPReplyDefault},
+		{"wechat_mp_reply_scan_ok", before.WeChatMPReplyScanOK, after.WeChatMPReplyScanOK},
+		{"wechat_mp_reply_code", before.WeChatMPReplyCode, after.WeChatMPReplyCode},
+		{"wechat_mp_account_name", before.WeChatMPAccountName, after.WeChatMPAccountName},
+		{"wechat_mp_original_id", before.WeChatMPOriginalID, after.WeChatMPOriginalID},
+		{"wechat_mp_message_forward_url", before.WeChatMPMessageForwardURL, after.WeChatMPMessageForwardURL},
+	}
+	for _, p := range pairs {
+		if p.before != p.after {
+			changed = append(changed, p.key)
+		}
+	}
+	if before.WeChatQRLoginEnabled != after.WeChatQRLoginEnabled {
+		changed = append(changed, "wechat_qr_login_enabled")
+	}
+	if before.WeChatCodeLoginEnabled != after.WeChatCodeLoginEnabled {
+		changed = append(changed, "wechat_code_login_enabled")
+	}
+	if !equalWeChatDomainVerifyFiles(before.WeChatDomainVerifyFiles, after.WeChatDomainVerifyFiles) {
+		changed = append(changed, "wechat_domain_verify_files")
+	}
+	return changed
+}
+
+func equalWeChatDomainVerifyFiles(a, b []service.WeChatDomainVerifyFile) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

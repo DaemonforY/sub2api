@@ -117,6 +117,23 @@ type UpdateSettingsRequest struct {
 	WeChatConnectRedirectURL         string `json:"wechat_connect_redirect_url"`
 	WeChatConnectFrontendRedirectURL string `json:"wechat_connect_frontend_redirect_url"`
 
+	// 公众号消息服务器 + 扫码 / 验证码登录。令牌和 EncodingAESKey 留空 = 不改。
+	WeChatMPMessageEnabled  bool                         `json:"wechat_mp_message_enabled"`
+	WeChatMPMessageToken    string                       `json:"wechat_mp_message_token"`
+	WeChatMPMessageAESKey   string                       `json:"wechat_mp_message_aes_key"`
+	WeChatMPLoginKeywords   string                       `json:"wechat_mp_login_keywords"`
+	WeChatMPReplyWelcome    string                       `json:"wechat_mp_reply_welcome"`
+	WeChatMPReplyDefault    string                       `json:"wechat_mp_reply_default"`
+	WeChatMPReplyScanOK     string                       `json:"wechat_mp_reply_scan_ok"`
+	WeChatMPReplyCode       string                       `json:"wechat_mp_reply_code"`
+	WeChatMPAccountName     string                       `json:"wechat_mp_account_name"`
+	WeChatMPOriginalID      string                       `json:"wechat_mp_original_id"`
+	WeChatQRLoginEnabled    bool                         `json:"wechat_qr_login_enabled"`
+	WeChatCodeLoginEnabled  bool                         `json:"wechat_code_login_enabled"`
+	WeChatDomainVerifyFiles []dto.WeChatDomainVerifyFile `json:"wechat_domain_verify_files"`
+	// 同一公众号已被别的网站用作消息服务器时，我们不处理的消息原样转发到这里（留空 = 不转发）
+	WeChatMPMessageForwardURL string `json:"wechat_mp_message_forward_url"`
+
 	// Generic OIDC OAuth 登录
 	OIDCConnectEnabled              bool   `json:"oidc_connect_enabled"`
 	OIDCConnectProviderName         string `json:"oidc_connect_provider_name"`
@@ -1582,6 +1599,20 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		WeChatConnectScopes:                    req.WeChatConnectScopes,
 		WeChatConnectRedirectURL:               req.WeChatConnectRedirectURL,
 		WeChatConnectFrontendRedirectURL:       req.WeChatConnectFrontendRedirectURL,
+		WeChatMPMessageEnabled:                 req.WeChatMPMessageEnabled,
+		WeChatMPMessageToken:                   req.WeChatMPMessageToken,
+		WeChatMPMessageAESKey:                  req.WeChatMPMessageAESKey,
+		WeChatMPLoginKeywords:                  req.WeChatMPLoginKeywords,
+		WeChatMPReplyWelcome:                   req.WeChatMPReplyWelcome,
+		WeChatMPReplyDefault:                   req.WeChatMPReplyDefault,
+		WeChatMPReplyScanOK:                    req.WeChatMPReplyScanOK,
+		WeChatMPReplyCode:                      req.WeChatMPReplyCode,
+		WeChatMPAccountName:                    req.WeChatMPAccountName,
+		WeChatMPOriginalID:                     req.WeChatMPOriginalID,
+		WeChatQRLoginEnabled:                   req.WeChatQRLoginEnabled,
+		WeChatCodeLoginEnabled:                 req.WeChatCodeLoginEnabled,
+		WeChatDomainVerifyFiles:                dto.WeChatDomainVerifyFilesToService(req.WeChatDomainVerifyFiles),
+		WeChatMPMessageForwardURL:              req.WeChatMPMessageForwardURL,
 		OIDCConnectEnabled:                     req.OIDCConnectEnabled,
 		OIDCConnectProviderName:                req.OIDCConnectProviderName,
 		OIDCConnectClientID:                    req.OIDCConnectClientID,

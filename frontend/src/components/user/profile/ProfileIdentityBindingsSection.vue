@@ -148,6 +148,19 @@
                   }}
                 </button>
               </div>
+
+              <!-- Outside WeChat: bind by scanning the 公众号 QR (PC) or with a code it sends (phones). -->
+              <WechatLoginPanel
+                v-if="item.provider === 'wechat' && showWeChatBindPanel && wechatBindPanel"
+                :initial-panel="wechatBindPanel"
+                :terminal="wechatLoginPanels.terminal"
+                :qr-enabled="wechatLoginPanels.qrEnabled"
+:code-enabled="false"
+                :request="wechatBindRequest"
+                :request-proof="prepareWeChatBindRequest"
+                :account-name="wechatAccountName"
+                :follow-qr-url="wechatFollowQrUrl"
+              />
             </div>
           </div>
 
@@ -201,9 +214,13 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
   hasExplicitWeChatOAuthCapabilities,
+  prepareOAuthBindAccessTokenCookie,
+  resolveWeChatLoginPanels,
   resolveWeChatOAuthStartStrict,
+  type WeChatLoginRequest,
   type WeChatOAuthPublicSettings,
 } from '@/api/auth'
+import WechatLoginPanel from '@/components/auth/WechatLoginPanel.vue'
 import {
   bindEmailIdentity,
   sendEmailBindingCode,
@@ -357,6 +374,34 @@ const wechatOAuthSettings = computed<WeChatOAuthPublicSettings | null>(() => {
 })
 
 const resolvedWeChatBinding = computed(() => resolveWeChatOAuthStartStrict(wechatOAuthSettings.value))
+// Outside WeChat (no 开放平台 app), binding goes through the 公众号 QR / code panels.
+const wechatLoginPanels = computed(() => resolveWeChatLoginPanels(appStore.cachedPublicSettings))
+// Binding is QR only (code/create refuses intent=bind_current_user): phones save the QR and scan it
+// from the album.
+const wechatBindPanel = computed<'qr' | null>(() => {
+  if (resolvedWeChatBinding.value.mode === 'mp') return null
+  const panels = wechatLoginPanels.value
+  if (panels.terminal === 'wechat' || panels.panel === null || !panels.qrEnabled) return null
+  return 'qr'
+})
+const showWeChatBindPanel = ref(false)
+const wechatAccountName = computed(() => appStore.cachedPublicSettings?.wechat_mp_account_name?.trim() || '')
+const wechatFollowQrUrl = computed(() => appStore.cachedPublicSettings?.wechat_mp_follow_qr_url?.trim() || '')
+const wechatBindRequest = computed<WeChatLoginRequest>(() => ({
+  redirect: route.fullPath || '/profile',
+  intent: 'bind_current_user',
+}))
+
+// The QR / code request reads the bind cookie, as /bind/start does.
+async function prepareWeChatBindRequest(): Promise<Record<string, never> | null> {
+  try {
+    await prepareOAuthBindAccessTokenCookie()
+    return {}
+  } catch (error) {
+    appStore.showError((error as { message?: string }).message || t('common.tryAgain'))
+    return null
+  }
+}
 
 function normalizeBindingStatus(binding: boolean | UserAuthBindingStatus | undefined): boolean | null {
   if (typeof binding === 'boolean') {
@@ -424,7 +469,7 @@ function isProviderEnabledForBinding(provider: BindableProvider): boolean {
   if (provider === 'oidc') {
     return props.oidcEnabled
   }
-  return resolvedWeChatBinding.value.mode !== null
+  return resolvedWeChatBinding.value.mode !== null || wechatBindPanel.value !== null
 }
 
 const providerItems = computed(() => [
@@ -564,6 +609,10 @@ function toggleEmailForm(): void {
 
 function startBinding(provider: UserAuthProvider): void {
   if (provider === 'email') {
+    return
+  }
+  if (provider === 'wechat' && wechatBindPanel.value) {
+    showWeChatBindPanel.value = !showWeChatBindPanel.value
     return
   }
   startOAuthBinding(provider, {

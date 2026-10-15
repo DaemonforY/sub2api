@@ -72,6 +72,9 @@ func SetupRouter(
 	}))
 	r.Use(middleware2.ServerTiming(cfg.Server.EnableServerTiming))
 
+	// 公众号域名校验文件（/MP_verify_xxx.txt），须在前端 SPA 兜底之前
+	r.Use(wechatDomainVerifyFiles(settingService))
+
 	// Serve embedded frontend with settings injection if available
 	if web.HasEmbeddedFrontend() {
 		frontendServer, err := web.NewFrontendServer(settingService) //nolint:staticcheck // SA4023: the !embed stub always errors; embed builds can return nil

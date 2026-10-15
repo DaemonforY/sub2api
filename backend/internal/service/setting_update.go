@@ -334,6 +334,13 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	if settings.WeChatConnectMobileAppSecret != "" {
 		updates[SettingKeyWeChatConnectMobileAppSecret] = settings.WeChatConnectMobileAppSecret
 	}
+	storedAESKey := ""
+	if (settings.WeChatQRLoginEnabled || settings.WeChatCodeLoginEnabled) && strings.TrimSpace(settings.WeChatMPMessageAESKey) == "" {
+		storedAESKey = s.storedWeChatMPAESKey(ctx) // only read when the request turns a login on without a key
+	}
+	if err := writeWeChatMPSettingUpdates(updates, settings, storedAESKey); err != nil {
+		return nil, err
+	}
 
 	// OEM设置
 	updates[SettingKeySiteName] = settings.SiteName
@@ -687,6 +694,7 @@ func (s *SettingService) refreshCachedSettings(settings *SystemSettings) {
 	if settings == nil {
 		return
 	}
+	s.invalidateWeChatDomainVerifyFiles()
 
 	// 先使 inflight singleflight 失效，再刷新缓存，缩小旧值覆盖新值的竞态窗口
 	versionBoundsSF.Forget("version_bounds")
