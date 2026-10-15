@@ -226,6 +226,19 @@ type AffiliateService struct {
 	// inviterBound runs after a user's inviter is set by the user (at sign-up or within the
 	// late-bind window) — the growth service grants the invitee's sign-up trial credit there.
 	inviterBound func(ctx context.Context, inviteeID, inviterID int64)
+	// shadow: no rebates to or from silently restricted accounts (静默限制).
+	shadow ShadowChecker
+}
+
+// SetShadowChecker withholds rebates when the invitee or the inviter is silently restricted.
+func (s *AffiliateService) SetShadowChecker(c ShadowChecker) {
+	if s != nil {
+		s.shadow = c
+	}
+}
+
+func (s *AffiliateService) shadowed(userID int64) bool {
+	return s != nil && s.shadow != nil && s.shadow.IsShadowed(userID)
 }
 
 // SetInviterBoundHook registers what runs after a user binds an inviter.
@@ -373,6 +386,10 @@ func (s *AffiliateService) accrueInviteRebate(ctx context.Context, inviteeUserID
 		return 0, err
 	}
 	if inviteeSummary.InviterID == nil || *inviteeSummary.InviterID <= 0 {
+		return 0, nil
+	}
+	// 静默限制: silently no rebate, as if the rebate rules didn't apply.
+	if s.shadowed(inviteeUserID) || s.shadowed(*inviteeSummary.InviterID) {
 		return 0, nil
 	}
 

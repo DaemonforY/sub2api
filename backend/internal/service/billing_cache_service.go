@@ -113,6 +113,8 @@ type BillingCacheService struct {
 	cfg                   *config.Config
 	circuitBreaker        *billingCircuitBreaker
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	// freeCreditGate caps silently restricted accounts (静默限制) at their free allowance.
+	freeCreditGate FreeCreditGate
 
 	cacheWriteChan     chan cacheWriteTask
 	cacheWriteWg       sync.WaitGroup
@@ -728,6 +730,13 @@ func (s *BillingCacheService) IncrementUserPlatformQuotaUsage(userID int64, plat
 // 统一检查方法
 // ============================================
 
+// SetFreeCreditGate installs the 静默限制 free-credit cap.
+func (s *BillingCacheService) SetFreeCreditGate(gate FreeCreditGate) {
+	if s != nil {
+		s.freeCreditGate = gate
+	}
+}
+
 // CheckBillingEligibility 检查用户是否有资格发起请求
 // 余额模式：检查缓存余额 > 0
 // 订阅模式：检查缓存用量未超过限额（Group限额从参数传入）
@@ -750,6 +759,11 @@ func (s *BillingCacheService) CheckBillingEligibility(ctx context.Context, user 
 		}
 	} else {
 		if err := s.checkBalanceEligibility(ctx, user.ID); err != nil {
+			return err
+		}
+	}
+	if s.freeCreditGate != nil {
+		if err := s.freeCreditGate.CheckFreeCredit(ctx, user.ID, isSubscriptionMode, group, subscription); err != nil {
 			return err
 		}
 	}

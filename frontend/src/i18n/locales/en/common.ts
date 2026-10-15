@@ -226,6 +226,7 @@ export default {
     opsAgentAdmin: 'Ops assistant',
     canvasMembershipAdmin: 'Creator membership',
     analyticsAdmin: 'Analytics',
+    userInsightsAdmin: 'User insights',
     channelLinksAdmin: 'Channel links',
     geoAdmin: 'GEO monitor',
     contentAdmin: 'Content engine',

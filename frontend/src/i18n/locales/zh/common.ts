@@ -226,6 +226,7 @@ export default {
     opsAgentAdmin: '运维助手',
     canvasMembershipAdmin: '创作会员',
     analyticsAdmin: '数据看板',
+    userInsightsAdmin: '用户画像',
     channelLinksAdmin: '渠道链接',
     geoAdmin: 'GEO 监测',
     contentAdmin: '内容运营',

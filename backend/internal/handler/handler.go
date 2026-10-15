@@ -100,6 +100,7 @@ type Handlers struct {
 	AccountDeletion  *AccountDeletionHandler
 	SiteBuilder      *SiteBuilderHandler
 	Analytics        *AnalyticsHandler
+	UserRisk         *UserRiskHandler
 	CanvasMembership *CanvasMembershipHandler
 }
 

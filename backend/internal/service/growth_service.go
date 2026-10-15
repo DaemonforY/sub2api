@@ -72,9 +72,15 @@ type GrowthSettings struct {
 	// Trial balance for someone who signs up with an invite (0 = off), and how many a day at most.
 	InviteeSignupBonus      float64 `json:"invitee_signup_bonus"`
 	InviteeSignupDailyLimit int     `json:"invitee_signup_daily_limit"`
-	// 注册试用去重: a browser or IP /24 that got the sign-up default subscriptions within this many
-	// days gets only the default balance on its next sign-up (0 = off). See SignupTrialGuard.
+	// 注册试用去重: a sign-up from a browser or IP /24 that got the sign-up default subscriptions
+	// within this many days is silently restricted (静默限制; 0 = off). See SignupTrialGuard.
 	SignupTrialDedupDays int `json:"signup_trial_dedup_days"`
+	// 静默限制: also restrict sign-ups that share a browser or /24 with a banned or restricted account,
+	// and how much free credit a restricted account may use a day (see UserShadowService).
+	ShadowLinkedFlagged bool    `json:"shadow_linked_flagged"`
+	ShadowFreeDailyUSD  float64 `json:"shadow_free_daily_usd"`
+	// 风控监控规则 (see RiskMonitorService); fields are flat in the JSON (risk_*).
+	RiskSettings
 	// 老用户锁价: buyers keep a plan's price on renewal while their subscription hasn't been
 	// expired for more than PriceLockGraceDays.
 	PriceLockEnabled   bool     `json:"price_lock_enabled"`
@@ -181,6 +187,8 @@ type GrowthService struct {
 	emailService    *EmailService
 	billingCache    *BillingCacheService
 	authInvalidator APIKeyAuthCacheInvalidator
+	// shadow: no invite bonuses for silently restricted accounts (静默限制).
+	shadow ShadowChecker
 
 	mu       sync.Mutex
 	cached   *GrowthSettings
@@ -190,6 +198,17 @@ type GrowthService struct {
 // NewGrowthService creates the growth service.
 func NewGrowthService(settingRepo SettingRepository, repo GrowthRepository, settingService *SettingService, emailService *EmailService, billingCache *BillingCacheService, authInvalidator APIKeyAuthCacheInvalidator) *GrowthService {
 	return &GrowthService{settingRepo: settingRepo, repo: repo, settingService: settingService, emailService: emailService, billingCache: billingCache, authInvalidator: authInvalidator}
+}
+
+// SetShadowChecker withholds invite bonuses from silently restricted accounts.
+func (s *GrowthService) SetShadowChecker(c ShadowChecker) {
+	if s != nil {
+		s.shadow = c
+	}
+}
+
+func (s *GrowthService) shadowed(userID int64) bool {
+	return s != nil && s.shadow != nil && s.shadow.IsShadowed(userID)
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +232,9 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
 		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
-		SettingKeyGrowthSignupTrialDedupDays,
+		SettingKeyGrowthSignupTrialDedupDays, SettingKeyGrowthShadowLinkedFlagged, SettingKeyGrowthShadowFreeDailyUSD,
+		SettingKeyRiskLinkedSignup, SettingKeyRiskTrialDay1, SettingKeyRiskRelayFree, SettingKeyRiskBurstSignups,
+		SettingKeyRiskBurstThreshold, SettingKeyRiskInviteeFingerprint,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -233,6 +254,9 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		InviteeSignupBonus:      clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupBonus], 0), 0, growthSignupBonusMax),
 		InviteeSignupDailyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupDailyLimit], growthSignupDailyLimitDefault), 1, growthSignupDailyLimitMax)),
 		SignupTrialDedupDays:    int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupTrialDedupDays], growthSignupTrialDedupDaysDefault), 0, growthSignupTrialDedupDaysMax)),
+		ShadowLinkedFlagged:     vals[SettingKeyGrowthShadowLinkedFlagged] != "false", // on unless turned off
+		ShadowFreeDailyUSD:      clampFloat(parseFloatOr(vals[SettingKeyGrowthShadowFreeDailyUSD], growthShadowFreeDailyUSDDefault), 0, growthShadowFreeDailyUSDMax),
+		RiskSettings:            parseRiskSettings(vals),
 		PriceLockEnabled:        vals[SettingKeyPriceLockEnabled] != "false", // on unless turned off
 		PriceLockGraceDays:      int(clampFloat(parseFloatOr(vals[SettingKeyPriceLockGraceDays], growthPriceLockGraceDefault), 0, growthPriceLockGraceMax)),
 		LeaderboardEnabled:      vals[SettingKeyGrowthLeaderboardEnabled] != "false", // on unless turned off
@@ -282,6 +306,12 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if in.SignupTrialDedupDays < 0 || in.SignupTrialDedupDays > growthSignupTrialDedupDaysMax {
 		return nil, infraerrors.BadRequest("INVALID_SIGNUP_TRIAL_DEDUP_DAYS", "注册试用去重天数需在 0 到 365 之间，0 表示不去重（Sign-up trial dedup must be 0–365 days）")
 	}
+	if !finite(in.ShadowFreeDailyUSD) || in.ShadowFreeDailyUSD < 0 || in.ShadowFreeDailyUSD > growthShadowFreeDailyUSDMax {
+		return nil, infraerrors.BadRequest("INVALID_SHADOW_FREE_DAILY", "静默限制每日免费额度需在 0 到 100 美元之间（Daily free allowance must be 0–100 USD）")
+	}
+	if in.RiskBurstThreshold < 2 || in.RiskBurstThreshold > riskBurstThresholdMax {
+		return nil, infraerrors.BadRequest("INVALID_RISK_BURST_THRESHOLD", "同网段注册告警阈值需在 2 到 100 之间（Burst threshold must be 2–100）")
+	}
 	if in.PriceLockGraceDays < 0 || in.PriceLockGraceDays > growthPriceLockGraceMax {
 		return nil, infraerrors.BadRequest("INVALID_PRICE_LOCK_GRACE", "锁价宽限期需在 0 到 365 天之间（Price lock grace must be 0–365 days）")
 	}
@@ -313,6 +343,14 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthSignupBonus:            strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
 		SettingKeyGrowthSignupDailyLimit:       strconv.Itoa(in.InviteeSignupDailyLimit),
 		SettingKeyGrowthSignupTrialDedupDays:   strconv.Itoa(in.SignupTrialDedupDays),
+		SettingKeyGrowthShadowLinkedFlagged:    strconv.FormatBool(in.ShadowLinkedFlagged),
+		SettingKeyGrowthShadowFreeDailyUSD:     strconv.FormatFloat(in.ShadowFreeDailyUSD, 'f', -1, 64),
+		SettingKeyRiskLinkedSignup:             strconv.FormatBool(in.RiskLinkedSignup),
+		SettingKeyRiskTrialDay1:                strconv.FormatBool(in.RiskTrialDay1),
+		SettingKeyRiskRelayFree:                strconv.FormatBool(in.RiskRelayFree),
+		SettingKeyRiskBurstSignups:             strconv.FormatBool(in.RiskBurstSignups),
+		SettingKeyRiskBurstThreshold:           strconv.Itoa(in.RiskBurstThreshold),
+		SettingKeyRiskInviteeFingerprint:       strconv.FormatBool(in.RiskInviteeFingerprint),
 		SettingKeyPriceLockEnabled:             strconv.FormatBool(in.PriceLockEnabled),
 		SettingKeyPriceLockGraceDays:           strconv.Itoa(in.PriceLockGraceDays),
 		SettingKeyEduVerifyEnabled:             strconv.FormatBool(in.EduVerifyEnabled),
@@ -569,6 +607,9 @@ func (s *GrowthService) GrantInviteeSignupBonus(ctx context.Context, inviteeID, 
 	if s == nil || s.repo == nil || inviteeID <= 0 || inviterID <= 0 || inviteeID == inviterID {
 		return 0, nil
 	}
+	if s.shadowed(inviteeID) || s.shadowed(inviterID) {
+		return 0, nil // 静默限制: silently no trial credit
+	}
 	if s.settingService != nil && !s.settingService.IsAffiliateEnabled(ctx) {
 		return 0, nil
 	}
@@ -668,6 +709,9 @@ func (s *GrowthService) PriceLockStats(ctx context.Context) ([]PlanPriceLockStat
 func (s *GrowthService) GrantInviteeFirstOrderBonus(ctx context.Context, inviteeID, orderID int64, orderAmount float64) (float64, error) {
 	if s == nil || inviteeID <= 0 || orderID <= 0 || !finite(orderAmount) || orderAmount <= 0 {
 		return 0, nil
+	}
+	if s.shadowed(inviteeID) {
+		return 0, nil // 静默限制: silently no bonus
 	}
 	if s.settingService != nil && !s.settingService.IsAffiliateEnabled(ctx) {
 		return 0, nil

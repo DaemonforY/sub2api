@@ -235,6 +235,7 @@ func ProvideHandlers(
 	accountDeletionHandler *AccountDeletionHandler,
 	siteBuilderHandler *SiteBuilderHandler,
 	analyticsHandler *AnalyticsHandler,
+	userRiskHandler *UserRiskHandler,
 	canvasMembershipHandler *CanvasMembershipHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
@@ -285,6 +286,7 @@ func ProvideHandlers(
 		AccountDeletion:  accountDeletionHandler,
 		SiteBuilder:      siteBuilderHandler,
 		Analytics:        analyticsHandler,
+		UserRisk:         userRiskHandler,
 		CanvasMembership: canvasMembershipHandler,
 	}
 }
@@ -344,6 +346,7 @@ var ProviderSet = wire.NewSet(
 	NewGeoMonitorHandler,
 	NewContentEngineHandler,
 	NewAnalyticsHandler,
+	NewUserRiskHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

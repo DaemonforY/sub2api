@@ -569,7 +569,7 @@
             />
           </template>
 
-          <template #cell-status="{ value }">
+          <template #cell-status="{ value, row }">
             <div class="flex items-center gap-1.5">
               <span
                 :class="[
@@ -580,6 +580,14 @@
               <span class="text-sm text-gray-700 dark:text-gray-300">
                 {{ value === 'active' ? t('common.active') : t('admin.users.disabled') }}
               </span>
+            </div>
+            <div
+              v-if="shadows[row.id]"
+              class="mt-1 inline-block max-w-[200px] truncate rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+              :title="shadows[row.id].reason"
+              :data-testid="`user-shadow-${row.id}`"
+            >
+              {{ t('growth.admin.shadow.tag') }} · {{ shadows[row.id].reason }}
             </div>
           </template>
 
@@ -732,6 +740,34 @@
 
               <div class="my-1 border-t border-gray-100 dark:border-dark-700"></div>
 
+              <!-- 静默限制 / 解除 (not for admin) -->
+              <template v-if="user.role !== 'admin'">
+                <button
+                  v-if="!shadows[user.id]"
+                  @click="openShadowDialog(user, 'shadow'); closeActionMenu()"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                >
+                  <Icon name="eyeOff" size="sm" :stroke-width="2" />
+                  {{ t('growth.admin.shadow.shadow') }}
+                </button>
+                <button
+                  v-else
+                  @click="openShadowDialog(user, 'unshadow'); closeActionMenu()"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                >
+                  <Icon name="eye" size="sm" class="text-gray-400" :stroke-width="2" />
+                  {{ t('growth.admin.shadow.unshadow') }}
+                </button>
+                <router-link
+                  :to="{ path: '/admin/user-insights', query: { tab: 'profile', user: String(user.id) } }"
+                  class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                  @click="closeActionMenu()"
+                >
+                  <Icon name="chart" size="sm" class="text-gray-400" :stroke-width="2" />
+                  {{ t('growth.admin.shadow.profile') }}
+                </router-link>
+              </template>
+
               <!-- Delete (not for admin) -->
               <button
                 v-if="user.role !== 'admin'"
@@ -747,6 +783,24 @@
       </div>
     </Teleport>
 
+    <ConfirmDialog
+      :show="shadowDialog !== null"
+      :title="shadowDialogTitle"
+      :message="shadowDialogMessage"
+      :danger="shadowDialog?.action !== 'unshadow'"
+      @confirm="confirmShadowDialog"
+      @cancel="shadowDialog = null"
+    >
+      <textarea
+        v-if="shadowDialog?.action === 'shadow'"
+        v-model="shadowReason"
+        rows="3"
+        maxlength="500"
+        class="input mt-3 w-full"
+        :placeholder="t('growth.admin.shadow.reasonPlaceholder')"
+        data-testid="shadow-reason"
+      ></textarea>
+    </ConfirmDialog>
     <ConfirmDialog :show="showDeleteDialog" :title="t('admin.users.deleteUser')" :message="t('admin.users.deleteConfirm', { email: deletingUser?.email })" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
     <UserCreateModal :show="showCreateModal" @close="showCreateModal = false" @success="loadUsers" />
     <UserEditModal :show="showEditModal" :user="editingUser" @close="closeEditModal" @success="loadUsers" />
@@ -782,6 +836,8 @@ import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
 import { adminAPI } from '@/api/admin'
+import { userInsightsAPI, type UserShadow } from '@/api/admin/userInsights'
+import { extractApiErrorMessage } from '@/utils/apiError'
 import type { AdminUser, AdminGroup, UserAttributeDefinition } from '@/types'
 import type { BatchUserUsageStats } from '@/api/admin/dashboard'
 import type { PlatformQuotaItem } from '@/api/admin/users'
@@ -1595,6 +1651,7 @@ const loadUsers = async () => {
       return
     }
     users.value = response.items
+    void loadShadows(response.items.map((u) => u.id))
     pagination.total = response.total
     pagination.pages = response.pages
     usageStats.value = {}
@@ -1719,8 +1776,75 @@ const closeEditModal = () => {
   editingUser.value = null
 }
 
+// 静默限制 / 解除 / 封禁 — each confirmed first. Restrictions are admin-only; the user never sees them.
+const shadows = ref<Record<number, UserShadow>>({})
+type ShadowAction = 'shadow' | 'unshadow' | 'ban'
+const shadowDialog = ref<{ user: AdminUser; action: ShadowAction } | null>(null)
+const shadowReason = ref('')
+
+const loadShadows = async (userIds: number[]) => {
+  try {
+    const found = await userInsightsAPI.getShadows(userIds)
+    const next: Record<number, UserShadow> = {}
+    for (const [id, v] of Object.entries(found)) next[Number(id)] = v
+    shadows.value = next
+  } catch (error) {
+    console.error('Error loading user restrictions:', error)
+  }
+}
+
+const openShadowDialog = (user: AdminUser, action: ShadowAction) => {
+  shadowReason.value = ''
+  shadowDialog.value = { user, action }
+}
+
+const shadowDialogTitle = computed(() => {
+  const action = shadowDialog.value?.action
+  if (action === 'shadow') return t('growth.admin.shadow.shadowTitle')
+  if (action === 'unshadow') return t('growth.admin.shadow.unshadowTitle')
+  return t('growth.admin.shadow.banTitle')
+})
+
+const shadowDialogMessage = computed(() => {
+  const d = shadowDialog.value
+  if (!d) return ''
+  const email = d.user.email
+  if (d.action === 'shadow') return t('growth.admin.shadow.shadowConfirm', { email })
+  if (d.action === 'unshadow') return t('growth.admin.shadow.unshadowConfirm', { email, reason: shadows.value[d.user.id]?.reason || '' })
+  return t('growth.admin.shadow.banConfirm', { email })
+})
+
+const confirmShadowDialog = async () => {
+  const d = shadowDialog.value
+  if (!d) return
+  if (d.action === 'shadow' && !shadowReason.value.trim()) {
+    appStore.showError(t('growth.admin.shadow.reasonRequired'))
+    return
+  }
+  try {
+    if (d.action === 'shadow') {
+      await userInsightsAPI.shadowUser(d.user.id, shadowReason.value.trim())
+      appStore.showSuccess(t('growth.admin.shadow.shadowed'))
+    } else if (d.action === 'unshadow') {
+      await userInsightsAPI.unshadowUser(d.user.id)
+      appStore.showSuccess(t('growth.admin.shadow.unshadowed'))
+    } else {
+      await adminAPI.users.toggleStatus(d.user.id, 'disabled')
+      appStore.showSuccess(t('admin.users.userDisabled'))
+    }
+    shadowDialog.value = null
+    loadUsers()
+  } catch (error: any) {
+    appStore.showError(extractApiErrorMessage(error, t('common.error')))
+  }
+}
+
 const handleToggleStatus = async (user: AdminUser) => {
   const newStatus = user.status === 'active' ? 'disabled' : 'active'
+  if (newStatus === 'disabled') {
+    openShadowDialog(user, 'ban') // 封禁 is confirmed first
+    return
+  }
   try {
     await adminAPI.users.toggleStatus(user.id, newStatus)
     appStore.showSuccess(

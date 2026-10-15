@@ -154,6 +154,17 @@ export interface GrowthSettings {
   invitee_signup_daily_limit: number
   /** 注册试用去重: same browser / IP /24 gets the sign-up default subscriptions once per this many days (0 = off). */
   signup_trial_dedup_days: number
+  /** 静默限制: also restrict sign-ups sharing a browser / IP /24 with a banned or restricted account. */
+  shadow_linked_flagged: boolean
+  /** Free credit a restricted account may use a day (USD). */
+  shadow_free_daily_usd: number
+  /** 风控监控 rules (all on by default) */
+  risk_linked_signup: boolean
+  risk_trial_day1: boolean
+  risk_relay_free: boolean
+  risk_burst_signups: boolean
+  risk_burst_threshold: number
+  risk_invitee_fingerprint: boolean
   price_lock_enabled: boolean
   price_lock_grace_days: number
   leaderboard_enabled: boolean

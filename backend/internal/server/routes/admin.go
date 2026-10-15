@@ -144,6 +144,7 @@ func RegisterAdminRoutes(
 		registerContentEngineRoutes(admin, h)
 		registerCanvasMembershipAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
+		registerUserRiskAdminRoutes(admin, h)
 		registerGrowthAdminRoutes(admin, h)
 	}
 }
@@ -1218,6 +1219,21 @@ func registerCanvasMembershipAdminRoutes(admin *gin.RouterGroup, h *handler.Hand
 	admin.GET("/canvas-membership", h.CanvasMembership.AdminGet)
 	admin.PUT("/canvas-membership", h.CanvasMembership.AdminSave)
 	admin.POST("/canvas-membership/grant", h.CanvasMembership.AdminGrant)
+}
+
+// registerUserRiskAdminRoutes 用户画像、风控事件和静默限制。
+func registerUserRiskAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.UserRisk == nil {
+		return
+	}
+	g := admin.Group("/user-insights")
+	g.GET("/overview", h.UserRisk.Overview)
+	g.GET("/profile", h.UserRisk.Profile)
+	g.GET("/events", h.UserRisk.Events)
+	g.POST("/monitor/run", h.UserRisk.RunMonitor)
+	g.GET("/shadows", h.UserRisk.Shadows)
+	g.PUT("/shadows/:id", h.UserRisk.Shadow)
+	g.DELETE("/shadows/:id", h.UserRisk.Unshadow)
 }
 
 // registerAnalyticsAdminRoutes 数据看板：访客、日活、注册转化、渠道、页面、功能使用和留存。

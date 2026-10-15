@@ -9,8 +9,10 @@ const {
   getAllGroups,
   getBatchUsersUsage,
   listEnabledDefinitions,
-  getBatchUserAttributes
+  getBatchUserAttributes,
+  getShadows
 } = vi.hoisted(() => ({
+  getShadows: vi.fn(),
   listUsers: vi.fn(),
   getAllGroups: vi.fn(),
   getBatchUsersUsage: vi.fn(),
@@ -35,6 +37,14 @@ vi.mock('@/api/admin', () => ({
       listEnabledDefinitions,
       getBatchUserAttributes
     }
+  }
+}))
+
+vi.mock('@/api/admin/userInsights', () => ({
+  userInsightsAPI: {
+    getShadows,
+    shadowUser: vi.fn(),
+    unshadowUser: vi.fn()
   }
 }))
 
@@ -98,6 +108,7 @@ const DataTableStub = {
       </template>
       <div v-for="row in data" :key="row.id">
         <slot name="cell-last_used_at" :value="row.last_used_at" :row="row" />
+        <slot name="cell-status" :value="row.status" :row="row" />
       </div>
     </div>
   `
@@ -141,6 +152,8 @@ describe('admin UsersView', () => {
     getBatchUsersUsage.mockResolvedValue({ stats: {} })
     listEnabledDefinitions.mockResolvedValue([])
     getBatchUserAttributes.mockResolvedValue({ values: {} })
+    getShadows.mockReset()
+    getShadows.mockResolvedValue({})
   })
 
   afterEach(() => {
@@ -368,5 +381,46 @@ describe('admin UsersView', () => {
     expect(wrapper.get('[data-test="row-order"]').text()).toBe('refreshed-page-two@example.com')
     expect(wrapper.find('[data-test="bulk-edit-limits"]').exists()).toBe(false)
     expect(wrapper.get('[data-test="selected-keys"]').text()).toBe('')
+  })
+
+  it('marks silently restricted users with the reason', async () => {
+    getShadows.mockResolvedValue({
+      '42': { user_id: 42, reason: 'same browser as #48', source: 'auto', created_at: '2026-10-15T00:00:00Z' }
+    })
+    const wrapper = mount(UsersView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          TablePageLayout: {
+            template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
+          },
+          DataTable: DataTableStub,
+          Pagination: true,
+          ConfirmDialog: true,
+          EmptyState: true,
+          GroupBadge: true,
+          Select: true,
+          UserAttributesConfigModal: true,
+          UserConcurrencyCell: true,
+          UserCreateModal: true,
+          UserEditModal: true,
+          BulkEditUserModal: true,
+          UserPlatformQuotaModal: true,
+          UserApiKeysModal: true,
+          UserAllowedGroupsModal: true,
+          UserBalanceModal: true,
+          UserBalanceHistoryModal: true,
+          GroupReplaceModal: true,
+          Icon: true,
+          Teleport: true
+        }
+      }
+    })
+    await flushPromises()
+
+    expect(getShadows).toHaveBeenCalledWith([42])
+    const tag = wrapper.get('[data-testid="user-shadow-42"]')
+    expect(tag.text()).toContain('growth.admin.shadow.tag')
+    expect(tag.text()).toContain('same browser as #48')
   })
 })

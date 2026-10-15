@@ -26,7 +26,7 @@ func TestSignupFingerprintRepository_FindRecentTrial(t *testing.T) {
 
 	got, err := repo.FindRecentTrial(ctx, vid, "198.18.7.0", since)
 	require.NoError(t, err)
-	require.Zero(t, got)
+	require.Zero(t, got.UserID)
 
 	require.NoError(t, repo.Save(ctx, service.SignupFingerprint{UserID: ids[0], VisitorID: vid, IPPrefix: "198.18.7.0", TrialGranted: true}))
 	require.NoError(t, repo.Save(ctx, service.SignupFingerprint{UserID: ids[1], VisitorID: "", IPPrefix: "198.18.9.0", TrialGranted: false}))
@@ -35,17 +35,17 @@ func TestSignupFingerprintRepository_FindRecentTrial(t *testing.T) {
 
 	got, err = repo.FindRecentTrial(ctx, vid, "", since)
 	require.NoError(t, err)
-	require.Equal(t, ids[0], got, "same browser")
+	require.Equal(t, ids[0], got.UserID, "same browser")
 	got, err = repo.FindRecentTrial(ctx, "", "198.18.7.0", since)
 	require.NoError(t, err)
-	require.Equal(t, ids[0], got, "same /24")
+	require.Equal(t, ids[0], got.UserID, "same /24")
 	got, err = repo.FindRecentTrial(ctx, "", "198.18.9.0", since)
 	require.NoError(t, err)
-	require.Zero(t, got, "a sign-up that got no trial never matches")
+	require.Zero(t, got.UserID, "a sign-up that got no trial never matches")
 	got, err = repo.FindRecentTrial(ctx, "", "", since)
 	require.NoError(t, err)
-	require.Zero(t, got, "empty values never match")
+	require.Zero(t, got.UserID, "empty values never match")
 	got, err = repo.FindRecentTrial(ctx, vid, "198.18.7.0", time.Now().Add(time.Hour))
 	require.NoError(t, err)
-	require.Zero(t, got, "outside the window")
+	require.Zero(t, got.UserID, "outside the window")
 }

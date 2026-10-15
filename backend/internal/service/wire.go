@@ -1186,6 +1186,8 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentService,
 	ProvideGrowthService,
 	NewSignupTrialGuard,
+	ProvideUserShadowService,
+	ProvideUserRiskService,
 	NewUserAppStateService,
 	ProvideUserAppBlobService,
 	ProvidePromptLibraryService,

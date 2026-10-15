@@ -746,6 +746,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/user-insights',
+    name: 'AdminUserInsights',
+    component: () => import('@/views/admin/UserInsightsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'User insights',
+      titleKey: 'admin.userInsights.title',
+      descriptionKey: 'admin.userInsights.description'
+    }
+  },
+  {
     path: '/admin/canvas-membership',
     name: 'AdminCanvasMembership',
     component: () => import('@/views/admin/CanvasMembershipView.vue'),

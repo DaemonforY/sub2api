@@ -155,7 +155,7 @@ func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptch
 	s.aliyunCaptchaService = aliyunCaptchaService
 }
 
-// SetSignupTrialGuard turns on 注册试用去重 for the sign-up default subscriptions.
+// SetSignupTrialGuard turns on the sign-up checks (注册试用去重 / 自动静默限制).
 func (s *AuthService) SetSignupTrialGuard(guard *SignupTrialGuard) {
 	s.signupTrialGuard = guard
 }
@@ -886,11 +886,12 @@ func (s *AuthService) applyOAuthSignupPromoCode(ctx context.Context, user *User,
 	return user
 }
 
-// assignSignupSubscriptions gives a new account the sign-up default subscriptions, unless the same
-// browser or IP /24 already got them recently (SignupTrialGuard); the default balance is unaffected.
+// assignSignupSubscriptions gives a new account the sign-up default subscriptions. The guard first
+// records the sign-up and silently restricts it when it looks like a repeat (SignupTrialGuard), so the
+// restriction is in place before invite bonuses are considered.
 func (s *AuthService) assignSignupSubscriptions(ctx context.Context, userID int64, items []DefaultSubscriptionSetting) {
-	if s.signupTrialGuard != nil && !s.signupTrialGuard.Allow(ctx, userID, len(items) > 0) {
-		return
+	if s.signupTrialGuard != nil {
+		s.signupTrialGuard.Inspect(ctx, userID, len(items) > 0)
 	}
 	s.assignSubscriptions(ctx, userID, items, "auto assigned by signup defaults")
 }

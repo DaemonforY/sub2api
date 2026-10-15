@@ -71,13 +71,40 @@
 
         <section class="card space-y-4 p-6" data-testid="growth-signup-trial-dedup">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">🛡️ {{ t('growth.admin.settings.signupTrialDedupTitle') }}</h2>
+          <p class="text-xs leading-relaxed text-gray-400">{{ t('growth.admin.settings.shadowIntro') }}</p>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.shadow_linked_flagged" data-testid="shadow-linked-toggle" />
+            {{ t('growth.admin.settings.shadowLinkedFlagged') }}
+          </label>
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="input-label" for="growth-signup-trial-dedup">{{ t('growth.admin.settings.signupTrialDedupDays') }}</label>
               <input id="growth-signup-trial-dedup" v-model.number="form.signup_trial_dedup_days" type="number" min="0" max="365" step="1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.signupTrialDedupHint') }}</p>
+            </div>
+            <div>
+              <label class="input-label" for="growth-shadow-free">{{ t('growth.admin.settings.shadowFreeDaily') }}</label>
+              <input id="growth-shadow-free" v-model.number="form.shadow_free_daily_usd" type="number" min="0" max="100" step="0.1" class="input" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.shadowFreeDailyHint') }}</p>
             </div>
           </div>
-          <p class="text-xs leading-relaxed text-gray-400">{{ t('growth.admin.settings.signupTrialDedupHint') }}</p>
+        </section>
+
+        <section class="card space-y-4 p-6" data-testid="growth-risk-monitor">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🚨 {{ t('growth.admin.settings.riskTitle') }}</h2>
+          <p class="text-xs leading-relaxed text-gray-400">{{ t('growth.admin.settings.riskHint') }}</p>
+          <div class="space-y-3">
+            <label v-for="key in riskRuleKeys" :key="key" class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+              <Toggle v-model="form[key]" :data-testid="`risk-${key}`" />
+              {{ t(`growth.admin.settings.riskRules.${key}`) }}
+            </label>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-risk-burst">{{ t('growth.admin.settings.riskBurstThreshold') }}</label>
+              <input id="growth-risk-burst" v-model.number="form.risk_burst_threshold" type="number" min="2" max="100" step="1" class="input" />
+            </div>
+          </div>
         </section>
 
         <section class="card space-y-4 p-6" data-testid="growth-withdraw">
@@ -324,6 +351,8 @@ const grantNote = ref('')
 const granting = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
+const riskRuleKeys = ['risk_linked_signup', 'risk_trial_day1', 'risk_relay_free', 'risk_burst_signups', 'risk_invitee_fingerprint'] as const
+
 async function loadSettings() {
   loading.value = true
   try {
@@ -355,6 +384,8 @@ async function save() {
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       price_lock_grace_days: Math.max(0, Math.round(Number(form.value.price_lock_grace_days) || 0)),
       signup_trial_dedup_days: Math.min(365, Math.max(0, Math.round(Number(form.value.signup_trial_dedup_days) || 0))),
+      shadow_free_daily_usd: Math.min(100, Math.max(0, Number(form.value.shadow_free_daily_usd) || 0)),
+      risk_burst_threshold: Math.min(100, Math.max(2, Math.round(Number(form.value.risk_burst_threshold) || 3))),
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,
       withdraw_min_cny: Number(form.value.withdraw_min_cny) || 50,
       withdraw_monthly_limit: Math.max(0, Math.floor(Number(form.value.withdraw_monthly_limit) || 0)),
