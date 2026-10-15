@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ const (
 
 	SettingKeyGrowthShadowLinkedFlagged = "growth_shadow_linked_flagged" // 注册指纹与已封禁/静默账号相同时自动静默限制（默认开启）
 	SettingKeyGrowthShadowFreeDailyUSD  = "growth_shadow_free_daily_usd" // 静默限制账号每天可用的免费额度（美元）
+	SettingKeyGrowthShadowBlockPayments = "growth_shadow_block_payments" // 静默限制账号不能在线支付（默认开启）
 	growthShadowFreeDailyUSDDefault     = 0.3
 	growthShadowFreeDailyUSDMax         = 100.0
 
@@ -32,6 +34,10 @@ const (
 )
 
 var ErrShadowReasonRequired = infraerrors.BadRequest("SHADOW_REASON_REQUIRED", "请填写静默限制原因（A reason is required）")
+
+// ErrOnlinePaymentUnavailable is what a restricted account sees when it tries to pay: true and neutral,
+// so we never take money from an account we won't serve, and the reason isn't spelled out.
+var ErrOnlinePaymentUnavailable = infraerrors.Forbidden("ONLINE_PAYMENT_UNAVAILABLE", "该账号暂不支持在线支付，请联系客服（Online payment is not available for this account; please contact support）")
 
 // UserShadow is one restricted account.
 type UserShadow struct {
@@ -53,11 +59,21 @@ type UserShadowRepository interface {
 	SpentSince(ctx context.Context, userID int64, since time.Time) (float64, error)
 	// FillSubscriptionDailyUsage raises the subscription's daily usage to at least limit.
 	FillSubscriptionDailyUsage(ctx context.Context, subscriptionID int64, limit float64) error
+	// NoteRiskEvent records (or appends to) the user's event for rule, for the admin.
+	NoteRiskEvent(ctx context.Context, userID int64, rule, detail string) error
 }
 
 // ShadowChecker is what other services need: is this account silently restricted?
 type ShadowChecker interface {
 	IsShadowed(userID int64) bool
+}
+
+// PaymentShadowGuard is the payment hook: restricted accounts can't create orders, and an order that
+// was paid anyway (created before the restriction) is fulfilled but noted for the admin.
+type PaymentShadowGuard interface {
+	IsShadowed(userID int64) bool
+	BlocksPayment(ctx context.Context, userID int64) bool
+	NotePaidWhileShadowed(ctx context.Context, userID, orderID int64, paidAmount float64)
 }
 
 // FreeCreditGate is the gateway hook (BillingCacheService.CheckBillingEligibility).
@@ -92,7 +108,7 @@ func NewUserShadowService(repo UserShadowRepository, growth *GrowthService, bill
 // ProvideUserShadowService loads the restricted accounts, keeps them fresh, and hooks the gate into
 // billing and the checker into invite bonuses and rebates.
 func ProvideUserShadowService(repo UserShadowRepository, growth *GrowthService, billingCache *BillingCacheService,
-	subs *SubscriptionService, affiliate *AffiliateService) *UserShadowService {
+	subs *SubscriptionService, affiliate *AffiliateService, payments *PaymentService) *UserShadowService {
 	s := NewUserShadowService(repo, growth, billingCache, subs)
 	if billingCache != nil {
 		billingCache.SetFreeCreditGate(s)
@@ -102,6 +118,9 @@ func ProvideUserShadowService(repo UserShadowRepository, growth *GrowthService, 
 	}
 	if affiliate != nil {
 		affiliate.SetShadowChecker(s)
+	}
+	if payments != nil {
+		payments.SetShadowGuard(s)
 	}
 	s.Start()
 	return s
@@ -222,6 +241,33 @@ func (s *UserShadowService) freeDailyUSD(ctx context.Context) float64 {
 		return growthShadowFreeDailyUSDDefault
 	}
 	return settings.ShadowFreeDailyUSD
+}
+
+// BlocksPayment: a restricted account can't create payment orders while 推广设置 says so (default on).
+func (s *UserShadowService) BlocksPayment(ctx context.Context, userID int64) bool {
+	if !s.IsShadowed(userID) {
+		return false
+	}
+	if s.growth == nil {
+		return true
+	}
+	settings, err := s.growth.GetSettings(ctx)
+	if err != nil {
+		return true
+	}
+	return settings.ShadowBlockPayments
+}
+
+// NotePaidWhileShadowed leaves a risk event when money arrives for a restricted account (an order
+// created before the restriction): the order is fulfilled as usual, the admin decides what's next.
+func (s *UserShadowService) NotePaidWhileShadowed(ctx context.Context, userID, orderID int64, paidAmount float64) {
+	if !s.IsShadowed(userID) {
+		return
+	}
+	detail := fmt.Sprintf("静默限制期间订单 #%d 到账 ¥%.2f，已照常履约", orderID, paidAmount)
+	if err := s.repo.NoteRiskEvent(ctx, userID, RiskRuleShadowPaid, detail); err != nil {
+		logger.LegacyPrintf("service.user_shadow", "[Shadow] note paid order %d of user %d failed: %v", orderID, userID, err)
+	}
 }
 
 func (s *UserShadowService) hasRealPayment(ctx context.Context, userID int64) (bool, error) {

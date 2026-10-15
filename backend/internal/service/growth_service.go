@@ -79,6 +79,8 @@ type GrowthSettings struct {
 	// and how much free credit a restricted account may use a day (see UserShadowService).
 	ShadowLinkedFlagged bool    `json:"shadow_linked_flagged"`
 	ShadowFreeDailyUSD  float64 `json:"shadow_free_daily_usd"`
+	// ShadowBlockPayments: restricted accounts can't pay online (they see a plain "not available").
+	ShadowBlockPayments bool `json:"shadow_block_payments"`
 	// 风控监控规则 (see RiskMonitorService); fields are flat in the JSON (risk_*).
 	RiskSettings
 	// 老用户锁价: buyers keep a plan's price on renewal while their subscription hasn't been
@@ -233,6 +235,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
 		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
 		SettingKeyGrowthSignupTrialDedupDays, SettingKeyGrowthShadowLinkedFlagged, SettingKeyGrowthShadowFreeDailyUSD,
+		SettingKeyGrowthShadowBlockPayments,
 		SettingKeyRiskLinkedSignup, SettingKeyRiskTrialDay1, SettingKeyRiskRelayFree, SettingKeyRiskBurstSignups,
 		SettingKeyRiskBurstThreshold, SettingKeyRiskInviteeFingerprint,
 	})
@@ -255,6 +258,7 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		InviteeSignupDailyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupDailyLimit], growthSignupDailyLimitDefault), 1, growthSignupDailyLimitMax)),
 		SignupTrialDedupDays:    int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupTrialDedupDays], growthSignupTrialDedupDaysDefault), 0, growthSignupTrialDedupDaysMax)),
 		ShadowLinkedFlagged:     vals[SettingKeyGrowthShadowLinkedFlagged] != "false", // on unless turned off
+		ShadowBlockPayments:     vals[SettingKeyGrowthShadowBlockPayments] != "false", // on unless turned off
 		ShadowFreeDailyUSD:      clampFloat(parseFloatOr(vals[SettingKeyGrowthShadowFreeDailyUSD], growthShadowFreeDailyUSDDefault), 0, growthShadowFreeDailyUSDMax),
 		RiskSettings:            parseRiskSettings(vals),
 		PriceLockEnabled:        vals[SettingKeyPriceLockEnabled] != "false", // on unless turned off
@@ -345,6 +349,7 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthSignupTrialDedupDays:   strconv.Itoa(in.SignupTrialDedupDays),
 		SettingKeyGrowthShadowLinkedFlagged:    strconv.FormatBool(in.ShadowLinkedFlagged),
 		SettingKeyGrowthShadowFreeDailyUSD:     strconv.FormatFloat(in.ShadowFreeDailyUSD, 'f', -1, 64),
+		SettingKeyGrowthShadowBlockPayments:    strconv.FormatBool(in.ShadowBlockPayments),
 		SettingKeyRiskLinkedSignup:             strconv.FormatBool(in.RiskLinkedSignup),
 		SettingKeyRiskTrialDay1:                strconv.FormatBool(in.RiskTrialDay1),
 		SettingKeyRiskRelayFree:                strconv.FormatBool(in.RiskRelayFree),

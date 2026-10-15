@@ -72,6 +72,14 @@ func (r *userShadowRepository) SpentSince(ctx context.Context, userID int64, sin
 	return spent, err
 }
 
+func (r *userShadowRepository) NoteRiskEvent(ctx context.Context, userID int64, rule, detail string) error {
+	_, err := r.db.ExecContext(ctx, `
+INSERT INTO risk_events (user_id, rule, detail) VALUES ($1, $2, left($3, 500))
+ON CONFLICT (user_id, rule) DO UPDATE SET detail = left(EXCLUDED.detail || '；' || risk_events.detail, 500), created_at = NOW()`,
+		userID, rule, detail)
+	return err
+}
+
 func (r *userShadowRepository) FillSubscriptionDailyUsage(ctx context.Context, subscriptionID int64, limit float64) error {
 	_, err := r.db.ExecContext(ctx,
 		`UPDATE user_subscriptions SET daily_usage_usd = GREATEST(daily_usage_usd, $2), updated_at = NOW() WHERE id = $1`,

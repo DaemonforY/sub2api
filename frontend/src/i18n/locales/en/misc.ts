@@ -450,6 +450,7 @@ export default {
       alipayMobileOpenHint: 'Allow the current page to open the Alipay app, or retry from the system browser.',
       // Structured error codes (reason strings from backend ApplicationError)
       PAYMENT_DISABLED: 'Payment system is disabled.',
+      ONLINE_PAYMENT_UNAVAILABLE: 'Online payment is not available for this account. Please contact support.',
       USER_INACTIVE: 'Your account is disabled.',
       BALANCE_PAYMENT_DISABLED: 'Balance recharge has been disabled.',
       INVALID_AMOUNT: 'Invalid amount.',

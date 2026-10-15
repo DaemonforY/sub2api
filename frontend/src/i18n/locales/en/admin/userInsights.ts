@@ -182,7 +182,8 @@ export default {
       trial_day1: 'Trial quota used up on day one',
       relay_free: 'Relay tool spending free quota',
       burst_signups: 'Burst of sign-ups from one IP range / browser',
-      invitee_fingerprint: 'Invitee shares the inviter\'s fingerprint'
+      invitee_fingerprint: 'Invitee shares the inviter\'s fingerprint',
+      shadow_paid: 'Order paid while restricted'
     },
     actions: {
       shadow: 'Silently restrict',

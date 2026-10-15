@@ -182,7 +182,8 @@ export default {
       trial_day1: '试用账号首日用完额度',
       relay_free: '中转工具消耗免费额度',
       burst_signups: '同网段/同浏览器短时间多次注册',
-      invitee_fingerprint: '被邀请人与邀请人同指纹'
+      invitee_fingerprint: '被邀请人与邀请人同指纹',
+      shadow_paid: '静默限制期间有订单到账'
     },
     actions: {
       shadow: '静默限制',

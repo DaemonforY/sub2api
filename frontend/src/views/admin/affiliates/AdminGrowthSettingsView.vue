@@ -76,6 +76,11 @@
             <Toggle v-model="form.shadow_linked_flagged" data-testid="shadow-linked-toggle" />
             {{ t('growth.admin.settings.shadowLinkedFlagged') }}
           </label>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <Toggle v-model="form.shadow_block_payments" data-testid="shadow-block-payments-toggle" />
+            {{ t('growth.admin.settings.shadowBlockPayments') }}
+          </label>
+          <p class="-mt-2 pl-14 text-xs text-gray-400">{{ t('growth.admin.settings.shadowBlockPaymentsHint') }}</p>
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="input-label" for="growth-signup-trial-dedup">{{ t('growth.admin.settings.signupTrialDedupDays') }}</label>

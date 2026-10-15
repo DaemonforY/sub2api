@@ -5,6 +5,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -74,6 +75,7 @@ type userShadowRepoFake struct {
 	spent    map[int64]float64
 	filled   map[int64]float64
 	spentErr error
+	notes    []string
 }
 
 func newUserShadowRepoFake() *userShadowRepoFake {
@@ -101,6 +103,11 @@ func (r *userShadowRepoFake) HasRealPayment(_ context.Context, userID int64) (bo
 func (r *userShadowRepoFake) SpentSince(_ context.Context, userID int64, _ time.Time) (float64, error) {
 	return r.spent[userID], r.spentErr
 }
+func (r *userShadowRepoFake) NoteRiskEvent(_ context.Context, userID int64, rule, detail string) error {
+	r.notes = append(r.notes, fmt.Sprintf("%d/%s/%s", userID, rule, detail))
+	return nil
+}
+
 func (r *userShadowRepoFake) FillSubscriptionDailyUsage(_ context.Context, subID int64, limit float64) error {
 	r.filled[subID] = limit
 	return nil
@@ -198,6 +205,7 @@ func TestParseGrowthSettings_ShadowAndRiskDefaults(t *testing.T) {
 	require.Equal(t, 30, s.SignupTrialDedupDays)
 	require.True(t, s.ShadowLinkedFlagged)
 	require.Equal(t, 0.3, s.ShadowFreeDailyUSD)
+	require.True(t, s.ShadowBlockPayments, "restricted accounts can't pay unless turned off")
 	require.Equal(t, RiskSettings{RiskLinkedSignup: true, RiskTrialDay1: true, RiskRelayFree: true, RiskBurstSignups: true,
 		RiskBurstThreshold: 3, RiskInviteeFingerprint: true}, s.RiskSettings)
 

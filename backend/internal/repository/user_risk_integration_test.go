@@ -245,5 +245,13 @@ func TestUserRiskRepository(t *testing.T) {
 	require.Len(t, p.Subscriptions, 1)
 	require.True(t, p.Subscriptions[0].Free)
 
+	// A late payment is noted on one event per user, newest first.
+	require.NoError(t, shadowRepo.NoteRiskEvent(ctx, payer.ID, service.RiskRuleShadowPaid, "order #1"))
+	require.NoError(t, shadowRepo.NoteRiskEvent(ctx, payer.ID, service.RiskRuleShadowPaid, "order #2"))
+	listed, total, err = repo.ListRiskEvents(ctx, payer.ID, 1, 10)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	require.Equal(t, "order #2；order #1", listed[0].Detail)
+
 	require.NoError(t, shadowRepo.DeleteShadow(ctx, inviter.ID))
 }

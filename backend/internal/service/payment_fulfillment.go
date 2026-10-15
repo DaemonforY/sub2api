@@ -183,7 +183,18 @@ func (s *PaymentService) toPaid(ctx context.Context, o *dbent.PaymentOrder, trad
 		})
 	}
 	s.writeAuditLog(ctx, o.ID, "ORDER_PAID", pk, map[string]any{"tradeNo": tradeNo, "paidAmount": paid})
+	s.noteIfShadowed(ctx, o, paid)
 	return s.executeFulfillment(ctx, o.ID)
+}
+
+// noteIfShadowed: money arrived for a 静默限制 account (the order predates the restriction). It is
+// fulfilled as usual; the audit log and a risk event tell the admin.
+func (s *PaymentService) noteIfShadowed(ctx context.Context, o *dbent.PaymentOrder, paid float64) {
+	if s.shadow == nil || o == nil || !s.shadow.IsShadowed(o.UserID) {
+		return
+	}
+	s.writeAuditLog(ctx, o.ID, "PAID_WHILE_SHADOWED", "system", map[string]any{"paidAmount": paid, "note": "account is silently restricted; fulfilled as usual"})
+	s.shadow.NotePaidWhileShadowed(ctx, o.UserID, o.ID, paid)
 }
 
 func (s *PaymentService) alreadyProcessed(ctx context.Context, o *dbent.PaymentOrder) error {

@@ -209,6 +209,13 @@ type PaymentService struct {
 	growthService            *GrowthService
 	courses                  *CourseService
 	membership               *CanvasMembershipService
+	// shadow: 静默限制 accounts can't create orders; late payments are noted (see PaymentShadowGuard).
+	shadow PaymentShadowGuard
+}
+
+// SetShadowGuard installs the 静默限制 payment checks.
+func (s *PaymentService) SetShadowGuard(g PaymentShadowGuard) {
+	s.shadow = g
 }
 
 func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, loadBalancer payment.LoadBalancer, redeemService *RedeemService, subscriptionSvc *SubscriptionService, configService *PaymentConfigService, userRepo UserRepository, groupRepo GroupRepository, affiliateService *AffiliateService) *PaymentService {

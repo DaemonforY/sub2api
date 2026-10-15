@@ -35,6 +35,7 @@ const (
 	RiskRuleRelayFree          = "relay_free"
 	RiskRuleBurstSignups       = "burst_signups"
 	RiskRuleInviteeFingerprint = "invitee_fingerprint"
+	RiskRuleShadowPaid         = "shadow_paid" // written at payment time, not by the monitor
 
 	riskMonitorInterval = 20 * time.Minute
 	riskMonitorLookback = 24 * time.Hour
@@ -365,6 +366,7 @@ var RiskRuleLabels = map[string]string{
 	RiskRuleRelayFree:          "中转工具消耗免费额度",
 	RiskRuleBurstSignups:       "同网段/同浏览器短时间多次注册",
 	RiskRuleInviteeFingerprint: "被邀请人与邀请人同指纹",
+	RiskRuleShadowPaid:         "静默限制期间有订单到账",
 }
 
 // RunMonitor evaluates the enabled rules once, stores new events and mails them.

@@ -36,6 +36,10 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	if !cfg.Enabled {
 		return nil, infraerrors.Forbidden("PAYMENT_DISABLED", "payment system is disabled")
 	}
+	// 静默限制: never take money from an account we won't serve; it just can't pay online.
+	if s.shadow != nil && s.shadow.BlocksPayment(ctx, req.UserID) {
+		return nil, ErrOnlinePaymentUnavailable
+	}
 	plan, err := s.validateOrderInput(ctx, req, cfg)
 	if err != nil {
 		return nil, err

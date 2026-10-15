@@ -158,6 +158,8 @@ export interface GrowthSettings {
   shadow_linked_flagged: boolean
   /** Free credit a restricted account may use a day (USD). */
   shadow_free_daily_usd: number
+  /** 静默限制 accounts can't pay online (they see "not available for this account"). */
+  shadow_block_payments: boolean
   /** 风控监控 rules (all on by default) */
   risk_linked_signup: boolean
   risk_trial_day1: boolean

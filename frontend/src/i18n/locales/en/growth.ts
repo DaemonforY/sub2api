@@ -345,6 +345,8 @@ export default {
         signupTrialDedupTitle: 'Sign-up abuse guard (silent restriction)',
         shadowIntro: 'New accounts matching the rules below are silently restricted: sign-up succeeds and the sign-up subscription and balance show as usual, but free credit only works for a little each day; after that the user sees the normal "daily limit reached" or "insufficient balance". Accounts that paid are not affected. Restricted accounts get no invite bonuses, and their inviters get no rebates from them. You can restrict or lift it by hand in Users.',
         shadowLinkedFlagged: 'Restrict sign-ups sharing a browser or IP /24 with a banned or restricted account',
+        shadowBlockPayments: 'Restricted accounts cannot pay online',
+        shadowBlockPaymentsHint: 'Placing an order shows "Online payment is not available for this account. Please contact support." — no money taken, so no paid-but-unserved disputes. Orders placed and paid before the restriction are fulfilled and noted in User insights → Risk events and the order log.',
         signupTrialDedupDays: 'Restrict a second sign-up trial from the same browser / IP range within (days)',
         signupTrialDedupHint: '0 = off. A classroom or office sharing one exit IP counts as one network: set 0 temporarily before a group sign-up.',
         shadowFreeDaily: 'Daily free credit for restricted accounts ($)',
