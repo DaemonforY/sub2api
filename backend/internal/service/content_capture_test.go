@@ -254,3 +254,30 @@ func TestContentCapture_AnthropicUpstreamConversionPaths(t *testing.T) {
 	beginContentCaptureOnly(c)
 	require.Nil(t, upstreamResponseModelObserverFromContext(c), "uncaptured requests get no observer here")
 }
+
+// The buffered OpenAI-compat paths (non-stream chat/completions and /v1/messages on OpenAI groups)
+// read the whole upstream stream themselves and hand the terminal Responses object over at the end.
+func TestContentCapture_BufferedFinalResponse(t *testing.T) {
+	c := newCaptureTestContext(true)
+	observer := beginUpstreamResponseModelObservation(c)
+	observer.ObserveContentFinalResponse(&apicompat.ResponsesResponse{
+		Object: "response",
+		Model:  "gpt-6-luna",
+		Status: "completed",
+		Output: []apicompat.ResponsesOutput{
+			{Type: "reasoning"},
+			{Type: "message", Role: "assistant", Content: []apicompat.ResponsesContentPart{{Type: "output_text", Text: "杭州是一座城市。"}}},
+			{Type: "function_call", Name: "run_shell", Arguments: `{"command":"ls"}`},
+		},
+	})
+	snap := ContentCaptureSnapshot(c)
+	require.NotNil(t, snap)
+	require.Equal(t, "杭州是一座城市。", snap.ReplyHead)
+	require.Len(t, snap.ToolCalls, 1)
+	require.Equal(t, "run_shell", snap.ToolCalls[0].Name)
+
+	// Not captured: nothing happens.
+	plain := newCaptureTestContext(false)
+	beginUpstreamResponseModelObservation(plain).ObserveContentFinalResponse(&apicompat.ResponsesResponse{Object: "response"})
+	require.Nil(t, ContentCaptureSnapshot(plain))
+}

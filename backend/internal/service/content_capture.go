@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -89,6 +90,21 @@ func ContentCaptureSnapshot(c *gin.Context) (out *ContentCapture) {
 		out.ToolCalls, out.ReplyHead = observer.content.snapshot()
 	}
 	return out
+}
+
+// ObserveContentFinalResponse feeds a buffered terminal Responses object (the OpenAI-compat
+// buffered chat/completions and /v1/messages paths read the whole upstream stream first and never
+// pass its frames to the observer) to the content capture. No-op unless the request is captured.
+func (o *upstreamResponseModelObserver) ObserveContentFinalResponse(final any) {
+	if o == nil || o.content == nil || final == nil {
+		return
+	}
+	defer func() { _ = recover() }()
+	body, err := json.Marshal(final)
+	if err != nil {
+		return
+	}
+	o.content.feedOpenAI(body, "")
 }
 
 // beginContentCaptureOnly starts a fresh observation for forward paths that don't track the
