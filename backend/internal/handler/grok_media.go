@@ -686,6 +686,9 @@ func recordGrokMediaUsage(
 			payloadForHash = []byte(videoTaskID)
 		}
 	}
+	if result != nil {
+		result.ContentCapture = service.ContentCaptureSnapshot(c) // Grok /v1/images/* under 请求内容日志
+	}
 	h.submitOpenAIUsageRecordTask(c.Request.Context(), result, func(ctx context.Context) {
 		if err := h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
 			Result:             result,

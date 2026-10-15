@@ -130,6 +130,7 @@ func provideCleanup(
 	ollamaCloudUsage *service.OllamaCloudUsageService,
 	auditLog *service.AuditLogService,
 	gatewayRequestLog *service.GatewayRequestLogService,
+	contentLog *service.ContentLogService,
 	contestService *service.ContestService,
 	promptLibrarySync *service.PromptLibrarySyncService,
 	openAIAutoReset *service.OpenAIQuotaAutoResetService,
@@ -342,6 +343,11 @@ func provideCleanup(
 			{"UsageRecordWorkerPool", func() error {
 				if usageRecordWorkerPool != nil {
 					usageRecordWorkerPool.Stop()
+				}
+				// The content log is fed by usage recording: stop (and flush) it only after the
+				// pool has drained.
+				if contentLog != nil {
+					contentLog.Stop()
 				}
 				return nil
 			}},

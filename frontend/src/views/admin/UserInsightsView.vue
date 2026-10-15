@@ -263,6 +263,25 @@
               </div>
             </div>
 
+            <div
+              v-if="logTargetsLoaded"
+              class="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm dark:bg-dark-800/60"
+              data-testid="ui-content-log-status"
+            >
+              <template v-if="profileLogTarget">
+                <span class="text-gray-700 dark:text-dark-200">{{ t('admin.userInsights.contentLog.profileRecording', { date: formatDateTimeToMinute(profileLogTarget.created_at) }) }}</span>
+                <button type="button" class="btn btn-secondary btn-sm" data-testid="ui-content-log-open" @click="openContentLog(profile.user.id)">
+                  {{ t('admin.userInsights.contentLog.profileOpen') }}
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-testid="ui-content-log-stop" @click="openAction('logOff')">
+                  {{ t('admin.userInsights.contentLog.stop') }}
+                </button>
+              </template>
+              <button v-else type="button" class="btn btn-secondary btn-sm" data-testid="ui-content-log-start" @click="openAction('logOn')">
+                {{ t('admin.userInsights.contentLog.profileStart') }}
+              </button>
+            </div>
+
             <div class="grid gap-4 md:grid-cols-2">
               <div class="rounded-lg border border-gray-100 p-3 dark:border-dark-700" data-testid="ui-risk">
                 <div class="flex items-baseline gap-2">
@@ -596,6 +615,11 @@
         </template>
       </template>
 
+      <!-- ===== Content log ===== -->
+      <template v-else-if="tab === 'contentLog'">
+        <ContentLogPanel :user-id="contentLogUserId" @select="selectContentLogUser" />
+      </template>
+
       <!-- ===== Events ===== -->
       <template v-else-if="tab === 'events'">
         <div class="card p-4" data-testid="ui-events">
@@ -643,10 +667,21 @@
       :title="actionTitle"
       :message="actionMessage"
       :confirm-text="actionConfirmText"
-      :danger="action === 'ban' || action === 'shadow'"
+      :danger="action === 'ban' || action === 'shadow' || action === 'logOff'"
       @confirm="confirmAction"
       @cancel="closeAction"
     >
+      <div v-if="action === 'logOn'" class="space-y-1">
+        <label class="text-sm font-medium text-gray-700 dark:text-dark-200" for="ui-log-note">{{ t('admin.userInsights.contentLog.noteLabel') }}</label>
+        <input
+          id="ui-log-note"
+          v-model="logNote"
+          type="text"
+          class="input w-full"
+          :placeholder="t('admin.userInsights.contentLog.notePlaceholder')"
+          data-testid="ui-log-note"
+        />
+      </div>
       <div v-if="action === 'shadow'" class="space-y-1">
         <label class="text-sm font-medium text-gray-700 dark:text-dark-200" for="ui-shadow-reason">{{ t('admin.userInsights.actions.reasonLabel') }}</label>
         <textarea
@@ -672,13 +707,18 @@ import { Bar, Line } from 'vue-chartjs'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Pagination from '@/components/common/Pagination.vue'
+import ContentLogPanel from '@/components/admin/user/ContentLogPanel.vue'
 import {
+  disableContentLog,
+  enableContentLog,
   getOverview,
   getProfile,
+  listContentLogTargets,
   listEvents,
   runMonitor,
   shadowUser,
   unshadowUser,
+  type ContentLogTarget,
   type InsightsAttribution,
   type InsightsUserRef,
   type RiskEvent,
@@ -692,11 +732,11 @@ import { formatDateOnly, formatDateTimeToMinute } from '@/utils/format'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend)
 
-type Tab = 'overview' | 'profile' | 'events'
+type Tab = 'overview' | 'profile' | 'events' | 'contentLog'
 type Segment = 'inactive' | 'trial' | 'paying' | 'churned'
-type Action = 'shadow' | 'unshadow' | 'ban' | 'unban'
+type Action = 'shadow' | 'unshadow' | 'ban' | 'unban' | 'logOn' | 'logOff'
 
-const TABS: Tab[] = ['overview', 'profile', 'events']
+const TABS: Tab[] = ['overview', 'profile', 'events', 'contentLog']
 const RANGES = [7, 30, 90]
 const SEGMENTS: Segment[] = ['inactive', 'trial', 'paying', 'churned']
 const SEGMENT_TEXT: Record<Segment, string> = {
@@ -720,13 +760,23 @@ function queryTab(): Tab {
 function queryUser(): string {
   return String(route.query.user || '').trim()
 }
+/** ?tab=contentLog&user_id=45 */
+function queryLogUser(): number | null {
+  const n = Number(String(route.query.user_id || '').trim())
+  return Number.isInteger(n) && n > 0 ? n : null
+}
 
 const tab = ref<Tab>(queryTab())
 
 function selectTab(tb: Tab): void {
   const query: Record<string, string> = { tab: tb }
   if (tb === 'profile' && queryUser()) query.user = queryUser()
+  if (tb === 'contentLog' && queryLogUser()) query.user_id = String(queryLogUser())
   void router.replace({ query })
+}
+
+function openContentLog(userId: number): void {
+  void router.replace({ query: { tab: 'contentLog', user_id: String(userId) } })
 }
 
 function profileLink(id: number): { query: Record<string, string> } {
@@ -867,6 +917,7 @@ async function loadProfile(q: string): Promise<void> {
     const p = await getProfile(q)
     if (profileQuery !== q) return
     profile.value = p
+    void loadLogTargets()
   } catch (e: unknown) {
     if (profileQuery !== q) return
     profile.value = null
@@ -936,25 +987,69 @@ const usageBlocks = computed(() => [
   { key: 'models', col: 'model', rows: profile.value?.models || [] }
 ])
 
+// ---------- request content log status (targets list is cheap and not audited) ----------
+
+const logTargets = ref<ContentLogTarget[]>([])
+const logTargetsLoaded = ref(false)
+
+async function loadLogTargets(): Promise<void> {
+  try {
+    const res = await listContentLogTargets()
+    logTargets.value = res.items || []
+    logTargetsLoaded.value = true
+  } catch {
+    // The status line is optional; hide it when the list can't be loaded.
+    logTargetsLoaded.value = false
+  }
+}
+
+const profileLogTarget = computed(() => {
+  const id = profile.value?.user.id
+  return id ? logTargets.value.find((x) => x.user_id === id) || null : null
+})
+
 // ---------- actions ----------
 
 const action = ref<Action | null>(null)
 const shadowReason = ref('')
+const logNote = ref('')
 const acting = ref(false)
 
 function openAction(a: Action): void {
   shadowReason.value = ''
+  logNote.value = ''
   action.value = a
 }
 function closeAction(): void {
   if (!acting.value) action.value = null
 }
 
-const actionTitle = computed(() => (action.value ? t(`admin.userInsights.actions.${action.value}Title`) : ''))
-const actionMessage = computed(() =>
-  action.value && profile.value ? t(`admin.userInsights.actions.${action.value}Message`, { email: userName(profile.value.user) }) : ''
-)
-const actionConfirmText = computed(() => (action.value ? t(`admin.userInsights.actions.${action.value}`) : ''))
+const LOG_ACTION_KEYS: Partial<Record<Action, { title: string; message: string; confirm: string }>> = {
+  logOn: { title: 'enableTitle', message: 'enableMessage', confirm: 'enable' },
+  logOff: { title: 'disableTitle', message: 'disableMessage', confirm: 'stop' }
+}
+
+const actionTitle = computed(() => {
+  const a = action.value
+  if (!a) return ''
+  const k = LOG_ACTION_KEYS[a]
+  return k ? t(`admin.userInsights.contentLog.${k.title}`) : t(`admin.userInsights.actions.${a}Title`)
+})
+const actionMessage = computed(() => {
+  const a = action.value
+  const p = profile.value
+  if (!a || !p) return ''
+  const k = LOG_ACTION_KEYS[a]
+  return k
+    ? t(`admin.userInsights.contentLog.${k.message}`, { user: `${userName(p.user)} #${p.user.id}` })
+    : t(`admin.userInsights.actions.${a}Message`, { email: userName(p.user) })
+})
+const actionConfirmText = computed(() => {
+  const a = action.value
+  if (!a) return ''
+  const k = LOG_ACTION_KEYS[a]
+  return k ? t(`admin.userInsights.contentLog.${k.confirm}`) : t(`admin.userInsights.actions.${a}`)
+})
 
 async function confirmAction(): Promise<void> {
   const a = action.value
@@ -968,6 +1063,15 @@ async function confirmAction(): Promise<void> {
   }
   acting.value = true
   try {
+    if (a === 'logOn' || a === 'logOff') {
+      if (a === 'logOn') await enableContentLog(id, logNote.value.trim())
+      else await disableContentLog(id)
+      appStore.showSuccess(t(a === 'logOn' ? 'admin.userInsights.contentLog.enabledToast' : 'admin.userInsights.contentLog.disabledToast'))
+      acting.value = false
+      action.value = null
+      await loadLogTargets()
+      return
+    }
     if (a === 'shadow') await shadowUser(id, reason)
     else if (a === 'unshadow') await unshadowUser(id)
     else await adminAPI.users.toggleStatus(id, a === 'ban' ? 'disabled' : 'active')
@@ -1033,12 +1137,21 @@ async function runCheck(): Promise<void> {
   }
 }
 
+// ---------- content log ----------
+
+const contentLogUserId = ref<number | null>(queryLogUser())
+
+function selectContentLogUser(userId: number): void {
+  openContentLog(userId)
+}
+
 // ---------- URL sync ----------
 
 function syncFromRoute(): void {
   tab.value = queryTab()
   if (tab.value === 'overview' && !overview.value && !overviewLoading.value) void loadOverview()
   if (tab.value === 'events' && !eventsLoaded.value && !eventsLoading.value) void loadEvents()
+  if (tab.value === 'contentLog') contentLogUserId.value = queryLogUser()
   if (tab.value === 'profile') {
     const u = queryUser()
     query.value = u
@@ -1046,6 +1159,6 @@ function syncFromRoute(): void {
   }
 }
 
-watch(() => [route.query.tab, route.query.user], syncFromRoute)
+watch(() => [route.query.tab, route.query.user, route.query.user_id], syncFromRoute)
 onMounted(syncFromRoute)
 </script>

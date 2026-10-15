@@ -253,6 +253,9 @@ type OpenAIForwardResult struct {
 	// UpstreamResponseServiceTier is the tier the upstream reports having used
 	// (response service_tier: "priority" / "default" / "flex" / ...); "" when not declared.
 	UpstreamResponseServiceTier string
+	// ContentCapture is set (by the handler, via ContentCaptureSnapshot) only for accounts under
+	// 请求内容日志; RecordUsage hands it to the content log together with the usage row.
+	ContentCapture *ContentCapture
 	// UpstreamEndpoint is the actual upstream API path used for this request.
 	// It avoids guessing when one downstream protocol can use multiple upstream endpoints.
 	UpstreamEndpoint string
@@ -492,6 +495,9 @@ type OpenAIGatewayService struct {
 	// 剥离跨账号回带（openai_codex_turn_state.go）。
 	openaiCodexTurnStateOrigins sync.Map
 	openaiCodexTurnStateWrites  atomic.Uint64
+
+	// contentLog receives captured request content (请求内容日志); nil-safe.
+	contentLog ContentLogRecorder
 }
 
 // NewOpenAIGatewayService creates a new OpenAIGatewayService

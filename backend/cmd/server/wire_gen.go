@@ -428,11 +428,14 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	userRiskRepository := repository.NewUserRiskRepository(db)
 	userRiskService := service.ProvideUserRiskService(userRiskRepository, userShadowService, growthService, opsService, emailService)
 	userRiskHandler := handler.NewUserRiskHandler(userRiskService, userShadowService)
+	contentLogRepository := repository.NewContentLogRepository(db)
+	contentLogService := service.ProvideContentLogService(contentLogRepository, openAIGatewayService, gatewayService)
+	contentLogHandler := handler.NewContentLogHandler(contentLogService)
 	canvasMembershipHandler := handler.NewCanvasMembershipHandler(canvasMembershipService, userRepository)
 	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)
 	openAIQuotaAutoResetService := service.ProvideOpenAIQuotaAutoResetService(accountRepository, openAIQuotaService, rateLimitService, idempotencyCoordinator, auditLogService, settingService, leaderLockCache)
-	handlers := handler.ProvideHandlers(authHandler, userHandler, apiKeyHandler, usageHandler, redeemHandler, subscriptionHandler, announcementHandler, channelMonitorUserHandler, channelMonitorV2Handler, adminHandlers, gatewayHandler, openAIGatewayHandler, handlerSettingHandler, totpHandler, passkeyHandler, handlerPaymentHandler, paymentWebhookHandler, availableChannelHandler, modelPlazaHandler, asyncImageHandler, batchImageHandler, handlerContestHandler, handlerGrowthHandler, userAppStateHandler, handlerPromptLibraryHandler, handlerImageToolsHandler, animationJobHandler, handlerSiteHostingHandler, videoHandler, canvasSessionHandler, canvasCloudHandler, handlerCommunityHandler, handlerCourseHandler, handlerLearnHandler, editorHandler, styleHandler, assistantHandler, opsAgentHandler, geoMonitorHandler, contentEngineHandler, tutorHandler, accountDeletionHandler, siteBuilderHandler, analyticsHandler, userRiskHandler, canvasMembershipHandler, idempotencyCoordinator, idempotencyCleanupService, openAIQuotaAutoResetService)
+	handlers := handler.ProvideHandlers(authHandler, userHandler, apiKeyHandler, usageHandler, redeemHandler, subscriptionHandler, announcementHandler, channelMonitorUserHandler, channelMonitorV2Handler, adminHandlers, gatewayHandler, openAIGatewayHandler, handlerSettingHandler, totpHandler, passkeyHandler, handlerPaymentHandler, paymentWebhookHandler, availableChannelHandler, modelPlazaHandler, asyncImageHandler, batchImageHandler, handlerContestHandler, handlerGrowthHandler, userAppStateHandler, handlerPromptLibraryHandler, handlerImageToolsHandler, animationJobHandler, handlerSiteHostingHandler, videoHandler, canvasSessionHandler, canvasCloudHandler, handlerCommunityHandler, handlerCourseHandler, handlerLearnHandler, editorHandler, styleHandler, assistantHandler, opsAgentHandler, geoMonitorHandler, contentEngineHandler, tutorHandler, accountDeletionHandler, siteBuilderHandler, analyticsHandler, userRiskHandler, contentLogHandler, canvasMembershipHandler, idempotencyCoordinator, idempotencyCleanupService, openAIQuotaAutoResetService)
 	jwtAuthMiddleware := middleware.NewJWTAuthMiddleware(authService, userService, settingService, auditLogService)
 	optionalJWTAuthMiddleware := middleware.NewOptionalJWTAuthMiddleware(authService, userService, settingService, auditLogService)
 	adminAuthMiddleware := middleware.NewAdminAuthMiddleware(authService, userService, settingService, auditLogService)
@@ -464,7 +467,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	channelMonitorRunner := service.ProvideChannelMonitorRunner(channelMonitorService, settingService, channelMonitorQuotaFetcher)
 	channelMonitorV2Aggregator := service.ProvideChannelMonitorV2Aggregator(channelMonitorV2Repository, db, settingService)
 	userPlatformQuotaUsageFlusher := service.ProvideUserPlatformQuotaUsageFlusher(configConfig, billingCache, serviceUserPlatformQuotaRepository, timingWheelService)
-	v := provideCleanup(client, redisClient, opsMetricsCollector, opsAggregationService, opsAlertEvaluatorService, opsCleanupService, opsScheduledReportService, opsSystemLogSink, opsService, opsIngressRejectAggregator, apiKeyService, authCacheInvalidationWorker, schedulerSnapshotService, tokenRefreshService, accountExpiryService, cnProviderBalanceCheckService, openAICodexVersionSyncService, proxyExpiryService, subscriptionExpiryService, abandonedOrderReminderService, contentEngineService, trialExhaustedReminderService, winbackReminderService, usageCleanupService, idempotencyCleanupService, batchImageCleanupService, batchImageWorkerRuntime, pricingService, emailQueueService, billingCacheService, usageRecordWorkerPool, subscriptionService, oAuthService, openAIOAuthService, geminiOAuthService, antigravityOAuthService, grokOAuthService, openAIGatewayService, scheduledTestRunnerService, backupService, paymentOrderExpiryService, channelMonitorRunner, channelMonitorV2Aggregator, userPlatformQuotaUsageFlusher, upstreamBillingProbeService, ollamaCloudUsageService, auditLogService, gatewayRequestLogService, contestService, promptLibrarySyncService, openAIQuotaAutoResetService, promptService, pluginManager)
+	v := provideCleanup(client, redisClient, opsMetricsCollector, opsAggregationService, opsAlertEvaluatorService, opsCleanupService, opsScheduledReportService, opsSystemLogSink, opsService, opsIngressRejectAggregator, apiKeyService, authCacheInvalidationWorker, schedulerSnapshotService, tokenRefreshService, accountExpiryService, cnProviderBalanceCheckService, openAICodexVersionSyncService, proxyExpiryService, subscriptionExpiryService, abandonedOrderReminderService, contentEngineService, trialExhaustedReminderService, winbackReminderService, usageCleanupService, idempotencyCleanupService, batchImageCleanupService, batchImageWorkerRuntime, pricingService, emailQueueService, billingCacheService, usageRecordWorkerPool, subscriptionService, oAuthService, openAIOAuthService, geminiOAuthService, antigravityOAuthService, grokOAuthService, openAIGatewayService, scheduledTestRunnerService, backupService, paymentOrderExpiryService, channelMonitorRunner, channelMonitorV2Aggregator, userPlatformQuotaUsageFlusher, upstreamBillingProbeService, ollamaCloudUsageService, auditLogService, gatewayRequestLogService, contentLogService, contestService, promptLibrarySyncService, openAIQuotaAutoResetService, promptService, pluginManager)
 	application := &Application{
 		Server:        httpServer,
 		PromptAudit:   promptService,
@@ -550,6 +553,7 @@ func provideCleanup(
 	ollamaCloudUsage *service.OllamaCloudUsageService,
 	auditLog *service.AuditLogService,
 	gatewayRequestLog *service.GatewayRequestLogService,
+	contentLog *service.ContentLogService,
 	contestService *service.ContestService,
 	promptLibrarySync *service.PromptLibrarySyncService,
 	openAIAutoReset *service.OpenAIQuotaAutoResetService,
@@ -761,6 +765,10 @@ func provideCleanup(
 			{"UsageRecordWorkerPool", func() error {
 				if usageRecordWorkerPool != nil {
 					usageRecordWorkerPool.Stop()
+				}
+
+				if contentLog != nil {
+					contentLog.Stop()
 				}
 				return nil
 			}},

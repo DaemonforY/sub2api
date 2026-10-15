@@ -1225,17 +1225,24 @@ func registerCanvasMembershipAdminRoutes(admin *gin.RouterGroup, h *handler.Hand
 
 // registerUserRiskAdminRoutes 用户画像、风控事件和静默限制。
 func registerUserRiskAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	if h.UserRisk == nil {
-		return
-	}
 	g := admin.Group("/user-insights")
-	g.GET("/overview", h.UserRisk.Overview)
-	g.GET("/profile", h.UserRisk.Profile)
-	g.GET("/events", h.UserRisk.Events)
-	g.POST("/monitor/run", h.UserRisk.RunMonitor)
-	g.GET("/shadows", h.UserRisk.Shadows)
-	g.PUT("/shadows/:id", h.UserRisk.Shadow)
-	g.DELETE("/shadows/:id", h.UserRisk.Unshadow)
+	if h.UserRisk != nil {
+		g.GET("/overview", h.UserRisk.Overview)
+		g.GET("/profile", h.UserRisk.Profile)
+		g.GET("/events", h.UserRisk.Events)
+		g.POST("/monitor/run", h.UserRisk.RunMonitor)
+		g.GET("/shadows", h.UserRisk.Shadows)
+		g.PUT("/shadows/:id", h.UserRisk.Shadow)
+		g.DELETE("/shadows/:id", h.UserRisk.Unshadow)
+	}
+	// 请求内容日志: opt-in per account; every enable / disable / view is audited.
+	if h.ContentLog != nil {
+		g.GET("/content-log/targets", h.ContentLog.Targets)
+		g.PUT("/content-log/targets/:id", h.ContentLog.EnableTarget)
+		g.DELETE("/content-log/targets/:id", h.ContentLog.DisableTarget)
+		g.GET("/content-log", h.ContentLog.Logs)
+		g.GET("/content-log/access", h.ContentLog.Access)
+	}
 }
 
 // registerAnalyticsAdminRoutes 数据看板：访客、日活、注册转化、渠道、页面、功能使用和留存。

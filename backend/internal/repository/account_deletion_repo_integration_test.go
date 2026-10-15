@@ -30,10 +30,27 @@ func TestAccountDeletionRepository(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, pending)
 
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO content_log_targets (user_id, note) VALUES ($1, 'x')`, user.ID)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO request_content_logs (user_id, request_id) VALUES ($1, 'r')`, user.ID)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx, `INSERT INTO content_log_access_logs (admin_id, action, target_user_id) VALUES (1, 'view', $1)`, user.ID)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM content_log_access_logs WHERE target_user_id = $1`, user.ID)
+	})
+
 	require.NoError(t, repo.PurgeOwnedContent(ctx, user.ID))
 	list, err := tutors.List(ctx, user.ID)
 	require.NoError(t, err)
 	require.Empty(t, list)
+	var contentRows, targetRows, accessRows int
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM request_content_logs WHERE user_id = $1`, user.ID).Scan(&contentRows))
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM content_log_targets WHERE user_id = $1`, user.ID).Scan(&targetRows))
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM content_log_access_logs WHERE target_user_id = $1`, user.ID).Scan(&accessRows))
+	require.Zero(t, contentRows)
+	require.Zero(t, targetRows)
+	require.Equal(t, 1, accessRows, "the admins' access log is kept")
 
 	// Only a soft-deleted row is anonymized.
 	require.NoError(t, repo.Anonymize(ctx, user.ID))

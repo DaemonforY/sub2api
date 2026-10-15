@@ -33,6 +33,10 @@ func (r *accountDeletionRepository) PurgeOwnedContent(ctx context.Context, userI
 		`DELETE FROM tutors WHERE user_id = $1`,
 		`DELETE FROM article_projects WHERE user_id = $1`,
 		`DELETE FROM user_attribute_values WHERE user_id = $1`,
+		// 请求内容日志: the captured requests and the target flag go; the admins' access log
+		// (content_log_access_logs) stays as their audit trail.
+		`DELETE FROM request_content_logs WHERE user_id = $1`,
+		`DELETE FROM content_log_targets WHERE user_id = $1`,
 	} {
 		if _, err := r.db.ExecContext(ctx, q, userID); err != nil {
 			return fmt.Errorf("purge owned content: %w", err)

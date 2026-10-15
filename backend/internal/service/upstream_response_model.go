@@ -36,6 +36,9 @@ type upstreamResponseModelObserver struct {
 	firstTier         string
 	firstTierConflict bool
 	terminalTier      string
+
+	// content collects the reply for 请求内容日志; nil unless the request is being captured.
+	content *contentAccumulator
 }
 
 func (o *upstreamResponseModelObserver) Observe(model string, terminal bool) {
@@ -69,6 +72,9 @@ func normalizeObservedUpstreamResponseModel(model string) string {
 }
 
 func (o *upstreamResponseModelObserver) ObserveOpenAI(payload []byte, eventType string) {
+	if o != nil && o.content != nil {
+		o.content.feedOpenAI(payload, eventType)
+	}
 	model := firstValidTrimmedGJSONString(payload, "response.model", "model")
 	terminal := isUpstreamResponseModelTerminalEvent(eventType)
 	o.Observe(model, terminal)
@@ -88,6 +94,9 @@ func (o *upstreamResponseModelObserver) ObserveOpenAI(payload []byte, eventType 
 }
 
 func (o *upstreamResponseModelObserver) ObserveAnthropic(payload []byte) {
+	if o != nil && o.content != nil {
+		o.content.feedAnthropic(payload)
+	}
 	model := firstValidTrimmedGJSONString(payload, "message.model", "model")
 	o.Observe(model, false)
 	// usage.speed travels with the message object (message_start in streams,
@@ -188,6 +197,10 @@ func (o *upstreamResponseModelObserver) Conflict() bool {
 func beginUpstreamResponseModelObservation(c *gin.Context) *upstreamResponseModelObserver {
 	observer := &upstreamResponseModelObserver{}
 	if c != nil {
+		// A fresh accumulator per attempt, so after a failover only the final attempt's reply is kept.
+		if contentCaptureRequestFromContext(c) != nil {
+			observer.content = newContentAccumulator()
+		}
 		c.Set(upstreamResponseModelObserverContextKey, observer)
 	}
 	return observer

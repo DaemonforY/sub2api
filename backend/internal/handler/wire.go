@@ -237,6 +237,7 @@ func ProvideHandlers(
 	siteBuilderHandler *SiteBuilderHandler,
 	analyticsHandler *AnalyticsHandler,
 	userRiskHandler *UserRiskHandler,
+	contentLogHandler *ContentLogHandler,
 	canvasMembershipHandler *CanvasMembershipHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
@@ -288,6 +289,7 @@ func ProvideHandlers(
 		SiteBuilder:      siteBuilderHandler,
 		Analytics:        analyticsHandler,
 		UserRisk:         userRiskHandler,
+		ContentLog:       contentLogHandler,
 		CanvasMembership: canvasMembershipHandler,
 	}
 }
@@ -349,6 +351,7 @@ var ProviderSet = wire.NewSet(
 	NewContentEngineHandler,
 	NewAnalyticsHandler,
 	NewUserRiskHandler,
+	NewContentLogHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

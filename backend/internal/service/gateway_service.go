@@ -624,11 +624,14 @@ type ForwardResult struct {
 	// UpstreamResponseServiceTier is the tier the upstream reports having used
 	// (Anthropic usage.speed: "fast" / "standard"); "" when not declared.
 	UpstreamResponseServiceTier string
-	Stream                      bool
-	Duration                    time.Duration
-	FirstTokenMs                *int // 首字时间（流式请求）
-	ClientDisconnect            bool // 客户端是否在流式传输过程中断开
-	ReasoningEffort             *string
+	// ContentCapture is set (by the handler, via ContentCaptureSnapshot) only for accounts under
+	// 请求内容日志; RecordUsage hands it to the content log together with the usage row.
+	ContentCapture   *ContentCapture
+	Stream           bool
+	Duration         time.Duration
+	FirstTokenMs     *int // 首字时间（流式请求）
+	ClientDisconnect bool // 客户端是否在流式传输过程中断开
+	ReasoningEffort  *string
 	// RequestedReasoningEffort is the client-requested effort before mapping.
 	RequestedReasoningEffort *string
 	// ServiceTier records the tier requested by the client. OpenAI uses
@@ -797,6 +800,9 @@ type GatewayService struct {
 	tlsFPProfileService   *TLSFingerprintProfileService
 	balanceNotifyService  *BalanceNotifyService
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+
+	// contentLog receives captured request content (请求内容日志); nil-safe.
+	contentLog ContentLogRecorder
 }
 
 // NewGatewayService creates a new GatewayService

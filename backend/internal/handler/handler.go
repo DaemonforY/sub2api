@@ -101,6 +101,7 @@ type Handlers struct {
 	SiteBuilder      *SiteBuilderHandler
 	Analytics        *AnalyticsHandler
 	UserRisk         *UserRiskHandler
+	ContentLog       *ContentLogHandler
 	CanvasMembership *CanvasMembershipHandler
 }
 

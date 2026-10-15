@@ -5,7 +5,8 @@ export default {
     tabs: {
       overview: '概览',
       profile: '用户画像',
-      events: '风控事件'
+      events: '风控事件',
+      contentLog: '内容日志'
     },
     range: '{n} 天',
     refresh: '刷新',
@@ -204,6 +205,67 @@ export default {
       unbanMessage: '账号 {email} 将恢复登录和调用 API。',
       done: '已完成',
       failed: '操作失败'
+    },
+    contentLog: {
+      notice: '只记录已开启账号的请求：最后一条提问、模型调用的工具和回复开头，密钥等敏感信息自动遮盖，保留 7 天。每次查看都会留下记录。',
+      targetsTitle: '已开启记录的账号',
+      targetsEmpty: '还没有开启记录的账号',
+      col: {
+        note: '备注',
+        createdBy: '开启人',
+        since: '开启时间',
+        logCount: '记录数',
+        lastLogged: '最近记录'
+      },
+      view: '查看',
+      stop: '停止记录',
+      enable: '开启记录',
+      userIdPlaceholder: '用户 ID',
+      notePlaceholder: '备注：为什么要看，例如疑似转售',
+      noteLabel: '备注',
+      invalidUserId: '请输入有效的用户 ID',
+      enableTitle: '开启请求内容记录？',
+      enableMessage: '从现在起记录账号 {user} 的每次请求：最后一条提问、模型调用的工具和回复开头（密钥等敏感信息自动遮盖），保留 7 天。之前的请求无法查看；开启和每次查看都会留下记录。',
+      disableTitle: '停止记录这个账号？',
+      disableMessage: '停止记录后不再记录新的请求，已有记录 7 天后自动删除。',
+      enabledToast: '已开启记录',
+      disabledToast: '已停止记录',
+      logTitle: '{user} 的请求',
+      recording: '记录中',
+      notRecording: '未在记录',
+      retention: '保留 {days} 天',
+      sessionPlaceholder: '按会话 ID 筛选',
+      filter: '筛选',
+      clearFilter: '清除筛选',
+      sessionChipTitle: '只看这个会话：{session}',
+      tokens: '输入 {in} / 输出 {out} / 缓存 {cached}',
+      tokensTitle: 'Token：输入 / 输出 / 缓存命中',
+      question: '提问',
+      noText: '（无文本，可能是工具结果回传）',
+      sameAsAbove: '同上',
+      tools: '工具调用（{n}）',
+      reply: '回复开头',
+      expand: '展开',
+      collapse: '收起',
+      loadMore: '加载更多',
+      loading: '加载中…',
+      empty: '暂无记录（开启后才开始记录，之前的请求无法查看）',
+      pickUser: '在上面的列表里点「查看」，看这个账号的请求内容。',
+      access: {
+        title: '查看留痕',
+        all: '全部账号',
+        admin: '管理员',
+        action: '操作',
+        target: '账号',
+        actions: {
+          view: '查看',
+          enable: '开启',
+          disable: '停止'
+        }
+      },
+      profileRecording: '请求内容记录中（自 {date} 起）',
+      profileOpen: '查看内容日志',
+      profileStart: '记录请求内容'
     },
     events: {
       title: '风控事件',

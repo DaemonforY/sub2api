@@ -9,6 +9,11 @@ const listEvents = vi.fn()
 const runMonitor = vi.fn()
 const shadowUser = vi.fn()
 const unshadowUser = vi.fn()
+const listContentLogTargets = vi.fn()
+const enableContentLog = vi.fn()
+const disableContentLog = vi.fn()
+const listContentLog = vi.fn()
+const listContentLogAccess = vi.fn()
 const toggleStatus = vi.fn()
 const showSuccess = vi.fn()
 const showError = vi.fn()
@@ -19,7 +24,12 @@ vi.mock('@/api/admin/userInsights', () => ({
   listEvents: (...a: unknown[]) => listEvents(...a),
   runMonitor: (...a: unknown[]) => runMonitor(...a),
   shadowUser: (...a: unknown[]) => shadowUser(...a),
-  unshadowUser: (...a: unknown[]) => unshadowUser(...a)
+  unshadowUser: (...a: unknown[]) => unshadowUser(...a),
+  listContentLogTargets: (...a: unknown[]) => listContentLogTargets(...a),
+  enableContentLog: (...a: unknown[]) => enableContentLog(...a),
+  disableContentLog: (...a: unknown[]) => disableContentLog(...a),
+  listContentLog: (...a: unknown[]) => listContentLog(...a),
+  listContentLogAccess: (...a: unknown[]) => listContentLogAccess(...a)
 }))
 vi.mock('@/api/admin', () => ({ adminAPI: { users: { toggleStatus: (...a: unknown[]) => toggleStatus(...a) } } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess, showError }) }))
@@ -118,6 +128,7 @@ describe('UserInsightsView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     route.query = {}
+    listContentLogTargets.mockResolvedValue({ items: [] })
   })
 
   afterEach(() => {
@@ -203,6 +214,48 @@ describe('UserInsightsView', () => {
     expect(runMonitor).toHaveBeenCalled()
     expect(showSuccess).toHaveBeenCalledWith('admin.userInsights.events.newEvents{"n":2}')
     expect(listEvents).toHaveBeenCalledTimes(2)
+  })
+
+  it('profile shows the content-log status and enables recording with a note after confirming', async () => {
+    route.query = { tab: 'profile', user: '50' }
+    getProfile.mockResolvedValue(profile)
+    enableContentLog.mockResolvedValue({ enabled: true })
+    const w = mountView()
+    await flushPromises()
+    expect(listContentLogTargets).toHaveBeenCalledTimes(1)
+    expect(listContentLog).not.toHaveBeenCalled()
+    expect(w.find('[data-testid="ui-content-log-open"]').exists()).toBe(false)
+
+    await w.get('[data-testid="ui-content-log-start"]').trigger('click')
+    await flushPromises()
+    expect(enableContentLog).not.toHaveBeenCalled()
+    await w.get('[data-testid="ui-log-note"]').setValue('suspected reseller')
+    listContentLogTargets.mockResolvedValue({ items: [{ user_id: 50, email: 'u50@x.com', created_at: '2026-10-15T00:00:00Z', log_count: 0, last_logged_at: null }] })
+    const confirm = w.findAll('button').find((b) => b.text() === 'admin.userInsights.contentLog.enable')
+    await confirm!.trigger('click')
+    await flushPromises()
+    expect(enableContentLog).toHaveBeenCalledWith(50, 'suspected reseller')
+    expect(listContentLogTargets).toHaveBeenCalledTimes(2)
+    expect(w.get('[data-testid="ui-content-log-status"]').text()).toContain('admin.userInsights.contentLog.profileRecording')
+
+    await w.get('[data-testid="ui-content-log-open"]').trigger('click')
+    expect(replace).toHaveBeenLastCalledWith({ query: { tab: 'contentLog', user_id: '50' } })
+  })
+
+  it('profile stops recording after confirming', async () => {
+    route.query = { tab: 'profile', user: '50' }
+    getProfile.mockResolvedValue(profile)
+    listContentLogTargets.mockResolvedValue({ items: [{ user_id: 50, email: 'u50@x.com', created_at: '2026-10-15T00:00:00Z', log_count: 3, last_logged_at: null }] })
+    disableContentLog.mockResolvedValue({ enabled: false })
+    const w = mountView()
+    await flushPromises()
+    await w.get('[data-testid="ui-content-log-stop"]').trigger('click')
+    await flushPromises()
+    expect(disableContentLog).not.toHaveBeenCalled()
+    const confirm = w.findAll('button').find((b) => b.text() === 'admin.userInsights.contentLog.stop' && b.attributes('data-testid') === undefined)
+    await confirm!.trigger('click')
+    await flushPromises()
+    expect(disableContentLog).toHaveBeenCalledWith(50)
   })
 
   it('switching tabs writes the tab to the URL', async () => {

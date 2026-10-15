@@ -5,7 +5,8 @@ export default {
     tabs: {
       overview: 'Overview',
       profile: 'User profile',
-      events: 'Risk events'
+      events: 'Risk events',
+      contentLog: 'Content log'
     },
     range: '{n} days',
     refresh: 'Refresh',
@@ -204,6 +205,67 @@ export default {
       unbanMessage: '{email} will be able to sign in and call the API again.',
       done: 'Done',
       failed: 'Action failed'
+    },
+    contentLog: {
+      notice: "Only accounts you turn on are recorded: each request's last user message, the tools the model called and the start of the reply, with keys and other secrets masked, kept for 7 days. Every view is logged.",
+      targetsTitle: 'Accounts being recorded',
+      targetsEmpty: 'No account is being recorded',
+      col: {
+        note: 'Note',
+        createdBy: 'Enabled by',
+        since: 'Since',
+        logCount: 'Entries',
+        lastLogged: 'Last entry'
+      },
+      view: 'View',
+      stop: 'Stop recording',
+      enable: 'Start recording',
+      userIdPlaceholder: 'User ID',
+      notePlaceholder: 'Note: why you need this, e.g. suspected reselling',
+      noteLabel: 'Note',
+      invalidUserId: 'Please enter a valid user ID',
+      enableTitle: 'Record request content?',
+      enableMessage: "From now on every request of {user} is recorded: the last user message, the tools the model called and the start of the reply (keys and other secrets masked), kept for 7 days. Earlier requests can't be seen; enabling and every view are logged.",
+      disableTitle: 'Stop recording this account?',
+      disableMessage: 'New requests will no longer be recorded; existing entries are deleted automatically after 7 days.',
+      enabledToast: 'Recording started',
+      disabledToast: 'Recording stopped',
+      logTitle: 'Requests of {user}',
+      recording: 'Recording',
+      notRecording: 'Not recording',
+      retention: 'Kept {days} days',
+      sessionPlaceholder: 'Filter by session ID',
+      filter: 'Filter',
+      clearFilter: 'Clear filter',
+      sessionChipTitle: 'Only this session: {session}',
+      tokens: 'in {in} / out {out} / cached {cached}',
+      tokensTitle: 'Tokens: input / output / cache read',
+      question: 'Question',
+      noText: '(no text, probably a tool result being sent back)',
+      sameAsAbove: 'Same as above',
+      tools: 'Tool calls ({n})',
+      reply: 'Reply (start)',
+      expand: 'Expand',
+      collapse: 'Collapse',
+      loadMore: 'Load more',
+      loading: 'Loading…',
+      empty: "No entries (recording starts when it's turned on; earlier requests can't be seen)",
+      pickUser: "Click \"View\" in the list above to see that account's requests.",
+      access: {
+        title: 'Access trail',
+        all: 'all accounts',
+        admin: 'Admin',
+        action: 'Action',
+        target: 'Account',
+        actions: {
+          view: 'Viewed',
+          enable: 'Enabled',
+          disable: 'Stopped'
+        }
+      },
+      profileRecording: 'Request content is being recorded (since {date})',
+      profileOpen: 'Open content log',
+      profileStart: 'Record request content'
     },
     events: {
       title: 'Risk events',

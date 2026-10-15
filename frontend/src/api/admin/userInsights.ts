@@ -215,5 +215,123 @@ export async function unshadowUser(userId: number): Promise<void> {
   await apiClient.delete(`/admin/user-insights/shadows/${userId}`)
 }
 
-export const userInsightsAPI = { getOverview, getProfile, listEvents, runMonitor, getShadows, shadowUser, unshadowUser }
+// ---------- 请求内容日志 (request content log) ----------
+// Admin-only and opt-in per user. Reading the log (listContentLog) is audit-logged
+// server-side as a "view", so callers must only fetch it on an explicit admin action.
+
+export interface ContentLogTarget {
+  user_id: number
+  email: string
+  username: string
+  note: string
+  created_by: number
+  created_by_email: string
+  created_at: string
+  log_count: number
+  last_logged_at: string | null
+}
+
+export interface ContentLogToolCall {
+  name: string
+  /** usually a JSON string; masked server-side */
+  arguments: unknown
+}
+
+export interface ContentLogEntry {
+  id: number
+  created_at: string
+  user_id: number
+  api_key_id: number
+  group_id: number
+  request_id: string
+  session_id: string
+  model: string
+  inbound_endpoint: string
+  user_agent: string
+  ip_address: string
+  /** the user's last message */
+  user_text: string
+  tool_calls: ContentLogToolCall[] | null
+  /** first 1000 chars of the reply */
+  reply_head: string
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+}
+
+export interface ContentLogPage {
+  items: ContentLogEntry[]
+  next_before_id: number | null
+  enabled: boolean
+  retention_days: number
+}
+
+export interface ContentLogQuery {
+  user_id: number
+  session_id?: string
+  before_id?: number
+  limit?: number
+}
+
+export type ContentLogAccessAction = 'view' | 'enable' | 'disable'
+
+export interface ContentLogAccess {
+  id: number
+  admin_id: number
+  admin_email: string
+  action: ContentLogAccessAction
+  target_user_id: number
+  target_email: string
+  detail: string
+  ip_address: string
+  created_at: string
+}
+
+/** Accounts being recorded (not audited, cheap). */
+export async function listContentLogTargets(): Promise<{ items: ContentLogTarget[] }> {
+  const { data } = await apiClient.get('/admin/user-insights/content-log/targets')
+  return data
+}
+
+/** Start recording a user's requests (idempotent; updates the note). */
+export async function enableContentLog(userId: number, note: string): Promise<{ enabled: boolean }> {
+  const { data } = await apiClient.put(`/admin/user-insights/content-log/targets/${userId}`, { note })
+  return data
+}
+
+/** Stop recording; existing entries stay until they expire. */
+export async function disableContentLog(userId: number): Promise<{ enabled: boolean }> {
+  const { data } = await apiClient.delete(`/admin/user-insights/content-log/targets/${userId}`)
+  return data
+}
+
+/** A page of a user's recorded requests, newest first. Audit-logged as a "view". */
+export async function listContentLog(q: ContentLogQuery): Promise<ContentLogPage> {
+  const params: Record<string, string | number> = { user_id: q.user_id, limit: q.limit ?? 50 }
+  if (q.session_id) params.session_id = q.session_id
+  if (q.before_id) params.before_id = q.before_id
+  const { data } = await apiClient.get('/admin/user-insights/content-log', { params })
+  return data
+}
+
+/** Who enabled, disabled or viewed the content log (optionally of one user). */
+export async function listContentLogAccess(params: { user_id?: number; limit?: number } = {}): Promise<{ items: ContentLogAccess[] }> {
+  const { data } = await apiClient.get('/admin/user-insights/content-log/access', { params: { limit: 100, ...params } })
+  return data
+}
+
+export const userInsightsAPI = {
+  getOverview,
+  getProfile,
+  listEvents,
+  runMonitor,
+  getShadows,
+  shadowUser,
+  unshadowUser,
+  listContentLogTargets,
+  enableContentLog,
+  disableContentLog,
+  listContentLog,
+  listContentLogAccess
+}
 export default userInsightsAPI
