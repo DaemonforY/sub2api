@@ -103,6 +103,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/auth/wechat/synced',
+    name: 'WeChatProfileSynced',
+    component: () => import('@/views/auth/WechatSyncedView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'WeChat profile synced',
+      titleKey: 'auth.wechatSynced.pageTitle'
+    }
+  },
+  {
     path: '/auth/wechat/payment/callback',
     name: 'WeChatPaymentOAuthCallback',
     component: () => import('@/views/auth/WechatPaymentCallbackView.vue'),

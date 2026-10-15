@@ -472,7 +472,7 @@ func (s *WeChatMPLoginService) bindLoginCode(ctx context.Context, cfg WeChatMPCo
 		}
 		if bound {
 			_ = s.store.Del(ctx, weChatLoginCodeKey(code))
-			return cfg.ReplyScanOK
+			return weChatMPScanOKReply(cfg)
 		}
 	}
 	return weChatLoginInvalidCodeReply

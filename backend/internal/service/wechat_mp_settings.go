@@ -21,7 +21,7 @@ import (
 
 const (
 	defaultWeChatMPLoginKeywords = "登录,验证码,login"
-	defaultWeChatMPReplyScanOK   = "已确认登录 HiveGPT，请回到浏览器继续。如果不是你本人在登录，请忽略。"
+	defaultWeChatMPReplyScanOK   = "已确认登录 HiveGPT，请回到浏览器继续。\n想用微信昵称和头像？{sync_link}\n如果不是你本人在登录，请忽略。"
 	defaultWeChatMPReplyCode     = "想登录 HiveGPT？请在网页上点「微信登录」，把页面上的 6 位验证码发到这里即可。\n网站：{site_url}"
 	defaultWeChatMPReplyWelcome  = "欢迎关注 HiveGPT！\n在浏览器里登录网站时点「微信登录」，扫码或把页面上的 6 位验证码发到这里即可。\n网站：{site_url}"
 	defaultWeChatMPSiteURL       = "https://hivegpt.cn"
@@ -283,7 +283,7 @@ func (s *SettingService) weChatMPConfigFromSettings(settings map[string]string) 
 		LoginKeywords:    keywords,
 		ReplyWelcome:     firstNonEmpty(strings.TrimSpace(settings[SettingKeyWeChatMPReplyWelcome]), defaultWeChatMPReplyWelcome),
 		ReplyDefault:     strings.TrimSpace(settings[SettingKeyWeChatMPReplyDefault]),
-		ReplyScanOK:      firstNonEmpty(strings.TrimSpace(settings[SettingKeyWeChatMPReplyScanOK]), defaultWeChatMPReplyScanOK),
+		ReplyScanOK:      normalizeWeChatMPReplyScanOK(settings[SettingKeyWeChatMPReplyScanOK]),
 		ReplyCode:        firstNonEmpty(strings.TrimSpace(settings[SettingKeyWeChatMPReplyCode]), defaultWeChatMPReplyCode),
 		AccountName:      strings.TrimSpace(settings[SettingKeyWeChatMPAccountName]),
 		OriginalID:       strings.TrimSpace(settings[SettingKeyWeChatMPOriginalID]),
@@ -427,4 +427,45 @@ func (s *SettingService) storedWeChatMPAESKey(ctx context.Context) string {
 		return ""
 	}
 	return strings.TrimSpace(key)
+}
+
+// Earlier built-in defaults of wechat_mp_reply_scan_ok. A stored copy of one of them counts as
+// "never customised", so it moves to the current default (which carries {sync_link}).
+var legacyWeChatMPReplyScanOKDefaults = map[string]struct{}{
+	"已确认登录，请回到电脑上的网页继续。":                     {},
+	"已确认登录 HiveGPT，请回到浏览器继续。如果不是你本人在登录，请忽略。": {},
+}
+
+func normalizeWeChatMPReplyScanOK(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultWeChatMPReplyScanOK
+	}
+	if _, legacy := legacyWeChatMPReplyScanOKDefaults[raw]; legacy {
+		return defaultWeChatMPReplyScanOK
+	}
+	return raw
+}
+
+// WeChatSyncProfileStartPath starts 网页授权 (snsapi_userinfo) to copy the WeChat nickname and avatar
+// onto the account bound to that WeChat.
+const WeChatSyncProfileStartPath = "/api/v1/auth/oauth/wechat/sync-profile/start"
+
+// weChatMPSyncProfileLink is the 「同步微信昵称和头像」 link for 公众号 text replies.
+func weChatMPSyncProfileLink(siteURL string) string {
+	href := strings.TrimRight(strings.TrimSpace(siteURL), "/") + WeChatSyncProfileStartPath + "?redirect=%2Fauth%2Fwechat%2Fsynced"
+	return `<a href="` + href + `">同步微信昵称和头像</a>`
+}
+
+// weChatMPScanOKReply is the reply after a successful QR scan or code: the template with {sync_link}
+// and {site_url} filled in; a template without {sync_link} still gets the link on its own line.
+func weChatMPScanOKReply(cfg WeChatMPConfig) string {
+	link := weChatMPSyncProfileLink(cfg.SiteURL)
+	text := cfg.ReplyScanOK
+	if strings.Contains(text, "{sync_link}") {
+		text = strings.ReplaceAll(text, "{sync_link}", link)
+	} else {
+		text = strings.TrimRight(text, "\n") + "\n" + link
+	}
+	return strings.ReplaceAll(text, "{site_url}", cfg.SiteURL)
 }

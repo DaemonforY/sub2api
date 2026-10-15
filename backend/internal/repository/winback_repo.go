@@ -23,6 +23,7 @@ SELECT u.id, u.email, COALESCE(u.username, ''), u.balance::float8, last.at
 FROM users u
 JOIN LATERAL (SELECT MAX(l.created_at) AS at FROM usage_logs l WHERE l.user_id = u.id) last ON TRUE
 WHERE u.role <> 'admin' AND u.status = 'active' AND u.deleted_at IS NULL
+  AND u.email NOT LIKE '%.invalid' -- OAuth placeholder addresses (WeChat etc.) never get mail
   AND last.at >= $1 AND last.at < $2
 ORDER BY last.at DESC
 LIMIT $3`, from, to, limit)

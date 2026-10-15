@@ -450,6 +450,17 @@ export default {
     oauthCallbackPageTitle: 'OAuth Callback',
     wechatProviderName: 'WeChat',
     wechatCallbackPageTitle: 'WeChat Sign-In Callback',
+    wechatSynced: {
+      pageTitle: 'Sync WeChat profile',
+      okTitle: 'Synced: your nickname is now "{name}", and your avatar is your WeChat avatar.',
+      okTitleNoName: 'Synced: your nickname and avatar now come from WeChat.',
+      okHint: 'Refresh the page on your computer to see it',
+      notBoundTitle: 'This WeChat is not linked to a HiveGPT account yet. Sign in with WeChat on the website first',
+      notBoundHint: 'After signing in with WeChat, or binding WeChat in your profile, come back to sync your nickname and avatar.',
+      errorTitle: "The sync didn't work",
+      errorHint: 'The authorization may have been interrupted. Go back to your profile and tap "Sync WeChat nickname and avatar" again.',
+      continue: 'Continue'
+    },
     wechatLogin: {
       qrAlt: 'WeChat sign-in QR code',
       qrLoad: 'Click to get the QR code',

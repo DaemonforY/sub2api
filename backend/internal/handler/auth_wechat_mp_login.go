@@ -242,17 +242,7 @@ func (h *AuthHandler) WeChatQRLoginStatus(c *gin.Context) {
 	browserSessionKey, _ := readOAuthPendingBrowserCookie(c)
 
 	// A claimed ticket answers from its result (scanned while finishing, then done / error).
-	result, err := svc.GetLoginResult(ctx, ticketID)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	if result != nil {
-		if !sameBrowser(browserSessionKey, result.BrowserSessionKey) {
-			response.ErrorFrom(c, service.ErrWeChatLoginTicketNotFound)
-			return
-		}
-		response.Success(c, wechatLoginStatusResponse{Status: result.Status, Redirect: result.Redirect, Message: result.Message})
+	if h.respondWeChatLoginResult(c, svc, ticketID, browserSessionKey) {
 		return
 	}
 
@@ -262,6 +252,10 @@ func (h *AuthHandler) WeChatQRLoginStatus(c *gin.Context) {
 		return
 	}
 	if ticket == nil {
+		// Another poll may have claimed it between the two reads: its result is there by now.
+		if h.respondWeChatLoginResult(c, svc, ticketID, browserSessionKey) {
+			return
+		}
 		response.Success(c, wechatLoginStatusResponse{Status: service.WeChatLoginStatusExpired})
 		return
 	}
@@ -310,6 +304,24 @@ func (h *AuthHandler) WeChatQRLoginStatus(c *gin.Context) {
 		BrowserSessionKey: claimed.BrowserSessionKey,
 	})
 	response.Success(c, wechatLoginStatusResponse{Status: service.WeChatLoginStatusDone, Redirect: redirect})
+}
+
+// respondWeChatLoginResult answers from a claimed ticket's result; false when there is none.
+func (h *AuthHandler) respondWeChatLoginResult(c *gin.Context, svc *service.WeChatMPLoginService, ticketID, browserSessionKey string) bool {
+	result, err := svc.GetLoginResult(c.Request.Context(), ticketID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return true
+	}
+	if result == nil {
+		return false
+	}
+	if !sameBrowser(browserSessionKey, result.BrowserSessionKey) {
+		response.ErrorFrom(c, service.ErrWeChatLoginTicketNotFound)
+		return true
+	}
+	response.Success(c, wechatLoginStatusResponse{Status: result.Status, Redirect: result.Redirect, Message: result.Message})
+	return true
 }
 
 // wechatLoginErrorMessage is the Chinese (English) text the polling page shows for a failed login.

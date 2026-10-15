@@ -22,6 +22,7 @@ func (r *trialExhaustedRepository) DueTrialUsers(ctx context.Context, signedUpAf
 SELECT u.id, u.email, COALESCE(u.username, '')
 FROM users u
 WHERE u.role <> 'admin' AND u.status = 'active' AND u.deleted_at IS NULL
+  AND u.email NOT LIKE '%.invalid' -- OAuth placeholder addresses (WeChat etc.) never get mail
   AND u.created_at >= $1
   AND u.balance < $2
   AND EXISTS (SELECT 1 FROM usage_logs l WHERE l.user_id = u.id)

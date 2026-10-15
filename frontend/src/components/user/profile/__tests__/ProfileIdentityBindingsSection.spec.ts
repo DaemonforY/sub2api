@@ -325,6 +325,57 @@ describe('ProfileIdentityBindingsSection', () => {
     expect(wrapper.find('[data-testid="profile-binding-wechat-action"]').exists()).toBe(false)
   })
 
+  it('offers 同步微信昵称头像 for a bound WeChat inside WeChat', async () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 MicroMessenger/8.0.50',
+    })
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: {
+        user: createUser({ auth_bindings: { wechat: { bound: true } } }),
+        wechatEnabled: true,
+        wechatOpenEnabled: false,
+        wechatMpEnabled: true,
+      },
+    })
+
+    expect(wrapper.find('[data-testid="profile-wechat-sync-hint"]').exists()).toBe(false)
+    await wrapper.get('[data-testid="profile-wechat-sync"]').trigger('click')
+    expect(locationState.current.href).toBe('/api/v1/auth/oauth/wechat/sync-profile/start?redirect=%2Fprofile')
+  })
+
+  it('explains the WeChat profile sync outside WeChat instead of showing the button', () => {
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: {
+        user: createUser({ auth_bindings: { wechat: { bound: true } } }),
+        wechatEnabled: true,
+        wechatOpenEnabled: false,
+        wechatMpEnabled: true,
+      },
+    })
+
+    expect(wrapper.find('[data-testid="profile-wechat-sync"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="profile-wechat-sync-hint"]').text()).toBe(
+      'profile.authBindings.wechatSyncHint',
+    )
+  })
+
+  it('shows neither the sync button nor the hint while WeChat is not bound', () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 MicroMessenger/8.0.50',
+    })
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: { user: createUser(), wechatEnabled: true, wechatOpenEnabled: false, wechatMpEnabled: true },
+    })
+
+    expect(wrapper.find('[data-testid="profile-wechat-sync"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="profile-wechat-sync-hint"]').exists()).toBe(false)
+  })
+
   it('keeps the WeChat bind action visible when only the legacy aggregate setting is present', () => {
     const wrapper = mount(ProfileIdentityBindingsSection, {
       global: {

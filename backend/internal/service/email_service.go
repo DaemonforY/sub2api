@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"math/big"
 	"net"
+	"net/mail"
 	"net/smtp"
 	"net/url"
 	"strconv"
@@ -197,6 +198,13 @@ const smtpIOTimeout = 20 * time.Second
 
 // SendEmailWithConfig 使用指定配置发送邮件
 func (s *EmailService) SendEmailWithConfig(config *SMTPConfig, to, subject, body string) error {
+	// Every send path ends here. OAuth placeholder addresses (wechat-…@wechat-connect.invalid and
+	// any other *.invalid) can't receive mail and only produce bounces: skip them as if sent, so
+	// callers that record a "sent" state mark them done and never retry.
+	if domain, reserved := reservedEmailRecipient(to); reserved {
+		slog.Info("email skipped: placeholder recipient", "recipient_hash", notificationEmailHash(strings.ToLower(strings.TrimSpace(to))), "domain", domain)
+		return nil
+	}
 	message, err := buildSMTPMessage(config, to, subject, body)
 	if err != nil {
 		return err
@@ -658,4 +666,22 @@ func (s *EmailService) buildPasswordResetEmailBody(resetURL, siteName string) st
 </body>
 </html>
 `, html.EscapeString(siteName), html.EscapeString(resetURL), html.EscapeString(resetURL))
+}
+
+// reservedEmailRecipient reports whether to is a synthetic OAuth address (see isReservedEmail) or any
+// address under the reserved .invalid TLD, and returns its domain for logging.
+func reservedEmailRecipient(to string) (string, bool) {
+	addr := strings.TrimSpace(to)
+	if parsed, err := mail.ParseAddress(addr); err == nil {
+		addr = parsed.Address
+	}
+	addr = strings.ToLower(addr)
+	domain := ""
+	if at := strings.LastIndex(addr, "@"); at >= 0 {
+		domain = strings.TrimRight(addr[at+1:], ".")
+	}
+	if isReservedEmail(addr) || domain == "invalid" || strings.HasSuffix(domain, ".invalid") {
+		return domain, true
+	}
+	return domain, false
 }

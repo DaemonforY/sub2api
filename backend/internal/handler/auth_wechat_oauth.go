@@ -155,6 +155,10 @@ func (h *AuthHandler) WeChatOAuthStart(c *gin.Context) {
 // WeChatOAuthCallback exchanges the code with WeChat, resolves openid/unionid,
 // and stores the result in the unified pending-auth flow.
 func (h *AuthHandler) WeChatOAuthCallback(c *gin.Context) {
+	if intent, _ := readCookieDecoded(c, wechatOAuthIntentCookieName); strings.EqualFold(strings.TrimSpace(intent), wechatOAuthIntentSyncProfile) {
+		h.wechatSyncProfileCallback(c)
+		return
+	}
 	frontendCallback := h.wechatOAuthFrontendCallback(c.Request.Context())
 
 	if providerErr := strings.TrimSpace(c.Query("error")); providerErr != "" {
@@ -1322,12 +1326,22 @@ func wechatSyntheticEmail(subject string) string {
 	return "wechat-" + subject + service.WeChatConnectSyntheticEmailDomain
 }
 
+// wechatFallbackUsername names a new WeChat account when WeChat gave no nickname (QR / code logins
+// only get an openid): 「微信用户_」 + the last 4 lowercase letters/digits of the subject.
 func wechatFallbackUsername(subject string) string {
-	subject = strings.TrimSpace(subject)
-	if subject == "" {
-		return "wechat_user"
+	var tail []rune
+	for _, r := range strings.ToLower(strings.TrimSpace(subject)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			tail = append(tail, r)
+		}
 	}
-	return "wechat_" + truncateFragmentValue(subject)
+	if len(tail) > 4 {
+		tail = tail[len(tail)-4:]
+	}
+	if len(tail) == 0 {
+		return "微信用户"
+	}
+	return "微信用户_" + string(tail)
 }
 
 func wechatSetCookie(c *gin.Context, name string, value string, maxAgeSec int, secure bool) {

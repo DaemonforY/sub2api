@@ -149,6 +149,14 @@
                 </button>
               </div>
 
+              <p
+                v-if="item.provider === 'wechat' && item.bound && !inWeChatBrowser"
+                class="text-xs text-gray-500 dark:text-gray-400"
+                data-testid="profile-wechat-sync-hint"
+              >
+                {{ t('profile.authBindings.wechatSyncHint') }}
+              </p>
+
               <!-- Outside WeChat: bind by scanning the 公众号 QR (PC) or with a code it sends (phones). -->
               <WechatLoginPanel
                 v-if="item.provider === 'wechat' && showWeChatBindPanel && wechatBindPanel"
@@ -177,6 +185,15 @@
                   ? t('profile.authBindings.hideEmailFormAction')
                   : t('profile.authBindings.manageEmailAction')
               }}
+            </button>
+            <button
+              v-if="item.provider === 'wechat' && item.bound && inWeChatBrowser"
+              data-testid="profile-wechat-sync"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="syncWeChatProfile"
+            >
+              {{ t('profile.authBindings.wechatSyncAction') }}
             </button>
             <button
               v-if="item.canBind"
@@ -213,6 +230,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
+  buildWeChatProfileSyncURL,
   hasExplicitWeChatOAuthCapabilities,
   prepareOAuthBindAccessTokenCookie,
   resolveWeChatLoginPanels,
@@ -385,6 +403,13 @@ const wechatBindPanel = computed<'qr' | null>(() => {
   return 'qr'
 })
 const showWeChatBindPanel = ref(false)
+// QR / code logins can't read the WeChat nickname: inside WeChat, 网页授权 can sync it afterwards.
+const inWeChatBrowser = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')
+const PROFILE_PATH = '/profile'
+
+function syncWeChatProfile(): void {
+  window.location.href = buildWeChatProfileSyncURL(PROFILE_PATH)
+}
 const wechatAccountName = computed(() => appStore.cachedPublicSettings?.wechat_mp_account_name?.trim() || '')
 const wechatFollowQrUrl = computed(() => appStore.cachedPublicSettings?.wechat_mp_follow_qr_url?.trim() || '')
 const wechatBindRequest = computed<WeChatLoginRequest>(() => ({

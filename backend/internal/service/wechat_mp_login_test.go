@@ -607,7 +607,7 @@ func TestWeChatMPStaleTimestampRejected(t *testing.T) {
 	require.Empty(t, ticketOpenID(t, svc, code.TicketID))
 
 	resp = handle(t, svc, encryptedRequest(t, textXML("openid-a", code.Code, 3), wechatMPTestNow-299, "fresh"))
-	require.Equal(t, defaultWeChatMPReplyScanOK, decryptedReply(t, resp))
+	require.Equal(t, wantScanOKReply(), decryptedReply(t, resp))
 	require.Equal(t, "openid-a", ticketOpenID(t, svc, code.TicketID))
 }
 
@@ -617,7 +617,7 @@ func TestWeChatMPReplayedNonceRejectedRetryGetsSameReply(t *testing.T) {
 
 	req := encryptedRequest(t, textXML("openid-a", code.Code, 10), wechatMPTestNow, "same-nonce")
 	first := decryptedReply(t, handle(t, svc, req))
-	require.Equal(t, defaultWeChatMPReplyScanOK, first)
+	require.Equal(t, wantScanOKReply(), first)
 
 	// WeChat's own retry (identical request): the same reply, nothing processed again.
 	require.Equal(t, first, decryptedReply(t, handle(t, svc, req)))
@@ -638,7 +638,7 @@ func TestWeChatMPSubscribeAndScanBindOpenIDToTicket(t *testing.T) {
 
 	// Not yet following: subscribe with qrscene_ + our scene.
 	ticketID := createTestQRTicket(t, svc, api)
-	require.Equal(t, defaultWeChatMPReplyScanOK, send(t, svc, eventXML("openid-new", "subscribe", "qrscene_"+WeChatQRLoginScenePrefix+ticketID)))
+	require.Equal(t, wantScanOKReply(), send(t, svc, eventXML("openid-new", "subscribe", "qrscene_"+WeChatQRLoginScenePrefix+ticketID)))
 	require.Equal(t, "openid-new", ticketOpenID(t, svc, ticketID))
 
 	// Someone else scanning the same QR afterwards does not take it over.
@@ -647,7 +647,7 @@ func TestWeChatMPSubscribeAndScanBindOpenIDToTicket(t *testing.T) {
 
 	// Already following: SCAN with the bare scene.
 	ticket2 := createTestQRTicket(t, svc, api)
-	require.Equal(t, defaultWeChatMPReplyScanOK, send(t, svc, eventXML("openid-follower", "SCAN", WeChatQRLoginScenePrefix+ticket2)))
+	require.Equal(t, wantScanOKReply(), send(t, svc, eventXML("openid-follower", "SCAN", WeChatQRLoginScenePrefix+ticket2)))
 	require.Equal(t, "openid-follower", ticketOpenID(t, svc, ticket2))
 
 	// Tickets live 5 minutes; a scanned one at least 2 more minutes.
@@ -672,7 +672,7 @@ func TestWeChatMPCodeLoginBindsTicket(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, code.TicketID, owner)
 
-	require.Equal(t, defaultWeChatMPReplyScanOK, send(t, svc, textXML("openid-c", "登录 "+code.Code, 1)))
+	require.Equal(t, wantScanOKReply(), send(t, svc, textXML("openid-c", "登录 "+code.Code, 1)))
 	require.Equal(t, "openid-c", ticketOpenID(t, svc, code.TicketID))
 	_, ok = mr.peek(weChatLoginCodeKey(code.Code))
 	require.False(t, ok, "a code works once")
@@ -716,7 +716,7 @@ func TestWeChatMPWrongCodeLimit(t *testing.T) {
 	require.Empty(t, send(t, svc, textXML("openid-guess", code.Code, 201)))
 	require.Empty(t, ticketOpenID(t, svc, code.TicketID))
 	// Others are not affected.
-	require.Equal(t, defaultWeChatMPReplyScanOK, send(t, svc, textXML("openid-real", code.Code, 202)))
+	require.Equal(t, wantScanOKReply(), send(t, svc, textXML("openid-real", code.Code, 202)))
 
 	tries, ok := mr.peek(weChatLoginBadCodeKey("openid-guess"))
 	require.True(t, ok)
@@ -859,9 +859,9 @@ func TestWeChatMPForwardsUnhandledMessagesVerbatim(t *testing.T) {
 	// Our own keyword, codes and scenes are answered here and never forwarded.
 	require.Contains(t, send(t, svc, textXML("openid-a", "登录", 101)), "微信登录")
 	code := createTestCodeTicket(t, svc)
-	require.Equal(t, defaultWeChatMPReplyScanOK, send(t, svc, textXML("openid-a", code.Code, 102)))
+	require.Equal(t, wantScanOKReply(), send(t, svc, textXML("openid-a", code.Code, 102)))
 	ticketID := createTestQRTicket(t, svc, api)
-	require.Equal(t, defaultWeChatMPReplyScanOK, send(t, svc, eventXML("openid-a", "subscribe", "qrscene_"+WeChatQRLoginScenePrefix+ticketID)))
+	require.Equal(t, wantScanOKReply(), send(t, svc, eventXML("openid-a", "subscribe", "qrscene_"+WeChatQRLoginScenePrefix+ticketID)))
 	require.Equal(t, forwarded, rec.count())
 
 	// Plain mode (no AES key) forwards plain messages as they are.
@@ -1072,4 +1072,36 @@ func TestWeChatMPSettingUpdates(t *testing.T) {
 	}
 	withKey := &SystemSettings{WeChatQRLoginEnabled: true, WeChatCodeLoginEnabled: true, WeChatMPMessageAESKey: wechatMPTestAESKey}
 	require.NoError(t, writeWeChatMPSettingUpdates(map[string]string{}, withKey, ""))
+}
+
+func wantScanOKReply() string {
+	return weChatMPScanOKReply(WeChatMPConfig{ReplyScanOK: defaultWeChatMPReplyScanOK, SiteURL: "https://hivegpt.cn"})
+}
+
+func TestWeChatMPScanOKReplyCarriesSyncLink(t *testing.T) {
+	const link = `<a href="https://hivegpt.cn/api/v1/auth/oauth/wechat/sync-profile/start?redirect=%2Fauth%2Fwechat%2Fsynced">同步微信昵称和头像</a>`
+	require.Equal(t, "已确认登录 HiveGPT，请回到浏览器继续。\n想用微信昵称和头像？"+link+"\n如果不是你本人在登录，请忽略。", wantScanOKReply())
+
+	// A custom template without {sync_link} still gets the link on its own line.
+	custom := weChatMPScanOKReply(WeChatMPConfig{ReplyScanOK: "好了，回网页吧。", SiteURL: "https://hivegpt.cn/"})
+	require.Equal(t, "好了，回网页吧。\n"+link, custom)
+
+	// Stored copies of earlier defaults count as "unchanged" and move to the new default.
+	for _, old := range []string{"", "已确认登录，请回到电脑上的网页继续。", "已确认登录 HiveGPT，请回到浏览器继续。如果不是你本人在登录，请忽略。"} {
+		require.Equal(t, defaultWeChatMPReplyScanOK, normalizeWeChatMPReplyScanOK(old))
+	}
+	require.Equal(t, "自定义", normalizeWeChatMPReplyScanOK(" 自定义 "))
+
+	// What a scan actually answers.
+	svc, _, api, repo := newWeChatMPTestService(t, nil)
+	repo.values[SettingKeyWeChatMPReplyScanOK] = "已确认登录 HiveGPT，请回到浏览器继续。如果不是你本人在登录，请忽略。"
+	ticketID := createTestQRTicket(t, svc, api)
+	reply := send(t, svc, eventXML("openid-new", "subscribe", "qrscene_"+WeChatQRLoginScenePrefix+ticketID))
+	require.Contains(t, reply, link)
+	require.Contains(t, reply, "想用微信昵称和头像？")
+}
+
+func TestValidateUserAvatarAcceptsWeChatAvatar(t *testing.T) {
+	require.NoError(t, ValidateUserAvatar("https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKabc/132"))
+	require.NoError(t, ValidateUserAvatar("http://thirdwx.qlogo.cn/mmopen/vi_32/abc/0"))
 }

@@ -949,6 +949,8 @@ export default {
       emptyDeleteHint: 'Avatar is already empty',
     },
     authBindings: {
+      wechatSyncAction: 'Sync WeChat nickname and avatar',
+      wechatSyncHint: 'Open your profile inside WeChat to sync your WeChat nickname and avatar',
       title: 'Connected Sign-In Methods',
       description: 'View current bindings and connect another provider to this account.',
       bindAction: 'Bind {providerName}',

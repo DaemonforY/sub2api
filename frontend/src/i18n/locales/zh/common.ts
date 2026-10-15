@@ -448,6 +448,17 @@ export default {
     oauthCallbackPageTitle: 'OAuth 回调',
     wechatProviderName: '微信',
     wechatCallbackPageTitle: '微信登录回调',
+    wechatSynced: {
+      pageTitle: '同步微信资料',
+      okTitle: '已同步：你的昵称现在是「{name}」，头像也换成了微信头像。',
+      okTitleNoName: '已同步：昵称和头像换成了你的微信资料。',
+      okHint: '回到电脑上的网页刷新就能看到',
+      notBoundTitle: '这个微信还没有绑定 HiveGPT 账号，请先在网页上用微信登录',
+      notBoundHint: '用微信登录或在个人资料里绑定微信后，再来同步昵称和头像。',
+      errorTitle: '同步没有成功',
+      errorHint: '可能是授权中断了。请回到个人资料页，再点一次「同步微信昵称头像」。',
+      continue: '继续'
+    },
     wechatLogin: {
       qrAlt: '微信登录二维码',
       qrLoad: '点击获取二维码',

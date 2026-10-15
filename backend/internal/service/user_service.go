@@ -464,6 +464,14 @@ func (s *UserService) UnbindUserAuthProviderWithResult(ctx context.Context, user
 	return updatedUser, true, nil
 }
 
+// InvalidateAuthCache drops the cached API-key auth data of a user whose profile changed outside
+// UpdateProfile (e.g. the WeChat nickname / avatar sync).
+func (s *UserService) InvalidateAuthCache(ctx context.Context, userID int64) {
+	if s != nil && s.authCacheInvalidator != nil && userID > 0 {
+		s.authCacheInvalidator.InvalidateAuthCacheByUserID(ctx, userID)
+	}
+}
+
 // UpdateProfile 更新用户资料
 func (s *UserService) UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*User, error) {
 	if txRunner, ok := s.userRepo.(userProfileIdentityTxRunner); ok {

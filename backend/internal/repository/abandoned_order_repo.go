@@ -23,6 +23,7 @@ SELECT DISTINCT ON (o.user_id) o.id, o.user_id, u.email, COALESCE(u.username, ''
 FROM payment_orders o
 JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL AND u.status = 'active' AND u.role <> 'admin'
 WHERE o.status = 'EXPIRED'
+  AND u.email NOT LIKE '%.invalid' -- OAuth placeholder addresses (WeChat etc.) never get mail
   AND o.order_type IN ('balance', 'subscription')
   AND o.payment_type <> 'balance'
   AND o.expires_at >= $1 AND o.expires_at < $2

@@ -51,6 +51,13 @@ export function buildOAuthLoginStartURL(request: OAuthLoginStart): string {
   return query ? `${path}?${query}` : path
 }
 
+/** 同步微信昵称头像: runs 网页授权 inside WeChat and ends on /auth/wechat/synced. */
+export function buildWeChatProfileSyncURL(redirect: string): string {
+  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1'
+  const query = new URLSearchParams({ redirect }).toString()
+  return `${apiBase.replace(/\/$/, '')}/auth/oauth/wechat/sync-profile/start?${query}`
+}
+
 export async function startOAuthLogin(
   request: OAuthLoginStart,
   proof: ActionCaptchaRequestProof

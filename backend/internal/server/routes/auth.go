@@ -134,6 +134,10 @@ func RegisterAuthRoutes(
 			h.Auth.WeChatOAuthStart(c)
 		})
 		auth.GET("/oauth/wechat/callback", h.Auth.WeChatOAuthCallback)
+		// 网页授权（snsapi_userinfo）把微信昵称和头像同步到已绑定这个微信的账号；从不登录任何人
+		auth.GET("/oauth/wechat/sync-profile/start", rateLimiter.LimitWithOptions("oauth-wechat-sync-profile", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailOpen,
+		}), h.Auth.WeChatSyncProfileStart)
 		// 公众号扫码登录（PC）与验证码登录（手机浏览器，网页出码、用户发给公众号），两者都轮询 qr/status
 		auth.POST("/oauth/wechat/qr/create", rateLimiter.LimitWithOptions("oauth-wechat-qr-create", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,

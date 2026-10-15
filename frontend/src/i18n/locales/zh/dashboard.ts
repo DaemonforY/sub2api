@@ -953,6 +953,8 @@ export default {
       emptyDeleteHint: '当前没有可删除的头像',
     },
     authBindings: {
+      wechatSyncAction: '同步微信昵称头像',
+      wechatSyncHint: '在微信里打开个人资料页，可以同步微信昵称和头像',
       title: '登录方式绑定',
       description: '查看当前绑定状态，并将更多第三方登录方式关联到这个账号。',
       bindAction: '绑定 {providerName}',

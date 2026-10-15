@@ -232,7 +232,7 @@ func (s *WeChatMPLoginService) ownHandler(cfg WeChatMPConfig, msg weChatMPInboun
 			if !bound {
 				return weChatLoginExpiredQRReply
 			}
-			return cfg.ReplyScanOK
+			return weChatMPScanOKReply(cfg)
 		}, true
 	case "text":
 		if !cfg.CodeLoginAvailable() {
