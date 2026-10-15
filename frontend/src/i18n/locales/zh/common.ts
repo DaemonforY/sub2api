@@ -264,6 +264,12 @@ export default {
     dontHaveAccount: '还没有账户？',
     alreadyHaveAccount: '已有账户？',
     registrationDisabled: '注册功能暂时关闭，请联系管理员。',
+    wechatOnlySignup: {
+      hint: '新用户用微信注册即可；已有邮箱账号请直接登录。',
+      unavailable: '目前只开放微信注册：请在电脑浏览器用微信扫码，或在微信里打开本页注册。已有邮箱账号可直接登录。',
+      loginButton: '微信登录 / 注册',
+      emailLogin: '邮箱密码登录（老用户）'
+    },
     emailLabel: '邮箱',
     emailPlaceholder: '请输入邮箱',
     passwordLabel: '密码',
@@ -422,6 +428,7 @@ export default {
       suggestedEmail: '建议邮箱：{email}',
       bindExistingAccount: '绑定已有账户',
       wechatQuickRegister: '用微信直接注册（推荐）',
+      backToChoices: '返回选择',
       createNewAccount: '创建新账户',
       createAccountHint: '请输入邮箱地址以创建账户并继续。',
       bindLoginHint: '登录一个已有账户以绑定此次 {providerName} 登录。',

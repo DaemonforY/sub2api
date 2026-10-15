@@ -210,6 +210,11 @@ func (s *SubscriptionExpiryService) sendExpiryReminderIfDue(ctx context.Context,
 			"days_remaining":     strconv.Itoa(daysRemaining),
 			"renew_url":          RenewURL + "?utm_source=email&utm_medium=expiry&utm_campaign=" + strconv.Itoa(daysRemaining) + "d",
 		},
+		NoticeVariables: map[string]string{
+			"plan_name":  sub.Group.Name,
+			"expires_at": FormatWeChatNoticeTime(sub.ExpiresAt),
+			"days_left":  strconv.Itoa(daysRemaining),
+		},
 	}); err != nil {
 		log.Printf("[SubscriptionExpiry] Send expiry reminder failed: subscription=%d user=%d err=%v", sub.ID, sub.UserID, err)
 	}

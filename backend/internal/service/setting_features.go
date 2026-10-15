@@ -24,6 +24,15 @@ func (s *SettingService) IsRegistrationEnabled(ctx context.Context) bool {
 	return value == "true"
 }
 
+// IsEmailRegistrationEnabled 检查是否允许邮箱注册（缺省开启；只有明确设为 false 才关闭）。
+func (s *SettingService) IsEmailRegistrationEnabled(ctx context.Context) bool {
+	value, err := s.settingRepo.GetValue(ctx, SettingKeyEmailRegistrationEnabled)
+	if err != nil {
+		return true
+	}
+	return value != "false"
+}
+
 // IsEmailVerifyEnabled 检查是否开启邮件验证
 func (s *SettingService) IsEmailVerifyEnabled(ctx context.Context) bool {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeyEmailVerifyEnabled)

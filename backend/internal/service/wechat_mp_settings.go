@@ -348,6 +348,7 @@ func (s *SettingService) applyWeChatMPSystemSettings(result *SystemSettings, set
 	result.WeChatCodeLoginEnabled = mp.CodeLoginEnabled
 	result.WeChatDomainVerifyFiles = ParseWeChatDomainVerifyFiles(settings[SettingKeyWeChatDomainVerifyFiles])
 	result.WeChatMPMessageForwardURL = mp.ForwardURL
+	result.WeChatMPTemplateNotices = ParseWeChatTemplateNotices(settings[SettingKeyWeChatMPTemplateNotices])
 }
 
 // ErrWeChatLoginNeedsAESKey: QR / code login only trust 安全模式 messages.
@@ -399,6 +400,11 @@ func writeWeChatMPSettingUpdates(updates map[string]string, settings *SystemSett
 		}
 	}
 	updates[SettingKeyWeChatMPMessageForwardURL] = forwardURL
+	notices, err := NormalizeWeChatTemplateNotices(settings.WeChatMPTemplateNotices)
+	if err != nil {
+		return err
+	}
+	updates[SettingKeyWeChatMPTemplateNotices] = marshalWeChatTemplateNotices(notices)
 	updates[SettingKeyWeChatQRLoginEnabled] = strconv.FormatBool(settings.WeChatQRLoginEnabled)
 	updates[SettingKeyWeChatCodeLoginEnabled] = strconv.FormatBool(settings.WeChatCodeLoginEnabled)
 	files, err := NormalizeWeChatDomainVerifyFiles(settings.WeChatDomainVerifyFiles)

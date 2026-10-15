@@ -10,8 +10,65 @@
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
+      <!-- Email sign-up closed: WeChat is how everyone new gets in, so it leads; email + password stays for
+           existing accounts, folded unless this browser last signed in that way. -->
+      <div v-if="wechatFirstLogin" class="space-y-3" data-testid="login-wechat-first">
+        <WechatOAuthSection
+          :disabled="authActionDisabled"
+          :show-divider="false"
+          primary
+          :label="t('auth.wechatOnlySignup.loginButton')"
+          :request-proof="acquireWeChatPanelProof"
+          @start="handleOAuthStart"
+        />
+        <!-- The captcha and agreement gate WeChat too, so they stay out of the folded form. -->
+        <div v-if="captchaEnabled" data-testid="login-wechat-first-captcha">
+          <TurnstileWidget
+              ref="turnstileRef"
+              :turnstile-enabled="turnstileEnabled"
+              :turnstile-site-key="turnstileSiteKey"
+              :tencent-enabled="tencentCaptchaEnabled"
+              :tencent-app-id="tencentCaptchaAppId"
+              :tencent-region="tencentCaptchaRegion"
+              :aliyun-enabled="aliyunCaptchaEnabled"
+              :aliyun-scene-id="aliyunCaptchaSceneId"
+              :aliyun-prefix="aliyunCaptchaPrefix"
+              :aliyun-region="aliyunCaptchaRegion"
+              @verify="onTurnstileVerify"
+              @expire="onTurnstileExpire"
+              @error="onTurnstileError"
+            />
+        </div>
+        <LoginAgreementPrompt
+          v-if="loginAgreementEnabled"
+          :accepted="agreementAccepted"
+          :documents="loginAgreementDocuments"
+          :mode="loginAgreementMode"
+          :updated-at="loginAgreementUpdatedAt"
+          :visible="showAgreementModal"
+          @accept="acceptLoginAgreement"
+          @reject="rejectLoginAgreement"
+          @open="showAgreementModal = true"
+        />
+        <button
+          v-if="!emailLoginOpen"
+          type="button"
+          class="btn btn-secondary w-full"
+          data-testid="login-email-toggle"
+          @click="emailLoginOpen = true"
+        >
+          <Icon name="mail" size="md" class="mr-2" />
+          {{ t('auth.wechatOnlySignup.emailLogin') }}
+        </button>
+        <div v-else class="flex items-center gap-3">
+          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+          <span class="text-xs text-gray-500 dark:text-dark-400">{{ t('auth.wechatOnlySignup.emailLogin') }}</span>
+          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+        </div>
+      </div>
+
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-5">
+      <form v-show="!wechatFirstLogin || emailLoginOpen" @submit.prevent="handleLogin" class="space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
@@ -78,8 +135,8 @@
           </div>
         </div>
 
-        <!-- Turnstile Widget -->
-        <div v-if="captchaEnabled">
+        <!-- Turnstile Widget (above the fold instead when WeChat leads the page) -->
+        <div v-if="captchaEnabled && !wechatFirstLogin">
           <TurnstileWidget
             ref="turnstileRef"
             :turnstile-enabled="turnstileEnabled"
@@ -137,7 +194,7 @@
         </button>
 
         <LoginAgreementPrompt
-          v-if="loginAgreementEnabled"
+          v-if="loginAgreementEnabled && !wechatFirstLogin"
           :accepted="agreementAccepted"
           :documents="loginAgreementDocuments"
           :mode="loginAgreementMode"
@@ -148,7 +205,7 @@
           @open="showAgreementModal = true"
         />
 
-        <div v-if="showPasskeyLogin || showOAuthLogin" class="space-y-3 pt-1">
+        <div v-if="showPasskeyLogin || showOtherSignIn" class="space-y-3 pt-1">
           <div class="flex items-center gap-3">
             <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
             <span class="text-xs text-gray-500 dark:text-dark-400">
@@ -189,7 +246,7 @@
             @start="handleOAuthStart"
           />
           <WechatOAuthSection
-            v-if="wechatOAuthEnabled"
+            v-if="wechatOAuthEnabled && !wechatFirstLogin"
             :disabled="authActionDisabled"
             :show-divider="false"
             :request-proof="acquireWeChatPanelProof"
@@ -253,6 +310,7 @@ import {
   getPublicSettings,
   isTotp2FARequired,
   isWeChatWebOAuthEnabled,
+  resolveWeChatLoginPanels,
   resolveWeChatOAuthStart,
   startOAuthLogin,
   type OAuthLoginStart
@@ -306,6 +364,33 @@ const aliyunCaptchaRegion = ref<string>('cn')
 const linuxdoOAuthEnabled = ref<boolean>(false)
 const dingtalkOAuthEnabled = ref<boolean>(false)
 const wechatOAuthEnabled = ref<boolean>(false)
+const emailRegistrationEnabled = ref<boolean>(appStore.cachedPublicSettings?.email_registration_enabled !== false)
+const inWechatBrowser = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent || '')
+const wechatPanelAvailable = ref(false)
+// WeChat leads the page once email sign-up is closed and this device can sign in with WeChat.
+const wechatFirstLogin = computed(
+  () =>
+    !backendModeEnabled.value &&
+    !emailRegistrationEnabled.value &&
+    wechatOAuthEnabled.value &&
+    (inWechatBrowser || wechatPanelAvailable.value)
+)
+const LAST_LOGIN_METHOD_KEY = 'auth:last_login_method'
+function readLastLoginMethod(): string {
+  try {
+    return localStorage.getItem(LAST_LOGIN_METHOD_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+function rememberEmailLogin(): void {
+  try {
+    localStorage.setItem(LAST_LOGIN_METHOD_KEY, 'email')
+  } catch {
+    // private mode: the email form just starts folded next time
+  }
+}
+const emailLoginOpen = ref(readLastLoginMethod() === 'email')
 const backendModeEnabled = ref<boolean>(false)
 const oidcOAuthEnabled = ref<boolean>(false)
 const oidcOAuthProviderName = ref<string>('OIDC')
@@ -382,6 +467,18 @@ const showPasskeyLogin = computed(
   () => passkeyEnabled.value && typeof window.PublicKeyCredential !== 'undefined'
 )
 
+// Sign-in options listed under the email form (WeChat moves above it when it leads the page).
+const showOtherSignIn = computed(
+  () =>
+    showOAuthLogin.value &&
+    (!wechatFirstLogin.value ||
+      linuxdoOAuthEnabled.value ||
+      dingtalkOAuthEnabled.value ||
+      oidcOAuthEnabled.value ||
+      githubOAuthEnabled.value ||
+      googleOAuthEnabled.value)
+)
+
 const showOAuthLogin = computed(
   () =>
     !backendModeEnabled.value &&
@@ -426,6 +523,8 @@ onMounted(async () => {
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
     dingtalkOAuthEnabled.value = settings.dingtalk_oauth_enabled ?? false
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)
+    wechatPanelAvailable.value = !inWechatBrowser && resolveWeChatLoginPanels(settings).panel !== null
+    emailRegistrationEnabled.value = settings.email_registration_enabled !== false
     backendModeEnabled.value = settings.backend_mode_enabled
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'
@@ -640,6 +739,7 @@ async function handleLogin(): Promise<void> {
 
     // Show success toast
     clearAllAffiliateReferralCodes()
+    rememberEmailLogin()
     track('login_success')
     appStore.showSuccess(t('auth.loginSuccess'))
 
@@ -786,6 +886,7 @@ async function handle2FAVerify(code: string): Promise<void> {
     // Close modal and show success
     show2FAModal.value = false
     clearAllAffiliateReferralCodes()
+    rememberEmailLogin()
     track('login_success')
     appStore.showSuccess(t('auth.loginSuccess'))
 

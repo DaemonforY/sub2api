@@ -1,5 +1,5 @@
 <template>
-  <div :class="props.embedded ? 'space-y-4' : 'card overflow-hidden'">
+  <div ref="rootRef" :class="props.embedded ? 'space-y-4' : 'card overflow-hidden'">
     <div
       v-if="!props.embedded"
       class="border-b border-gray-100 px-6 py-4 dark:border-dark-700"
@@ -226,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
@@ -282,6 +282,7 @@ const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
+const rootRef = ref<HTMLElement | null>(null)
 const localUser = ref<User | null>(null)
 const isSendingEmailCode = ref(false)
 const isBindingEmail = ref(false)
@@ -631,6 +632,33 @@ function hasBindingDetails(
 function toggleEmailForm(): void {
   isEmailFormExpanded.value = !isEmailFormExpanded.value
 }
+
+/** Opens the email form (e.g. from the 绑定邮箱 reminder card) and moves focus to it. */
+async function openEmailForm(): Promise<void> {
+  isEmailFormExpanded.value = true
+  await nextTick()
+  const input = rootRef.value?.querySelector<HTMLInputElement>('[data-testid="profile-binding-email-input"]')
+  input?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+  input?.focus({ preventScroll: true })
+}
+
+/** Starts binding WeChat (e.g. from the 绑定微信 card): opens the QR panel here, or goes to WeChat's authorization. */
+async function startWeChatBinding(): Promise<void> {
+  if (wechatBindPanel.value) {
+    showWeChatBindPanel.value = true
+    await nextTick()
+    rootRef.value
+      ?.querySelector<HTMLElement>('[data-testid="profile-binding-wechat-status"]')
+      ?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    return
+  }
+  startBinding('wechat')
+}
+
+/** Whether WeChat can be bound from this device (QR panel here, or WeChat's own authorization). */
+const wechatBindable = computed(() => props.wechatEnabled && isProviderEnabledForBinding('wechat'))
+
+defineExpose({ openEmailForm, startWeChatBinding, wechatBindable })
 
 function startBinding(provider: UserAuthProvider): void {
   if (provider === 'email') {

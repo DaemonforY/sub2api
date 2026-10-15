@@ -49,12 +49,43 @@ func WeChatDomainVerifyFilesToService(files []WeChatDomainVerifyFile) []service.
 	return out
 }
 
+// WeChatTemplateNotice is one 微信提醒 (公众号 template message) setting.
+type WeChatTemplateNotice struct {
+	Enabled    bool              `json:"enabled"`
+	TemplateID string            `json:"template_id"`
+	URLPath    string            `json:"url_path"`
+	Fields     map[string]string `json:"fields"`
+}
+
+// WeChatTemplateNoticesFromService converts the 微信提醒 settings for the admin API.
+func WeChatTemplateNoticesFromService(in map[string]service.WeChatTemplateNoticeConfig) map[string]WeChatTemplateNotice {
+	out := make(map[string]WeChatTemplateNotice, len(in))
+	for event, n := range in {
+		fields := n.Fields
+		if fields == nil {
+			fields = map[string]string{}
+		}
+		out[event] = WeChatTemplateNotice{Enabled: n.Enabled, TemplateID: n.TemplateID, URLPath: n.URLPath, Fields: fields}
+	}
+	return out
+}
+
+// WeChatTemplateNoticesToService converts the admin's 微信提醒 settings for saving.
+func WeChatTemplateNoticesToService(in map[string]WeChatTemplateNotice) map[string]service.WeChatTemplateNoticeConfig {
+	out := make(map[string]service.WeChatTemplateNoticeConfig, len(in))
+	for event, n := range in {
+		out[event] = service.WeChatTemplateNoticeConfig{Enabled: n.Enabled, TemplateID: n.TemplateID, URLPath: n.URLPath, Fields: n.Fields}
+	}
+	return out
+}
+
 // SystemSettings represents the admin settings API response payload.
 type SystemSettings struct {
 	RegistrationEnabled                 bool                     `json:"registration_enabled"`
 	EmailVerifyEnabled                  bool                     `json:"email_verify_enabled"`
 	RegistrationEmailSuffixWhitelist    []string                 `json:"registration_email_suffix_whitelist"`
 	RegistrationEmailDomainQuotaEnabled bool                     `json:"registration_email_domain_quota_enabled"`
+	EmailRegistrationEnabled            bool                     `json:"email_registration_enabled"`
 	PromoCodeEnabled                    bool                     `json:"promo_code_enabled"`
 	PasswordResetEnabled                bool                     `json:"password_reset_enabled"`
 	FrontendURL                         string                   `json:"frontend_url"`
@@ -153,6 +184,8 @@ type SystemSettings struct {
 	WeChatCodeLoginEnabled          bool                     `json:"wechat_code_login_enabled"`
 	WeChatDomainVerifyFiles         []WeChatDomainVerifyFile `json:"wechat_domain_verify_files"`
 	WeChatMPMessageForwardURL       string                   `json:"wechat_mp_message_forward_url"`
+	// 微信提醒：key = balance_low | trial_exhausted | subscription_expiring | order_abandoned
+	WeChatMPTemplateNotices map[string]WeChatTemplateNotice `json:"wechat_mp_template_notices"`
 
 	OIDCConnectEnabled                bool   `json:"oidc_connect_enabled"`
 	OIDCConnectProviderName           string `json:"oidc_connect_provider_name"`
@@ -397,6 +430,7 @@ type PublicSettings struct {
 	ForceEmailOnThirdPartySignup        bool                     `json:"force_email_on_third_party_signup"`
 	RegistrationEmailSuffixWhitelist    []string                 `json:"registration_email_suffix_whitelist"`
 	RegistrationEmailDomainQuotaEnabled bool                     `json:"registration_email_domain_quota_enabled"`
+	EmailRegistrationEnabled            bool                     `json:"email_registration_enabled"`
 	PromoCodeEnabled                    bool                     `json:"promo_code_enabled"`
 	PasswordResetEnabled                bool                     `json:"password_reset_enabled"`
 	InvitationCodeEnabled               bool                     `json:"invitation_code_enabled"`

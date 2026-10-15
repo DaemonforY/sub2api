@@ -2,6 +2,7 @@ package admin
 
 import (
 	"log/slog"
+	"reflect"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler/dto"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -43,6 +44,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.RegistrationEmailDomainQuotaEnabled != after.RegistrationEmailDomainQuotaEnabled {
 		changed = append(changed, "registration_email_domain_quota_enabled")
+	}
+	if before.EmailRegistrationEnabled != after.EmailRegistrationEnabled {
+		changed = append(changed, "email_registration_enabled")
 	}
 	if before.PromoCodeEnabled != after.PromoCodeEnabled {
 		changed = append(changed, "promo_code_enabled")
@@ -899,6 +903,9 @@ func appendWeChatMPSettingChanges(changed []string, before *service.SystemSettin
 	}
 	if before.WeChatCodeLoginEnabled != after.WeChatCodeLoginEnabled {
 		changed = append(changed, "wechat_code_login_enabled")
+	}
+	if !reflect.DeepEqual(before.WeChatMPTemplateNotices, after.WeChatMPTemplateNotices) {
+		changed = append(changed, "wechat_mp_template_notices")
 	}
 	if !equalWeChatDomainVerifyFiles(before.WeChatDomainVerifyFiles, after.WeChatDomainVerifyFiles) {
 		changed = append(changed, "wechat_domain_verify_files")

@@ -62,6 +62,7 @@ type SettingHandler struct {
 	notificationEmailService *service.NotificationEmailService
 	totpService              *service.TotpService
 	userService              *service.UserService
+	wechatNotices            wechatNoticeTester
 }
 
 // NewSettingHandler 创建系统设置处理器
@@ -137,6 +138,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		EmailVerifyEnabled:                                     settings.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:                       settings.RegistrationEmailSuffixWhitelist,
 		RegistrationEmailDomainQuotaEnabled:                    settings.RegistrationEmailDomainQuotaEnabled,
+		EmailRegistrationEnabled:                               settings.EmailRegistrationEnabled,
 		PromoCodeEnabled:                                       settings.PromoCodeEnabled,
 		PasswordResetEnabled:                                   settings.PasswordResetEnabled,
 		FrontendURL:                                            settings.FrontendURL,
@@ -228,6 +230,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		WeChatCodeLoginEnabled:                                 settings.WeChatCodeLoginEnabled,
 		WeChatDomainVerifyFiles:                                dto.WeChatDomainVerifyFilesFromService(settings.WeChatDomainVerifyFiles),
 		WeChatMPMessageForwardURL:                              settings.WeChatMPMessageForwardURL,
+		WeChatMPTemplateNotices:                                dto.WeChatTemplateNoticesFromService(settings.WeChatMPTemplateNotices),
 		OIDCConnectEnabled:                                     settings.OIDCConnectEnabled,
 		OIDCConnectProviderName:                                settings.OIDCConnectProviderName,
 		OIDCConnectClientID:                                    settings.OIDCConnectClientID,

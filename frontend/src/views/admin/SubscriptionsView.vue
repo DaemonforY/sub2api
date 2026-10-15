@@ -58,7 +58,7 @@
                   @click="selectFilterUser(user)"
                   class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
                 >
-                  <span class="font-medium text-gray-900 dark:text-white">{{ user.email }}</span>
+                  <span class="font-medium text-gray-900 dark:text-white">{{ displayEmail(user.email, t) }}</span>
                   <span class="ml-2 text-gray-500 dark:text-gray-400">#{{ user.id }}</span>
                 </button>
               </div>
@@ -499,7 +499,7 @@
                 @click="selectUser(user)"
                 class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-700"
               >
-                <span class="font-medium text-gray-900 dark:text-white">{{ user.email }}</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ displayEmail(user.email, t) }}</span>
                 <span class="ml-2 text-gray-500 dark:text-gray-400">#{{ user.id }}</span>
               </button>
             </div>
@@ -762,6 +762,7 @@
 </template>
 
 <script setup lang="ts">
+import { displayEmail } from '@/utils/userDisplay'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'

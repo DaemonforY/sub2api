@@ -84,6 +84,8 @@ export interface User {
   linuxdo_bound?: boolean
   oidc_bound?: boolean
   wechat_bound?: boolean
+  /** Follows the 公众号, so 微信提醒 (template messages) can reach this user. */
+  wechat_mp_subscribed?: boolean
   role: 'admin' | 'user' // User role for authorization
   balance: number // User balance for API usage
   frozen_balance?: number // Balance currently held by async batch jobs
@@ -227,6 +229,8 @@ export interface LoginAgreementDocument {
 
 export interface PublicSettings {
   registration_enabled: boolean
+  /** false = new accounts can only be created through WeChat (or another OAuth); email login still works. */
+  email_registration_enabled?: boolean
   email_verify_enabled: boolean
   force_email_on_third_party_signup: boolean
   registration_email_suffix_whitelist: string[]

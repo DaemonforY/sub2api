@@ -952,6 +952,19 @@ export default {
       readFailed: '读取所选图片失败',
       emptyDeleteHint: '当前没有可删除的头像',
     },
+    wechatBindReminder: {
+      title: '绑定微信，以后扫码就能登录',
+      subtitle: '绑定后可以用微信扫码或验证码登录，余额和到期提醒也能发到微信。邮箱密码照常可用。',
+      action: '去绑定微信',
+      dismiss: '不再提示'
+    },
+    emailReminder: {
+      title: '绑定邮箱，接收账单和到期提醒（可选）',
+      subtitle: '余额不足、订阅快到期、订单没付完时，我们会发邮件提醒你。不绑也能正常使用。',
+      subtitleWeChat: '这些提醒已经会发到你的微信里了；想在邮箱里也收一份，可以再绑定一个邮箱。',
+      action: '去绑定邮箱',
+      dismiss: '不再提示'
+    },
     authBindings: {
       wechatSyncAction: '同步微信昵称头像',
       wechatSyncHint: '在微信里打开个人资料页，可以同步微信昵称和头像',

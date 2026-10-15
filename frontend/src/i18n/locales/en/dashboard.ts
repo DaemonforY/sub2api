@@ -948,6 +948,19 @@ export default {
       readFailed: 'Failed to read the selected image.',
       emptyDeleteHint: 'Avatar is already empty',
     },
+    wechatBindReminder: {
+      title: 'Bind WeChat to sign in by scanning',
+      subtitle: 'Once bound you can sign in with a WeChat scan or code, and reminders can reach you in WeChat. Your email and password keep working.',
+      action: 'Bind WeChat',
+      dismiss: 'Don\'t show again'
+    },
+    emailReminder: {
+      title: 'Add an email for bills and expiry reminders (optional)',
+      subtitle: "We email you when your balance runs low, a plan is about to expire or an order wasn't paid. Everything works without it.",
+      subtitleWeChat: 'These reminders already arrive in WeChat. Add an email if you also want a copy there.',
+      action: 'Add an email',
+      dismiss: "Don't show again"
+    },
     authBindings: {
       wechatSyncAction: 'Sync WeChat nickname and avatar',
       wechatSyncHint: 'Open your profile inside WeChat to sync your WeChat nickname and avatar',

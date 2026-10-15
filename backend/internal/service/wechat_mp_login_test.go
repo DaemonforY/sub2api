@@ -111,6 +111,9 @@ type fakeWeChatAPI struct {
 	rejectToken string
 	tokenErr    int
 	tokenDelay  time.Duration
+	// template/send: the requests received and the errcode to answer
+	templateSends []map[string]any
+	templateErr   int
 }
 
 func newFakeWeChatAPI(t *testing.T) *fakeWeChatAPI {
@@ -135,6 +138,14 @@ func newFakeWeChatAPI(t *testing.T) *fakeWeChatAPI {
 			}
 			n := f.tokenCalls.Add(1)
 			_, _ = w.Write([]byte(`{"access_token":"tok-` + strconv.Itoa(int(n)) + `","expires_in":7200}`))
+		case "/cgi-bin/message/template/send":
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			f.mu.Lock()
+			f.templateSends = append(f.templateSends, body)
+			code := f.templateErr
+			f.mu.Unlock()
+			_, _ = w.Write([]byte(`{"errcode":` + strconv.Itoa(code) + `,"errmsg":"msg ` + strconv.Itoa(code) + `"}`))
 		case "/cgi-bin/qrcode/create":
 			var body struct {
 				ActionInfo struct {

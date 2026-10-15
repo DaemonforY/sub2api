@@ -1450,6 +1450,22 @@
                 <Toggle v-model="form.registration_enabled" />
               </div>
 
+              <!-- Email sign-up (off = new accounts only through WeChat / other sign-in providers) -->
+              <div
+                class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
+                data-testid="settings-email-registration"
+              >
+                <div>
+                  <label class="font-medium text-gray-900 dark:text-white">{{
+                    t("admin.settings.registration.emailRegistration")
+                  }}</label>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ t("admin.settings.registration.emailRegistrationHint") }}
+                  </p>
+                </div>
+                <Toggle v-model="form.email_registration_enabled" />
+              </div>
+
               <!-- Email Verification -->
               <div
                 class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700"
@@ -3371,6 +3387,11 @@
                           {{ reply.hint }}
                         </p>
                       </div>
+                    </div>
+
+                    <!-- 微信提醒: template messages for WeChat-only users -->
+                    <div class="border-t border-gray-100 pt-4 dark:border-dark-700">
+                      <WeChatTemplateNoticesEditor v-model="wechatTemplateNoticeForms" />
                     </div>
                   </template>
                 </div>
@@ -9179,6 +9200,14 @@ import PaymentProviderDialog from "@/components/payment/PaymentProviderDialog.vu
 import GroupBadge from "@/components/common/GroupBadge.vue";
 import GroupOptionItem from "@/components/common/GroupOptionItem.vue";
 import Toggle from "@/components/common/Toggle.vue";
+import WeChatTemplateNoticesEditor from "./settings/WeChatTemplateNoticesEditor.vue";
+import {
+  fromTemplateNoticeForms,
+  toTemplateNoticeForms,
+  validateTemplateNoticeForms,
+  type TemplateNoticeProblem,
+  type WeChatTemplateNoticeForm,
+} from "@/utils/wechatTemplateNotices";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
@@ -9909,6 +9938,7 @@ const form = reactive<SettingsForm>({
   email_verify_enabled: false,
   registration_email_suffix_whitelist: [],
   registration_email_domain_quota_enabled: false,
+  email_registration_enabled: true,
   promo_code_enabled: true,
   invitation_code_enabled: false,
   password_reset_enabled: false,
@@ -10957,6 +10987,24 @@ const WECHAT_VERIFY_FILENAME_PATTERN = /^MP_verify_[A-Za-z0-9]{8,32}\.txt$/;
 const WECHAT_MP_TOKEN_PATTERN = /^[A-Za-z0-9]{3,32}$/;
 const WECHAT_MP_AES_KEY_PATTERN = /^[A-Za-z0-9]{43}$/;
 const wechatDomainVerifyRows = ref<WeChatDomainVerifyFile[]>([]);
+const wechatTemplateNoticeForms = ref<WeChatTemplateNoticeForm[]>(toTemplateNoticeForms(null));
+
+function templateNoticeProblemMessage(problem: TemplateNoticeProblem): string {
+  const event = t(`admin.settings.wechatConnect.templateNotices.events.${problem.event}`);
+  const base = "admin.settings.wechatConnect.templateNotices";
+  switch (problem.kind) {
+    case "field_key":
+      return t(`${base}.errorFieldKey`, { event, key: problem.key || "—" });
+    case "duplicate_key":
+      return t(`${base}.errorDuplicateKey`, { event, key: problem.key });
+    case "url_path":
+      return t(`${base}.errorUrlPath`, { event });
+    case "template_id":
+      return t(`${base}.errorTemplateId`, { event });
+    default:
+      return t(`${base}.errorNoFields`, { event });
+  }
+}
 
 type WeChatMpReplyKey =
   | "wechat_mp_reply_welcome"
@@ -11040,6 +11088,9 @@ function applyWeChatMpSettings(source: SystemSettings): void {
   form.wechat_mp_message_token = "";
   form.wechat_mp_message_aes_key = "";
   wechatDomainVerifyRows.value = normalizeWeChatDomainVerifyFiles(source.wechat_domain_verify_files);
+  if (source.wechat_mp_template_notices !== undefined && source.wechat_mp_template_notices !== null) {
+    wechatTemplateNoticeForms.value = toTemplateNoticeForms(source.wechat_mp_template_notices);
+  }
 }
 
 function randomAlphanumeric(length: number): string {
@@ -11093,6 +11144,8 @@ function validateWeChatMpSettings(): string {
     }
     seen.add(filename);
   }
+  const noticeProblem = validateTemplateNoticeForms(wechatTemplateNoticeForms.value);
+  if (noticeProblem) return templateNoticeProblemMessage(noticeProblem);
   return "";
 }
 
@@ -11715,6 +11768,7 @@ async function saveSettings() {
         ),
       registration_email_domain_quota_enabled:
         form.registration_email_domain_quota_enabled,
+      email_registration_enabled: form.email_registration_enabled !== false,
       promo_code_enabled: form.promo_code_enabled,
       invitation_code_enabled: form.invitation_code_enabled,
       password_reset_enabled: form.password_reset_enabled,
@@ -11849,6 +11903,7 @@ async function saveSettings() {
       wechat_qr_login_enabled: form.wechat_qr_login_enabled,
       wechat_code_login_enabled: form.wechat_code_login_enabled,
       wechat_domain_verify_files: wechatDomainVerifyFilesForSave(),
+      wechat_mp_template_notices: fromTemplateNoticeForms(wechatTemplateNoticeForms.value),
       oidc_connect_enabled: form.oidc_connect_enabled,
       oidc_connect_provider_name: form.oidc_connect_provider_name,
       oidc_connect_client_id: form.oidc_connect_client_id,

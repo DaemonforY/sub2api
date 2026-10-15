@@ -11,13 +11,14 @@ import (
 )
 
 type memTrialRepo struct {
-	due   []TrialUser
-	after time.Time
-	max   float64
+	due          []TrialUser
+	after        time.Time
+	max          float64
+	placeholders bool
 }
 
-func (m *memTrialRepo) DueTrialUsers(_ context.Context, after time.Time, max float64, _ int) ([]TrialUser, error) {
-	m.after, m.max = after, max
+func (m *memTrialRepo) DueTrialUsers(_ context.Context, after time.Time, max float64, _ int, includePlaceholders bool) ([]TrialUser, error) {
+	m.after, m.max, m.placeholders = after, max, includePlaceholders
 	return m.due, nil
 }
 
@@ -66,4 +67,28 @@ func TestTrialExhaustedEmailTemplates(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, p.HTML, `href="https://hivegpt.cn/purchase?utm_source=email"`, locale)
 	}
+}
+
+// wechatNoticeMailer is a mailer whose 微信提醒 is on for every event.
+type wechatNoticeMailer struct{ memNotifyMailer }
+
+func (*wechatNoticeMailer) WeChatNoticeEnabled(context.Context, string) bool { return true }
+
+func TestTrialExhaustedReminderIncludesWeChatOnlyUsersWhenNoticesOn(t *testing.T) {
+	repo := &memTrialRepo{due: []TrialUser{{UserID: 7, Email: "a@qq.com"}, {UserID: 8, Email: "wechat-o1@wechat-connect.invalid"}}}
+	settings := newMockSettingRepo()
+	settings.data[SettingKeyGrowthTrialExhaustedEmail] = "true"
+	mailer := &wechatNoticeMailer{}
+	s := NewTrialExhaustedReminderService(repo, settings, mailer, staticOffer{})
+	n, err := s.RunOnce(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 2, n, "the WeChat-only user goes to the mailer, which sends a template message")
+	require.True(t, repo.placeholders, "the candidate query includes placeholder addresses")
+	require.Equal(t, int64(8), mailer.sent[1].UserID)
+
+	plainRepo := &memTrialRepo{due: repo.due}
+	n, err = NewTrialExhaustedReminderService(plainRepo, settings, &memNotifyMailer{}, staticOffer{}).RunOnce(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	require.False(t, plainRepo.placeholders, "with 微信提醒 off they stay excluded")
 }

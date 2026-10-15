@@ -122,6 +122,10 @@ func crossedDownward(oldV, newV, threshold float64) bool {
 func (s *BalanceNotifyService) dispatchBalanceLowEmail(ctx context.Context, user *User, newBalance, threshold float64, rechargeURL string) {
 	siteName := s.getSiteName(ctx)
 	recipients := s.collectBalanceNotifyRecipients(user)
+	// A WeChat-only account (placeholder email) gets the alert as a 公众号 template message.
+	if IsPlaceholderEmail(user.Email) && s.notificationEmailService.WeChatNoticeEnabled(ctx, NotificationEmailEventBalanceLow) {
+		recipients = append(recipients, user.Email)
+	}
 	slog.Info("CheckBalanceAfterDeduction: sending notification",
 		"user_id", user.ID, "recipients", recipients, "new_balance", newBalance, "threshold", threshold)
 	go func() {
@@ -371,6 +375,10 @@ func (s *BalanceNotifyService) sendBalanceLowEmails(recipients []string, userID 
 					"current_balance": fmt.Sprintf("%.2f", balance),
 					"threshold":       fmt.Sprintf("%.2f", threshold),
 					"recharge_url":    rechargeURL,
+				},
+				NoticeVariables: map[string]string{
+					"balance":   FormatWeChatNoticeUSD(balance),
+					"threshold": FormatWeChatNoticeUSD(threshold),
 				},
 			})
 			cancel()

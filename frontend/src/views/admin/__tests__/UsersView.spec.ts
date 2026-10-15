@@ -109,6 +109,7 @@ const DataTableStub = {
       <div v-for="row in data" :key="row.id">
         <slot name="cell-last_used_at" :value="row.last_used_at" :row="row" />
         <slot name="cell-status" :value="row.status" :row="row" />
+        <slot name="cell-email" :value="row.email" :row="row" />
       </div>
     </div>
   `
@@ -422,5 +423,68 @@ describe('admin UsersView', () => {
     const tag = wrapper.get('[data-testid="user-shadow-42"]')
     expect(tag.text()).toContain('growth.admin.shadow.tag')
     expect(tag.text()).toContain('same browser as #48')
+  })
+
+  it('shows placeholder-email users by username with the sign-up provider, and real emails as before', async () => {
+    listUsers.mockResolvedValue({
+      items: [
+        createAdminUser({ id: 1, username: '小蜂', email: 'wechat-o0pO06labcdefghijk@wechat-connect.invalid' }),
+        createAdminUser({ id: 2, username: '', email: 'linuxdo-12345@linuxdo-connect.invalid' }),
+        createAdminUser({ id: 3, username: 'alice', email: 'alice@example.com' })
+      ],
+      total: 3,
+      page: 1,
+      page_size: 20,
+      pages: 1
+    })
+    const wrapper = mount(UsersView, {
+      global: {
+        stubs: {
+          AppLayout: { template: '<div><slot /></div>' },
+          TablePageLayout: {
+            template: '<div><slot name="filters" /><slot name="table" /><slot name="pagination" /></div>'
+          },
+          DataTable: DataTableStub,
+          Pagination: true,
+          ConfirmDialog: true,
+          EmptyState: true,
+          GroupBadge: true,
+          Select: true,
+          UserAttributesConfigModal: true,
+          UserConcurrencyCell: true,
+          UserCreateModal: true,
+          UserEditModal: true,
+          BulkEditUserModal: true,
+          UserPlatformQuotaModal: true,
+          UserApiKeysModal: true,
+          UserAllowedGroupsModal: true,
+          UserBalanceModal: true,
+          UserBalanceHistoryModal: true,
+          GroupReplaceModal: true,
+          Icon: true,
+          Teleport: true
+        }
+      }
+    })
+    await flushPromises()
+
+    const cells = wrapper.findAll('[data-testid="admin-user-identity"]')
+    expect(cells).toHaveLength(3)
+
+    const wechat = cells[0]
+    expect(wechat.get('[data-testid="admin-user-primary"]').text()).toBe('小蜂')
+    expect(wechat.get('[data-testid="admin-user-primary"]').attributes('title')).toBe(
+      'wechat-o0pO06labcdefghijk@wechat-connect.invalid'
+    )
+    expect(wechat.get('[data-testid="admin-user-secondary"]').text()).toBe('userDisplay.placeholderSecondary')
+    expect(wechat.text()).not.toContain('wechat-connect.invalid')
+    expect(wechat.text()).toContain('小')
+
+    const linuxdo = cells[1]
+    expect(linuxdo.get('[data-testid="admin-user-primary"]').text()).toBe('userDisplay.unnamed.linuxdo')
+
+    const real = cells[2]
+    expect(real.get('[data-testid="admin-user-primary"]').text()).toBe('alice@example.com')
+    expect(real.find('[data-testid="admin-user-secondary"]').exists()).toBe(false)
   })
 })

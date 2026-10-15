@@ -17,13 +17,15 @@ func NewAbandonedOrderRepository(db *sql.DB) service.AbandonedOrderRepository {
 	return &abandonedOrderRepository{db: db}
 }
 
-func (r *abandonedOrderRepository) DueAbandonedOrders(ctx context.Context, from, to time.Time, limit int) ([]service.AbandonedOrder, error) {
+func (r *abandonedOrderRepository) DueAbandonedOrders(ctx context.Context, from, to time.Time, limit int, includePlaceholders bool) ([]service.AbandonedOrder, error) {
 	rows, err := r.db.QueryContext(ctx, `
-SELECT DISTINCT ON (o.user_id) o.id, o.user_id, u.email, COALESCE(u.username, ''), o.order_type, o.pay_amount::float8
+SELECT DISTINCT ON (o.user_id) o.id, o.user_id, u.email, COALESCE(u.username, ''), o.order_type, o.pay_amount::float8,
+       COALESCE(o.out_trade_no, ''), o.created_at
 FROM payment_orders o
 JOIN users u ON u.id = o.user_id AND u.deleted_at IS NULL AND u.status = 'active' AND u.role <> 'admin'
 WHERE o.status = 'EXPIRED'
-  AND u.email NOT LIKE '%.invalid' -- OAuth placeholder addresses (WeChat etc.) never get mail
+  -- OAuth placeholder addresses (WeChat etc.) get no mail; with 微信提醒 on they get a template message
+  AND ($4 OR u.email NOT LIKE '%.invalid')
   AND o.order_type IN ('balance', 'subscription')
   AND o.payment_type <> 'balance'
   AND o.expires_at >= $1 AND o.expires_at < $2
@@ -33,7 +35,7 @@ WHERE o.status = 'EXPIRED'
         AND p.status NOT IN ('EXPIRED', 'CANCELLED', 'FAILED')
   )
 ORDER BY o.user_id, o.expires_at DESC
-LIMIT $3`, from, to, limit)
+LIMIT $3`, from, to, limit, includePlaceholders)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +43,7 @@ LIMIT $3`, from, to, limit)
 	var out []service.AbandonedOrder
 	for rows.Next() {
 		var o service.AbandonedOrder
-		if err := rows.Scan(&o.OrderID, &o.UserID, &o.Email, &o.Username, &o.OrderType, &o.Amount); err != nil {
+		if err := rows.Scan(&o.OrderID, &o.UserID, &o.Email, &o.Username, &o.OrderType, &o.Amount, &o.OrderNo, &o.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, o)

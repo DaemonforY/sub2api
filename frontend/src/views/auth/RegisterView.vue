@@ -33,11 +33,51 @@
           :auto-open="wechatAutoOpen"
           @start="handleOAuthStart"
         />
-        <div class="flex items-center gap-3">
+        <div v-if="emailRegistrationEnabled" class="flex items-center gap-3">
           <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
           <span class="text-xs text-gray-500 dark:text-dark-400">{{ t('auth.perks.orEmail') }}</span>
           <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
         </div>
+        <p v-else class="text-center text-xs text-gray-500 dark:text-dark-400" data-testid="register-wechat-only-hint">
+          {{ t('auth.wechatOnlySignup.hint') }}
+        </p>
+      </div>
+
+      <!-- Email sign-up closed: the form (and the captcha / agreement in it) isn't mounted, but they gate
+           the WeChat button too. -->
+      <div
+        v-if="registrationEnabled && !emailRegistrationEnabled && wechatFirst && (captchaEnabled || loginAgreementEnabled)"
+        class="space-y-4"
+        data-testid="register-wechat-only-gates"
+      >
+        <div v-if="captchaEnabled">
+          <TurnstileWidget
+            ref="turnstileRef"
+            :turnstile-enabled="turnstileEnabled"
+            :turnstile-site-key="turnstileSiteKey"
+            :tencent-enabled="tencentCaptchaEnabled"
+            :tencent-app-id="tencentCaptchaAppId"
+            :tencent-region="tencentCaptchaRegion"
+            :aliyun-enabled="aliyunCaptchaEnabled"
+            :aliyun-scene-id="aliyunCaptchaSceneId"
+            :aliyun-prefix="aliyunCaptchaPrefix"
+            :aliyun-region="aliyunCaptchaRegion"
+            @verify="onTurnstileVerify"
+            @expire="onTurnstileExpire"
+            @error="onTurnstileError"
+          />
+        </div>
+        <LoginAgreementPrompt
+          v-if="loginAgreementEnabled"
+          :accepted="agreementAccepted"
+          :documents="loginAgreementDocuments"
+          :mode="loginAgreementMode"
+          :updated-at="loginAgreementUpdatedAt"
+          :visible="showAgreementModal"
+          @accept="acceptLoginAgreement"
+          @reject="rejectLoginAgreement"
+          @open="showAgreementModal = true"
+        />
       </div>
 
       <!-- Registration Disabled Message -->
@@ -55,8 +95,24 @@
         </div>
       </div>
 
+      <!-- Email sign-up is closed and WeChat can't be offered on this device: say where to sign up. -->
+      <div
+        v-else-if="!emailRegistrationEnabled && !wechatFirst"
+        class="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20"
+        data-testid="register-wechat-only-unavailable"
+      >
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <Icon name="exclamationCircle" size="md" class="text-amber-500" />
+          </div>
+          <p class="text-sm text-amber-700 dark:text-amber-400">
+            {{ settingsLoaded ? t('auth.wechatOnlySignup.unavailable') : t('common.loading') }}
+          </p>
+        </div>
+      </div>
+
       <!-- Registration Form -->
-      <form v-else @submit.prevent="handleRegister" class="space-y-5">
+      <form v-else-if="emailRegistrationEnabled" @submit.prevent="handleRegister" class="space-y-5">
         <!-- Email Input -->
         <div>
           <label for="email" class="input-label">
@@ -477,6 +533,9 @@ const showPassword = ref<boolean>(false)
 
 // Public settings
 const registrationEnabled = ref<boolean>(true)
+// Email sign-up can be closed on its own (WeChat-only sign-up); the injected settings say so before
+// the public-settings call returns, so the email form never flashes.
+const emailRegistrationEnabled = ref<boolean>(appStore.cachedPublicSettings?.email_registration_enabled !== false)
 const emailVerifyEnabled = ref<boolean>(false)
 const promoCodeEnabled = ref<boolean>(true)
 const invitationCodeEnabled = ref<boolean>(false)
@@ -656,7 +715,10 @@ const wechatPanelAvailable = ref(false)
 const wechatFirst = computed(() => wechatOAuthEnabled.value && (inWechatBrowser || wechatPanelAvailable.value))
 // ?wechat=1 (the home page's 微信一键注册) opens the QR / code panel right away when no captcha
 // has to be answered first.
-const wechatAutoOpen = computed(() => route.query.wechat === '1' && !actionCaptchaEnabled.value)
+// With email sign-up closed the panel is the whole page, so it opens on its own too.
+const wechatAutoOpen = computed(
+  () => (route.query.wechat === '1' || !emailRegistrationEnabled.value) && !actionCaptchaEnabled.value
+)
 const onlyWechatOAuth = computed(
   () => !linuxdoOAuthEnabled.value && !oidcOAuthEnabled.value && !githubOAuthEnabled.value && !googleOAuthEnabled.value
 )
@@ -688,6 +750,7 @@ onMounted(async () => {
   try {
     const settings = await getPublicSettings()
     registrationEnabled.value = settings.registration_enabled
+    emailRegistrationEnabled.value = settings.email_registration_enabled !== false
     emailVerifyEnabled.value = settings.email_verify_enabled
     promoCodeEnabled.value = settings.promo_code_enabled
     invitationCodeEnabled.value = settings.invitation_code_enabled

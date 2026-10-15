@@ -17,7 +17,7 @@ const (
 
 	trialExhaustedBalance  = 0.3
 	trialExhaustedSignedUp = 30 * 24 * time.Hour
-	trialExhaustedBatch    = 50
+	trialExhaustedBatch    = 500 // newest first; already-reminded users are skipped by the delivery key
 	trialExhaustedInterval = time.Hour
 )
 
@@ -31,7 +31,8 @@ type TrialUser struct {
 type TrialExhaustedRepository interface {
 	// DueTrialUsers: active non-admin users created after signedUpAfter with balance below
 	// maxBalance, at least one API call, no gateway-paid order and no running subscription.
-	DueTrialUsers(ctx context.Context, signedUpAfter time.Time, maxBalance float64, limit int) ([]TrialUser, error)
+	// Users whose email is an OAuth placeholder (*.invalid) only with includePlaceholders (微信提醒 on).
+	DueTrialUsers(ctx context.Context, signedUpAfter time.Time, maxBalance float64, limit int, includePlaceholders bool) ([]TrialUser, error)
 }
 
 type trialMailer interface {
@@ -108,14 +109,15 @@ func (s *TrialExhaustedReminderService) RunOnce(ctx context.Context) (int, error
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	users, err := s.repo.DueTrialUsers(ctx, s.now().Add(-trialExhaustedSignedUp), trialExhaustedBalance, trialExhaustedBatch)
+	wechat := reminderWeChatNoticeEnabled(ctx, s.mailer, NotificationEmailEventGrowthTrialExhausted)
+	users, err := s.repo.DueTrialUsers(ctx, s.now().Add(-trialExhaustedSignedUp), trialExhaustedBalance, trialExhaustedBatch, wechat)
 	if err != nil {
 		return 0, err
 	}
 	vars := s.offerVariables(ctx)
 	sent := 0
 	for _, u := range users {
-		if !reminderAddressOK(u.Email) {
+		if !reminderMayContact(u.Email, wechat) {
 			continue
 		}
 		// One per user, ever: the notification service sends each (source, key) once.

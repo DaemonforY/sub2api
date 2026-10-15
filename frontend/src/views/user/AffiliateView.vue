@@ -177,7 +177,7 @@
                   :key="item.user_id"
                   class="border-b border-gray-100 last:border-b-0 dark:border-dark-800"
                 >
-                  <td class="px-3 py-3 text-gray-900 dark:text-white">{{ item.email || '-' }}</td>
+                  <td class="px-3 py-3 text-gray-900 dark:text-white">{{ item.email ? placeholderEmailHint(item.email, t) || item.email : '-' }}</td>
                   <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ item.username || '-' }}</td>
                   <td class="px-3 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">{{ formatCurrency(item.total_rebate) }}</td>
                   <td class="px-3 py-3 text-gray-700 dark:text-gray-300">{{ formatDateTime(item.created_at) || '-' }}</td>
@@ -192,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import { placeholderEmailHint } from '@/utils/userDisplay'
 import { track } from '@/utils/analytics'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

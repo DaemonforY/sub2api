@@ -264,6 +264,12 @@ export default {
     dontHaveAccount: "Don't have an account?",
     alreadyHaveAccount: 'Already have an account?',
     registrationDisabled: 'Registration is currently disabled. Please contact the administrator.',
+    wechatOnlySignup: {
+      hint: 'New here? Sign up with WeChat. Already have an email account? Just sign in.',
+      unavailable: 'Sign-up is WeChat only: scan the QR code from a desktop browser, or open this page inside WeChat. Existing email accounts can sign in as usual.',
+      loginButton: 'Sign in / sign up with WeChat',
+      emailLogin: 'Sign in with email (existing accounts)'
+    },
     emailLabel: 'Email',
     emailPlaceholder: 'Enter your email',
     passwordLabel: 'Password',
@@ -424,6 +430,7 @@ export default {
       suggestedEmail: 'Suggested email: {email}',
       bindExistingAccount: 'Bind existing account',
       wechatQuickRegister: 'Sign up with WeChat (recommended)',
+      backToChoices: 'Back to options',
       createNewAccount: 'Create new account',
       createAccountHint: 'Enter an email address to create your account and continue.',
       bindLoginHint: 'Log in to an existing account to bind this {providerName} sign-in.',

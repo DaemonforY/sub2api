@@ -15,7 +15,7 @@ type memAbandonedRepo struct {
 	from, to time.Time
 }
 
-func (m *memAbandonedRepo) DueAbandonedOrders(_ context.Context, from, to time.Time, _ int) ([]AbandonedOrder, error) {
+func (m *memAbandonedRepo) DueAbandonedOrders(_ context.Context, from, to time.Time, _ int, _ bool) ([]AbandonedOrder, error) {
 	m.from, m.to = from, to
 	return m.due, nil
 }

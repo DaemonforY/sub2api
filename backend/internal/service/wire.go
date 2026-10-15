@@ -1136,7 +1136,8 @@ var ProviderSet = wire.NewSet(
 	ProvideOpsCleanupService,
 	ProvideOpsScheduledReportService,
 	NewEmailService,
-	NewNotificationEmailService,
+	ProvideNotificationEmailService,
+	NewWeChatTemplateNoticeService,
 	ProvideEmailQueueService,
 	NewTurnstileService,
 	NewTencentCaptchaService,
@@ -1328,4 +1329,12 @@ func ProvideChannelMonitorV2Aggregator(repo ChannelMonitorV2Repository, db *sql.
 	}
 	aggregator.Start()
 	return aggregator
+}
+
+// ProvideNotificationEmailService sends the reminders of WeChat-only users (placeholder emails) as
+// 公众号 template messages (微信提醒).
+func ProvideNotificationEmailService(settingRepo SettingRepository, emailService *EmailService, wechatNotices *WeChatTemplateNoticeService) *NotificationEmailService {
+	svc := NewNotificationEmailService(settingRepo, emailService)
+	svc.SetWeChatNotices(wechatNotices)
+	return svc
 }

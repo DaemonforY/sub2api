@@ -279,16 +279,31 @@
           @sort="handleSort"
           @update:selected-keys="handleSelectedKeysUpdate"
         >
-          <template #cell-email="{ value }">
-            <div class="flex items-center gap-2">
+          <template #cell-email="{ row }">
+            <div class="flex items-center gap-2" data-testid="admin-user-identity">
               <div
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
               >
                 <span class="text-sm font-medium text-primary-700 dark:text-primary-300">
-                  {{ value.charAt(0).toUpperCase() }}
+                  {{ userIdentity(row).initial }}
                 </span>
               </div>
-              <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+              <div class="min-w-0">
+                <div
+                  class="truncate font-medium text-gray-900 dark:text-white"
+                  :title="row.email"
+                  data-testid="admin-user-primary"
+                >
+                  {{ userIdentity(row).primary }}
+                </div>
+                <div
+                  v-if="userIdentity(row).placeholder"
+                  class="truncate text-xs text-gray-500 dark:text-gray-400"
+                  data-testid="admin-user-secondary"
+                >
+                  {{ userIdentity(row).secondary }}
+                </div>
+              </div>
             </div>
           </template>
 
@@ -801,7 +816,7 @@
         data-testid="shadow-reason"
       ></textarea>
     </ConfirmDialog>
-    <ConfirmDialog :show="showDeleteDialog" :title="t('admin.users.deleteUser')" :message="t('admin.users.deleteConfirm', { email: deletingUser?.email })" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
+    <ConfirmDialog :show="showDeleteDialog" :title="t('admin.users.deleteUser')" :message="t('admin.users.deleteConfirm', { email: userLabel(deletingUser) })" :danger="true" @confirm="confirmDelete" @cancel="showDeleteDialog = false" />
     <UserCreateModal :show="showCreateModal" @close="showCreateModal = false" @success="loadUsers" />
     <UserEditModal :show="showEditModal" :user="editingUser" @close="closeEditModal" @success="loadUsers" />
     <BulkEditUserModal
@@ -827,6 +842,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { displayEmail, displayIdentity } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
@@ -835,6 +851,11 @@ import { formatDateTime } from '@/utils/format'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
+// Placeholder emails (wechat-…@wechat-connect.invalid) show as the username + 「微信登录 · 未绑定邮箱」;
+// the full address stays in the tooltip, and search still matches it.
+const userIdentity = (user: { email?: string | null; username?: string | null }) => displayIdentity(user, t)
+const userLabel = (user: { email?: string | null; username?: string | null } | null | undefined) =>
+  user ? displayEmail(user.email, t, user.username) : ''
 import { adminAPI } from '@/api/admin'
 import { userInsightsAPI, type UserShadow } from '@/api/admin/userInsights'
 import { extractApiErrorMessage } from '@/utils/apiError'
@@ -1362,7 +1383,7 @@ const handleSelectedKeysUpdate = (keys: Array<string | number>) => {
 }
 
 const getUserSelectionLabel = (user: AdminUser) =>
-  t('admin.users.bulkLimits.selectUser', { email: user.email })
+  t('admin.users.bulkLimits.selectUser', { email: userLabel(user) })
 
 // User attribute definitions and values
 const attributeDefinitions = ref<UserAttributeDefinition[]>([])
@@ -1808,7 +1829,7 @@ const shadowDialogTitle = computed(() => {
 const shadowDialogMessage = computed(() => {
   const d = shadowDialog.value
   if (!d) return ''
-  const email = d.user.email
+  const email = userLabel(d.user)
   if (d.action === 'shadow') return t('growth.admin.shadow.shadowConfirm', { email })
   if (d.action === 'unshadow') return t('growth.admin.shadow.unshadowConfirm', { email, reason: shadows.value[d.user.id]?.reason || '' })
   return t('growth.admin.shadow.banConfirm', { email })

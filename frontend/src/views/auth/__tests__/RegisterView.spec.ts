@@ -290,6 +290,47 @@ describe('RegisterView invitation layout', () => {
     expect(quota.find('[data-testid="register-email-hint"]').exists()).toBe(false)
   })
 
+  it('drops the email form when email sign-up is closed and WeChat is available', async () => {
+    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone) MicroMessenger/8.0.50')
+    getPublicSettingsMock.mockResolvedValueOnce({
+      ...publicSettings,
+      turnstile_enabled: false,
+      email_registration_enabled: false,
+      wechat_oauth_enabled: true,
+      wechat_oauth_mp_enabled: true
+    })
+    const wrapper = mountRegister()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="register-wechat-first"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="register-wechat-only-hint"]').exists()).toBe(true)
+    expect(wrapper.find('#email').exists()).toBe(false)
+    expect(wrapper.find('form').exists()).toBe(false)
+    ua.mockRestore()
+  })
+
+  it('keeps the captcha mounted for WeChat when email sign-up is closed', async () => {
+    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone) MicroMessenger/8.0.50')
+    getPublicSettingsMock.mockResolvedValueOnce({
+      ...publicSettings,
+      email_registration_enabled: false,
+      wechat_oauth_enabled: true,
+      wechat_oauth_mp_enabled: true
+    })
+    const wrapper = mountRegister()
+    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="register-wechat-only-gates"] [data-testid="turnstile-widget"]').exists()).toBe(true)
+    ua.mockRestore()
+  })
+
+  it('says sign-up is WeChat only when email sign-up is closed and WeChat cannot start here', async () => {
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, email_registration_enabled: false })
+    const wrapper = mountRegister()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="register-wechat-only-unavailable"]').text()).toContain('auth.wechatOnlySignup.unavailable')
+    expect(wrapper.find('form').exists()).toBe(false)
+  })
+
   it('makes WeChat sign-up the main button inside WeChat', async () => {
     const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone) MicroMessenger/8.0.50')
     getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, turnstile_enabled: false, wechat_oauth_enabled: true, wechat_oauth_mp_enabled: true })

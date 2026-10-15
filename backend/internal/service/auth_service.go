@@ -43,6 +43,7 @@ var (
 		"该邮箱域名的注册数量已达上限，请换用常用邮箱（如 QQ、163、Gmail），或联系客服添加企业域名（This email domain cannot register another account; use a mainstream email or contact support）",
 	)
 	ErrRegDisabled             = infraerrors.Forbidden("REGISTRATION_DISABLED", "暂未开放注册（Registration is currently disabled）")
+	ErrEmailRegDisabled        = infraerrors.Forbidden("EMAIL_REGISTRATION_DISABLED", "邮箱注册已关闭，请使用微信扫码注册（Email sign-up is closed, please sign up with WeChat）")
 	ErrServiceUnavailable      = infraerrors.ServiceUnavailable("SERVICE_UNAVAILABLE", "服务暂时不可用，请稍后再试（Service temporarily unavailable）")
 	ErrInvitationCodeRequired  = infraerrors.BadRequest("INVITATION_CODE_REQUIRED", "请填写邀请码（Invitation code is required）")
 	ErrInvitationCodeInvalid   = infraerrors.BadRequest("INVITATION_CODE_INVALID", "邀请码无效或已被使用（Invalid or used invitation code）")
@@ -170,6 +171,9 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	// 检查是否开放注册（默认关闭：settingService 未配置时不允许注册）
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return "", nil, ErrRegDisabled
+	}
+	if !s.settingService.IsEmailRegistrationEnabled(ctx) {
+		return "", nil, ErrEmailRegDisabled
 	}
 
 	// 防止用户注册 LinuxDo OAuth 合成邮箱，避免第三方登录与本地账号发生碰撞。
@@ -316,6 +320,9 @@ func (s *AuthService) SendVerifyCode(ctx context.Context, email string, locale .
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		return ErrRegDisabled
 	}
+	if !s.settingService.IsEmailRegistrationEnabled(ctx) {
+		return ErrEmailRegDisabled
+	}
 
 	if isReservedEmail(email) {
 		return ErrEmailReserved
@@ -355,6 +362,9 @@ func (s *AuthService) SendVerifyCodeAsync(ctx context.Context, email string, loc
 	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
 		logger.LegacyPrintf("service.auth", "%s", "[Auth] Registration is disabled")
 		return nil, ErrRegDisabled
+	}
+	if !s.settingService.IsEmailRegistrationEnabled(ctx) {
+		return nil, ErrEmailRegDisabled
 	}
 
 	if isReservedEmail(email) {

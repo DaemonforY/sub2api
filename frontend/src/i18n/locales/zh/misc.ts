@@ -1,4 +1,27 @@
 export default {
+  userDisplay: {
+    placeholderSecondary: '{provider} · 未绑定邮箱',
+    emailUnbound: '未绑定邮箱（{provider}）',
+    compact: '{name}（未绑定邮箱）',
+    login: {
+      wechat: '微信登录',
+      linuxdo: 'LinuxDo 登录',
+      oidc: 'OIDC 登录',
+      dingtalk: '钉钉登录',
+      github: 'GitHub 登录',
+      google: 'Google 登录',
+      other: '第三方登录'
+    },
+    unnamed: {
+      wechat: '微信用户',
+      linuxdo: 'LinuxDo 用户',
+      oidc: 'OIDC 用户',
+      dingtalk: '钉钉用户',
+      github: 'GitHub 用户',
+      google: 'Google 用户',
+      other: '第三方用户'
+    }
+  },
 
   // Subscription Progress (Header component)
   subscriptionProgress: {

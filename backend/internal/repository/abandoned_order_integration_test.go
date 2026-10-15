@@ -51,7 +51,7 @@ func TestAbandonedOrderRepositoryDue(t *testing.T) {
 	recent := mk("recent")
 	order(recent, service.OrderStatusExpired, payment.OrderTypeSubscription, now.Add(-40*time.Minute), now.Add(-10*time.Minute))
 
-	due, err := repo.DueAbandonedOrders(ctx, now.Add(-24*time.Hour), now.Add(-time.Hour), 500)
+	due, err := repo.DueAbandonedOrders(ctx, now.Add(-24*time.Hour), now.Add(-time.Hour), 500, false)
 	require.NoError(t, err)
 	mine := map[int64]service.AbandonedOrder{}
 	for _, o := range due {

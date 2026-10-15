@@ -31,12 +31,15 @@ type AbandonedOrder struct {
 	Username  string
 	OrderType string  // balance | subscription
 	Amount    float64 // what they were about to pay
+	OrderNo   string  // out_trade_no
+	CreatedAt time.Time
 }
 
 type AbandonedOrderRepository interface {
 	// DueAbandonedOrders: the latest balance / subscription order per active user that expired
-	// unpaid in [from, to), when the user has no paid or pending order created after it.
-	DueAbandonedOrders(ctx context.Context, from, to time.Time, limit int) ([]AbandonedOrder, error)
+	// unpaid in [from, to), when the user has no paid or pending order created after it. Users whose
+	// email is an OAuth placeholder (*.invalid) are included only with includePlaceholders (微信提醒 on).
+	DueAbandonedOrders(ctx context.Context, from, to time.Time, limit int, includePlaceholders bool) ([]AbandonedOrder, error)
 }
 
 type abandonedOrderMailer interface {
@@ -105,14 +108,15 @@ func (s *AbandonedOrderReminderService) RunOnce(ctx context.Context) (int, error
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := s.now()
-	orders, err := s.repo.DueAbandonedOrders(ctx, now.Add(-abandonedOrderUntil), now.Add(-abandonedOrderAfter), abandonedOrderBatch)
+	wechat := reminderWeChatNoticeEnabled(ctx, s.mailer, NotificationEmailEventPaymentOrderAbandoned)
+	orders, err := s.repo.DueAbandonedOrders(ctx, now.Add(-abandonedOrderUntil), now.Add(-abandonedOrderAfter), abandonedOrderBatch, wechat)
 	if err != nil {
 		return 0, err
 	}
 	year, week := now.ISOWeek()
 	sent := 0
 	for _, o := range orders {
-		if !reminderAddressOK(o.Email) {
+		if !reminderMayContact(o.Email, wechat) {
 			continue
 		}
 		// Keyed by user and ISO week: the notification service sends each key once.
@@ -125,6 +129,12 @@ func (s *AbandonedOrderReminderService) RunOnce(ctx context.Context) (int, error
 			SourceID:       strconv.FormatInt(o.UserID, 10),
 			ReminderKey:    fmt.Sprintf("%d-w%02d", year, week),
 			Variables:      abandonedOrderVariables(o),
+			NoticeVariables: map[string]string{
+				"order_no":   firstNonEmpty(o.OrderNo, strconv.FormatInt(o.OrderID, 10)),
+				"product":    abandonedOrderVariables(o)["order_item"],
+				"amount_cny": FormatWeChatNoticeCNY(o.Amount),
+				"created_at": FormatWeChatNoticeTime(o.CreatedAt),
+			},
 		}); err != nil {
 			logger.LegacyPrintf("service.abandoned_order", "[AbandonedOrder] send for order %d failed: %v", o.OrderID, err)
 			continue

@@ -718,6 +718,7 @@ func TestAPIContracts(t *testing.T) {
 					"email_verify_enabled": false,
 					"registration_email_suffix_whitelist": [],
 					"registration_email_domain_quota_enabled": false,
+					"email_registration_enabled": true,
 					"promo_code_enabled": true,
 					"password_reset_enabled": false,
 						"frontend_url": "",
@@ -1033,6 +1034,12 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_qr_login_enabled": false,
 					"wechat_code_login_enabled": false,
 					"wechat_domain_verify_files": [],
+					"wechat_mp_template_notices": {
+						"balance_low": {"enabled": false, "template_id": "", "url_path": "", "fields": {}},
+						"trial_exhausted": {"enabled": false, "template_id": "", "url_path": "", "fields": {}},
+						"subscription_expiring": {"enabled": false, "template_id": "", "url_path": "", "fields": {}},
+						"order_abandoned": {"enabled": false, "template_id": "", "url_path": "", "fields": {}}
+					},
 					"allow_user_view_error_requests": false
 				}
 			}`,
@@ -1082,6 +1089,7 @@ func TestAPIContracts(t *testing.T) {
 					"email_verify_enabled": false,
 					"registration_email_suffix_whitelist": [],
 					"registration_email_domain_quota_enabled": false,
+					"email_registration_enabled": true,
 					"promo_code_enabled": true,
 					"password_reset_enabled": false,
 					"frontend_url": "",
@@ -1361,6 +1369,12 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_qr_login_enabled": false,
 					"wechat_code_login_enabled": false,
 					"wechat_domain_verify_files": [],
+					"wechat_mp_template_notices": {
+						"balance_low": {"enabled": false, "template_id": "", "url_path": "", "fields": {}},
+						"trial_exhausted": {"enabled": false, "template_id": "", "url_path": "", "fields": {}},
+						"subscription_expiring": {"enabled": false, "template_id": "", "url_path": "", "fields": {}},
+						"order_abandoned": {"enabled": false, "template_id": "", "url_path": "", "fields": {}}
+					},
 					"auth_source_default_email_balance": 0,
 					"auth_source_default_email_concurrency": 5,
 					"auth_source_default_email_subscriptions": [],

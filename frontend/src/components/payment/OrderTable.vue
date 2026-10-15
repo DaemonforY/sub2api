@@ -8,7 +8,7 @@
     </template>
     <template v-if="showUser" #cell-user_email="{ value, row }">
       <div class="text-sm">
-        <span class="text-gray-900 dark:text-white">{{ value || row.user_name || '#' + row.user_id }}</span>
+        <span class="text-gray-900 dark:text-white" :title="value || undefined">{{ (value && displayEmail(value, t, row.user_name)) || row.user_name || '#' + row.user_id }}</span>
         <span v-if="row.user_notes" class="ml-1 text-xs text-gray-400">({{ row.user_notes }})</span>
       </div>
     </template>
@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { displayEmail } from '@/utils/userDisplay'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PaymentOrder } from '@/types/payment'

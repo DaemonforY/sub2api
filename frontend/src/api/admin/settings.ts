@@ -393,6 +393,25 @@ export function deriveWeChatConnectStoredMode(
 /**
  * System settings interface
  */
+/** 微信提醒: events that can be sent as 公众号 template messages to WeChat-only users. */
+export type WeChatTemplateNoticeEvent =
+  | "balance_low"
+  | "trial_exhausted"
+  | "subscription_expiring"
+  | "order_abandoned";
+
+export interface WeChatTemplateNotice {
+  enabled: boolean;
+  /** Template ID from 公众平台 → 模板消息 → 我的模板. */
+  template_id: string;
+  /** Same-site page opened when the message is tapped, e.g. /purchase. */
+  url_path: string;
+  /** Template keyword (thing1, amount2, time3…) → value template with {placeholders}. */
+  fields: Record<string, string>;
+}
+
+export type WeChatTemplateNotices = Partial<Record<WeChatTemplateNoticeEvent, WeChatTemplateNotice>>;
+
 /** A 公众号 domain verify file (MP_verify_xxx.txt) served at the site root. */
 export interface WeChatDomainVerifyFile {
   filename: string;
@@ -405,6 +424,7 @@ export interface SystemSettings {
   email_verify_enabled: boolean;
   registration_email_suffix_whitelist: string[];
   registration_email_domain_quota_enabled: boolean;
+  email_registration_enabled: boolean;
   promo_code_enabled: boolean;
   password_reset_enabled: boolean;
   frontend_url: string;
@@ -576,6 +596,8 @@ export interface SystemSettings {
   wechat_qr_login_enabled?: boolean;
   wechat_code_login_enabled?: boolean;
   wechat_domain_verify_files?: WeChatDomainVerifyFile[];
+  /** JSON keyed by event; the GET may return it as an object or a JSON string. */
+  wechat_mp_template_notices?: WeChatTemplateNotices | string;
 
   // Generic OIDC OAuth settings
   oidc_connect_enabled: boolean;
@@ -768,6 +790,7 @@ export interface UpdateSettingsRequest {
   email_verify_enabled?: boolean;
   registration_email_suffix_whitelist?: string[];
   registration_email_domain_quota_enabled?: boolean;
+  email_registration_enabled?: boolean;
   promo_code_enabled?: boolean;
   password_reset_enabled?: boolean;
   frontend_url?: string;
@@ -924,6 +947,7 @@ export interface UpdateSettingsRequest {
   wechat_qr_login_enabled?: boolean;
   wechat_code_login_enabled?: boolean;
   wechat_domain_verify_files?: WeChatDomainVerifyFile[];
+  wechat_mp_template_notices?: WeChatTemplateNotices;
   oidc_connect_enabled?: boolean;
   oidc_connect_provider_name?: string;
   oidc_connect_client_id?: string;
@@ -1593,7 +1617,21 @@ export async function resetWebSearchUsage(payload: {
   );
 }
 
+/** Sends one 微信提醒 template message with sample values to the admin's own WeChat. */
+export async function testWeChatTemplateNotice(
+  event: WeChatTemplateNoticeEvent,
+): Promise<{ errcode?: number; errmsg?: string; message?: string }> {
+  // HTTP 200 also carries WeChat's own rejection: errcode 0 means sent, anything else (40037 bad
+  // template, 43004 not following the 公众号, …) failed, with `message` saying why.
+  const { data } = await apiClient.post<{ errcode?: number; errmsg?: string; message?: string }>(
+    "/admin/wechat/template-notices/test",
+    { event },
+  );
+  return data ?? {};
+}
+
 export const settingsAPI = {
+  testWeChatTemplateNotice,
   getSettings,
   updateSettings,
   testSmtpConnection,

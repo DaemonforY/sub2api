@@ -330,6 +330,7 @@ export const useAppStore = defineStore('app', () => {
       }
       return Promise.resolve({
         registration_enabled: false,
+        email_registration_enabled: true,
         email_verify_enabled: false,
         force_email_on_third_party_signup: false,
         registration_email_suffix_whitelist: [],

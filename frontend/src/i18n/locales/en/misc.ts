@@ -1,4 +1,27 @@
 export default {
+  userDisplay: {
+    placeholderSecondary: '{provider} · no email',
+    emailUnbound: 'No email bound ({provider})',
+    compact: '{name} (no email)',
+    login: {
+      wechat: 'WeChat sign-in',
+      linuxdo: 'LinuxDo sign-in',
+      oidc: 'OIDC sign-in',
+      dingtalk: 'DingTalk sign-in',
+      github: 'GitHub sign-in',
+      google: 'Google sign-in',
+      other: 'Third-party sign-in'
+    },
+    unnamed: {
+      wechat: 'WeChat user',
+      linuxdo: 'LinuxDo user',
+      oidc: 'OIDC user',
+      dingtalk: 'DingTalk user',
+      github: 'GitHub user',
+      google: 'Google user',
+      other: 'Third-party user'
+    }
+  },
 
   // Subscription Progress (Header component)
   subscriptionProgress: {

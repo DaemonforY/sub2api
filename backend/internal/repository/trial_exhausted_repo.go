@@ -17,12 +17,13 @@ func NewTrialExhaustedRepository(db *sql.DB) service.TrialExhaustedRepository {
 	return &trialExhaustedRepository{db: db}
 }
 
-func (r *trialExhaustedRepository) DueTrialUsers(ctx context.Context, signedUpAfter time.Time, maxBalance float64, limit int) ([]service.TrialUser, error) {
+func (r *trialExhaustedRepository) DueTrialUsers(ctx context.Context, signedUpAfter time.Time, maxBalance float64, limit int, includePlaceholders bool) ([]service.TrialUser, error) {
 	rows, err := r.db.QueryContext(ctx, `
 SELECT u.id, u.email, COALESCE(u.username, '')
 FROM users u
 WHERE u.role <> 'admin' AND u.status = 'active' AND u.deleted_at IS NULL
-  AND u.email NOT LIKE '%.invalid' -- OAuth placeholder addresses (WeChat etc.) never get mail
+  -- OAuth placeholder addresses (WeChat etc.) get no mail; with 微信提醒 on they get a template message
+  AND ($4 OR u.email NOT LIKE '%.invalid')
   AND u.created_at >= $1
   AND u.balance < $2
   AND EXISTS (SELECT 1 FROM usage_logs l WHERE l.user_id = u.id)
@@ -32,8 +33,8 @@ WHERE u.role <> 'admin' AND u.status = 'active' AND u.deleted_at IS NULL
   AND NOT EXISTS (
       SELECT 1 FROM user_subscriptions s
       WHERE s.user_id = u.id AND s.deleted_at IS NULL AND s.expires_at > NOW())
-ORDER BY u.id
-LIMIT $3`, signedUpAfter, maxBalance, limit)
+ORDER BY u.id DESC
+LIMIT $3`, signedUpAfter, maxBalance, limit, includePlaceholders)
 	if err != nil {
 		return nil, err
 	}

@@ -4,11 +4,11 @@
       <!-- 用户信息头部 -->
       <div class="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-primary-50 to-primary-100 p-5 dark:from-primary-900/30 dark:to-primary-800/20">
         <div class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-dark-700">
-          <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">{{ user.email.charAt(0).toUpperCase() }}</span>
+          <span class="text-2xl font-semibold text-primary-600 dark:text-primary-400">{{ userIdentity.initial }}</span>
         </div>
         <div class="flex-1">
-          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ user.email }}</p>
-          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ t('admin.users.groupConfigHint', { email: user.email }) }}</p>
+          <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ userIdentity.primary }}</p>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ t('admin.users.groupConfigHint', { email: userIdentity.primary }) }}</p>
         </div>
       </div>
 
@@ -202,6 +202,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { displayIdentity } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
@@ -222,6 +223,8 @@ interface GroupRateConfig {
 const props = defineProps<{ show: boolean; user: AdminUser | null }>()
 const emit = defineEmits(['close', 'success'])
 const { t } = useI18n()
+// Placeholder sign-up emails (…@wechat-connect.invalid) show as the username + provider.
+const userIdentity = computed(() => displayIdentity(props.user, t))
 const appStore = useAppStore()
 
 const groups = ref<Group[]>([])

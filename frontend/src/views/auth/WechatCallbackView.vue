@@ -179,7 +179,9 @@
                   {{ t('auth.oauthFlow.bindExistingAccount') }}
                 </button>
 
+                <!-- Hidden while email sign-up is closed: one tap above already creates the account. -->
                 <button
+                  v-if="emailRegistrationEnabled"
                   data-testid="wechat-choice-create-account"
                   type="button"
                   class="btn btn-secondary w-full"
@@ -280,13 +282,14 @@
                 {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.logInAndBind') }}
               </button>
             </div>
+            <!-- With email sign-up closed the way out is back to the choices (one-tap WeChat sign-up). -->
             <button
               v-if="showBackToChooser"
               class="btn btn-secondary w-full"
               :disabled="isSubmitting"
-              @click="switchToCreateAccountMode()"
+              @click="emailRegistrationEnabled ? switchToCreateAccountMode() : switchToChooser()"
             >
-              {{ t('auth.oauthFlow.createNewAccount') }}
+              {{ emailRegistrationEnabled ? t('auth.oauthFlow.createNewAccount') : t('auth.oauthFlow.backToChoices') }}
             </button>
           </template>
 
@@ -366,6 +369,7 @@ const { t } = useI18n()
 
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const emailRegistrationEnabled = computed(() => appStore.cachedPublicSettings?.email_registration_enabled !== false)
 
 const isProcessing = ref(true)
 const errorMessage = ref('')
@@ -777,6 +781,13 @@ function switchToBindLoginMode(nextEmail?: string) {
   pendingAccountAction.value = 'bind_login'
   needsChooser.value = false
   bindLoginEmail.value = bindLoginEmail.value.trim() || nextEmail?.trim() || pendingAccountEmail.value.trim()
+  bindLoginPassword.value = ''
+  accountActionError.value = ''
+}
+
+function switchToChooser() {
+  pendingAccountAction.value = 'choice'
+  needsChooser.value = true
   bindLoginPassword.value = ''
   accountActionError.value = ''
 }

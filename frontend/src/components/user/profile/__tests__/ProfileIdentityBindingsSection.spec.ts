@@ -376,6 +376,25 @@ describe('ProfileIdentityBindingsSection', () => {
     expect(wrapper.find('[data-testid="profile-wechat-sync-hint"]').exists()).toBe(false)
   })
 
+  it('opens the compact email form on request (the 绑定邮箱 reminder card)', async () => {
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: {
+        user: createUser({ email: 'wechat-o0abc@wechat-connect.invalid', email_bound: false }),
+        embedded: true,
+        compact: true,
+      },
+    })
+    expect(wrapper.find('[data-testid="profile-binding-email-input"]').exists()).toBe(false)
+
+    await (wrapper.vm as unknown as { openEmailForm: () => Promise<void> }).openEmailForm()
+    await flushPromises()
+
+    const input = wrapper.get('[data-testid="profile-binding-email-input"]')
+    // The placeholder address is never prefilled.
+    expect((input.element as HTMLInputElement).value).toBe('')
+  })
+
   it('keeps the WeChat bind action visible when only the legacy aggregate setting is present', () => {
     const wrapper = mount(ProfileIdentityBindingsSection, {
       global: {

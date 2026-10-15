@@ -240,7 +240,7 @@
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="space-y-1">
                 <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ profile.user.email || profile.user.username }}</h3>
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ displayEmail(profile.user.email, t, profile.user.username) || profile.user.username }}</h3>
                   <span v-if="profile.user.status === 'disabled'" class="badge badge-danger">{{ t('admin.userInsights.badge.disabled') }}</span>
                   <span v-if="profile.user.shadowed" class="badge badge-warning">{{ t('admin.userInsights.badge.shadowed') }}</span>
                   <span v-if="profile.spend.has_real_paying" class="badge badge-success">{{ t('admin.userInsights.badge.paid') }}</span>
@@ -663,6 +663,7 @@
 </template>
 
 <script setup lang="ts">
+import { displayEmail } from '@/utils/userDisplay'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'

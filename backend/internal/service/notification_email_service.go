@@ -86,6 +86,37 @@ var (
 type NotificationEmailService struct {
 	settingRepo  SettingRepository
 	emailService *EmailService
+	// wechatNotices sends the reminders of users without a real email as 公众号 template messages.
+	wechatNotices WeChatNoticeDeliverer
+}
+
+// WeChatNoticeDeliverer is WeChatTemplateNoticeService as NotificationEmailService uses it.
+type WeChatNoticeDeliverer interface {
+	Enabled(ctx context.Context, event string) bool
+	Deliver(ctx context.Context, event string, userID int64, vars map[string]string) (WeChatNoticeOutcome, error)
+}
+
+// SetWeChatNotices routes the reminders of placeholder-address users to 公众号 template messages.
+func (s *NotificationEmailService) SetWeChatNotices(d WeChatNoticeDeliverer) {
+	if s != nil {
+		s.wechatNotices = d
+	}
+}
+
+// WeChatNoticeEnabled reports whether emailEvent goes out as a template message to users whose
+// only address is an OAuth placeholder.
+func (s *NotificationEmailService) WeChatNoticeEnabled(ctx context.Context, emailEvent string) bool {
+	if s == nil || s.wechatNotices == nil {
+		return false
+	}
+	event, ok := weChatNoticeEventForEmail[emailEvent]
+	return ok && s.wechatNotices.Enabled(ctx, event)
+}
+
+// IsPlaceholderEmail reports whether email is an OAuth placeholder (*.invalid) that can't get mail.
+func IsPlaceholderEmail(email string) bool {
+	_, reserved := reservedEmailRecipient(email)
+	return reserved
 }
 
 type NotificationEmailEventInfo struct {
@@ -131,6 +162,9 @@ type NotificationEmailSendInput struct {
 	ReminderKey      string
 	Variables        map[string]string
 	RawHTMLVariables map[string]string
+	// NoticeVariables are the 公众号 template-message placeholders ({balance}, {plan_name}, …) used
+	// when the recipient is a placeholder address (see WeChatNoticePlaceholders).
+	NoticeVariables map[string]string
 }
 
 type NotificationEmailUnsubscribeResult struct {
@@ -395,6 +429,10 @@ func (s *NotificationEmailService) Send(ctx context.Context, input NotificationE
 			slog.Info("notification email suppressed by unsubscribe preference", "event", normalizedEvent, "recipient_hash", notificationEmailHash(recipient))
 			return nil
 		}
+	}
+
+	if handled, err := s.sendWeChatNotice(ctx, normalizedEvent, recipient, input); handled {
+		return err
 	}
 
 	locale := normalizeNotificationLocale(input.Locale)
@@ -1846,4 +1884,43 @@ func notificationEmailCard(accent, title, content string) string {
   </div>
 </body>
 </html>`
+}
+
+// sendWeChatNotice delivers a reminder of a placeholder-address user as a 公众号 template message,
+// with the same idempotency key as the email. handled=false means "carry on as email" (the email
+// path then skips the placeholder address without sending anything).
+func (s *NotificationEmailService) sendWeChatNotice(ctx context.Context, event, recipient string, input NotificationEmailSendInput) (bool, error) {
+	if s.wechatNotices == nil || input.UserID <= 0 || !IsPlaceholderEmail(recipient) {
+		return false, nil
+	}
+	noticeEvent, ok := weChatNoticeEventForEmail[event]
+	if !ok {
+		return false, nil
+	}
+	deliveryKey := notificationEmailDeliveryKey(event, input.SourceType, input.SourceID, recipient, input.ReminderKey)
+	if deliveryKey != "" {
+		sent, err := s.deliveryExists(ctx, deliveryKey, legacyNotificationEmailDeliveryKey(event, input.SourceType, input.SourceID, recipient, input.ReminderKey))
+		if err != nil {
+			return true, err
+		}
+		if sent {
+			return true, nil
+		}
+	}
+	outcome, err := s.wechatNotices.Deliver(ctx, noticeEvent, input.UserID, input.NoticeVariables)
+	if err != nil {
+		return true, notificationEmailDeliveryErr(err)
+	}
+	switch outcome {
+	case WeChatNoticeDelivered, WeChatNoticeSkipped:
+		if deliveryKey != "" {
+			if err := s.settingRepo.Set(ctx, deliveryKey, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+				return true, err
+			}
+		}
+		return true, nil
+	case WeChatNoticeDeferred:
+		return true, nil // not recorded: tried again on the next run once the template is fixed
+	}
+	return false, nil
 }

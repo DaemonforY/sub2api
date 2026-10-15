@@ -8,7 +8,16 @@
     <form v-if="user" id="edit-user-form" @submit.prevent="handleUpdateUser" class="space-y-5">
       <div>
         <label class="input-label">{{ t('admin.users.email') }}</label>
-        <input v-model="form.email" type="email" class="input" />
+        <!-- A synthetic sign-up address (…@wechat-connect.invalid) is not shown or edited; it is saved back as is. -->
+        <p
+          v-if="emailPlaceholderHint"
+          class="input cursor-default bg-gray-50 text-gray-500 dark:bg-dark-800 dark:text-gray-400"
+          :title="user.email"
+          data-testid="user-edit-email-placeholder"
+        >
+          {{ emailPlaceholderHint }}
+        </p>
+        <input v-else v-model="form.email" type="email" class="input" />
       </div>
       <div>
         <label class="input-label">{{ t('admin.users.password') }}</label>
@@ -84,6 +93,7 @@
 
 <script setup lang="ts">
 import { computed, ref, reactive, watch } from 'vue'
+import { placeholderEmailHint } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { useClipboard } from '@/composables/useClipboard'
@@ -99,6 +109,7 @@ import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 const props = defineProps<{ show: boolean, user: AdminUser | null }>()
 const emit = defineEmits(['close', 'success'])
 const { t } = useI18n(); const appStore = useAppStore(); const { copyToClipboard } = useClipboard()
+const emailPlaceholderHint = computed(() => placeholderEmailHint(props.user?.email, t))
 
 const submitting = ref(false); const passwordCopied = ref(false)
 const roleOptions = computed(() => [

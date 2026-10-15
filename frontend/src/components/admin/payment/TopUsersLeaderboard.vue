@@ -26,7 +26,7 @@
             >
               {{ idx + 1 }}
             </span>
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.email }}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ displayEmail(user.email, t) }}</span>
           </div>
           <span class="text-sm font-medium text-gray-900 dark:text-white">
             {{ formatMoney(currency, user.amount) }}
@@ -38,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import type { TopUserPaymentStats } from '@/types/payment'
 

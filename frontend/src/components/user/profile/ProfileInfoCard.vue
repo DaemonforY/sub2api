@@ -100,6 +100,9 @@
 
     <div class="space-y-6">
       <div data-testid="profile-main-column" class="space-y-6">
+        <ProfileWechatBindCard :user="user" :wechat-enabled="wechatEnabled && bindingsRef?.wechatBindable === true" @bind="openWeChatBinding" />
+        <ProfileEmailReminderCard :user="user" @bind="openEmailBinding" />
+
         <section
           data-testid="profile-basics-panel"
           class="card border border-gray-100 bg-white/90 p-6 dark:border-dark-700 dark:bg-dark-900/50"
@@ -137,6 +140,7 @@
           class="card border border-gray-100 bg-white/90 p-6 dark:border-dark-700 dark:bg-dark-900/50"
         >
           <ProfileIdentityBindingsSection
+            ref="bindingsRef"
             :user="user"
             :linuxdo-enabled="linuxdoEnabled"
             :dingtalk-enabled="dingtalkEnabled"
@@ -180,8 +184,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ProfileEmailReminderCard from '@/components/user/profile/ProfileEmailReminderCard.vue'
+import ProfileWechatBindCard from '@/components/user/profile/ProfileWechatBindCard.vue'
+import { displayIdentity } from '@/utils/userDisplay'
 import Icon from '@/components/icons/Icon.vue'
 import ProfileAvatarCard from '@/components/user/profile/ProfileAvatarCard.vue'
 import ProfileEditForm from '@/components/user/profile/ProfileEditForm.vue'
@@ -208,6 +215,18 @@ const props = withDefaults(defineProps<{
 })
 
 const { t } = useI18n()
+const bindingsRef = ref<InstanceType<typeof ProfileIdentityBindingsSection> | null>(null)
+
+function openEmailBinding(): void {
+  void bindingsRef.value?.openEmailForm()
+}
+
+function openWeChatBinding(): void {
+  void bindingsRef.value?.startWeChatBinding()
+}
+
+// Placeholder sign-up emails (…@wechat-connect.invalid): username + 「微信登录 · 未绑定邮箱」.
+const identity = computed(() => displayIdentity(props.user, t))
 
 function normalizeBindingStatus(binding: boolean | UserAuthBindingStatus | undefined): boolean | null {
   if (typeof binding === 'boolean') {
@@ -233,14 +252,19 @@ function isEmailBound(user: User | null | undefined): boolean {
 }
 
 const avatarUrl = computed(() => props.user?.avatar_url?.trim() || '')
-const displayName = computed(() => props.user?.username?.trim() || props.user?.email?.trim() || t('profile.user'))
+const displayName = computed(() =>
+  (identity.value.placeholder ? identity.value.primary : '') ||
+  props.user?.username?.trim() ||
+  props.user?.email?.trim() ||
+  t('profile.user')
+)
 const primaryEmailDisplay = computed(() => {
   const email = props.user?.email?.trim() || ''
   if (!email) {
     return ''
   }
   if (email.endsWith('.invalid') && !isEmailBound(props.user)) {
-    return ''
+    return identity.value.placeholder ? identity.value.secondary : ''
   }
   return email
 })

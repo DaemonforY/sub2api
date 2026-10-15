@@ -13,7 +13,7 @@
         {{ t('admin.users.platformQuota.subscriptionWarning') }}
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        {{ t('admin.users.platformQuota.subtitle', { email: user.email }) }}
+        {{ t('admin.users.platformQuota.subtitle', { email: userIdentity.primary }) }}
       </p>
       <div v-if="loading" class="py-10 text-center text-gray-500">{{ t('common.loading') }}</div>
       <div v-else class="overflow-x-auto">
@@ -116,6 +116,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed } from 'vue'
+import { displayIdentity } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
@@ -126,6 +127,8 @@ const props = defineProps<{ show: boolean; user: AdminUser | null }>()
 const emit = defineEmits(['close', 'success'])
 
 const { t } = useI18n()
+// Placeholder sign-up emails (…@wechat-connect.invalid) show as the username + provider.
+const userIdentity = computed(() => displayIdentity(props.user, t))
 const appStore = useAppStore()
 
 const PLATFORMS: PlatformQuotaPlatform[] = ['anthropic', 'openai', 'gemini', 'antigravity', 'grok']

@@ -193,8 +193,11 @@ const DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
 // Setting keys
 const (
 	// 注册设置
-	SettingKeyRegistrationEnabled              = "registration_enabled"                // 是否开放注册
-	SettingKeyEmailVerifyEnabled               = "email_verify_enabled"                // 是否开启邮件验证
+	SettingKeyRegistrationEnabled = "registration_enabled" // 是否开放注册
+	SettingKeyEmailVerifyEnabled  = "email_verify_enabled" // 是否开启邮件验证
+	// 是否允许用邮箱注册新账号（缺省视为开启）。关闭后新用户只能通过微信等第三方登录注册，
+	// 已有邮箱账号照常用邮箱密码登录、找回密码。
+	SettingKeyEmailRegistrationEnabled         = "email_registration_enabled"
 	SettingKeyRegistrationEmailSuffixWhitelist = "registration_email_suffix_whitelist" // 注册邮箱后缀白名单（JSON 数组）
 	// 白名单非空时，是否放行非白名单域名按主域名限量注册（每域名 1 个账户）。
 	// 默认 false：非白名单域名直接拒绝（白名单严格模式）。

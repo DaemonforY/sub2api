@@ -45,7 +45,7 @@ func TestTrialExhaustedRepositoryDue(t *testing.T) {
 		SetClientIP("127.0.0.1").SetSrcHost("test").Save(ctx)
 	require.NoError(t, err)
 
-	due, err := repo.DueTrialUsers(ctx, time.Now().Add(-time.Hour), 0.3, 1000)
+	due, err := repo.DueTrialUsers(ctx, time.Now().Add(-time.Hour), 0.3, 1000, false)
 	require.NoError(t, err)
 	ids := map[int64]bool{}
 	for _, u := range due {

@@ -27,6 +27,7 @@ type UpdateSettingsRequest struct {
 	EmailVerifyEnabled                  bool                         `json:"email_verify_enabled"`
 	RegistrationEmailSuffixWhitelist    []string                     `json:"registration_email_suffix_whitelist"`
 	RegistrationEmailDomainQuotaEnabled *bool                        `json:"registration_email_domain_quota_enabled"` // 非白名单域名限量注册开关（省略=保持现值）
+	EmailRegistrationEnabled            *bool                        `json:"email_registration_enabled"`              // 邮箱注册开关（省略=保持现值）
 	PromoCodeEnabled                    bool                         `json:"promo_code_enabled"`
 	PasswordResetEnabled                bool                         `json:"password_reset_enabled"`
 	FrontendURL                         string                       `json:"frontend_url"`
@@ -133,6 +134,8 @@ type UpdateSettingsRequest struct {
 	WeChatDomainVerifyFiles []dto.WeChatDomainVerifyFile `json:"wechat_domain_verify_files"`
 	// 同一公众号已被别的网站用作消息服务器时，我们不处理的消息原样转发到这里（留空 = 不转发）
 	WeChatMPMessageForwardURL string `json:"wechat_mp_message_forward_url"`
+	// 微信提醒（公众号模板消息），按提醒类型
+	WeChatMPTemplateNotices map[string]dto.WeChatTemplateNotice `json:"wechat_mp_template_notices"`
 
 	// Generic OIDC OAuth 登录
 	OIDCConnectEnabled              bool   `json:"oidc_connect_enabled"`
@@ -539,6 +542,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	registrationEmailDomainQuotaEnabled := previousSettings.RegistrationEmailDomainQuotaEnabled
 	if req.RegistrationEmailDomainQuotaEnabled != nil {
 		registrationEmailDomainQuotaEnabled = *req.RegistrationEmailDomainQuotaEnabled
+	}
+	emailRegistrationEnabled := previousSettings.EmailRegistrationEnabled
+	if req.EmailRegistrationEnabled != nil {
+		emailRegistrationEnabled = *req.EmailRegistrationEnabled
 	}
 	if passkeyEnabled {
 		configured, _, _ := h.settingService.PasskeyConfiguration()
@@ -1521,6 +1528,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		EmailVerifyEnabled:                  req.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:    req.RegistrationEmailSuffixWhitelist,
 		RegistrationEmailDomainQuotaEnabled: registrationEmailDomainQuotaEnabled,
+		EmailRegistrationEnabled:            emailRegistrationEnabled,
 		PromoCodeEnabled:                    req.PromoCodeEnabled,
 		PasswordResetEnabled:                req.PasswordResetEnabled,
 		FrontendURL:                         req.FrontendURL,
@@ -1613,6 +1621,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		WeChatCodeLoginEnabled:                 req.WeChatCodeLoginEnabled,
 		WeChatDomainVerifyFiles:                dto.WeChatDomainVerifyFilesToService(req.WeChatDomainVerifyFiles),
 		WeChatMPMessageForwardURL:              req.WeChatMPMessageForwardURL,
+		WeChatMPTemplateNotices:                dto.WeChatTemplateNoticesToService(req.WeChatMPTemplateNotices),
 		OIDCConnectEnabled:                     req.OIDCConnectEnabled,
 		OIDCConnectProviderName:                req.OIDCConnectProviderName,
 		OIDCConnectClientID:                    req.OIDCConnectClientID,
@@ -2165,6 +2174,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		EmailVerifyEnabled:                                     updatedSettings.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:                       updatedSettings.RegistrationEmailSuffixWhitelist,
 		RegistrationEmailDomainQuotaEnabled:                    updatedSettings.RegistrationEmailDomainQuotaEnabled,
+		EmailRegistrationEnabled:                               updatedSettings.EmailRegistrationEnabled,
 		PromoCodeEnabled:                                       updatedSettings.PromoCodeEnabled,
 		PasswordResetEnabled:                                   updatedSettings.PasswordResetEnabled,
 		FrontendURL:                                            updatedSettings.FrontendURL,

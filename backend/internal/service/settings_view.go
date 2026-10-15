@@ -16,6 +16,7 @@ type SystemSettings struct {
 	EmailVerifyEnabled                  bool
 	RegistrationEmailSuffixWhitelist    []string
 	RegistrationEmailDomainQuotaEnabled bool // 白名单非空时放行非白名单域名限量注册（默认关闭）
+	EmailRegistrationEnabled            bool // 是否允许邮箱注册（缺省开启；关闭后新用户只能用微信等第三方登录注册）
 	PromoCodeEnabled                    bool
 	PasswordResetEnabled                bool
 	FrontendURL                         string
@@ -127,6 +128,7 @@ type SystemSettings struct {
 	WeChatCodeLoginEnabled          bool
 	WeChatDomainVerifyFiles         []WeChatDomainVerifyFile
 	WeChatMPMessageForwardURL       string
+	WeChatMPTemplateNotices         map[string]WeChatTemplateNoticeConfig
 
 	// Generic OIDC OAuth 登录
 	OIDCConnectEnabled                bool
@@ -339,6 +341,7 @@ type PublicSettings struct {
 	ForceEmailOnThirdPartySignup        bool
 	RegistrationEmailSuffixWhitelist    []string
 	RegistrationEmailDomainQuotaEnabled bool
+	EmailRegistrationEnabled            bool
 	PromoCodeEnabled                    bool
 	PasswordResetEnabled                bool
 	InvitationCodeEnabled               bool

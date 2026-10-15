@@ -236,3 +236,17 @@ func sepFor(path string) string {
 	}
 	return "?"
 }
+
+// reminderWeChatNoticeEnabled reports whether the mailer sends emailEvent to placeholder-address users
+// as a 公众号 template message (微信提醒), so the reminder job should include them.
+func reminderWeChatNoticeEnabled(ctx context.Context, mailer any, emailEvent string) bool {
+	m, ok := mailer.(interface {
+		WeChatNoticeEnabled(ctx context.Context, emailEvent string) bool
+	})
+	return ok && m.WeChatNoticeEnabled(ctx, emailEvent)
+}
+
+// reminderMayContact: a real address, or a placeholder (WeChat-only) one when 微信提醒 is on.
+func reminderMayContact(email string, wechatNotices bool) bool {
+	return reminderAddressOK(email) || (wechatNotices && IsPlaceholderEmail(email))
+}

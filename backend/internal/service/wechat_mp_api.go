@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,7 +55,21 @@ func weChatMPAPIErrorFor(code int64, msg string) error {
 		return ErrWeChatMPIPNotWhitelisted
 	}
 	return infraerrors.ServiceUnavailable("WECHAT_MP_API_ERROR",
-		fmt.Sprintf("微信接口暂时不可用，请稍后再试（WeChat API error %d: %s）", code, strings.TrimSpace(msg)))
+		fmt.Sprintf("微信接口暂时不可用，请稍后再试（WeChat API error %d: %s）", code, strings.TrimSpace(msg))).
+		WithMetadata(map[string]string{"errcode": strconv.FormatInt(code, 10), "errmsg": strings.TrimSpace(msg)})
+}
+
+// weChatMPAPIErrorCode returns the WeChat errcode / errmsg carried by an error from callAPI.
+func weChatMPAPIErrorCode(err error) (int64, string, bool) {
+	appErr := infraerrors.FromError(err)
+	if appErr == nil || appErr.Metadata == nil {
+		return 0, "", false
+	}
+	code, parseErr := strconv.ParseInt(appErr.Metadata["errcode"], 10, 64)
+	if parseErr != nil {
+		return 0, "", false
+	}
+	return code, appErr.Metadata["errmsg"], true
 }
 
 // callAPI calls a cgi-bin endpoint with the access token. When WeChat says the token is invalid or

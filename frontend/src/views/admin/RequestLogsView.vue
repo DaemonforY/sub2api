@@ -80,7 +80,7 @@
           <template #cell-user="{ row }">
             <div class="min-w-0 max-w-[200px]">
               <div class="truncate font-medium text-gray-900 dark:text-white" :title="row.user_email">
-                {{ row.user_email || '—' }}
+                {{ row.user_email ? displayEmail(row.user_email, t) : '—' }}
               </div>
               <div v-if="row.user_id" class="mt-0.5 text-xs text-gray-400">#{{ row.user_id }}</div>
             </div>
@@ -211,6 +211,7 @@
 </template>
 
 <script setup lang="ts">
+import { displayEmail } from '@/utils/userDisplay'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { adminAPI, type GatewayRequestLog } from '@/api/admin'

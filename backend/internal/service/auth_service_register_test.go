@@ -282,6 +282,32 @@ func TestAuthService_Register_DisabledByDefault(t *testing.T) {
 	require.ErrorIs(t, err, ErrRegDisabled)
 }
 
+func TestAuthService_Register_EmailRegistrationClosed(t *testing.T) {
+	repo := &userRepoStub{}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled:      "true",
+		SettingKeyEmailRegistrationEnabled: "false",
+	}, nil, nil)
+
+	_, _, err := service.Register(context.Background(), "user@test.com", "password")
+	require.ErrorIs(t, err, ErrEmailRegDisabled)
+
+	_, err = service.SendVerifyCodeAsync(context.Background(), "user@test.com")
+	require.ErrorIs(t, err, ErrEmailRegDisabled)
+	require.ErrorIs(t, service.SendVerifyCode(context.Background(), "user@test.com"), ErrEmailRegDisabled)
+}
+
+func TestAuthService_Register_EmailRegistrationOpenWhenUnset(t *testing.T) {
+	repo := &userRepoStub{nextID: 5}
+	service := newAuthService(repo, map[string]string{
+		SettingKeyRegistrationEnabled: "true",
+	}, nil, nil)
+
+	_, user, err := service.Register(context.Background(), "user@test.com", "password")
+	require.NoError(t, err)
+	require.NotNil(t, user)
+}
+
 func TestAuthService_Register_SnapshotsPlatformQuotaDefaults(t *testing.T) {
 	repo := &userRepoStub{nextID: 77}
 	quotaRepo := &userPlatformQuotaRepoStub{}

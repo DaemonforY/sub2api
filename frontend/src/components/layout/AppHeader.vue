@@ -136,7 +136,7 @@
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
                   {{ displayName }}
                 </div>
-                <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
+                <div class="truncate text-xs text-gray-500 dark:text-dark-400" data-testid="header-user-secondary">{{ headerIdentity.placeholder ? headerIdentity.secondary : user.email }}</div>
               </div>
 
               <!-- Balance (mobile only) -->
@@ -251,6 +251,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { displayIdentity } from '@/utils/userDisplay'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
@@ -304,8 +305,11 @@ const userInitials = computed(() => {
   return ''
 })
 
+// Placeholder sign-up emails (…@wechat-connect.invalid) are never shown: username + 「微信登录 · 未绑定邮箱」.
+const headerIdentity = computed(() => displayIdentity(user.value, t))
 const displayName = computed(() => {
   if (!user.value) return ''
+  if (headerIdentity.value.placeholder) return headerIdentity.value.primary
   return user.value.username || user.value.email?.split('@')[0] || ''
 })
 
