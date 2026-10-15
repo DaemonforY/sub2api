@@ -1242,6 +1242,8 @@ func registerUserRiskAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		g.DELETE("/content-log/targets/:id", h.ContentLog.DisableTarget)
 		g.GET("/content-log", h.ContentLog.Logs)
 		g.GET("/content-log/access", h.ContentLog.Access)
+		g.GET("/content-log/config", h.ContentLog.Config)
+		g.PUT("/content-log/config", h.ContentLog.UpdateConfig)
 	}
 }
 

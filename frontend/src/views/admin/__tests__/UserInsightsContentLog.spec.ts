@@ -11,6 +11,8 @@ const enableContentLog = vi.fn()
 const disableContentLog = vi.fn()
 const listContentLog = vi.fn()
 const listContentLogAccess = vi.fn()
+const getContentLogConfig = vi.fn()
+const updateContentLogConfig = vi.fn()
 const showSuccess = vi.fn()
 const showError = vi.fn()
 
@@ -25,7 +27,9 @@ vi.mock('@/api/admin/userInsights', () => ({
   enableContentLog: (...a: unknown[]) => enableContentLog(...a),
   disableContentLog: (...a: unknown[]) => disableContentLog(...a),
   listContentLog: (...a: unknown[]) => listContentLog(...a),
-  listContentLogAccess: (...a: unknown[]) => listContentLogAccess(...a)
+  listContentLogAccess: (...a: unknown[]) => listContentLogAccess(...a),
+  getContentLogConfig: (...a: unknown[]) => getContentLogConfig(...a),
+  updateContentLogConfig: (...a: unknown[]) => updateContentLogConfig(...a)
 }))
 vi.mock('@/api/admin', () => ({ adminAPI: { users: { toggleStatus: vi.fn() } } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess, showError }) }))
@@ -111,6 +115,7 @@ describe('UserInsightsView content log', () => {
     listContentLogTargets.mockResolvedValue({ items: [target(45), target(46, { email: '', username: 'bob', last_logged_at: null })] })
     listContentLog.mockResolvedValue({ items: [], next_before_id: null, enabled: true, retention_days: 7 })
     listContentLogAccess.mockResolvedValue({ items: [] })
+    getContentLogConfig.mockResolvedValue({ redact_secrets: true })
   })
 
   afterEach(() => {
@@ -125,7 +130,7 @@ describe('UserInsightsView content log', () => {
     expect(listContentLogTargets).toHaveBeenCalledTimes(1)
     expect(listContentLog).not.toHaveBeenCalled()
     expect(listContentLogAccess).not.toHaveBeenCalled()
-    expect(w.get('[data-testid="ui-cl-notice"]').text()).toBe('admin.userInsights.contentLog.notice')
+    expect(w.get('[data-testid="ui-cl-notice"] p').text()).toBe('admin.userInsights.contentLog.notice')
     const targets = w.get('[data-testid="ui-cl-targets"]')
     expect(targets.text()).toContain('u45@x.com')
     expect(targets.text()).toContain('suspected reseller')
@@ -274,5 +279,24 @@ describe('UserInsightsView content log', () => {
     expect(access.text()).toContain('admin@x.com')
     expect(access.text()).toContain('admin.userInsights.contentLog.access.actions.view')
     expect(access.text()).toContain('9.9.9.9')
+  })
+
+  it('turns secret masking off only after the confirm, and says so in the notice', async () => {
+    route.query = { tab: 'contentLog' }
+    updateContentLogConfig.mockResolvedValue({ redact_secrets: false })
+    const w = mountView()
+    await flushPromises()
+    const box = w.get('[data-testid="ui-cl-redact"]')
+    expect((box.element as HTMLInputElement).checked).toBe(true)
+    await box.trigger('click')
+    await flushPromises()
+    expect(updateContentLogConfig).not.toHaveBeenCalled()
+    expect(w.text()).toContain('admin.userInsights.contentLog.redactOffMessage')
+    await confirmButton(w, 'common.confirm')!.trigger('click')
+    await flushPromises()
+    expect(updateContentLogConfig).toHaveBeenCalledWith({ redact_secrets: false })
+    expect(w.get('[data-testid="ui-cl-notice"] p').text()).toBe('admin.userInsights.contentLog.noticeRaw')
+    expect((w.get('[data-testid="ui-cl-redact"]').element as HTMLInputElement).checked).toBe(false)
+    expect(listContentLog).not.toHaveBeenCalled()
   })
 })

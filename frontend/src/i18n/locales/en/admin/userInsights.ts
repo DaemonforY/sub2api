@@ -208,6 +208,12 @@ export default {
     },
     contentLog: {
       notice: "Only accounts you turn on are recorded: each request's last user message, the tools the model called and the start of the reply, with keys and other secrets masked, kept for 7 days. Every view is logged.",
+      noticeRaw: "Only accounts you turn on are recorded: each request's last user message, the tools the model called and the start of the reply, stored as sent (keys and passwords are not masked), kept for 7 days. Every view is logged.",
+      redactLabel: 'Mask keys and other secrets',
+      redactOffTitle: 'Stop masking',
+      redactOffMessage: 'New records will be stored as sent, including passwords, keys and database URLs users send. Existing records stay as they are.',
+      redactOnTitle: 'Mask secrets',
+      redactOnMessage: 'Keys, tokens and passwords in new records will be masked before storage. Existing records stay as they are.',
       targetsTitle: 'Accounts being recorded',
       targetsEmpty: 'No account is being recorded',
       col: {
@@ -260,8 +266,11 @@ export default {
         actions: {
           view: 'Viewed',
           enable: 'Enabled',
-          disable: 'Stopped'
-        }
+          disable: 'Stopped',
+          config: 'Settings'
+        },
+        redactOff: 'Turned secret masking off',
+        redactOn: 'Turned secret masking on'
       },
       profileRecording: 'Request content is being recorded (since {date})',
       profileOpen: 'Open content log',

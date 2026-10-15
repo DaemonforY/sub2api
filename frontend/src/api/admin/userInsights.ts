@@ -264,6 +264,11 @@ export interface ContentLogPage {
   next_before_id: number | null
   enabled: boolean
   retention_days: number
+  redact_secrets?: boolean
+}
+
+export interface ContentLogConfig {
+  redact_secrets: boolean
 }
 
 export interface ContentLogQuery {
@@ -273,7 +278,7 @@ export interface ContentLogQuery {
   limit?: number
 }
 
-export type ContentLogAccessAction = 'view' | 'enable' | 'disable'
+export type ContentLogAccessAction = 'view' | 'enable' | 'disable' | 'config'
 
 export interface ContentLogAccess {
   id: number
@@ -320,6 +325,17 @@ export async function listContentLogAccess(params: { user_id?: number; limit?: n
   return data
 }
 
+/** 遮盖密钥 switch for rows written from now on (changes are recorded in the access trail). */
+export async function getContentLogConfig(): Promise<ContentLogConfig> {
+  const { data } = await apiClient.get('/admin/user-insights/content-log/config')
+  return data
+}
+
+export async function updateContentLogConfig(cfg: ContentLogConfig): Promise<ContentLogConfig> {
+  const { data } = await apiClient.put('/admin/user-insights/content-log/config', cfg)
+  return data
+}
+
 export const userInsightsAPI = {
   getOverview,
   getProfile,
@@ -332,6 +348,8 @@ export const userInsightsAPI = {
   enableContentLog,
   disableContentLog,
   listContentLog,
-  listContentLogAccess
+  listContentLogAccess,
+  getContentLogConfig,
+  updateContentLogConfig
 }
 export default userInsightsAPI

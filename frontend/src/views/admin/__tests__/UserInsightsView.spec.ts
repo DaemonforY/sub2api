@@ -29,7 +29,9 @@ vi.mock('@/api/admin/userInsights', () => ({
   enableContentLog: (...a: unknown[]) => enableContentLog(...a),
   disableContentLog: (...a: unknown[]) => disableContentLog(...a),
   listContentLog: (...a: unknown[]) => listContentLog(...a),
-  listContentLogAccess: (...a: unknown[]) => listContentLogAccess(...a)
+  listContentLogAccess: (...a: unknown[]) => listContentLogAccess(...a),
+  getContentLogConfig: vi.fn(() => Promise.resolve({ redact_secrets: true })),
+  updateContentLogConfig: vi.fn()
 }))
 vi.mock('@/api/admin', () => ({ adminAPI: { users: { toggleStatus: (...a: unknown[]) => toggleStatus(...a) } } }))
 vi.mock('@/stores/app', () => ({ useAppStore: () => ({ showSuccess, showError }) }))

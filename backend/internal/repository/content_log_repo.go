@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -286,4 +288,28 @@ DELETE FROM `+table+` WHERE id IN (SELECT id FROM batch)`, cutoff.UTC(), batchSi
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func (r *contentLogRepository) GetRedactSecrets(ctx context.Context) (bool, error) {
+	var value string
+	err := r.db.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = $1`, service.SettingKeyContentLogRedactSecrets).Scan(&value)
+	if errors.Is(err, sql.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return true, err
+	}
+	return strings.TrimSpace(value) != "false", nil
+}
+
+func (r *contentLogRepository) SetRedactSecrets(ctx context.Context, on bool, audit service.ContentLogAccess) error {
+	return r.inTx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `
+INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, NOW())
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+			service.SettingKeyContentLogRedactSecrets, strconv.FormatBool(on)); err != nil {
+			return err
+		}
+		return insertContentLogAccess(ctx, tx, audit)
+	})
 }

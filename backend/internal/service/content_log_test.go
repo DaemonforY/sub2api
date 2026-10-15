@@ -23,8 +23,27 @@ type fakeContentLogRepo struct {
 	listed    []ContentLogFilter
 	accessAt  []int // len(access) when ListLogs ran
 	failAudit bool
+	// redact is the stored masking switch (nil = unset, i.e. on).
+	redact *bool
 	// listHook runs inside ListTargetIDs (after the snapshot is taken).
 	listHook func()
+}
+
+func (f *fakeContentLogRepo) GetRedactSecrets(context.Context) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.redact == nil || *f.redact, nil
+}
+
+func (f *fakeContentLogRepo) SetRedactSecrets(_ context.Context, on bool, audit ContentLogAccess) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failAudit {
+		return errors.New("audit failed")
+	}
+	f.redact = &on
+	f.access = append(f.access, audit)
+	return nil
 }
 
 func newFakeContentLogRepo() *fakeContentLogRepo {
@@ -222,4 +241,46 @@ func TestContentLogService_ReloadDoesNotUndoFreshChange(t *testing.T) {
 	require.True(t, s.IsTarget(45), "a stale reload must not drop a target enabled meanwhile")
 	s.reload(context.Background())
 	require.True(t, s.IsTarget(45))
+}
+
+func TestContentLogService_RedactSwitchOffKeepsOriginal(t *testing.T) {
+	repo := newFakeContentLogRepo()
+	repo.targets[45] = ""
+	off := false
+	repo.redact = &off
+	s := NewContentLogService(repo)
+	s.Start()
+	require.False(t, s.RedactSecrets())
+
+	secret := "我的密码是 Hunter2024!，postgres://admin:Sup3rS3cret@db:5432/app，sk-" + "proj-ABCDEFGHIJKLMNOPQRSTUV"
+	usage := &UsageLog{UserID: 45, RequestID: "req-raw", CreatedAt: time.Now()}
+	recordContentLog(s, usage, &ContentCapture{
+		UserText:  secret + strings.Repeat("长", 3000),
+		ToolCalls: []ContentToolCall{{Name: "shell", Arguments: `{"command":"mysql -uroot -pS3cretPass123"}`}},
+		ReplyHead: "Authorization: Bearer abcdefghijklmnopqrstuvwxyz123456",
+	})
+	s.Stop()
+
+	require.Len(t, repo.logs, 1)
+	row := repo.logs[0]
+	require.Contains(t, row.UserText, secret)
+	require.LessOrEqual(t, len([]rune(row.UserText)), ContentLogUserTextMaxRunes+1)
+	require.Contains(t, row.ToolCalls[0].Arguments, "-pS3cretPass123")
+	require.Contains(t, row.ReplyHead, "abcdefghijklmnopqrstuvwxyz123456")
+}
+
+func TestContentLogService_SetRedactSecretsAudited(t *testing.T) {
+	repo := newFakeContentLogRepo()
+	s := NewContentLogService(repo)
+	require.True(t, s.RedactSecrets())
+
+	require.NoError(t, s.SetRedactSecrets(context.Background(), 1, false, "1.2.3.4", "ua"))
+	require.False(t, s.RedactSecrets())
+	require.Len(t, repo.access, 1)
+	require.Equal(t, ContentLogActionConfig, repo.access[0].Action)
+	require.Equal(t, "redact_secrets=false", repo.access[0].Detail)
+
+	repo.failAudit = true
+	require.Error(t, s.SetRedactSecrets(context.Background(), 1, true, "", ""))
+	require.False(t, s.RedactSecrets(), "a failed write leaves the switch as it was")
 }

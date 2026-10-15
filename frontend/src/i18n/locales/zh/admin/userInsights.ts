@@ -208,6 +208,12 @@ export default {
     },
     contentLog: {
       notice: '只记录已开启账号的请求：最后一条提问、模型调用的工具和回复开头，密钥等敏感信息自动遮盖，保留 7 天。每次查看都会留下记录。',
+      noticeRaw: '只记录已开启账号的请求：最后一条提问、模型调用的工具和回复开头，按原文保存（不遮盖密钥、密码），保留 7 天。每次查看都会留下记录。',
+      redactLabel: '遮盖密钥等敏感信息',
+      redactOffTitle: '关闭遮盖',
+      redactOffMessage: '关闭后，新记录按原文保存，包括用户发来的密码、密钥和数据库连接串。已有记录不变。',
+      redactOnTitle: '开启遮盖',
+      redactOnMessage: '开启后，新记录里的密钥、令牌、密码会在保存前遮盖。已有记录不变。',
       targetsTitle: '已开启记录的账号',
       targetsEmpty: '还没有开启记录的账号',
       col: {
@@ -260,8 +266,11 @@ export default {
         actions: {
           view: '查看',
           enable: '开启',
-          disable: '停止'
-        }
+          disable: '停止',
+          config: '设置'
+        },
+        redactOff: '关闭密钥遮盖',
+        redactOn: '开启密钥遮盖'
       },
       profileRecording: '请求内容记录中（自 {date} 起）',
       profileOpen: '查看内容日志',

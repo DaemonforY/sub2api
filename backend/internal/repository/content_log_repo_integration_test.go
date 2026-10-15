@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -112,4 +113,36 @@ func TestContentLogRepository(t *testing.T) {
 	ids2, err = repo.ListTargetIDs(ctx)
 	require.NoError(t, err)
 	require.NotContains(t, ids2, target.ID)
+}
+
+func TestContentLogRepositoryRedactSwitch(t *testing.T) {
+	ctx := context.Background()
+	sfx := fmt.Sprintf("%d", time.Now().UnixNano())
+	admin := mustCreateUser(t, integrationEntClient, &service.User{Email: "cl-cfg-" + sfx + "@test.local", Username: "clc" + sfx[len(sfx)-6:]})
+	var before sql.NullString
+	_ = integrationDB.QueryRowContext(ctx, `SELECT value FROM settings WHERE key = $1`, service.SettingKeyContentLogRedactSecrets).Scan(&before)
+	t.Cleanup(func() {
+		if before.Valid {
+			_, _ = integrationDB.ExecContext(ctx, `UPDATE settings SET value = $2 WHERE key = $1`, service.SettingKeyContentLogRedactSecrets, before.String)
+		} else {
+			_, _ = integrationDB.ExecContext(ctx, `DELETE FROM settings WHERE key = $1`, service.SettingKeyContentLogRedactSecrets)
+		}
+		_, _ = integrationDB.ExecContext(ctx, `DELETE FROM content_log_access_logs WHERE admin_id = $1`, admin.ID)
+		_, _ = integrationDB.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, admin.ID)
+	})
+	repo := NewContentLogRepository(integrationDB)
+
+	audit := service.ContentLogAccess{AdminID: admin.ID, Action: service.ContentLogActionConfig, Detail: "redact_secrets=false"}
+	require.NoError(t, repo.SetRedactSecrets(ctx, false, audit))
+	on, err := repo.GetRedactSecrets(ctx)
+	require.NoError(t, err)
+	require.False(t, on)
+	require.NoError(t, repo.SetRedactSecrets(ctx, true, audit))
+	on, err = repo.GetRedactSecrets(ctx)
+	require.NoError(t, err)
+	require.True(t, on)
+
+	var n int
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM content_log_access_logs WHERE admin_id = $1 AND action = 'config'`, admin.ID).Scan(&n))
+	require.Equal(t, 2, n)
 }

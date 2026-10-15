@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -26,6 +27,11 @@ const (
 	ContentLogActionEnable  = "enable"
 	ContentLogActionDisable = "disable"
 	ContentLogActionView    = "view"
+	ContentLogActionConfig  = "config"
+
+	// SettingKeyContentLogRedactSecrets: "false" keeps captured text as sent (no secret masking);
+	// anything else (or no row) masks secrets before storage.
+	SettingKeyContentLogRedactSecrets = "content_log_redact_secrets"
 
 	contentLogReloadInterval      = 30 * time.Second
 	contentLogQueueCapacity       = 1024
@@ -107,6 +113,7 @@ type ContentLogPage struct {
 	NextBeforeID  *int64              `json:"next_before_id"`
 	Enabled       bool                `json:"enabled"`
 	RetentionDays int                 `json:"retention_days"`
+	RedactSecrets bool                `json:"redact_secrets"`
 }
 
 type ContentLogRepository interface {
@@ -124,6 +131,10 @@ type ContentLogRepository interface {
 	ListLogs(ctx context.Context, f ContentLogFilter) ([]RequestContentLog, error)
 	DeleteLogsBefore(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
 	DeleteAccessBefore(ctx context.Context, cutoff time.Time, batchSize int) (int64, error)
+	// GetRedactSecrets reads the masking switch (true when unset).
+	GetRedactSecrets(ctx context.Context) (bool, error)
+	// SetRedactSecrets writes the masking switch and its audit row in one transaction.
+	SetRedactSecrets(ctx context.Context, on bool, audit ContentLogAccess) error
 }
 
 // ContentLogRecorder is the usage-recording hook: the gateway services hand over the usage row and
@@ -139,6 +150,8 @@ type ContentLogService struct {
 	targets map[int64]struct{}
 	// version counts target changes made here; a reload that started before one is discarded.
 	version uint64
+	// redact masks secrets before storage (the 遮盖密钥 switch); refreshed with the targets.
+	redact atomic.Bool
 
 	queue chan *RequestContentLog
 	ctx   context.Context
@@ -154,7 +167,7 @@ type ContentLogService struct {
 
 func NewContentLogService(repo ContentLogRepository) *ContentLogService {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &ContentLogService{
+	s := &ContentLogService{
 		repo:    repo,
 		targets: map[int64]struct{}{},
 		queue:   make(chan *RequestContentLog, contentLogQueueCapacity),
@@ -162,6 +175,8 @@ func NewContentLogService(repo ContentLogRepository) *ContentLogService {
 		stop:    cancel,
 		now:     time.Now,
 	}
+	s.redact.Store(true)
+	return s
 }
 
 // ProvideContentLogService loads the targets, starts the writer, the reload and the retention
@@ -205,6 +220,11 @@ func (s *ContentLogService) Stop() {
 }
 
 func (s *ContentLogService) reload(ctx context.Context) {
+	if on, err := s.repo.GetRedactSecrets(ctx); err != nil {
+		logger.LegacyPrintf("service.content_log", "[ContentLog] reload redact switch failed: %v", err)
+	} else {
+		s.redact.Store(on)
+	}
 	s.mu.RLock()
 	startVersion := s.version
 	s.mu.RUnlock()
@@ -352,10 +372,17 @@ func derefString(p *string) string {
 	return *p
 }
 
-// prepareContentLogRow redacts and truncates everything that is stored (runs in the writer).
-func prepareContentLogRow(row *RequestContentLog) {
-	row.UserText = redactAndTrim(row.UserText, ContentLogUserTextMaxRunes)
-	row.ReplyHead = redactAndTrim(row.ReplyHead, ContentLogReplyHeadMaxRunes)
+// prepareContentLogRow truncates everything that is stored and, when redact is on, masks secrets
+// first (runs in the writer).
+func prepareContentLogRow(row *RequestContentLog, redact bool) {
+	clean := func(s string, maxRunes int) string {
+		if redact {
+			return redactAndTrim(s, maxRunes)
+		}
+		return contentLogTrimRunes(strings.TrimSpace(strings.ToValidUTF8(s, "")), maxRunes)
+	}
+	row.UserText = clean(row.UserText, ContentLogUserTextMaxRunes)
+	row.ReplyHead = clean(row.ReplyHead, ContentLogReplyHeadMaxRunes)
 	calls := make([]ContentToolCall, 0, len(row.ToolCalls))
 	for _, call := range row.ToolCalls {
 		if len(calls) >= ContentLogMaxToolCalls {
@@ -363,7 +390,7 @@ func prepareContentLogRow(row *RequestContentLog) {
 		}
 		calls = append(calls, ContentToolCall{
 			Name:      contentLogTrimRunes(strings.TrimSpace(call.Name), 100),
-			Arguments: redactAndTrim(call.Arguments, ContentLogToolArgumentsMaxRunes),
+			Arguments: clean(call.Arguments, ContentLogToolArgumentsMaxRunes),
 		})
 	}
 	row.ToolCalls = calls
@@ -445,7 +472,7 @@ func (s *ContentLogService) runWriter() {
 					ok = false
 				}
 			}()
-			prepareContentLogRow(row)
+			prepareContentLogRow(row, s.redact.Load())
 			return true
 		}()
 		if !ok {
@@ -598,7 +625,7 @@ func (s *ContentLogService) ListLogs(ctx context.Context, adminID int64, f Conte
 			items[i].ToolCalls = []ContentToolCall{}
 		}
 	}
-	page := &ContentLogPage{Items: items, Enabled: s.IsTarget(f.UserID), RetentionDays: ContentLogRetentionDays}
+	page := &ContentLogPage{Items: items, Enabled: s.IsTarget(f.UserID), RetentionDays: ContentLogRetentionDays, RedactSecrets: s.RedactSecrets()}
 	if len(items) == f.Limit {
 		last := items[len(items)-1].ID
 		page.NextBeforeID = &last
@@ -645,4 +672,23 @@ func recordContentLog(r ContentLogRecorder, usageLog *UsageLog, capture *Content
 	}
 	defer func() { _ = recover() }()
 	r.RecordUsageContent(usageLog, capture)
+}
+
+// RedactSecrets reports whether secrets are masked before storage.
+func (s *ContentLogService) RedactSecrets() bool {
+	if s == nil {
+		return true
+	}
+	return s.redact.Load()
+}
+
+// SetRedactSecrets turns secret masking on or off for rows written from now on, and audits it.
+// Rows already stored keep whatever they were stored with.
+func (s *ContentLogService) SetRedactSecrets(ctx context.Context, adminID int64, on bool, ip, ua string) error {
+	audit := ContentLogAccess{AdminID: adminID, Action: ContentLogActionConfig, Detail: fmt.Sprintf("redact_secrets=%t", on), IPAddress: ip, UserAgent: ua}
+	if err := s.repo.SetRedactSecrets(ctx, on, audit); err != nil {
+		return err
+	}
+	s.redact.Store(on)
+	return nil
 }

@@ -107,6 +107,34 @@ func (h *ContentLogHandler) DisableTarget(c *gin.Context) {
 	response.Success(c, gin.H{"enabled": false})
 }
 
+// Config GET /api/v1/admin/user-insights/content-log/config
+func (h *ContentLogHandler) Config(c *gin.Context) {
+	response.Success(c, gin.H{"redact_secrets": h.svc.RedactSecrets()})
+}
+
+type contentLogConfigRequest struct {
+	RedactSecrets *bool `json:"redact_secrets"`
+}
+
+// UpdateConfig PUT /api/v1/admin/user-insights/content-log/config {redact_secrets}
+func (h *ContentLogHandler) UpdateConfig(c *gin.Context) {
+	adminID, ok := contentLogAdminID(c)
+	if !ok {
+		response.ErrorFrom(c, errContentLogNoAdmin)
+		return
+	}
+	var req contentLogConfigRequest
+	if err := json.NewDecoder(io.LimitReader(c.Request.Body, 64<<10)).Decode(&req); err != nil || req.RedactSecrets == nil {
+		response.BadRequest(c, "请求格式错误（Invalid request）")
+		return
+	}
+	if err := h.svc.SetRedactSecrets(c.Request.Context(), adminID, *req.RedactSecrets, ip.GetClientIP(c), c.GetHeader("User-Agent")); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"redact_secrets": *req.RedactSecrets})
+}
+
 // Logs GET /api/v1/admin/user-insights/content-log?user_id=&session_id=&before_id=&limit=
 // Every call is written to the access log.
 func (h *ContentLogHandler) Logs(c *gin.Context) {

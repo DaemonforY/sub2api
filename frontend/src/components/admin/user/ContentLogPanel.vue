@@ -1,8 +1,19 @@
 <template>
   <div class="space-y-4" data-testid="ui-content-log">
-    <p class="rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 dark:bg-dark-800 dark:text-dark-200" data-testid="ui-cl-notice">
-      {{ t('admin.userInsights.contentLog.notice') }}
-    </p>
+    <div class="space-y-2 rounded-lg bg-gray-100 px-4 py-3 text-sm text-gray-700 dark:bg-dark-800 dark:text-dark-200" data-testid="ui-cl-notice">
+      <p>{{ redactSecrets === false ? t('admin.userInsights.contentLog.noticeRaw') : t('admin.userInsights.contentLog.notice') }}</p>
+      <label v-if="redactSecrets !== null" class="inline-flex cursor-pointer items-center gap-2 text-gray-900 dark:text-white">
+        <input
+          type="checkbox"
+          class="h-4 w-4"
+          :checked="redactSecrets"
+          :disabled="configSaving"
+          data-testid="ui-cl-redact"
+          @click.prevent="askRedact(!redactSecrets)"
+        />
+        <span>{{ t('admin.userInsights.contentLog.redactLabel') }}</span>
+      </label>
+    </div>
 
     <!-- Targets -->
     <div class="card p-4" data-testid="ui-cl-targets">
@@ -217,8 +228,8 @@
                 <td class="whitespace-nowrap py-1 text-xs">{{ formatDateTimeToMinute(a.created_at) }}</td>
                 <td>{{ a.admin_email || `#${a.admin_id}` }}</td>
                 <td class="whitespace-nowrap">{{ accessActionLabel(a.action) }}</td>
-                <td>{{ a.target_email || `#${a.target_user_id}` }}</td>
-                <td class="break-all text-gray-700 dark:text-dark-200">{{ a.detail || '–' }}</td>
+                <td>{{ a.target_email || (a.target_user_id ? `#${a.target_user_id}` : '–') }}</td>
+                <td class="break-all text-gray-700 dark:text-dark-200">{{ accessDetail(a) }}</td>
                 <td class="font-mono text-xs">{{ a.ip_address || '–' }}</td>
               </tr>
               <tr v-if="!access.length && !accessLoading"><td colspan="6" class="py-2 text-gray-500">{{ t('admin.userInsights.empty') }}</td></tr>
@@ -237,6 +248,15 @@
       @confirm="confirmPending"
       @cancel="cancelPending"
     />
+    <ConfirmDialog
+      :show="pendingRedact !== null"
+      :title="pendingRedact ? t('admin.userInsights.contentLog.redactOnTitle') : t('admin.userInsights.contentLog.redactOffTitle')"
+      :message="pendingRedact ? t('admin.userInsights.contentLog.redactOnMessage') : t('admin.userInsights.contentLog.redactOffMessage')"
+      :confirm-text="t('common.confirm')"
+      :danger="pendingRedact === false"
+      @confirm="confirmRedact"
+      @cancel="pendingRedact = null"
+    />
   </div>
 </template>
 
@@ -247,6 +267,8 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import {
   disableContentLog,
   enableContentLog,
+  getContentLogConfig,
+  updateContentLogConfig,
   listContentLog,
   listContentLogAccess,
   listContentLogTargets,
@@ -296,8 +318,47 @@ function isLong(s: string, lines: number, chars: number): boolean {
   return s.length > chars || s.split('\n').length > lines
 }
 
+// 遮盖密钥 switch: null until loaded.
+const redactSecrets = ref<boolean | null>(null)
+const pendingRedact = ref<boolean | null>(null)
+const configSaving = ref(false)
+
+async function loadConfig(): Promise<void> {
+  try {
+    redactSecrets.value = (await getContentLogConfig()).redact_secrets !== false
+  } catch {
+    redactSecrets.value = null
+  }
+}
+
+function askRedact(on: boolean): void {
+  if (!configSaving.value) pendingRedact.value = on
+}
+
+async function confirmRedact(): Promise<void> {
+  const on = pendingRedact.value
+  if (on === null) return
+  configSaving.value = true
+  try {
+    redactSecrets.value = (await updateContentLogConfig({ redact_secrets: on })).redact_secrets !== false
+  } catch (e) {
+    appStore.showError(extractApiErrorMessage(e, t('admin.userInsights.actions.failed')))
+  } finally {
+    configSaving.value = false
+    pendingRedact.value = null
+  }
+}
+
+function accessDetail(a: ContentLogAccess): string {
+  if (a.action === 'config') {
+    if (a.detail === 'redact_secrets=false') return t('admin.userInsights.contentLog.access.redactOff')
+    if (a.detail === 'redact_secrets=true') return t('admin.userInsights.contentLog.access.redactOn')
+  }
+  return a.detail || '–'
+}
+
 function accessActionLabel(a: ContentLogAccessAction | string): string {
-  return ['view', 'enable', 'disable'].includes(a) ? t(`admin.userInsights.contentLog.access.actions.${a}`) : a
+  return ['view', 'enable', 'disable', 'config'].includes(a) ? t(`admin.userInsights.contentLog.access.actions.${a}`) : a
 }
 
 // ---------- targets ----------
@@ -498,5 +559,8 @@ watch(
   { immediate: true }
 )
 
-onMounted(loadTargets)
+onMounted(() => {
+  void loadTargets()
+  void loadConfig()
+})
 </script>
