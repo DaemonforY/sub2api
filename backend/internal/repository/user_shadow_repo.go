@@ -60,7 +60,7 @@ func (r *userShadowRepository) HasRealPayment(ctx context.Context, userID int64)
 	var paid bool
 	err := r.db.QueryRowContext(ctx, `
 SELECT EXISTS (SELECT 1 FROM payment_orders
-               WHERE user_id = $1 AND status = 'COMPLETED' AND payment_type <> 'balance' AND pay_amount > 0)`, userID).Scan(&paid)
+               WHERE user_id = $1 AND paid_at IS NOT NULL AND payment_type <> 'balance' AND pay_amount > 0)`, userID).Scan(&paid)
 	return paid, err
 }
 

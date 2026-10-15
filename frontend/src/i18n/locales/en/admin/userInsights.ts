@@ -183,6 +183,7 @@ export default {
       relay_free: 'Relay tool spending free quota',
       burst_signups: 'Burst of sign-ups from one IP range / browser',
       invitee_fingerprint: 'Invitee shares the inviter\'s fingerprint',
+      trial_same_ip: 'Same IP /24 as another trial',
       shadow_paid: 'Order paid while restricted'
     },
     actions: {

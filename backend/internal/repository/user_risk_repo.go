@@ -56,9 +56,10 @@ SELECT f.user_id,
 FROM signup_fingerprints f
 JOIN users u ON u.id = f.user_id AND u.role <> 'admin' AND u.deleted_at IS NULL
 JOIN signup_fingerprints o ON o.user_id <> f.user_id
-     AND ((f.visitor_id <> '' AND o.visitor_id = f.visitor_id) OR (f.ip_prefix <> '' AND o.ip_prefix = f.ip_prefix))
+     AND ((f.visitor_id <> '' AND o.visitor_id = f.visitor_id AND o.created_at >= f.created_at - INTERVAL '90 days')
+       OR (f.ip_prefix <> '' AND o.ip_prefix = f.ip_prefix AND o.created_at >= f.created_at - INTERVAL '30 days'))
 JOIN users ou ON ou.id = o.user_id
-LEFT JOIN user_shadows os ON os.user_id = o.user_id
+LEFT JOIN user_shadows os ON os.user_id = o.user_id AND os.source = 'admin'
 WHERE f.created_at >= $1 AND (ou.status = 'disabled' OR os.user_id IS NOT NULL)
 GROUP BY f.user_id`, since)
 }
@@ -141,6 +142,20 @@ JOIN signup_fingerprints fp ON fp.user_id = a.inviter_id
 JOIN users u ON u.id = a.user_id AND u.role <> 'admin' AND u.deleted_at IS NULL
 WHERE a.inviter_id IS NOT NULL AND fi.created_at >= $1
   AND ((fi.visitor_id <> '' AND fi.visitor_id = fp.visitor_id) OR (fi.ip_prefix <> '' AND fi.ip_prefix = fp.ip_prefix))`, since)
+}
+
+func (r *userRiskRepository) TrialSameIPSignups(ctx context.Context, since time.Time, window time.Duration) ([]service.RiskHit, error) {
+	return r.hits(ctx, `
+SELECT f.user_id,
+       format('同 IP 段 %s 在 30 天内已有其他浏览器的账号领过试用：%s', f.ip_prefix,
+              string_agg(DISTINCT '#' || o.user_id, ' '))
+FROM signup_fingerprints f
+JOIN users u ON u.id = f.user_id AND u.role <> 'admin' AND u.deleted_at IS NULL
+JOIN signup_fingerprints o ON o.ip_prefix = f.ip_prefix AND o.user_id <> f.user_id AND o.trial_granted
+     AND o.created_at < f.created_at AND o.created_at >= f.created_at - $2::interval
+     AND (f.visitor_id = '' OR o.visitor_id <> f.visitor_id)
+WHERE f.created_at >= $1 AND f.ip_prefix <> ''
+GROUP BY f.user_id, f.ip_prefix`, since, fmt.Sprintf("%d seconds", int64(window.Seconds())))
 }
 
 func (r *userRiskRepository) InsertRiskEvents(ctx context.Context, rule string, hits []service.RiskHit) ([]service.RiskEvent, error) {
@@ -256,8 +271,29 @@ GROUP BY 1, 2, 3`, since)
 	return total, days, rows.Err()
 }
 
+// insightsStatementTimeout bounds the dashboard's scans over usage_logs.
+const insightsStatementTimeout = "10s"
+
+// withTimeout runs fn in a read-only transaction whose statements give up after 10s.
+func (r *userRiskRepository) withTimeout(ctx context.Context, fn func(tx *sql.Tx) error) error {
+	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `SET LOCAL statement_timeout = '`+insightsStatementTimeout+`'`); err != nil {
+		return err
+	}
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (r *userRiskRepository) InsightsSpend(ctx context.Context, since time.Time) ([]service.InsightsSpendDay, error) {
-	rows, err := r.db.QueryContext(ctx, `
+	out := []service.InsightsSpendDay{}
+	err := r.withTimeout(ctx, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx, `
 WITH payers AS (
     SELECT DISTINCT po.user_id FROM payment_orders po WHERE `+realPaidCond+`
 ), used AS (
@@ -280,23 +316,26 @@ SELECT to_char(COALESCE(used.d, paid.d), 'YYYY-MM-DD'),
        COALESCE(used.free, 0)::double precision, COALESCE(used.total, 0)::double precision, COALESCE(paid.cny, 0)::double precision
 FROM used FULL OUTER JOIN paid ON paid.d = used.d
 ORDER BY 1`, since)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	out := []service.InsightsSpendDay{}
-	for rows.Next() {
-		var d service.InsightsSpendDay
-		if err := rows.Scan(&d.Date, &d.FreeUSD, &d.UsedUSD, &d.PaidCNY); err != nil {
-			return nil, err
+		if err != nil {
+			return err
 		}
-		out = append(out, d)
-	}
-	return out, rows.Err()
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			var d service.InsightsSpendDay
+			if err := rows.Scan(&d.Date, &d.FreeUSD, &d.UsedUSD, &d.PaidCNY); err != nil {
+				return err
+			}
+			out = append(out, d)
+		}
+		return rows.Err()
+	})
+	return out, err
 }
 
 func (r *userRiskRepository) InsightsUserAgents(ctx context.Context, since time.Time) ([]service.InsightsUARow, error) {
-	rows, err := r.db.QueryContext(ctx, `
+	out := []service.InsightsUARow{}
+	err := r.withTimeout(ctx, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx, `
 SELECT l.user_id, left(COALESCE(l.user_agent, ''), 200), COUNT(*), COALESCE(SUM(l.actual_cost), 0)::double precision
 FROM usage_logs l
 JOIN users u ON u.id = l.user_id AND u.role <> 'admin'
@@ -304,19 +343,20 @@ WHERE l.created_at >= $1
 GROUP BY 1, 2
 ORDER BY 3 DESC
 LIMIT 20000`, since)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-	out := []service.InsightsUARow{}
-	for rows.Next() {
-		var row service.InsightsUARow
-		if err := rows.Scan(&row.UserID, &row.UserAgent, &row.Requests, &row.CostUSD); err != nil {
-			return nil, err
+		if err != nil {
+			return err
 		}
-		out = append(out, row)
-	}
-	return out, rows.Err()
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			var row service.InsightsUARow
+			if err := rows.Scan(&row.UserID, &row.UserAgent, &row.Requests, &row.CostUSD); err != nil {
+				return err
+			}
+			out = append(out, row)
+		}
+		return rows.Err()
+	})
+	return out, err
 }
 
 func (r *userRiskRepository) InsightsClusters(ctx context.Context, since time.Time) ([]service.InsightsCluster, error) {

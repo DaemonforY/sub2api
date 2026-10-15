@@ -33,7 +33,8 @@ func TestUserRiskRepository(t *testing.T) {
 		return rows.user(mustCreateUser(t, integrationEntClient, &service.User{Email: "risk-" + tag + "-" + sfx + "@test.local", Username: "rk" + tag + sfx[len(sfx)-6:]}))
 	}
 	banned, fresh, trial, relay, payer, inviter, invitee := mk("ban"), mk("new"), mk("trial"), mk("relay"), mk("payer"), mk("inviter"), mk("invitee")
-	ids := []int64{banned.ID, fresh.ID, trial.ID, relay.ID, payer.ID, inviter.ID, invitee.ID}
+	autoA, autoB, labA, labB := mk("autoa"), mk("autob"), mk("laba"), mk("labb")
+	ids := []int64{banned.ID, fresh.ID, trial.ID, relay.ID, payer.ID, inviter.ID, invitee.ID, autoA.ID, autoB.ID, labA.ID, labB.ID}
 	t.Cleanup(func() {
 		for _, q := range []string{`DELETE FROM signup_fingerprints WHERE user_id = ANY($1)`, `DELETE FROM risk_events WHERE user_id = ANY($1)`} {
 			_, err := integrationDB.ExecContext(context.Background(), q, pq.Array(ids))
@@ -46,6 +47,8 @@ func TestUserRiskRepository(t *testing.T) {
 	visitor := "rk-visitor-" + sfx
 	prefixA := fmt.Sprintf("198.18.%d.0", n%200)
 	prefixB := fmt.Sprintf("198.19.%d.0", n%200)
+	prefixC := fmt.Sprintf("198.20.%d.0", n%200) // a school lab
+	prefixD := fmt.Sprintf("198.21.%d.0", n%200) // network of an automatically restricted account
 	for _, fp := range []service.SignupFingerprint{
 		{UserID: banned.ID, VisitorID: visitor, IPPrefix: prefixA, TrialGranted: true},
 		{UserID: fresh.ID, VisitorID: visitor, TrialGranted: true},
@@ -54,13 +57,22 @@ func TestUserRiskRepository(t *testing.T) {
 		{UserID: payer.ID},
 		{UserID: inviter.ID, IPPrefix: prefixB},
 		{UserID: invitee.ID, IPPrefix: prefixB, TrialGranted: true},
+		{UserID: autoA.ID, VisitorID: "rk-auto-" + sfx, IPPrefix: prefixD, TrialGranted: true},
+		{UserID: labA.ID, VisitorID: "rk-lab-a-" + sfx, IPPrefix: prefixC, TrialGranted: true},
 	} {
 		require.NoError(t, fpRepo.Save(ctx, fp))
 	}
-	m, err := fpRepo.FindFlaggedMatch(ctx, visitor, "", fresh.ID)
+	visitorSince, ipSince := time.Now().AddDate(0, 0, -90), time.Now().AddDate(0, 0, -30)
+	m, err := fpRepo.FindFlaggedMatch(ctx, visitor, "", fresh.ID, visitorSince, ipSince)
 	require.NoError(t, err)
 	require.Equal(t, service.FingerprintMatch{UserID: banned.ID, ByVisitor: true, Status: service.StatusDisabled}, m)
-	m, err = fpRepo.FindFlaggedMatch(ctx, "", prefixB, invitee.ID)
+	m, err = fpRepo.FindFlaggedMatch(ctx, "", prefixA, fresh.ID, visitorSince, ipSince)
+	require.NoError(t, err)
+	require.Equal(t, service.FingerprintMatch{UserID: banned.ID, Status: service.StatusDisabled}, m, "same /24 as a banned account")
+	m, err = fpRepo.FindFlaggedMatch(ctx, visitor, prefixA, fresh.ID, time.Now().Add(time.Hour), time.Now().Add(time.Hour))
+	require.NoError(t, err)
+	require.Zero(t, m.UserID, "outside both windows")
+	m, err = fpRepo.FindFlaggedMatch(ctx, "", prefixB, invitee.ID, visitorSince, ipSince)
 	require.NoError(t, err)
 	require.Zero(t, m.UserID, "the inviter is neither banned nor restricted")
 
@@ -80,9 +92,19 @@ func TestUserRiskRepository(t *testing.T) {
 	require.NotNil(t, got)
 	require.Equal(t, "farm", got.Reason)
 	require.Equal(t, service.ShadowSourceAdmin, got.Source)
-	m, err = fpRepo.FindFlaggedMatch(ctx, "", prefixB, invitee.ID)
+	m, err = fpRepo.FindFlaggedMatch(ctx, "", prefixB, invitee.ID, visitorSince, ipSince)
 	require.NoError(t, err)
-	require.Equal(t, "shadowed", m.Status)
+	require.Equal(t, "shadowed", m.Status, "an admin-made restriction is a source")
+
+	// An automatic restriction is never a source: nothing chains.
+	require.NoError(t, shadowRepo.UpsertShadow(ctx, service.UserShadow{UserID: autoA.ID, Reason: "auto", Source: service.ShadowSourceAuto}))
+	require.NoError(t, fpRepo.Save(ctx, service.SignupFingerprint{UserID: autoB.ID, VisitorID: "rk-auto-b-" + sfx, IPPrefix: prefixD, TrialGranted: true}))
+	m, err = fpRepo.FindFlaggedMatch(ctx, "rk-auto-"+sfx, prefixD, autoB.ID, visitorSince, ipSince)
+	require.NoError(t, err)
+	require.Zero(t, m.UserID)
+
+	// Another student in the lab, other browser: reported by the monitor, not a restriction source.
+	require.NoError(t, fpRepo.Save(ctx, service.SignupFingerprint{UserID: labB.ID, VisitorID: "rk-lab-b-" + sfx, IPPrefix: prefixC, TrialGranted: true}))
 
 	key := mustCreateApiKey(t, integrationEntClient, &service.APIKey{UserID: relay.ID, Key: "sk-rk-" + sfx})
 	acc := rows.account(mustCreateAccount(t, integrationEntClient, &service.Account{Name: "rk-acc-" + sfx}))
@@ -112,6 +134,19 @@ func TestUserRiskRepository(t *testing.T) {
 	paid, err = shadowRepo.HasRealPayment(ctx, relay.ID)
 	require.NoError(t, err)
 	require.False(t, paid)
+	// Refunded since, but the money did arrive: still a paying customer.
+	_, err = integrationEntClient.PaymentOrder.Create().
+		SetUserID(labA.ID).SetUserEmail(labA.Email).SetUserName(labA.Username).
+		SetAmount(10).SetPayAmount(72).SetFeeRate(0).
+		SetRechargeCode("RK2-" + sfx).SetOutTradeNo("rk2_" + sfx).
+		SetPaymentType("wxpay").SetPaymentTradeNo("t2").
+		SetOrderType(payment.OrderTypeBalance).SetStatus("REFUNDED").
+		SetPaidAt(time.Now()).SetExpiresAt(time.Now()).SetClientIP("203.0.113.1").SetSrcHost("test").
+		Save(ctx)
+	require.NoError(t, err)
+	paid, err = shadowRepo.HasRealPayment(ctx, labA.ID)
+	require.NoError(t, err)
+	require.True(t, paid)
 
 	now := time.Now()
 	sub := mustCreateSubscription(t, integrationEntClient, &service.UserSubscription{UserID: trial.ID, GroupID: grp.ID,
@@ -138,8 +173,18 @@ func TestUserRiskRepository(t *testing.T) {
 	require.True(t, ok)
 	require.Contains(t, h.Detail, fmt.Sprintf("#%d（已封禁）同浏览器", banned.ID))
 	h, ok = hitFor(hits, invitee.ID)
-	require.True(t, ok, "shares a /24 with a restricted inviter")
+	require.True(t, ok, "shares a /24 with an admin-restricted inviter")
 	require.Contains(t, h.Detail, "（静默）同 IP 段")
+	_, ok = hitFor(hits, autoB.ID)
+	require.False(t, ok, "an automatic restriction is not a source")
+
+	hits, err = repo.TrialSameIPSignups(ctx, since, 30*24*time.Hour)
+	require.NoError(t, err)
+	h, ok = hitFor(hits, labB.ID)
+	require.True(t, ok)
+	require.Contains(t, h.Detail, fmt.Sprintf("#%d", labA.ID))
+	_, ok = hitFor(hits, labA.ID)
+	require.False(t, ok, "the first one in the lab is fine")
 
 	hits, err = repo.TrialDay1Exhausted(ctx, since)
 	require.NoError(t, err)

@@ -356,7 +356,7 @@ const grantNote = ref('')
 const granting = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 
-const riskRuleKeys = ['risk_linked_signup', 'risk_trial_day1', 'risk_relay_free', 'risk_burst_signups', 'risk_invitee_fingerprint'] as const
+const riskRuleKeys = ['risk_linked_signup', 'risk_trial_day1', 'risk_relay_free', 'risk_burst_signups', 'risk_invitee_fingerprint', 'risk_trial_same_ip'] as const
 
 async function loadSettings() {
   loading.value = true

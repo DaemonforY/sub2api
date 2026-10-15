@@ -17,7 +17,7 @@ func TestCreateOrder_RestrictedAccountCannotPay(t *testing.T) {
 	ctx := context.Background()
 	client := newPaymentConfigServiceTestClient(t)
 	config := NewPaymentConfigService(client, &settingRepoStub{values: map[string]string{SettingPaymentEnabled: "true"}}, nil)
-	shadow, _ := newShadowServiceForTest(growthForTest(nil)) // 不能在线支付 is on by default
+	shadow, shadowRepo := newShadowServiceForTest(growthForTest(nil)) // 不能在线支付 is on by default
 	svc := &PaymentService{entClient: client, configService: config}
 	svc.SetShadowGuard(shadow)
 	_, err := shadow.Shadow(ctx, 7, "same browser as #48", ShadowSourceAdmin, nil, nil)
@@ -38,6 +38,11 @@ func TestCreateOrder_RestrictedAccountCannotPay(t *testing.T) {
 	_, err = off.Shadow(ctx, 7, "x", ShadowSourceAdmin, nil, nil)
 	require.NoError(t, err)
 	require.False(t, off.BlocksPayment(ctx, 7))
+
+	// A restricted account that has paid before (money arrived, even if refunded since) can renew.
+	shadowRepo.paid[7] = true
+	shadow.paid.Delete(int64(7))
+	require.False(t, shadow.BlocksPayment(ctx, 7))
 }
 
 func TestToPaid_OrderPaidBeforeRestrictionIsStillFulfilled(t *testing.T) {

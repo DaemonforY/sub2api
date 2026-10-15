@@ -183,6 +183,7 @@ export default {
       relay_free: '中转工具消耗免费额度',
       burst_signups: '同网段/同浏览器短时间多次注册',
       invitee_fingerprint: '被邀请人与邀请人同指纹',
+      trial_same_ip: '同 IP 段已有其他浏览器领过试用',
       shadow_paid: '静默限制期间有订单到账'
     },
     actions: {

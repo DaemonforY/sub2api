@@ -237,7 +237,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyGrowthSignupTrialDedupDays, SettingKeyGrowthShadowLinkedFlagged, SettingKeyGrowthShadowFreeDailyUSD,
 		SettingKeyGrowthShadowBlockPayments,
 		SettingKeyRiskLinkedSignup, SettingKeyRiskTrialDay1, SettingKeyRiskRelayFree, SettingKeyRiskBurstSignups,
-		SettingKeyRiskBurstThreshold, SettingKeyRiskInviteeFingerprint,
+		SettingKeyRiskBurstThreshold, SettingKeyRiskInviteeFingerprint, SettingKeyRiskTrialSameIP,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -356,6 +356,7 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyRiskBurstSignups:             strconv.FormatBool(in.RiskBurstSignups),
 		SettingKeyRiskBurstThreshold:           strconv.Itoa(in.RiskBurstThreshold),
 		SettingKeyRiskInviteeFingerprint:       strconv.FormatBool(in.RiskInviteeFingerprint),
+		SettingKeyRiskTrialSameIP:              strconv.FormatBool(in.RiskTrialSameIP),
 		SettingKeyPriceLockEnabled:             strconv.FormatBool(in.PriceLockEnabled),
 		SettingKeyPriceLockGraceDays:           strconv.Itoa(in.PriceLockGraceDays),
 		SettingKeyEduVerifyEnabled:             strconv.FormatBool(in.EduVerifyEnabled),

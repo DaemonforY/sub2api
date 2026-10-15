@@ -26,6 +26,7 @@ const (
 	SettingKeyRiskBurstSignups       = "growth_risk_burst_signups"       // 同网段/同浏览器 24 小时内多次注册
 	SettingKeyRiskBurstThreshold     = "growth_risk_burst_threshold"     // 上一条的注册数阈值
 	SettingKeyRiskInviteeFingerprint = "growth_risk_invitee_fingerprint" // 被邀请人与邀请人同指纹
+	SettingKeyRiskTrialSameIP        = "growth_risk_trial_same_ip"       // 同 IP 段 30 天内已有账号领过试用（只报告，不限制）
 
 	riskBurstThresholdDefault = 3
 	riskBurstThresholdMax     = 100
@@ -35,10 +36,13 @@ const (
 	RiskRuleRelayFree          = "relay_free"
 	RiskRuleBurstSignups       = "burst_signups"
 	RiskRuleInviteeFingerprint = "invitee_fingerprint"
+	RiskRuleTrialSameIP        = "trial_same_ip"
 	RiskRuleShadowPaid         = "shadow_paid" // written at payment time, not by the monitor
 
 	riskMonitorInterval = 20 * time.Minute
 	riskMonitorLookback = 24 * time.Hour
+	riskRelayLookback   = time.Hour // events are deduplicated per user and rule anyway
+	riskTrialIPWindow   = 30 * 24 * time.Hour
 	riskInviteeLookback = 7 * 24 * time.Hour
 
 	insightsDefaultDays = 30
@@ -53,6 +57,7 @@ type RiskSettings struct {
 	RiskBurstSignups       bool `json:"risk_burst_signups"`
 	RiskBurstThreshold     int  `json:"risk_burst_threshold"`
 	RiskInviteeFingerprint bool `json:"risk_invitee_fingerprint"`
+	RiskTrialSameIP        bool `json:"risk_trial_same_ip"`
 }
 
 func parseRiskSettings(vals map[string]string) RiskSettings {
@@ -63,6 +68,7 @@ func parseRiskSettings(vals map[string]string) RiskSettings {
 		RiskBurstSignups:       vals[SettingKeyRiskBurstSignups] != "false",
 		RiskBurstThreshold:     int(clampFloat(parseFloatOr(vals[SettingKeyRiskBurstThreshold], riskBurstThresholdDefault), 2, riskBurstThresholdMax)),
 		RiskInviteeFingerprint: vals[SettingKeyRiskInviteeFingerprint] != "false",
+		RiskTrialSameIP:        vals[SettingKeyRiskTrialSameIP] != "false",
 	}
 }
 
@@ -295,6 +301,9 @@ type UserRiskRepository interface {
 	RelayFreeSpend(ctx context.Context, since time.Time, uaPattern string) ([]RiskHit, error)
 	BurstSignups(ctx context.Context, since time.Time, threshold int) ([]RiskHit, error)
 	InviteeSharesInviterFingerprint(ctx context.Context, since time.Time) ([]RiskHit, error)
+	// TrialSameIPSignups: sign-ups since `since` from an IP prefix where another browser took the
+	// sign-up trial within `window` before them (reported only — schools and offices share IPs).
+	TrialSameIPSignups(ctx context.Context, since time.Time, window time.Duration) ([]RiskHit, error)
 	// InsertRiskEvents stores hits and returns only the ones that are new for (user, rule).
 	InsertRiskEvents(ctx context.Context, rule string, hits []RiskHit) ([]RiskEvent, error)
 	ListRiskEvents(ctx context.Context, userID int64, page, pageSize int) ([]RiskEvent, int64, error)
@@ -322,8 +331,18 @@ type UserRiskService struct {
 	// mail overrides the ops recipients in tests.
 	mail     func(subject, body string) bool
 	runMu    sync.Mutex
+	cacheMu  sync.Mutex
+	overview map[int]cachedInsightsOverview
 	stopOnce sync.Once
 	stop     chan struct{}
+}
+
+// insightsCacheTTL: the overview scans usage_logs; reloading the page within a minute reuses it.
+const insightsCacheTTL = time.Minute
+
+type cachedInsightsOverview struct {
+	at  time.Time
+	out *UserInsightsOverview
 }
 
 func NewUserRiskService(repo UserRiskRepository, shadow *UserShadowService, growth *GrowthService, ops *OpsService, email *EmailService) *UserRiskService {
@@ -366,6 +385,7 @@ var RiskRuleLabels = map[string]string{
 	RiskRuleRelayFree:          "中转工具消耗免费额度",
 	RiskRuleBurstSignups:       "同网段/同浏览器短时间多次注册",
 	RiskRuleInviteeFingerprint: "被邀请人与邀请人同指纹",
+	RiskRuleTrialSameIP:        "同 IP 段 30 天内已有其他浏览器领过试用",
 	RiskRuleShadowPaid:         "静默限制期间有订单到账",
 }
 
@@ -374,7 +394,7 @@ func (s *UserRiskService) RunMonitor(ctx context.Context) ([]RiskEvent, error) {
 	s.runMu.Lock()
 	defer s.runMu.Unlock()
 	settings := RiskSettings{RiskLinkedSignup: true, RiskTrialDay1: true, RiskRelayFree: true, RiskBurstSignups: true,
-		RiskBurstThreshold: riskBurstThresholdDefault, RiskInviteeFingerprint: true}
+		RiskBurstThreshold: riskBurstThresholdDefault, RiskInviteeFingerprint: true, RiskTrialSameIP: true}
 	if s.growth != nil {
 		gs, err := s.growth.GetSettings(ctx)
 		if err != nil {
@@ -392,12 +412,17 @@ func (s *UserRiskService) RunMonitor(ctx context.Context) ([]RiskEvent, error) {
 	rules := []rule{
 		{RiskRuleLinkedSignup, settings.RiskLinkedSignup, func() ([]RiskHit, error) { return s.repo.LinkedFlaggedSignups(ctx, since) }},
 		{RiskRuleTrialDay1, settings.RiskTrialDay1, func() ([]RiskHit, error) { return s.repo.TrialDay1Exhausted(ctx, since) }},
-		{RiskRuleRelayFree, settings.RiskRelayFree, func() ([]RiskHit, error) { return s.repo.RelayFreeSpend(ctx, since, relayUAPattern) }},
+		{RiskRuleRelayFree, settings.RiskRelayFree, func() ([]RiskHit, error) {
+			return s.repo.RelayFreeSpend(ctx, now.Add(-riskRelayLookback), relayUAPattern)
+		}},
 		{RiskRuleBurstSignups, settings.RiskBurstSignups, func() ([]RiskHit, error) {
 			return s.repo.BurstSignups(ctx, since, settings.RiskBurstThreshold)
 		}},
 		{RiskRuleInviteeFingerprint, settings.RiskInviteeFingerprint, func() ([]RiskHit, error) {
 			return s.repo.InviteeSharesInviterFingerprint(ctx, now.Add(-riskInviteeLookback))
+		}},
+		{RiskRuleTrialSameIP, settings.RiskTrialSameIP, func() ([]RiskHit, error) {
+			return s.repo.TrialSameIPSignups(ctx, since, riskTrialIPWindow)
 		}},
 	}
 	var fresh []RiskEvent
@@ -492,6 +517,12 @@ func insightsWindow(days int) int {
 // Overview is the 用户画像 overview for the last `days` days.
 func (s *UserRiskService) Overview(ctx context.Context, days int) (*UserInsightsOverview, error) {
 	days = insightsWindow(days)
+	s.cacheMu.Lock()
+	if c, ok := s.overview[days]; ok && s.now().Sub(c.at) < insightsCacheTTL {
+		s.cacheMu.Unlock()
+		return c.out, nil
+	}
+	s.cacheMu.Unlock()
 	since := s.now().AddDate(0, 0, -days)
 	out := &UserInsightsOverview{Days: days, Since: since}
 	var err error
@@ -548,6 +579,12 @@ func (s *UserRiskService) Overview(ctx context.Context, days int) (*UserInsights
 		return clusters[i].FreeUSD > clusters[j].FreeUSD
 	})
 	out.Clusters = clusters
+	s.cacheMu.Lock()
+	if s.overview == nil {
+		s.overview = map[int]cachedInsightsOverview{}
+	}
+	s.overview[days] = cachedInsightsOverview{at: s.now(), out: out}
+	s.cacheMu.Unlock()
 	return out, nil
 }
 

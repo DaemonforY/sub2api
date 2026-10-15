@@ -69,10 +69,11 @@ func TestScoreUserRisk(t *testing.T) {
 
 type userRiskRepoFake struct {
 	UserRiskRepository
-	hits     map[string][]RiskHit
-	stored   map[string]bool
-	calls    []string
-	burstArg int
+	hits       map[string][]RiskHit
+	stored     map[string]bool
+	calls      []string
+	burstArg   int
+	relaySince time.Time
 }
 
 func (r *userRiskRepoFake) rule(name string) ([]RiskHit, error) {
@@ -85,7 +86,14 @@ func (r *userRiskRepoFake) LinkedFlaggedSignups(context.Context, time.Time) ([]R
 func (r *userRiskRepoFake) TrialDay1Exhausted(context.Context, time.Time) ([]RiskHit, error) {
 	return r.rule(RiskRuleTrialDay1)
 }
-func (r *userRiskRepoFake) RelayFreeSpend(_ context.Context, _ time.Time, pattern string) ([]RiskHit, error) {
+func (r *userRiskRepoFake) TrialSameIPSignups(_ context.Context, _ time.Time, window time.Duration) ([]RiskHit, error) {
+	if window != 30*24*time.Hour {
+		panic("unexpected window")
+	}
+	return r.rule(RiskRuleTrialSameIP)
+}
+func (r *userRiskRepoFake) RelayFreeSpend(_ context.Context, since time.Time, pattern string) ([]RiskHit, error) {
+	r.relaySince = since
 	if pattern != relayUAPattern {
 		panic("unexpected pattern")
 	}
@@ -129,6 +137,8 @@ func TestRiskMonitor_RunsEnabledRulesAndMailsNewEventsOnce(t *testing.T) {
 	require.Len(t, fresh, 2)
 	require.NotContains(t, repo.calls, RiskRuleTrialDay1, "turned-off rules don't run")
 	require.Equal(t, 4, repo.burstArg)
+	require.WithinDuration(t, time.Now().Add(-time.Hour), repo.relaySince, time.Minute, "relay UAs: the last hour only")
+	require.Contains(t, repo.calls, RiskRuleTrialSameIP, "shared-IP trials are reported (never restricted)")
 	require.Len(t, mails, 1)
 	require.Contains(t, mails[0], "[风控] 2 条新事件")
 	require.Contains(t, mails[0], "新注册关联到已封禁/静默账号")

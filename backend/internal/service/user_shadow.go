@@ -53,7 +53,8 @@ type UserShadowRepository interface {
 	ListShadows(ctx context.Context) ([]UserShadow, error)
 	UpsertShadow(ctx context.Context, s UserShadow) error
 	DeleteShadow(ctx context.Context, userID int64) error
-	// HasRealPayment: a completed order paid through a payment provider (not with balance).
+	// HasRealPayment: money ever arrived through a payment provider (not balance) — paid_at is set,
+	// whatever the order's status now (completed, refunded, partially refunded…).
 	HasRealPayment(ctx context.Context, userID int64) (bool, error)
 	// SpentSince sums the user's usage cost (actual_cost) since `since`.
 	SpentSince(ctx context.Context, userID int64, since time.Time) (float64, error)
@@ -243,19 +244,22 @@ func (s *UserShadowService) freeDailyUSD(ctx context.Context) float64 {
 	return settings.ShadowFreeDailyUSD
 }
 
-// BlocksPayment: a restricted account can't create payment orders while 推广设置 says so (default on).
+// BlocksPayment: a restricted account that has never paid can't create payment orders while
+// 推广设置 says so (default on). One that has paid before can still renew.
 func (s *UserShadowService) BlocksPayment(ctx context.Context, userID int64) bool {
 	if !s.IsShadowed(userID) {
 		return false
 	}
-	if s.growth == nil {
-		return true
+	if s.growth != nil {
+		if settings, err := s.growth.GetSettings(ctx); err == nil && !settings.ShadowBlockPayments {
+			return false
+		}
 	}
-	settings, err := s.growth.GetSettings(ctx)
+	paid, err := s.hasRealPayment(ctx, userID)
 	if err != nil {
-		return true
+		return false // never stand between a paying customer and a payment on a lookup error
 	}
-	return settings.ShadowBlockPayments
+	return !paid
 }
 
 // NotePaidWhileShadowed leaves a risk event when money arrives for a restricted account (an order

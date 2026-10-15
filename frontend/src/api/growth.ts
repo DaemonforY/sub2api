@@ -167,6 +167,8 @@ export interface GrowthSettings {
   risk_burst_signups: boolean
   risk_burst_threshold: number
   risk_invitee_fingerprint: boolean
+  /** report-only: another browser on the same IP /24 took a trial within 30 days */
+  risk_trial_same_ip: boolean
   price_lock_enabled: boolean
   price_lock_grace_days: number
   leaderboard_enabled: boolean
