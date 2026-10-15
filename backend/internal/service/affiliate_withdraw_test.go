@@ -135,6 +135,17 @@ func TestWithdrawRequestRules(t *testing.T) {
 		require.ErrorIs(t, err, ErrWithdrawPending)
 	})
 
+	t.Run("banned user", func(t *testing.T) {
+		e := elig
+		e.UserDisabled = true
+		repo := &withdrawRepoStub{elig: e}
+		svc := newWithdrawServiceForTest(repo, on)
+		_, err := svc.Request(ctx, 7, good)
+		require.ErrorIs(t, err, ErrWithdrawUserDisabled)
+		require.Contains(t, err.Error(), "封禁")
+		require.Empty(t, repo.created, "nothing is filed and no rebate is taken out")
+	})
+
 	t.Run("monthly limit", func(t *testing.T) {
 		e := elig
 		e.MonthCount = 2

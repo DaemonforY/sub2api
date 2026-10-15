@@ -38,6 +38,8 @@ export interface AffiliateWithdrawal {
   user_id: number
   user_email?: string
   username?: string
+  /** 后台列表才有；'disabled' 表示用户已封禁 */
+  user_status?: string
   /** 扣除的返利额度（与「可用返利」同单位） */
   quota_amount: number
   /** 应打款金额（人民币） */
@@ -150,6 +152,8 @@ export interface GrowthSettings {
   invitee_bonus_cap: number
   invitee_signup_bonus: number
   invitee_signup_daily_limit: number
+  /** 注册试用去重: same browser / IP /24 gets the sign-up default subscriptions once per this many days (0 = off). */
+  signup_trial_dedup_days: number
   price_lock_enabled: boolean
   price_lock_grace_days: number
   leaderboard_enabled: boolean

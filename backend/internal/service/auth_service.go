@@ -86,6 +86,7 @@ type AuthService struct {
 	affiliateService      *AffiliateService
 	defaultSubAssigner    DefaultSubscriptionAssigner
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	signupTrialGuard      *SignupTrialGuard
 }
 
 type CaptchaProof struct {
@@ -152,6 +153,11 @@ func (s *AuthService) SetTencentCaptchaService(tencentCaptchaService *TencentCap
 
 func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptchaService) {
 	s.aliyunCaptchaService = aliyunCaptchaService
+}
+
+// SetSignupTrialGuard turns on 注册试用去重 for the sign-up default subscriptions.
+func (s *AuthService) SetSignupTrialGuard(guard *SignupTrialGuard) {
+	s.signupTrialGuard = guard
 }
 
 // Register 用户注册，返回token和用户
@@ -260,7 +266,7 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 		}
 	}
 	s.postAuthUserBootstrap(ctx, user, "email", true)
-	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
+	s.assignSignupSubscriptions(ctx, user.ID, grantPlan.Subscriptions)
 	// snapshot user × platform quota（fail-open）
 	_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 	if s.affiliateService != nil {
@@ -635,7 +641,7 @@ func (s *AuthService) LoginOrRegisterOAuth(ctx context.Context, email, username 
 			} else {
 				user = newUser
 				s.postAuthUserBootstrap(ctx, user, signupSource, false)
-				s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
+				s.assignSignupSubscriptions(ctx, user.ID, grantPlan.Subscriptions)
 				// snapshot user × platform quota（fail-open）
 				_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 			}
@@ -800,7 +806,7 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 					user = newUser
 					created = true
 					s.postAuthUserBootstrap(ctx, user, signupSource, false)
-					s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
+					s.assignSignupSubscriptions(ctx, user.ID, grantPlan.Subscriptions)
 					// snapshot user × platform quota（fail-open）
 					_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 					s.bindOAuthAffiliate(ctx, user.ID, affiliateCode)
@@ -821,7 +827,7 @@ func (s *AuthService) loginOrRegisterOAuthWithTokenPair(ctx context.Context, ema
 					user = newUser
 					created = true
 					s.postAuthUserBootstrap(ctx, user, signupSource, false)
-					s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
+					s.assignSignupSubscriptions(ctx, user.ID, grantPlan.Subscriptions)
 					// snapshot user × platform quota（fail-open）
 					_ = s.snapshotPlatformQuotaDefaults(ctx, user.ID, &grantPlan)
 					s.bindOAuthAffiliate(ctx, user.ID, affiliateCode)
@@ -878,6 +884,15 @@ func (s *AuthService) applyOAuthSignupPromoCode(ctx context.Context, user *User,
 		return updatedUser
 	}
 	return user
+}
+
+// assignSignupSubscriptions gives a new account the sign-up default subscriptions, unless the same
+// browser or IP /24 already got them recently (SignupTrialGuard); the default balance is unaffected.
+func (s *AuthService) assignSignupSubscriptions(ctx context.Context, userID int64, items []DefaultSubscriptionSetting) {
+	if s.signupTrialGuard != nil && !s.signupTrialGuard.Allow(ctx, userID, len(items) > 0) {
+		return
+	}
+	s.assignSubscriptions(ctx, userID, items, "auto assigned by signup defaults")
 }
 
 func (s *AuthService) assignSubscriptions(ctx context.Context, userID int64, items []DefaultSubscriptionSetting, notes string) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	"github.com/Wei-Shaw/sub2api/internal/middleware"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	servermiddleware "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -30,6 +31,11 @@ func RegisterAuthRoutes(
 	auth.Use(servermiddleware.BackendModeAuthGuard(settingService))
 	// 认证事件（登录/注册/2FA/token 刷新失败）入审计
 	auth.Use(gin.HandlerFunc(auditLog))
+	// 注册试用去重 needs the sign-up's IP wherever an account is created (register and every OAuth flow).
+	auth.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(service.WithSignupClient(c.Request.Context(), service.SignupClient{IP: ip.GetClientIP(c)}))
+		c.Next()
+	})
 	{
 		// 注册/登录/2FA/验证码发送均属于高风险入口，增加服务端兜底限流（Redis 故障时 fail-close）
 		// 注册、发送验证码：上限 20 次/分钟（照顾一个班在机房同时注册）；

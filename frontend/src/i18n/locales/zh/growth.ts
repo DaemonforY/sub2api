@@ -281,6 +281,8 @@ export default {
         done: '已处理',
         empty: '没有提现申请',
         reviewedAt: '处理于 {time}',
+        userDisabled: '用户已封禁',
+        userDisabledHint: '该用户已被封禁，只能驳回，不能打款',
       },
       settings: {
         title: '推广设置',
@@ -324,6 +326,9 @@ export default {
         signupBonusHint: '通过邀请注册的新用户立即得到这笔余额，每人一次；0 表示关闭，最多 5。',
         signupDailyLimit: '每天最多发放人数',
         signupDailyLimitHint: '全站每天（北京时间）最多发给这么多人。另外同一个邀请人每天最多 5 位好友能拿到；邀请人自己没调用过 API、也没付过款时不发放。',
+        signupTrialDedupTitle: '注册送订阅防薅',
+        signupTrialDedupDays: '同一浏览器 / IP 段多少天内只送一次（天）',
+        signupTrialDedupHint: '「系统设置 → 默认订阅」里的注册送订阅（如 3 天 Codex-轻量版），同一个浏览器或同一个 IP /24 网段在这么多天内只发给第一个注册的账号；之后注册的账号照常拿到默认余额，只是不送订阅。0 表示关闭。注意：学校机房、公司共用出口的多人注册会被当成同一网段，带班注册前可临时改成 0。',
         leaderboardTitle: '邀请排行榜',
         leaderboardEnabled: '向用户展示邀请排行榜',
         leaderboardHint: '用户在「邀请返利」页看到按付费好友数排名的榜单（名字打码、不显示金额）。',

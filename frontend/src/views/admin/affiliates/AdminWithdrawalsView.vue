@@ -51,6 +51,12 @@
                 <td class="px-3 py-2.5">
                   <div class="text-gray-900 dark:text-white">{{ w.user_email }}</div>
                   <div class="text-xs text-gray-400">#{{ w.user_id }} {{ w.username }}</div>
+                  <span
+                    v-if="w.user_status === 'disabled'"
+                    class="mt-1 inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                    :data-testid="`withdraw-user-disabled-${w.id}`"
+                    :title="t('growth.admin.withdrawals.userDisabledHint')"
+                  >{{ t('growth.admin.withdrawals.userDisabled') }}</span>
                 </td>
                 <td class="px-3 py-2.5 text-right">
                   <div class="font-semibold text-gray-900 dark:text-white">¥{{ w.cny_amount.toFixed(2) }}</div>
@@ -74,7 +80,7 @@
                 </td>
                 <td class="px-3 py-2.5 text-right">
                   <div v-if="w.status === 'pending'" class="flex justify-end gap-2">
-                    <button type="button" class="btn btn-primary btn-sm" :data-testid="`withdraw-paid-${w.id}`" @click="openReview(w, 'paid')">{{ t('growth.admin.withdrawals.markPaid') }}</button>
+                    <button v-if="w.user_status !== 'disabled'" type="button" class="btn btn-primary btn-sm" :data-testid="`withdraw-paid-${w.id}`" @click="openReview(w, 'paid')">{{ t('growth.admin.withdrawals.markPaid') }}</button>
                     <button type="button" class="btn btn-secondary btn-sm" :data-testid="`withdraw-reject-${w.id}`" @click="openReview(w, 'reject')">{{ t('growth.admin.withdrawals.reject') }}</button>
                   </div>
                 </td>

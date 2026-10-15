@@ -44,6 +44,7 @@ var (
 	ErrWithdrawInvalidPayee  = infraerrors.BadRequest("WITHDRAW_INVALID_PAYEE", "请填写收款账号和真实姓名（Payout account and real name are required）")
 	ErrWithdrawNotFound      = infraerrors.NotFound("WITHDRAW_NOT_FOUND", "提现申请不存在（Withdrawal not found）")
 	ErrWithdrawNotPending    = infraerrors.Conflict("WITHDRAW_NOT_PENDING", "这笔提现已经处理过了，请刷新页面（Withdrawal is no longer pending）")
+	ErrWithdrawUserDisabled  = infraerrors.Forbidden("WITHDRAW_USER_DISABLED", "账号已被封禁，不能申请提现，如有疑问请联系客服（This account is disabled and cannot withdraw）")
 )
 
 // WithdrawSettings are the admin-editable withdrawal rules (stored with the growth settings).
@@ -63,6 +64,7 @@ type WithdrawEligibility struct {
 	WithdrawnCNY   float64
 	MonthCount     int // pending + paid withdrawals since the start of this month
 	HasPending     bool
+	UserDisabled   bool // the account is banned (users.status = disabled)
 }
 
 // AffiliateWithdrawal is one withdrawal request. Account / RealName are plaintext only after the service decrypts them.
@@ -71,6 +73,7 @@ type AffiliateWithdrawal struct {
 	UserID      int64      `json:"user_id"`
 	UserEmail   string     `json:"user_email,omitempty"`
 	Username    string     `json:"username,omitempty"`
+	UserStatus  string     `json:"user_status,omitempty"` // admin list only; "disabled" = 用户已封禁
 	QuotaAmount float64    `json:"quota_amount"`
 	CNYAmount   float64    `json:"cny_amount"`
 	Method      string     `json:"method"`
@@ -298,6 +301,9 @@ func (s *AffiliateWithdrawService) Request(ctx context.Context, userID int64, in
 	}
 
 	plan := func(e *WithdrawEligibility) (float64, error) {
+		if e.UserDisabled {
+			return 0, ErrWithdrawUserDisabled
+		}
 		if e.HasPending {
 			return 0, ErrWithdrawPending
 		}
@@ -365,7 +371,7 @@ func (s *AffiliateWithdrawService) PendingCount(ctx context.Context) (int64, err
 	return s.repo.CountPending(ctx)
 }
 
-// MarkPaid records that the admin has transferred the money.
+// MarkPaid records that the admin has transferred the money. A banned user's withdrawal can only be rejected.
 func (s *AffiliateWithdrawService) MarkPaid(ctx context.Context, id, adminID int64, note string) (*AffiliateWithdrawal, error) {
 	w, err := s.repo.MarkPaid(ctx, id, truncateRunes(strings.TrimSpace(note), 500), adminID)
 	if err != nil {

@@ -281,6 +281,8 @@ export default {
         done: 'Done',
         empty: 'No withdrawals',
         reviewedAt: 'Handled {time}',
+        userDisabled: 'User banned',
+        userDisabledHint: 'This user is banned: the withdrawal can only be rejected, not paid',
       },
       settings: {
         title: 'Growth settings',
@@ -324,6 +326,9 @@ export default {
         signupBonusHint: 'New users who sign up with an invite get this balance at once, once each; 0 turns it off, at most 5.',
         signupDailyLimit: 'Most grants per day',
         signupDailyLimitHint: 'Site-wide per day (Beijing time). One inviter can get it for at most 5 friends a day, and only if the inviter has made an API call or a payment.',
+        signupTrialDedupTitle: 'Sign-up subscription abuse guard',
+        signupTrialDedupDays: 'One per browser / IP range every (days)',
+        signupTrialDedupHint: 'The sign-up default subscriptions (Settings → default subscriptions, e.g. 3 days of Codex Lite) go only to the first account from the same browser or IP /24 within this many days; later accounts still get the default balance, just no subscription. 0 = off. A classroom or office sharing one exit IP counts as one network: set 0 temporarily before a group sign-up.',
         leaderboardTitle: 'Invite leaderboard',
         leaderboardEnabled: 'Show the invite leaderboard to users',
         leaderboardHint: 'Users see a ranking by paying friends on the referral page (names masked, no amounts).',

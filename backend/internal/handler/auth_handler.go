@@ -219,8 +219,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		}
 	}
 
+	signupCtx := service.WithSignupClient(c.Request.Context(), service.SignupClient{VisitorID: req.VisitorID, IP: clientIP})
 	_, user, err := h.authService.RegisterWithVerification(
-		c.Request.Context(),
+		signupCtx,
 		req.Email,
 		req.Password,
 		req.VerifyCode,

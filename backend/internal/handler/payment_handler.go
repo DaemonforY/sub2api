@@ -9,6 +9,7 @@ import (
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/payment"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -316,7 +317,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		Amount:          req.Amount,
 		PaymentType:     req.PaymentType,
 		OpenID:          req.OpenID,
-		ClientIP:        c.ClientIP(),
+		ClientIP:        ip.GetClientIP(c),
 		IsMobile:        mobile,
 		IsWeChatBrowser: isWeChatBrowser(c),
 		SrcHost:         c.Request.Host,
@@ -394,7 +395,7 @@ func (h *PaymentHandler) PurchaseSubscriptionWithBalance(c *gin.Context) {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	result, err := h.paymentService.PurchaseSubscriptionWithBalance(c.Request.Context(), subject.UserID, req.PlanID, c.ClientIP(), c.Request.Host)
+	result, err := h.paymentService.PurchaseSubscriptionWithBalance(c.Request.Context(), subject.UserID, req.PlanID, ip.GetClientIP(c), c.Request.Host)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

@@ -69,6 +69,17 @@
           </div>
         </section>
 
+        <section class="card space-y-4 p-6" data-testid="growth-signup-trial-dedup">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">🛡️ {{ t('growth.admin.settings.signupTrialDedupTitle') }}</h2>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-signup-trial-dedup">{{ t('growth.admin.settings.signupTrialDedupDays') }}</label>
+              <input id="growth-signup-trial-dedup" v-model.number="form.signup_trial_dedup_days" type="number" min="0" max="365" step="1" class="input" />
+            </div>
+          </div>
+          <p class="text-xs leading-relaxed text-gray-400">{{ t('growth.admin.settings.signupTrialDedupHint') }}</p>
+        </section>
+
         <section class="card space-y-4 p-6" data-testid="growth-withdraw">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">💸 {{ t('growth.admin.settings.withdrawTitle') }}</h2>
           <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
@@ -343,6 +354,7 @@ async function save() {
       first_topup_min_amount: Number(form.value.first_topup_min_amount) || 0,
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       price_lock_grace_days: Math.max(0, Math.round(Number(form.value.price_lock_grace_days) || 0)),
+      signup_trial_dedup_days: Math.min(365, Math.max(0, Math.round(Number(form.value.signup_trial_dedup_days) || 0))),
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,
       withdraw_min_cny: Number(form.value.withdraw_min_cny) || 50,
       withdraw_monthly_limit: Math.max(0, Math.floor(Number(form.value.withdraw_monthly_limit) || 0)),

@@ -114,6 +114,7 @@ var ProviderSet = wire.NewSet(
 	NewCourseRepository,
 	NewLearnRepository,
 	NewAnalyticsRepository,
+	NewSignupFingerprintRepository,
 	NewActivationReminderRepository,
 	NewAbandonedOrderRepository,
 	NewTrialExhaustedRepository,

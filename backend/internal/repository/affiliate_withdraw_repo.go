@@ -32,7 +32,8 @@ SELECT ua.aff_quota::double precision,
        COALESCE(w.quota, 0)::double precision,
        COALESCE(w.cny, 0)::double precision,
        COALESCE(w.month_count, 0)::integer,
-       COALESCE(w.pending, 0) > 0
+       COALESCE(w.pending, 0) > 0,
+       EXISTS (SELECT 1 FROM users u WHERE u.id = ua.user_id AND u.status = 'disabled')
 FROM user_affiliates ua
 CROSS JOIN LATERAL (
     SELECT COALESCE(SUM(l.amount), 0)::double precision AS quota,
@@ -70,7 +71,7 @@ func scanWithdrawEligibility(ctx context.Context, q affiliateQueryExecer, userID
 		}
 		return e, nil
 	}
-	if err := rows.Scan(&e.AvailableQuota, &e.CashQuota, &e.CashCNY, &e.WithdrawnQuota, &e.WithdrawnCNY, &e.MonthCount, &e.HasPending); err != nil {
+	if err := rows.Scan(&e.AvailableQuota, &e.CashQuota, &e.CashCNY, &e.WithdrawnQuota, &e.WithdrawnCNY, &e.MonthCount, &e.HasPending, &e.UserDisabled); err != nil {
 		return nil, err
 	}
 	return e, rows.Close()
@@ -247,7 +248,7 @@ func (r *affiliateWithdrawRepository) List(ctx context.Context, f service.Withdr
 	args = append(args, f.PageSize, (f.Page-1)*f.PageSize)
 	cols := strings.ReplaceAll("w."+withdrawColumns, ", ", ", w.")
 	rows, err := r.client.QueryContext(ctx, `
-SELECT `+cols+`, COALESCE(u.email, ''), COALESCE(u.username, '')
+SELECT `+cols+`, COALESCE(u.email, ''), COALESCE(u.username, ''), COALESCE(u.status, '')
 FROM affiliate_withdrawals w JOIN users u ON u.id = w.user_id
 WHERE `+cond+`
 ORDER BY (w.status = 'pending') DESC, w.created_at DESC, w.id DESC
@@ -259,7 +260,7 @@ LIMIT $`+fmt.Sprint(len(args)-1)+` OFFSET $`+fmt.Sprint(len(args)), args...)
 	out := []service.AffiliateWithdrawal{}
 	for rows.Next() {
 		var w service.AffiliateWithdrawal
-		if err := scanWithdrawal(rows, &w, &w.UserEmail, &w.Username); err != nil {
+		if err := scanWithdrawal(rows, &w, &w.UserEmail, &w.Username, &w.UserStatus); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, w)
@@ -278,12 +279,22 @@ func (r *affiliateWithdrawRepository) MarkPaid(ctx context.Context, id int64, ad
 UPDATE affiliate_withdrawals
 SET status = 'paid', admin_note = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW()
 WHERE id = $1 AND status = 'pending'
+  AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = affiliate_withdrawals.user_id AND u.status = 'disabled')
 RETURNING `+withdrawColumns, id, adminNote, reviewerID)
 	if err != nil {
 		return nil, fmt.Errorf("mark withdrawal paid: %w", err)
 	}
 	w, err := scanOneWithdrawal(rows)
 	if errors.Is(err, service.ErrWithdrawNotFound) {
+		var disabled bool
+		if err := scanSingleRow(ctx, r.client, `
+SELECT EXISTS (SELECT 1 FROM affiliate_withdrawals w JOIN users u ON u.id = w.user_id
+               WHERE w.id = $1 AND w.status = 'pending' AND u.status = 'disabled')`, []any{id}, &disabled); err != nil {
+			return nil, err
+		}
+		if disabled {
+			return nil, service.ErrWithdrawUserDisabled
+		}
 		return nil, r.notPendingOrMissing(ctx, id, 0)
 	}
 	return w, err

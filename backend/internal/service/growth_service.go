@@ -72,6 +72,9 @@ type GrowthSettings struct {
 	// Trial balance for someone who signs up with an invite (0 = off), and how many a day at most.
 	InviteeSignupBonus      float64 `json:"invitee_signup_bonus"`
 	InviteeSignupDailyLimit int     `json:"invitee_signup_daily_limit"`
+	// 注册试用去重: a browser or IP /24 that got the sign-up default subscriptions within this many
+	// days gets only the default balance on its next sign-up (0 = off). See SignupTrialGuard.
+	SignupTrialDedupDays int `json:"signup_trial_dedup_days"`
 	// 老用户锁价: buyers keep a plan's price on renewal while their subscription hasn't been
 	// expired for more than PriceLockGraceDays.
 	PriceLockEnabled   bool     `json:"price_lock_enabled"`
@@ -210,6 +213,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
 		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
+		SettingKeyGrowthSignupTrialDedupDays,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("get growth settings: %w", err)
@@ -228,6 +232,7 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		InviteeBonusCap:         math.Max(0, parseFloatOr(vals[SettingKeyGrowthInviteeBonusCap], 0)),
 		InviteeSignupBonus:      clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupBonus], 0), 0, growthSignupBonusMax),
 		InviteeSignupDailyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupDailyLimit], growthSignupDailyLimitDefault), 1, growthSignupDailyLimitMax)),
+		SignupTrialDedupDays:    int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupTrialDedupDays], growthSignupTrialDedupDaysDefault), 0, growthSignupTrialDedupDaysMax)),
 		PriceLockEnabled:        vals[SettingKeyPriceLockEnabled] != "false", // on unless turned off
 		PriceLockGraceDays:      int(clampFloat(parseFloatOr(vals[SettingKeyPriceLockGraceDays], growthPriceLockGraceDefault), 0, growthPriceLockGraceMax)),
 		LeaderboardEnabled:      vals[SettingKeyGrowthLeaderboardEnabled] != "false", // on unless turned off
@@ -274,6 +279,9 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if in.InviteeSignupDailyLimit > growthSignupDailyLimitMax {
 		return nil, infraerrors.BadRequest("INVALID_INVITEE_SIGNUP_LIMIT", "每天发放人数最多 1000（At most 1000 trial credits a day）")
 	}
+	if in.SignupTrialDedupDays < 0 || in.SignupTrialDedupDays > growthSignupTrialDedupDaysMax {
+		return nil, infraerrors.BadRequest("INVALID_SIGNUP_TRIAL_DEDUP_DAYS", "注册试用去重天数需在 0 到 365 之间，0 表示不去重（Sign-up trial dedup must be 0–365 days）")
+	}
 	if in.PriceLockGraceDays < 0 || in.PriceLockGraceDays > growthPriceLockGraceMax {
 		return nil, infraerrors.BadRequest("INVALID_PRICE_LOCK_GRACE", "锁价宽限期需在 0 到 365 天之间（Price lock grace must be 0–365 days）")
 	}
@@ -304,6 +312,7 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthLeaderboardEnabled:     strconv.FormatBool(in.LeaderboardEnabled),
 		SettingKeyGrowthSignupBonus:            strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
 		SettingKeyGrowthSignupDailyLimit:       strconv.Itoa(in.InviteeSignupDailyLimit),
+		SettingKeyGrowthSignupTrialDedupDays:   strconv.Itoa(in.SignupTrialDedupDays),
 		SettingKeyPriceLockEnabled:             strconv.FormatBool(in.PriceLockEnabled),
 		SettingKeyPriceLockGraceDays:           strconv.Itoa(in.PriceLockGraceDays),
 		SettingKeyEduVerifyEnabled:             strconv.FormatBool(in.EduVerifyEnabled),

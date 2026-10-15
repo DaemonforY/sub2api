@@ -129,4 +129,21 @@ func TestAffiliateWithdrawRepository_Lifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, mine, 2)
 	require.Equal(t, w2.ID, mine[0].ID)
+
+	// A banned user: the plan sees it, the admin list flags it, and a pending one can only be rejected.
+	w3, err := repo.Create(ctx, inviter.ID, payee, time.Now().AddDate(0, 1, 0), func(*service.WithdrawEligibility) (float64, error) { return 1, nil })
+	require.NoError(t, err)
+	require.NoError(t, client.User.UpdateOneID(inviter.ID).SetStatus(service.StatusDisabled).Exec(ctx))
+	e, err = repo.Eligibility(ctx, inviter.ID, month)
+	require.NoError(t, err)
+	require.True(t, e.UserDisabled)
+	list, _, err = repo.List(ctx, service.WithdrawFilter{Status: service.WithdrawStatusPending, Search: inviter.Email, Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, service.StatusDisabled, list[0].UserStatus)
+	_, err = repo.MarkPaid(ctx, w3.ID, "", inviter.ID)
+	require.ErrorIs(t, err, service.ErrWithdrawUserDisabled)
+	rejected, err := repo.Return(ctx, w3.ID, service.WithdrawStatusRejected, "账号已封禁", inviter.ID, 0)
+	require.NoError(t, err)
+	require.Equal(t, service.WithdrawStatusRejected, rejected.Status)
 }
