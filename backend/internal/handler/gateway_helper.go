@@ -52,6 +52,7 @@ func SetClaudeCodeClientContext(c *gin.Context, body []byte, parsedReq *service.
 	// Fast path：非 Claude CLI UA 直接判定 false，避免热路径二次 JSON 反序列化。
 	if !claudeCodeValidator.ValidateUserAgent(ua) {
 		ctx := service.SetClaudeCodeClient(c.Request.Context(), false)
+		ctx = service.SetClaudeDesktopClient(ctx, service.IsClaudeDesktopUserAgent(ua))
 		c.Request = c.Request.WithContext(ctx)
 		return
 	}

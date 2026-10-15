@@ -3249,6 +3249,50 @@ func TestGatewayService_SelectAccountWithLoadAwareness(t *testing.T) {
 		require.ErrorIs(t, err, ErrClaudeCodeOnly)
 	})
 
+	t.Run("ClaudeCode限制-放行Claude桌面App", func(t *testing.T) {
+		groupID := int64(63)
+
+		repo := &mockAccountRepoForPlatform{
+			accounts: []Account{
+				{ID: 1, Platform: PlatformAnthropic, Priority: 1, Status: StatusActive, Schedulable: true},
+			},
+			accountsByID: map[int64]*Account{},
+		}
+		for i := range repo.accounts {
+			repo.accountsByID[repo.accounts[i].ID] = &repo.accounts[i]
+		}
+
+		groupRepo := &mockGroupRepoForGateway{
+			groups: map[int64]*Group{
+				groupID: {
+					ID:             groupID,
+					Platform:       PlatformAnthropic,
+					Status:         StatusActive,
+					Hydrated:       true,
+					ClaudeCodeOnly: true,
+				},
+			},
+		}
+
+		cfg := testConfig()
+		cfg.Gateway.Scheduling.LoadBatchEnabled = false
+
+		svc := &GatewayService{
+			accountRepo:        repo,
+			groupRepo:          groupRepo,
+			cache:              &mockGatewayCacheForPlatform{},
+			cfg:                cfg,
+			concurrencyService: nil,
+		}
+
+		desktopCtx := SetClaudeDesktopClient(ctx, true)
+		result, err := svc.SelectAccountWithLoadAwareness(desktopCtx, &groupID, "", "claude-haiku-4-5", nil, "", int64(0))
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.NotNil(t, result.Account)
+		require.Equal(t, int64(1), result.Account.ID)
+	})
+
 	t.Run("负载可用但无法获取槽位-兜底等待", func(t *testing.T) {
 		repo := &mockAccountRepoForPlatform{
 			accounts: []Account{

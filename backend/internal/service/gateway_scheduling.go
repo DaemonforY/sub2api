@@ -910,7 +910,8 @@ func (s *GatewayService) resolveGatewayGroup(ctx context.Context, groupID *int64
 			return nil, nil, err
 		}
 
-		if !group.ClaudeCodeOnly || IsClaudeCodeClient(ctx) {
+		// Claude 桌面 App 的第三方网关模式也放行；其他客户端照样拒绝或走降级分组。
+		if !group.ClaudeCodeOnly || IsClaudeCodeClient(ctx) || IsClaudeDesktopClient(ctx) {
 			return group, &currentID, nil
 		}
 

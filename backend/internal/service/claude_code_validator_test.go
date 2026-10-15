@@ -574,3 +574,27 @@ func TestSetGetClaudeCodeVersion(t *testing.T) {
 	ctx = SetClaudeCodeVersion(ctx, "2.1.63")
 	require.Equal(t, "2.1.63", GetClaudeCodeVersion(ctx))
 }
+
+func TestIsClaudeDesktopUserAgent(t *testing.T) {
+	cases := []struct {
+		name string
+		ua   string
+		want bool
+	}{
+		{"windows desktop", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/2.2553.1 Chrome/152.0.7977.76 Electron/44.2.0 Safari/537.36 MSIX", true},
+		{"mac desktop", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Claude/1.0.3218 Chrome/138.0.7204.100 Electron/37.2.3 Safari/537.36", true},
+		{"plain chrome", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36", false},
+		{"other electron app", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) CherryStudio/1.5.0 Chrome/138.0 Electron/37.2.3 Safari/537.36", false},
+		{"claude without electron", "Claude/2.2553.1", false},
+		{"claude-cli", "claude-cli/2.1.300 (external, cli)", false},
+		{"prefixed product name", "Mozilla/5.0 NotClaude/2.1 Electron/44.2.0", false},
+		{"empty", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsClaudeDesktopUserAgent(tc.ua); got != tc.want {
+				t.Fatalf("IsClaudeDesktopUserAgent(%q) = %v, want %v", tc.ua, got, tc.want)
+			}
+		})
+	}
+}

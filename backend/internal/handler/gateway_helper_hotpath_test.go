@@ -198,6 +198,16 @@ func TestSetClaudeCodeClientContext_FastPathAndStrictPath(t *testing.T) {
 
 		SetClaudeCodeClientContext(c, validClaudeCodeBodyJSON(), nil)
 		require.False(t, service.IsClaudeCodeClient(c.Request.Context()))
+		require.False(t, service.IsClaudeDesktopClient(c.Request.Context()))
+	})
+
+	t.Run("claude_desktop_user_agent_sets_desktop_only", func(t *testing.T) {
+		c, _ := newHelperTestContext(http.MethodPost, "/v1/messages")
+		c.Request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Claude/2.2553.1 Chrome/152.0.7977.76 Electron/44.2.0 Safari/537.36 MSIX")
+
+		SetClaudeCodeClientContext(c, []byte(`{"model":"claude-haiku-4-5"}`), nil)
+		require.False(t, service.IsClaudeCodeClient(c.Request.Context()))
+		require.True(t, service.IsClaudeDesktopClient(c.Request.Context()))
 	})
 
 	t.Run("cli_non_messages_path_sets_true", func(t *testing.T) {

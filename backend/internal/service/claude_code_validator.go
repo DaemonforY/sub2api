@@ -21,6 +21,11 @@ var (
 	// 带捕获组的版本提取正则
 	claudeCodeUAVersionPattern = regexp.MustCompile(`(?i)^claude-cli/(\d+\.\d+\.\d+)`)
 
+	// Claude 桌面 App 的 User-Agent 同时带 Claude/x.y 和 Electron/x 两个产品标记，例如
+	// "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ... Claude/2.2553.1 Chrome/152.0 Electron/44.2.0 Safari/537.36"
+	claudeDesktopUAProductPattern  = regexp.MustCompile(`(?:^|\s)Claude/\d+\.\d+`)
+	claudeDesktopUAElectronPattern = regexp.MustCompile(`(?:^|\s)Electron/\d+`)
+
 	// System prompt 相似度阈值（默认 0.5，和 claude-relay-service 一致）
 	systemPromptThreshold = 0.5
 )
@@ -353,6 +358,24 @@ func IsClaudeCodeClient(ctx context.Context) bool {
 		return v
 	}
 	return false
+}
+
+// IsClaudeDesktopUserAgent 判断 User-Agent 是否来自 Claude 桌面 App（需同时带 Claude/ 和 Electron/ 标记）
+func IsClaudeDesktopUserAgent(ua string) bool {
+	return claudeDesktopUAProductPattern.MatchString(ua) && claudeDesktopUAElectronPattern.MatchString(ua)
+}
+
+// IsClaudeDesktopClient 从 context 中获取 Claude 桌面 App 客户端标识
+func IsClaudeDesktopClient(ctx context.Context) bool {
+	if v, ok := ctx.Value(ctxkey.IsClaudeDesktopClient).(bool); ok {
+		return v
+	}
+	return false
+}
+
+// SetClaudeDesktopClient 将 Claude 桌面 App 客户端标识设置到 context 中
+func SetClaudeDesktopClient(ctx context.Context, isDesktop bool) context.Context {
+	return context.WithValue(ctx, ctxkey.IsClaudeDesktopClient, isDesktop)
 }
 
 // SetClaudeCodeClient 将 Claude Code 客户端标识设置到 context 中

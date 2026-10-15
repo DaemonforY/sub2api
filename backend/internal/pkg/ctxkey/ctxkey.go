@@ -44,6 +44,10 @@ const (
 	// IsClaudeCodeClient 标识当前请求是否来自 Claude Code 客户端
 	IsClaudeCodeClient Key = "ctx_is_claude_code_client"
 
+	// IsClaudeDesktopClient 标识当前请求是否来自 Claude 桌面 App（Electron 客户端的第三方网关模式）。
+	// claude_code_only 分组额外放行它，但它不是 Claude Code：不参与版本检查和 Claude Code 专属处理。
+	IsClaudeDesktopClient Key = "ctx_is_claude_desktop_client"
+
 	// ThinkingEnabled 标识当前请求是否开启 thinking（用于 Antigravity 最终模型名推导与模型维度限流）
 	ThinkingEnabled Key = "ctx_thinking_enabled"
 
