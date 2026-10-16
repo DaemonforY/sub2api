@@ -198,7 +198,9 @@ func beginUpstreamResponseModelObservation(c *gin.Context) *upstreamResponseMode
 	observer := &upstreamResponseModelObserver{}
 	if c != nil {
 		// A fresh accumulator per attempt, so after a failover only the final attempt's reply is kept.
-		if contentCaptureRequestFromContext(c) != nil {
+		if archiveRequestFromContext(c) != nil {
+			observer.content = newArchiveContentAccumulator()
+		} else if contentCaptureRequestFromContext(c) != nil {
 			observer.content = newContentAccumulator()
 		}
 		c.Set(upstreamResponseModelObserverContextKey, observer)

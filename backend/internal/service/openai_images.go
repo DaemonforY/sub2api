@@ -914,6 +914,9 @@ func (s *OpenAIGatewayService) handleOpenAIImagesNonStreamingResponse(
 		}
 	}
 	c.Data(resp.StatusCode, contentType, body)
+	if resp.StatusCode < http.StatusMultipleChoices {
+		ObserveArchiveImagesPayload(c, body) // 对话归档 (no-op unless archived)
+	}
 
 	usage, _ := extractOpenAIUsageFromJSONBytes(body)
 	return usage, extractOpenAIImageCountFromJSONBytes(body), collectOpenAIResponseImageOutputSizesFromJSONBytes(body), nil
@@ -955,6 +958,7 @@ func (s *OpenAIGatewayService) handleOpenAIImagesStreamingResponse(
 		fallbackBytes = 0
 		mergeOpenAIUsage(&usage, dataBytes)
 		imageCounter.AddSSEData(dataBytes)
+		ObserveArchiveImagesPayload(c, dataBytes)
 	}
 
 	flushSSEEvent := func() {
@@ -1005,6 +1009,7 @@ func (s *OpenAIGatewayService) handleOpenAIImagesStreamingResponse(
 		}
 		mergeOpenAIUsage(&usage, body)
 		imageCounter.AddJSONResponse(body)
+		ObserveArchiveImagesPayload(c, body)
 	}
 
 	streamInterval := s.openAIImageStreamDataInterval()

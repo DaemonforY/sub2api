@@ -73,6 +73,12 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", err.Error())
 		return
 	}
+	// 对话归档: JSON keeps a body reference; multipart edits keep only the prompt (no input images).
+	if parsed.Multipart {
+		service.SetArchiveRequestPrompt(c, parsed.Prompt)
+	} else {
+		service.SetArchiveRequestBody(c, body)
+	}
 	requestModel := parsed.Model
 	ensureCompositeTargetPlatform(c, apiKey, requestModel)
 	clientRequestModel := clientRequestedModel(c, requestModel)

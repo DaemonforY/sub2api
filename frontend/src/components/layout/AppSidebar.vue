@@ -736,6 +736,21 @@ const ChatIcon = {
     )
 }
 
+const ArchiveIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z'
+        })
+      ]
+    )
+}
+
 const DocumentIcon = {
   render: () =>
     h(
@@ -965,6 +980,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/assistant', label: t('nav.assistantAdmin'), icon: ChatIcon, hideInSimpleMode: true },
     { path: '/admin/analytics', label: t('nav.analyticsAdmin'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/admin/user-insights', label: t('nav.userInsightsAdmin'), icon: UsersIcon, hideInSimpleMode: true },
+    { path: '/admin/conversation-archive', label: t('nav.conversationArchiveAdmin'), icon: ArchiveIcon, hideInSimpleMode: true },
     { path: '/admin/channel-links', label: t('nav.channelLinksAdmin'), icon: GlobeIcon, hideInSimpleMode: true },
     { path: '/admin/geo', label: t('nav.geoAdmin'), icon: SparklesIcon, hideInSimpleMode: true },
     { path: '/admin/content', label: t('nav.contentAdmin'), icon: DocumentIcon, hideInSimpleMode: true },

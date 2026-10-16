@@ -768,6 +768,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/conversation-archive',
+    name: 'AdminConversationArchive',
+    component: () => import('@/views/admin/ConversationArchiveView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Conversation archive',
+      titleKey: 'admin.conversationArchive.title',
+      descriptionKey: 'admin.conversationArchive.description'
+    }
+  },
+  {
     path: '/admin/canvas-membership',
     name: 'AdminCanvasMembership',
     component: () => import('@/views/admin/CanvasMembershipView.vue'),

@@ -102,7 +102,9 @@ type Handlers struct {
 	Analytics        *AnalyticsHandler
 	UserRisk         *UserRiskHandler
 	ContentLog       *ContentLogHandler
-	CanvasMembership *CanvasMembershipHandler
+	// ConversationArchive is 对话归档 (admin only).
+	ConversationArchive *ConversationArchiveHandler
+	CanvasMembership    *CanvasMembershipHandler
 }
 
 // BuildInfo contains build-time information

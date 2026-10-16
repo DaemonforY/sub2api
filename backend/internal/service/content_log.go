@@ -297,7 +297,7 @@ func (s *ContentLogService) RecordUsageContent(usageLog *UsageLog, capture *Cont
 		return
 	}
 	defer func() { _ = recover() }()
-	if !s.IsTarget(usageLog.UserID) {
+	if capture.archiveOnly || !s.IsTarget(usageLog.UserID) {
 		return
 	}
 	row := &RequestContentLog{

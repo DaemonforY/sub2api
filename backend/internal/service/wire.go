@@ -1189,6 +1189,7 @@ var ProviderSet = wire.NewSet(
 	NewSignupTrialGuard,
 	ProvideUserShadowService,
 	ProvideContentLogService,
+	ProvideConversationArchiveService,
 	ProvideUserRiskService,
 	NewUserAppStateService,
 	ProvideUserAppBlobService,

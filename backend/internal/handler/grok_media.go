@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -95,6 +96,7 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 			h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Request body is empty")
 			return
 		}
+		archiveGrokImagesRequest(c, endpoint, body)
 	}
 
 	contentType := c.GetHeader("Content-Type")
@@ -725,4 +727,22 @@ func recordGrokMediaUsage(
 			reqLog.Debug("grok_media.record_usage_failed", zap.Error(err))
 		}
 	})
+}
+
+// archiveGrokImagesRequest marks Grok image requests for 对话归档 (JSON: a body reference;
+// multipart edits: the prompt field only, read from the bytes already in memory). Videos are not
+// archived. No-op while archiving is off.
+func archiveGrokImagesRequest(c *gin.Context, endpoint service.GrokMediaEndpoint, body []byte) {
+	if !service.ArchiveCaptureEnabled() {
+		return
+	}
+	if endpoint != service.GrokMediaEndpointImagesGenerations && endpoint != service.GrokMediaEndpointImagesEdits {
+		return
+	}
+	defer func() { _ = recover() }()
+	if mediaType, params, err := mime.ParseMediaType(c.GetHeader("Content-Type")); err == nil && strings.HasPrefix(mediaType, "multipart/") {
+		service.SetArchiveRequestPrompt(c, multipartPromptField(body, params["boundary"]))
+		return
+	}
+	service.SetArchiveRequestBody(c, body)
 }

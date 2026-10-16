@@ -267,7 +267,9 @@ export default {
           view: 'Viewed',
           enable: 'Enabled',
           disable: 'Stopped',
-          config: 'Settings'
+          config: 'Settings',
+          archive_view: 'Viewed archive',
+          archive_config: 'Archive settings'
         },
         redactOff: 'Turned secret masking off',
         redactOn: 'Turned secret masking on'

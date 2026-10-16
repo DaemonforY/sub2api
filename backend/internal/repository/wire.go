@@ -117,6 +117,8 @@ var ProviderSet = wire.NewSet(
 	NewSignupFingerprintRepository,
 	NewUserShadowRepository,
 	NewContentLogRepository,
+	NewConversationArchiveRepository,
+	NewArchiveDedupeStore,
 	NewUserRiskRepository,
 	NewActivationReminderRepository,
 	NewAbandonedOrderRepository,
@@ -188,6 +190,8 @@ var ProviderSet = wire.NewSet(
 
 	// Image storage (async image task result offload)
 	ProvideImageStorageFactory,
+	// 对话归档 bucket (rebuilt whenever its settings change)
+	ProvideArchiveObjectStoreFactory,
 
 	// HTTP service ports (DI Strategy A: return interface directly)
 	NewTurnstileVerifier,

@@ -59,6 +59,7 @@ func (h *GatewayHandler) ChatCompletions(c *gin.Context) {
 		h.chatCompletionsErrorResponse(c, http.StatusBadRequest, "invalid_request_error", "Request body is empty")
 		return
 	}
+	service.SetArchiveRequestBody(c, body) // 对话归档: keeps a reference (no copy); no-op while archiving is off
 
 	setOpsRequestContext(c, "", false)
 

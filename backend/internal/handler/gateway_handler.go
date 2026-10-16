@@ -156,6 +156,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Request body is empty")
 		return
 	}
+	service.SetArchiveRequestBody(c, body) // 对话归档: keeps a reference (no copy); no-op while archiving is off
 
 	setOpsRequestContext(c, "", false)
 

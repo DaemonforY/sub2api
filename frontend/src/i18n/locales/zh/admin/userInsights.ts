@@ -267,7 +267,9 @@ export default {
           view: '查看',
           enable: '开启',
           disable: '停止',
-          config: '设置'
+          config: '设置',
+          archive_view: '查看归档',
+          archive_config: '归档设置'
         },
         redactOff: '关闭密钥遮盖',
         redactOn: '开启密钥遮盖'

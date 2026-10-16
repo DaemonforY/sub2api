@@ -803,6 +803,8 @@ type GatewayService struct {
 
 	// contentLog receives captured request content (请求内容日志); nil-safe.
 	contentLog ContentLogRecorder
+	// archive is 对话归档 (nil-safe; only requests captured for it are queued).
+	archive ConversationArchiveRecorder
 }
 
 // NewGatewayService creates a new GatewayService

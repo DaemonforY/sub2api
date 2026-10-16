@@ -1135,6 +1135,7 @@ func (s *OpenAIGatewayService) writeOpenAIImagesStreamEvent(c *gin.Context, flus
 		return err
 	}
 	flusher.Flush()
+	ObserveArchiveImagesPayload(c, payload) // 对话归档: completed events only (partials ignored)
 	return nil
 }
 
@@ -1381,6 +1382,7 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthNonStreamingResponse(
 	}
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	c.Data(resp.StatusCode, "application/json; charset=utf-8", responseBody)
+	ObserveArchiveImagesPayload(c, responseBody) // 对话归档 (no-op unless archived)
 	return usage, len(results), openAIResponsesImageResultSizes(results), nil
 }
 

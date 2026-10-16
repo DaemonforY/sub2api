@@ -227,6 +227,7 @@ export default {
     canvasMembershipAdmin: '创作会员',
     analyticsAdmin: '数据看板',
     userInsightsAdmin: '用户画像',
+    conversationArchiveAdmin: '对话归档',
     channelLinksAdmin: '渠道链接',
     geoAdmin: 'GEO 监测',
     contentAdmin: '内容运营',

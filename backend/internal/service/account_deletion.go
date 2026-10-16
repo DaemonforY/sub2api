@@ -36,6 +36,22 @@ type AccountDeletionService struct {
 	users UserRepository
 	admin AdminService
 	repo  AccountDeletionRepository
+	// archive removes the account's 对话归档 objects (nil when not wired).
+	archive ArchivePurger
+}
+
+// ArchivePurger removes a deleted account's 对话归档 objects: QueueUserPurge persists the purge
+// before the account goes (an error stops the deletion), RunPendingPurges starts it afterwards.
+type ArchivePurger interface {
+	QueueUserPurge(ctx context.Context, userID int64) error
+	RunPendingPurges()
+}
+
+// SetArchivePurger hooks 对话归档 into account deletion (wired at startup).
+func (s *AccountDeletionService) SetArchivePurger(p ArchivePurger) {
+	if s != nil {
+		s.archive = p
+	}
 }
 
 func NewAccountDeletionService(users UserRepository, admin AdminService, repo AccountDeletionRepository) *AccountDeletionService {
@@ -63,11 +79,19 @@ func (s *AccountDeletionService) DeleteSelf(ctx context.Context, userID int64, c
 	if pending {
 		return ErrAccountDeletionPending
 	}
+	if s.archive != nil {
+		if err := s.archive.QueueUserPurge(ctx, userID); err != nil {
+			return err
+		}
+	}
 	if err := s.repo.PurgeOwnedContent(ctx, userID); err != nil {
 		return err
 	}
 	if err := s.admin.DeleteUser(ctx, userID); err != nil {
 		return err
+	}
+	if s.archive != nil {
+		s.archive.RunPendingPurges()
 	}
 	// The account is already gone; a failed cleanup must not tell the user it wasn't.
 	if err := s.repo.Anonymize(ctx, userID); err != nil {

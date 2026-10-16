@@ -227,6 +227,7 @@ export default {
     canvasMembershipAdmin: 'Creator membership',
     analyticsAdmin: 'Analytics',
     userInsightsAdmin: 'User insights',
+    conversationArchiveAdmin: 'Conversation archive',
     channelLinksAdmin: 'Channel links',
     geoAdmin: 'GEO monitor',
     contentAdmin: 'Content engine',

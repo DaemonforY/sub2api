@@ -1359,6 +1359,9 @@ func writeGrokMediaResponse(c *gin.Context, resp *http.Response, body []byte, fi
 		contentType = "application/json"
 	}
 	c.Data(resp.StatusCode, contentType, body)
+	if resp.StatusCode < http.StatusMultipleChoices {
+		ObserveArchiveImagesPayload(c, body) // 对话归档 (no-op unless the image request is archived)
+	}
 }
 
 func writeGrokMediaContentResponse(c *gin.Context, resp *http.Response) error {

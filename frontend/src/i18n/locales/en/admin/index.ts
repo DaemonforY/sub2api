@@ -20,6 +20,7 @@ import assistant from './assistant'
 import opsAgent from './opsAgent'
 import analytics from './analytics'
 import userInsights from './userInsights'
+import conversationArchive from './conversationArchive'
 import geo from './geo'
 import content from './content'
 import contentDesk from './contentDesk'
@@ -47,6 +48,7 @@ export default {
   ...opsAgent,
   ...analytics,
   ...userInsights,
+  ...conversationArchive,
   ...geo,
   ...content,
   ...contentDesk,

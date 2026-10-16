@@ -358,7 +358,7 @@ function accessDetail(a: ContentLogAccess): string {
 }
 
 function accessActionLabel(a: ContentLogAccessAction | string): string {
-  return ['view', 'enable', 'disable', 'config'].includes(a) ? t(`admin.userInsights.contentLog.access.actions.${a}`) : a
+  return ['view', 'enable', 'disable', 'config', 'archive_view', 'archive_config'].includes(a) ? t(`admin.userInsights.contentLog.access.actions.${a}`) : a
 }
 
 // ---------- targets ----------

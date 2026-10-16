@@ -45,6 +45,13 @@ type ContentCapture struct {
 	UserText  string
 	ToolCalls []ContentToolCall
 	ReplyHead string
+
+	// Archive is the 对话归档 capture (request body reference + the full response); nil unless
+	// archiving was on when the request arrived.
+	Archive *ArchiveCapture
+	// archiveOnly is set when the request was captured for the archive only (not a 请求内容日志
+	// target): the content log ignores it.
+	archiveOnly bool
 }
 
 type contentCaptureRequest struct {
@@ -82,14 +89,33 @@ func ContentCaptureSnapshot(c *gin.Context) (out *ContentCapture) {
 		}
 	}()
 	req := contentCaptureRequestFromContext(c)
-	if req == nil {
+	archive := archiveRequestFromContext(c)
+	if req == nil && archive == nil {
 		return nil
 	}
-	out = &ContentCapture{UserText: req.userText}
+	out = &ContentCapture{}
+	if req != nil {
+		out.UserText = req.userText
+	} else {
+		out.archiveOnly = true
+	}
+	var acc *contentAccumulator
 	if observer := upstreamResponseModelObserverFromContext(c); observer != nil && observer.content != nil {
-		out.ToolCalls, out.ReplyHead = observer.content.snapshot()
+		acc = observer.content
+		if req != nil {
+			out.ToolCalls, out.ReplyHead = acc.snapshot()
+		}
+	}
+	if archive != nil {
+		out.Archive = archive.snapshot(acc)
 	}
 	return out
+}
+
+// contentCaptureActive reports whether the request needs a response accumulator (请求内容日志
+// target or 对话归档 on).
+func contentCaptureActive(c *gin.Context) bool {
+	return contentCaptureRequestFromContext(c) != nil || archiveRequestFromContext(c) != nil
 }
 
 // ObserveContentFinalResponse feeds a buffered terminal Responses object (the OpenAI-compat
@@ -111,7 +137,7 @@ func (o *upstreamResponseModelObserver) ObserveContentFinalResponse(final any) {
 // upstream response model (Anthropic upstream behind /v1/chat/completions and /v1/responses), and
 // only when the request is captured, so model observation and billing there stay as they were.
 func beginContentCaptureOnly(c *gin.Context) {
-	if contentCaptureRequestFromContext(c) != nil {
+	if contentCaptureActive(c) {
 		beginUpstreamResponseModelObservation(c)
 	}
 }
@@ -136,24 +162,49 @@ type contentAccumulator struct {
 
 	tools      []*contentToolAcc
 	toolsByKey map[int64]*contentToolAcc
+	toolsCut   bool // a tool call was not kept because of the count cap
 	sawItems   bool // Responses output items were seen (streamed); the terminal event is then redundant
+
+	// Caps: the content-log sizes, or the larger archive sizes when arch is set.
+	textMax  int
+	argsMax  int
+	maxTools int
+	// arch keeps what only 对话归档 needs (raw output items, images, status); nil otherwise.
+	arch *archiveResponseAcc
 }
 
 type contentToolAcc struct {
-	name string
-	args []byte
-	full bool
+	name   string
+	callID string
+	args   []byte
+	max    int
+	full   bool
 }
 
 func newContentAccumulator() *contentAccumulator {
-	return &contentAccumulator{}
+	return &contentAccumulator{
+		textMax:  contentCaptureReplyMaxBytes,
+		argsMax:  contentCaptureToolArgsMaxBytes,
+		maxTools: ContentLogMaxToolCalls,
+	}
+}
+
+// newArchiveContentAccumulator keeps the full reply within the archive caps; the content log
+// still trims its copy to its own sizes in snapshot().
+func newArchiveContentAccumulator() *contentAccumulator {
+	return &contentAccumulator{
+		textMax:  archiveResponseTextMaxBytes,
+		argsMax:  archiveToolArgsMaxBytes,
+		maxTools: archiveMaxToolCalls,
+		arch:     &archiveResponseAcc{},
+	}
 }
 
 func (a *contentAccumulator) appendText(s string) {
 	if a.textFull || s == "" {
 		return
 	}
-	room := contentCaptureReplyMaxBytes - len(a.text)
+	room := a.textMax - len(a.text)
 	if len(s) >= room {
 		s = s[:room]
 		a.textFull = true
@@ -165,7 +216,7 @@ func (t *contentToolAcc) appendArgs(s string) {
 	if t == nil || t.full || s == "" {
 		return
 	}
-	room := contentCaptureToolArgsMaxBytes - len(t.args)
+	room := t.max - len(t.args)
 	if len(s) >= room {
 		s = s[:room]
 		t.full = true
@@ -175,10 +226,11 @@ func (t *contentToolAcc) appendArgs(s string) {
 
 // addTool starts a new tool call; nil when the cap is reached.
 func (a *contentAccumulator) addTool(name string) *contentToolAcc {
-	if len(a.tools) >= ContentLogMaxToolCalls {
+	if len(a.tools) >= a.maxTools {
+		a.toolsCut = true
 		return nil
 	}
-	t := &contentToolAcc{name: truncateBytesUTF8(strings.TrimSpace(name), contentCaptureToolNameMaxBytes)}
+	t := &contentToolAcc{name: truncateBytesUTF8(strings.TrimSpace(name), contentCaptureToolNameMaxBytes), max: a.argsMax}
 	a.tools = append(a.tools, t)
 	return t
 }
@@ -204,14 +256,22 @@ func (a *contentAccumulator) snapshot() ([]ContentToolCall, string) {
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	calls := make([]ContentToolCall, 0, len(a.tools))
+	// Always the content-log sizes, whatever the accumulator kept for the archive.
+	calls := make([]ContentToolCall, 0, min(len(a.tools), ContentLogMaxToolCalls))
 	for _, t := range a.tools {
 		if t == nil {
 			continue
 		}
-		calls = append(calls, ContentToolCall{Name: t.name, Arguments: strings.ToValidUTF8(string(t.args), "")})
+		if len(calls) >= ContentLogMaxToolCalls {
+			break
+		}
+		args := t.args
+		if len(args) > contentCaptureToolArgsMaxBytes {
+			args = args[:contentCaptureToolArgsMaxBytes]
+		}
+		calls = append(calls, ContentToolCall{Name: t.name, Arguments: strings.ToValidUTF8(string(args), "")})
 	}
-	return calls, strings.ToValidUTF8(string(a.text), "")
+	return calls, strings.ToValidUTF8(truncateBytesUTF8(string(a.text), contentCaptureReplyMaxBytes), "")
 }
 
 // feedOpenAI handles OpenAI Responses events (typed), chat completion chunks and non-stream bodies
@@ -245,6 +305,7 @@ func (a *contentAccumulator) feedOpenAI(payload []byte, eventType string) {
 	if output := gjson.GetBytes(trimmed, "output"); output.IsArray() {
 		// Non-stream Responses body.
 		if len(a.tools) == 0 && len(a.text) == 0 {
+			a.arch.setStatus(archiveStatusForResponsesEvent("", gjson.GetBytes(trimmed, "status").String()))
 			a.feedResponsesOutput(output)
 		}
 	}
@@ -258,7 +319,8 @@ func (a *contentAccumulator) feedResponsesEvent(payload []byte, typ string) {
 	case "response.output_item.done":
 		a.sawItems = true
 		a.feedResponsesItem(gjson.GetBytes(payload, "item"))
-	case "response.completed", "response.done", "response.incomplete":
+	case "response.completed", "response.done", "response.incomplete", "response.failed":
+		a.arch.setStatus(archiveStatusForResponsesEvent(typ, gjson.GetBytes(payload, "response.status").String()))
 		// Passthrough streams may end with an empty output; only use it when nothing streamed.
 		if a.sawItems || a.textByDeltas || len(a.tools) > 0 {
 			return
@@ -281,6 +343,7 @@ func (a *contentAccumulator) feedResponsesItem(item gjson.Result) {
 	if !item.IsObject() {
 		return
 	}
+	a.arch.addResponsesItem(item)
 	itemType := item.Get("type").String()
 	switch itemType {
 	case "message":
@@ -322,6 +385,7 @@ func (a *contentAccumulator) feedResponsesItem(item gjson.Result) {
 	if t == nil {
 		return
 	}
+	t.callID = item.Get("call_id").String()
 	switch {
 	case item.Get("arguments").Exists():
 		t.appendArgs(item.Get("arguments").String())
@@ -339,6 +403,9 @@ func (a *contentAccumulator) feedResponsesItem(item gjson.Result) {
 func (a *contentAccumulator) feedChatChoices(choices gjson.Result) {
 	forEachArray(choices, func(choice gjson.Result) bool {
 		choiceIndex := choice.Get("index").Int()
+		if reason := choice.Get("finish_reason").String(); reason != "" {
+			a.arch.setStatus(archiveStatusForFinishReason(reason))
+		}
 		if delta := choice.Get("delta"); delta.Exists() {
 			if content := delta.Get("content"); content.Type == gjson.String {
 				a.appendText(content.String())
@@ -346,6 +413,9 @@ func (a *contentAccumulator) feedChatChoices(choices gjson.Result) {
 			forEachArray(delta.Get("tool_calls"), func(call gjson.Result) bool {
 				key := choiceIndex<<20 | call.Get("index").Int()
 				if t := a.toolForKey(key, call.Get("function.name").String()); t != nil {
+					if id := call.Get("id").String(); id != "" && t.callID == "" {
+						t.callID = id
+					}
 					t.appendArgs(call.Get("function.arguments").String())
 				}
 				return true
@@ -366,6 +436,7 @@ func (a *contentAccumulator) feedChatChoices(choices gjson.Result) {
 		}
 		forEachArray(message.Get("tool_calls"), func(call gjson.Result) bool {
 			if t := a.addTool(call.Get("function.name").String()); t != nil {
+				t.callID = call.Get("id").String()
 				t.appendArgs(call.Get("function.arguments").String())
 			}
 			return true
@@ -398,6 +469,9 @@ func (a *contentAccumulator) feedAnthropic(payload []byte) {
 		default:
 			if name := block.Get("name").String(); name != "" {
 				t := a.toolForKey(index, name)
+				if t != nil && t.callID == "" {
+					t.callID = block.Get("id").String()
+				}
 				if input := block.Get("input"); t != nil && input.IsObject() && len(input.Map()) > 0 {
 					t.appendArgs(input.Raw)
 				}
@@ -413,12 +487,20 @@ func (a *contentAccumulator) feedAnthropic(payload []byte) {
 				t.appendArgs(delta.Get("partial_json").String())
 			}
 		}
+	case "message_delta":
+		if reason := gjson.GetBytes(trimmed, "delta.stop_reason").String(); reason != "" {
+			a.arch.setStatus(archiveStatusForFinishReason(reason))
+		}
 	case "message":
 		// Non-stream body.
 		if len(a.tools) > 0 || len(a.text) > 0 {
 			return
 		}
+		if reason := gjson.GetBytes(trimmed, "stop_reason").String(); reason != "" {
+			a.arch.setStatus(archiveStatusForFinishReason(reason))
+		}
 		forEachArray(gjson.GetBytes(trimmed, "content"), func(block gjson.Result) bool {
+			a.arch.addAnthropicBlock(block)
 			switch block.Get("type").String() {
 			case "text":
 				a.appendText(block.Get("text").String())
@@ -426,12 +508,15 @@ func (a *contentAccumulator) feedAnthropic(payload []byte) {
 			default:
 				if name := block.Get("name").String(); name != "" {
 					if t := a.addTool(name); t != nil {
+						t.callID = block.Get("id").String()
 						t.appendArgs(block.Get("input").Raw)
 					}
 				}
 			}
 			return true
 		})
+	case "error":
+		a.arch.setStatus("error")
 	}
 }
 

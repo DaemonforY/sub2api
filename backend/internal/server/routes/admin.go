@@ -145,8 +145,28 @@ func RegisterAdminRoutes(
 		registerCanvasMembershipAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
+		registerConversationArchiveRoutes(admin, h, stepUpAuth)
 		registerGrowthAdminRoutes(admin, h)
 	}
+}
+
+// registerConversationArchiveRoutes 对话归档: settings writes need step-up auth; every browse
+// call except images and stats is written to the access trail.
+func registerConversationArchiveRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
+	if h.ConversationArchive == nil {
+		return
+	}
+	g := admin.Group("/conversation-archive")
+	g.GET("/config", h.ConversationArchive.GetConfig)
+	g.PUT("/config", gin.HandlerFunc(stepUpAuth), h.ConversationArchive.UpdateConfig)
+	// Test signs requests with the stored key against an admin-supplied endpoint: step-up too.
+	g.POST("/config/test", gin.HandlerFunc(stepUpAuth), h.ConversationArchive.TestConfig)
+	g.POST("/config/lifecycle", gin.HandlerFunc(stepUpAuth), h.ConversationArchive.ApplyLifecycle)
+	g.GET("/sessions", h.ConversationArchive.Sessions)
+	g.GET("/sessions/turns", h.ConversationArchive.Turns)
+	g.GET("/turns/by-request", h.ConversationArchive.TurnByRequest)
+	g.GET("/images/:id", h.ConversationArchive.Image)
+	g.GET("/stats", h.ConversationArchive.Stats)
 }
 
 // registerGrowthAdminRoutes 推广设置（被邀请人首单奖励、教育认证、邀请排行榜）。

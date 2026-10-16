@@ -131,6 +131,7 @@ func provideCleanup(
 	auditLog *service.AuditLogService,
 	gatewayRequestLog *service.GatewayRequestLogService,
 	contentLog *service.ContentLogService,
+	conversationArchive *service.ConversationArchiveService,
 	contestService *service.ContestService,
 	promptLibrarySync *service.PromptLibrarySyncService,
 	openAIAutoReset *service.OpenAIQuotaAutoResetService,
@@ -348,6 +349,10 @@ func provideCleanup(
 				// pool has drained.
 				if contentLog != nil {
 					contentLog.Stop()
+				}
+				// 对话归档: after the usage pool drained (it enqueues archive jobs); short drain.
+				if conversationArchive != nil {
+					conversationArchive.Stop()
 				}
 				return nil
 			}},

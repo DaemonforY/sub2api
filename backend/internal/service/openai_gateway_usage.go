@@ -478,6 +478,8 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 
 	// 请求内容日志: only requests the capture middleware marked carry a ContentCapture.
 	recordContentLog(s.contentLog, usageLog, result.ContentCapture)
+	// 对话归档: only requests captured while archiving was on carry an archive capture.
+	recordConversationArchive(s.archive, usageLog, result.ContentCapture)
 
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple {
 		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.openai_gateway")

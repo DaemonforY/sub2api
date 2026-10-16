@@ -278,7 +278,8 @@ export interface ContentLogQuery {
   limit?: number
 }
 
-export type ContentLogAccessAction = 'view' | 'enable' | 'disable' | 'config'
+/** archive_view / archive_config come from 对话归档 (conversation archive), which shares this trail. */
+export type ContentLogAccessAction = 'view' | 'enable' | 'disable' | 'config' | 'archive_view' | 'archive_config'
 
 export interface ContentLogAccess {
   id: number

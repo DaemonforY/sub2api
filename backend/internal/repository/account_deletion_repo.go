@@ -37,6 +37,10 @@ func (r *accountDeletionRepository) PurgeOwnedContent(ctx context.Context, userI
 		// (content_log_access_logs) stays as their audit trail.
 		`DELETE FROM request_content_logs WHERE user_id = $1`,
 		`DELETE FROM content_log_targets WHERE user_id = $1`,
+		// 对话归档: the index rows go here; the objects are deleted in the background by the
+		// archive service (ListObjectsV2 + DeleteObjects on the user's prefixes).
+		`DELETE FROM conversation_archive_images WHERE user_id = $1`,
+		`DELETE FROM conversation_archive_turns WHERE user_id = $1`,
 	} {
 		if _, err := r.db.ExecContext(ctx, q, userID); err != nil {
 			return fmt.Errorf("purge owned content: %w", err)

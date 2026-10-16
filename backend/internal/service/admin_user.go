@@ -357,6 +357,8 @@ func sameInt64Set(a, b []int64) bool {
 	return true
 }
 
+// DeleteUser (admin-initiated) intentionally keeps the user's 对话归档 objects and index rows; only
+// self-service account deletion purges them (AccountDeletionService).
 func (s *adminServiceImpl) DeleteUser(ctx context.Context, id int64) error {
 	// Protect admin users: cannot delete admin accounts
 	user, err := s.userRepo.GetByID(ctx, id)
