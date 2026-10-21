@@ -23,6 +23,10 @@ HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册�
 链接：/learn/connect/
 在「API 密钥」页点某个 Key 的「使用密钥」，会生成 Codex、OpenCode 等工具的配置，复制粘贴即可。各种用法的教程在 AI 学习站「接入教程」（/learn/connect/）：Codex 看「接入 HiveGPT」（/learn/codex/hivegpt）；OpenCode、CodeBuddy、Cherry Studio、Chatbox 等支持 OpenAI 兼容接口的工具看「在常用工具里配置」（/learn/connect/tools）；Python、Node.js、curl 看「用 SDK 调用」（/learn/connect/sdk）。Codex 要用 GPT 分组的 Key。
 
+## 一键安装 Claude Code、Codex（Windows、Mac、Linux）
+链接：/keys
+在「API 密钥」页点某个 Key 的「使用密钥」，最上面的「一键安装」会给出一行命令：Mac / Linux 粘贴到「终端」，Windows 粘贴到 PowerShell，回车即可。脚本会自动装好 Claude Code、Codex 命令行（需要的 Node.js、Git 也会装），并配置好 Claude 桌面 App 和 Codex App，所有下载都走国内镜像，不需要管理员权限。以前配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，账号登录不会被删除。想换回原来的配置，运行弹窗里给出的恢复命令（Mac / Linux 是在命令后加 --restore）。Claude 分组的 Key 配 Claude Code 和 Claude 桌面 App，GPT 分组的 Key 配 Codex。配完后要新开一个终端，桌面 App 要完全退出再打开。
+
 ## 能用 Claude Code 吗、Claude 怎么收费
 链接：/pricing
 能用。在「API 密钥」页创建 Key 时选「Claude-按量」分组，然后点这个 Key 的「使用密钥」，复制 Claude Code 的配置（ANTHROPIC_BASE_URL 和 ANTHROPIC_AUTH_TOKEN）按提示设置即可。Claude 分组只支持 Claude Code 客户端，Cherry Studio、Chatbox、Codex 或自己写代码调用 Claude 都会被拒绝；这些工具请用 GPT 分组的 Key。

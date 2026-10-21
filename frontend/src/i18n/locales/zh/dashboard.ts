@@ -137,6 +137,15 @@ export default {
         description: '打开子站画布，网关地址已自动填好，粘贴此密钥即可文生图、图生图与视频生成。',
         cta: '打开画布'
       },
+      oneClick: {
+        title: '一键安装（推荐）',
+        description: '自动安装并配置 Claude Code、Claude 桌面 App、Codex 命令行和 Codex App，全程走国内镜像。已经配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，登录不会被删除，随时可以一键恢复。',
+        whereUnix: '打开「终端」，粘贴下面这行后回车：',
+        whereWindows: '在开始菜单搜索「PowerShell」并打开，粘贴下面这行后回车（不需要管理员权限）：',
+        keyWarning: '命令里带着这个密钥，不要发给别人。',
+        restore: '想换回原来的配置：',
+        manual: '想自己逐项配置，或使用其它客户端，可以看下方的手动配置。'
+      },
       chatClients: {
         title: '一键导入对话客户端',
         description: '已装好 Cherry Studio 或 Chatbox 的话，点一下就把地址和这个密钥填好，在客户端里确认保存即可聊天。',

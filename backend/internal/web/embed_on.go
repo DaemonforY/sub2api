@@ -222,6 +222,8 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			return
 		}
 
+		applyInstallScriptHeaders(c.Writer.Header(), cleanPath)
+
 		// Try local override first
 		if s.tryServeOverride(c, cleanPath) {
 			return

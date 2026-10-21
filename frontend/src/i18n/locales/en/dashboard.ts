@@ -137,6 +137,15 @@ export default {
         description: 'Opens the canvas site with the gateway URL pre-filled. Paste this key there to generate and edit images or videos.',
         cta: 'Open canvas'
       },
+      oneClick: {
+        title: 'One-click install (recommended)',
+        description: 'Installs and configures Claude Code, the Claude desktop app, Codex CLI and the Codex app, downloading everything from mirrors in China. Already set up with DeepSeek or another provider, or signed in to an official account? Old configs are backed up first, sign-ins are kept, and you can restore them with one command.',
+        whereUnix: 'Open Terminal, paste this line and press Enter:',
+        whereWindows: 'Search the Start menu for "PowerShell", open it, paste this line and press Enter (no admin rights needed):',
+        keyWarning: 'The command contains this key, so don\'t share it.',
+        restore: 'To go back to your previous configs:',
+        manual: 'To set things up by hand or use another client, see the manual configuration below.'
+      },
       chatClients: {
         title: 'Import into a chat app',
         description: 'With Cherry Studio or Chatbox installed, one click fills in the address and this key; confirm in the app and start chatting.',

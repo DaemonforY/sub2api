@@ -51,3 +51,21 @@ func applyStaticAssetCacheHeaders(header http.Header, cleanPath string) {
 	}
 	header.Set("Cache-Control", staticAssetsCacheControl)
 }
+
+// installScripts are the one-click setup scripts in frontend/public, fetched with
+// `curl | bash` and `irm | iex`. Windows PowerShell 5.1 decodes the body with the
+// charset in Content-Type (ISO-8859-1 without one), so they are always served as
+// UTF-8 text, and never cached so a fix reaches the next install right away.
+var installScripts = map[string]bool{
+	"install.sh":        true,
+	"install.ps1":       true,
+	"hivegpt-setup.mjs": true,
+}
+
+func applyInstallScriptHeaders(header http.Header, cleanPath string) {
+	if header == nil || !installScripts[strings.TrimPrefix(cleanPath, "/")] {
+		return
+	}
+	header.Set("Content-Type", "text/plain; charset=utf-8")
+	header.Set("Cache-Control", "no-cache")
+}

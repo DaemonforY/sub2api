@@ -44,6 +44,60 @@
           <span class="flex-shrink-0 text-sm font-medium text-primary-600 group-hover:underline dark:text-primary-400">{{ t('keys.useKeyModal.canvas.cta') }} →</span>
         </a>
 
+        <!-- One-click install: Claude Code / Claude app / Codex CLI / Codex app -->
+        <section
+          v-if="showOneClickInstall"
+          class="rounded-lg border border-emerald-200 bg-emerald-50/50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/20"
+          data-testid="use-key-one-click-install"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-medium text-gray-900 dark:text-white">⚡ {{ t('keys.useKeyModal.oneClick.title') }}</p>
+            <div class="flex gap-1 rounded-lg bg-white/80 p-0.5 dark:bg-dark-800" role="tablist">
+              <button
+                v-for="os in installOSTabs"
+                :key="os.id"
+                type="button"
+                role="tab"
+                :aria-selected="installOS === os.id"
+                :data-testid="`one-click-os-${os.id}`"
+                :class="[
+                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                  installOS === os.id
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                ]"
+                @click="installOS = os.id"
+              >
+                {{ os.label }}
+              </button>
+            </div>
+          </div>
+          <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-400">{{ t('keys.useKeyModal.oneClick.description') }}</p>
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {{ installOS === 'windows' ? t('keys.useKeyModal.oneClick.whereWindows') : t('keys.useKeyModal.oneClick.whereUnix') }}
+          </p>
+          <div class="mt-1 flex items-stretch gap-2">
+            <code
+              class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-gray-900 px-3 py-2 font-mono text-xs text-gray-100"
+              data-testid="one-click-command"
+            >{{ oneClickCommand }}</code>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm flex-shrink-0"
+              data-testid="one-click-copy"
+              @click="copyOneClick"
+            >
+              {{ oneClickCopied ? t('keys.useKeyModal.copied') : t('keys.useKeyModal.copy') }}
+            </button>
+          </div>
+          <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
+            {{ t('keys.useKeyModal.oneClick.keyWarning') }}
+            {{ t('keys.useKeyModal.oneClick.restore') }}
+            <code class="break-all rounded bg-gray-100 px-1 font-mono text-[11px] text-gray-700 dark:bg-dark-700 dark:text-gray-300">{{ oneClickRestore }}</code>
+          </p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('keys.useKeyModal.oneClick.manual') }}</p>
+        </section>
+
         <!-- One-click import into desktop chat clients (OpenAI-compatible keys) -->
         <div
           v-if="showChatClients"
@@ -309,6 +363,13 @@ import { fetchCodexModelsManifest } from '@/api/codex'
 import type { GroupPlatform } from '@/types'
 import { canvasUrl } from '@/constants/crossSites'
 import { chatboxImportLink, cherryStudioImportLink } from '@/utils/chatClientImport'
+import { detectDesktopOS } from '@/utils/codexStarterConfig'
+import {
+  oneClickInstallCommand,
+  oneClickRestoreCommand,
+  supportsOneClickInstall,
+  type InstallOS
+} from '@/utils/oneClickInstall'
 import {
   findCodexCatalogModel,
   formatCodexReasoningEffortTomlLine,
@@ -1944,6 +2005,28 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     content,
     hint: t('keys.useKeyModal.opencode.hint')
   }
+}
+
+const installOSTabs: { id: InstallOS; label: string }[] = [
+  { id: 'unix', label: 'macOS / Linux' },
+  { id: 'windows', label: 'Windows PowerShell' }
+]
+const installOS = ref<InstallOS>(detectDesktopOS(typeof navigator === 'undefined' ? '' : navigator.userAgent) === 'windows' ? 'windows' : 'unix')
+const oneClickCopied = ref(false)
+const showOneClickInstall = computed(() => supportsOneClickInstall(props.platform) && Boolean(props.apiKey))
+const installSiteBase = computed(() => props.baseUrl || window.location.origin)
+const oneClickCommand = computed(() => oneClickInstallCommand(installOS.value, installSiteBase.value, props.apiKey))
+const oneClickRestore = computed(() => oneClickRestoreCommand(installOS.value, installSiteBase.value))
+
+const copyOneClick = async () => {
+  const success = await clipboardCopy(oneClickCommand.value, t('keys.copied'))
+  if (!success) return
+  track('key_config_copied', { client: 'one-click-install', os: installOS.value })
+  markGuideStep('copied')
+  oneClickCopied.value = true
+  setTimeout(() => {
+    oneClickCopied.value = false
+  }, 2000)
 }
 
 const copyContent = async (content: string, index: number) => {

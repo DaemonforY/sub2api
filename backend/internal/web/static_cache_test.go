@@ -69,3 +69,19 @@ func TestApplyStaticAssetCacheHeaders(t *testing.T) {
 		})
 	})
 }
+
+func TestApplyInstallScriptHeaders(t *testing.T) {
+	t.Parallel()
+
+	for _, p := range []string{"install.sh", "/install.ps1", "hivegpt-setup.mjs"} {
+		header := http.Header{}
+		applyInstallScriptHeaders(header, p)
+		assert.Equal(t, "text/plain; charset=utf-8", header.Get("Content-Type"), p)
+		assert.Equal(t, "no-cache", header.Get("Cache-Control"), p)
+	}
+
+	header := http.Header{}
+	applyInstallScriptHeaders(header, "logo.svg")
+	assert.Empty(t, header.Get("Content-Type"))
+	applyInstallScriptHeaders(nil, "install.sh")
+}

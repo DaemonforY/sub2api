@@ -936,3 +936,33 @@ describe('UseKeyModal', () => {
     expect(configToml).not.toContain('model_reasoning_effort')
   })
 })
+
+describe('UseKeyModal one-click install', () => {
+  const mountModal = (platform: 'anthropic' | 'openai' | 'gemini') =>
+    mount(UseKeyModal, {
+      props: { show: true, apiKey: 'sk-one-click', baseUrl: 'https://hivegpt.cn/v1', platform },
+      global: {
+        stubs: {
+          BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' },
+          Icon: { template: '<span />' }
+        }
+      }
+    })
+
+  it('shows copyable install commands with the key for each OS', async () => {
+    const wrapper = mountModal('anthropic')
+    await wrapper.get('[data-testid="one-click-os-unix"]').trigger('click')
+    expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
+      "curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='sk-one-click' bash"
+    )
+    await wrapper.get('[data-testid="one-click-os-windows"]').trigger('click')
+    expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
+      "$env:HIVEGPT_KEY='sk-one-click'; irm https://hivegpt.cn/install.ps1 | iex"
+    )
+  })
+
+  it('is offered for OpenAI groups but not for Gemini groups', () => {
+    expect(mountModal('openai').find('[data-testid="use-key-one-click-install"]').exists()).toBe(true)
+    expect(mountModal('gemini').find('[data-testid="use-key-one-click-install"]').exists()).toBe(false)
+  })
+})
