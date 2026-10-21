@@ -237,7 +237,10 @@ export default {
   // Auth
   auth: {
     layout: {
-      backHome: '返回首页'
+      backHome: '返回首页',
+      offerSignup: '注册送 ${amount} 免费额度',
+      offerTopup: '首充多送 {percent}%',
+      offerTopupCapped: '首次充值多送 {percent}%，最多送 ${cap}'
     },
     welcomeBack: '欢迎回来',
     signInToAccount: '登录您的账户以继续',

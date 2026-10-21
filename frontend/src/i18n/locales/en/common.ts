@@ -237,7 +237,10 @@ export default {
   // Auth
   auth: {
     layout: {
-      backHome: 'Back to home'
+      backHome: 'Back to home',
+      offerSignup: '${amount} free credit on sign-up',
+      offerTopup: '+{percent}% on your first top-up',
+      offerTopupCapped: '+{percent}% on your first top-up, up to ${cap}'
     },
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',

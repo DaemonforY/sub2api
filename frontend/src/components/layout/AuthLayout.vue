@@ -26,12 +26,29 @@
             <span ref="line1">{{ t('home.v3.hero.titleLead') }}</span>{{ titleGap }}<br class="hidden lg:inline" /><span ref="line2" class="t2">{{ t('home.v3.hero.titleHighlight') }}</span>
           </h1>
           <p class="mt-3 text-sm text-slate-400 lg:hidden">{{ t('home.v3.hero.subtitleEm') }}{{ t('home.v3.hero.subtitleTail') }}</p>
+          <!-- phones: the offer in one line (the register form lists it right below, so not there) -->
+          <p v-if="offer && !onRegister" class="mt-3 w-fit rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[13px] font-medium text-amber-200 lg:hidden" data-testid="auth-offer-line">
+            🎁 {{ offer.parts.join(' · ') }}
+          </p>
           <p class="mt-6 hidden max-w-md text-base leading-relaxed text-slate-400 lg:block">
             {{ t('home.v3.hero.subtitleLead') }}<span class="text-white">{{ t('home.v3.hero.subtitleEm') }}</span>{{ t('home.v3.hero.subtitleTail') }}
           </p>
 
+          <!-- what signing up and the first top-up get you, as on the home page -->
+          <div
+            v-if="offer"
+            class="mt-7 hidden max-w-md items-center gap-4 rounded-2xl border border-amber-300/30 bg-gradient-to-r from-amber-300/15 to-amber-300/[0.03] p-3 pr-5 lg:flex"
+            data-testid="auth-offer"
+          >
+            <span class="grid h-14 min-w-14 shrink-0 place-items-center rounded-xl bg-amber-300 px-2 text-xl font-extrabold tracking-tight text-amber-950">{{ offer.badge }}</span>
+            <span class="min-w-0">
+              <span class="block font-semibold text-white">{{ offer.title }}</span>
+              <span class="mt-0.5 block text-sm text-amber-100/70">{{ offer.line }}</span>
+            </span>
+          </div>
+
           <!-- what people ask it for, one per line -->
-          <ul class="mt-9 hidden max-w-md space-y-3 lg:block">
+          <ul class="job-list mt-9 hidden max-w-md space-y-3 lg:block">
             <li v-for="job in jobs" :key="job.key" class="job-row">
               <span class="job-icon"><Icon :name="job.icon" size="md" /></span>
               <span class="min-w-0">
@@ -77,6 +94,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
+import { growthAPI } from '@/api/growth'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 import Icon from '@/components/icons/Icon.vue'
@@ -103,6 +122,30 @@ const assembleContext = () => ({
   screen: stage.value!
 })
 
+// The offer: the sign-up credit and the first top-up bonus, from the site's settings.
+const route = useRoute()
+const onRegister = computed(() => route.path === '/register')
+const money = (n: number) => String(Math.round(n * 100) / 100)
+const signupBonus = computed(() => (appStore.cachedPublicSettings?.registration_enabled !== false ? Number(appStore.cachedPublicSettings?.signup_bonus || 0) : 0))
+const firstTopup = ref<{ percent: number; cap: number } | null>(null)
+const offer = computed(() => {
+  const bonus = signupBonus.value
+  const topup = appStore.cachedPublicSettings?.payment_enabled === true ? firstTopup.value : null
+  if (bonus <= 0 && !topup) return null
+  const topupText = topup
+    ? topup.cap > 0
+      ? t('auth.layout.offerTopupCapped', { percent: topup.percent, cap: money(topup.cap) })
+      : t('auth.layout.offerTopup', { percent: topup.percent })
+    : ''
+  const signupText = bonus > 0 ? t('auth.layout.offerSignup', { amount: money(bonus) }) : ''
+  return {
+    badge: bonus > 0 ? `$${money(bonus)}` : `+${topup!.percent}%`,
+    title: signupText || topupText,
+    line: signupText && topupText ? topupText : t('home.v3.hero.offerGeneric'),
+    parts: [signupText, topup ? t('auth.layout.offerTopup', { percent: topup.percent }) : ''].filter(Boolean)
+  }
+})
+
 const jobs = [
   { key: 'draw', icon: 'sparkles' },
   { key: 'write', icon: 'edit' },
@@ -113,6 +156,13 @@ const currentYear = computed(() => new Date().getFullYear())
 
 onMounted(() => {
   appStore.fetchPublicSettings()
+  growthAPI
+    .getPublicConfig()
+    .then((cfg) => {
+      const percent = Number(cfg.first_topup_bonus_percent || 0)
+      if (percent > 0) firstTopup.value = { percent, cap: Number(cfg.first_topup_bonus_cap || 0) }
+    })
+    .catch(() => {})
 })
 </script>
 
@@ -168,6 +218,10 @@ onMounted(() => {
 }
 @keyframes flow {
   to { background-position: -220% 0; }
+}
+/* short laptop screens: drop the examples so the counter and the footer still fit */
+@media (max-height: 880px) {
+  .job-list { display: none; }
 }
 .job-row {
   display: flex;
