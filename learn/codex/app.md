@@ -47,7 +47,7 @@ codex app ~/code/api # 也可以直接指定目录
 这意味着两种用法：
 
 - **用 ChatGPT 账号登录**：第一次打开时选择用 ChatGPT 登录，按浏览器提示完成授权。本地任务、云端任务、GitHub 集成都可以用。
-- **用第三方模型接口（比如 HiveGPT）**：先按 [接入 HiveGPT](/codex/hivegpt) 生成 `~/.codex/config.toml` 和 `~/.codex/auth.json`，再打开桌面应用，本地任务就会走 HiveGPT 的 `gpt-5.5`。如果应用仍停在登录页，选择用 API Key 继续的入口（文案以应用为准）。
+- **用第三方模型接口（比如 HiveGPT）**：用 [一键安装](/connect/one-click) 自动写好配置，或者按 [接入 HiveGPT](/codex/hivegpt) 手动生成 `~/.codex/config.toml`（兼容模式还有 `~/.codex/auth.json`），然后完全退出再打开桌面应用，本地任务就会走 HiveGPT 的 `gpt-5.5`。如果应用仍停在登录页，选择用 API Key 继续的入口（文案以应用为准）。
 
 ::: warning 第三方 Key 不能用云端功能
 用 API Key（包括 HiveGPT 的 Key）时，只有在你电脑上运行的任务可用。「云端」运行方式、`chatgpt.com/codex` 上的任务、GitHub 里的 `@codex` 都要求 ChatGPT 账号和对应套餐，详见 [云端任务与 GitHub](/codex/cloud)。

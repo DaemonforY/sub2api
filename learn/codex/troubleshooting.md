@@ -17,6 +17,8 @@ codex debug models     # 看 Codex 实际加载到的模型目录
 
 ## 一、安装
 
+用 HiveGPT 的 [一键安装](/connect/one-click) 装的，遇到浏览器拦截下载、提示「Windows 已保护你的电脑」、装完找不到命令、想恢复原配置等问题，先看那一页末尾的「常见问题」。下面是自己安装时的常见问题。
+
 ### npm 安装报 EACCES 权限错误
 
 **现象**：`npm install -g @openai/codex` 报 `EACCES: permission denied, mkdir '/usr/local/lib/node_modules/...'`。

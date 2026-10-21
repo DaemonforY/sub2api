@@ -2,6 +2,7 @@
   { "text": "开始", "items": [
     { "text": "Codex 是什么", "link": "/codex/intro" },
     { "text": "核心概念", "link": "/codex/concepts" },
+    { "text": "一键安装（推荐）", "link": "/connect/one-click" },
     { "text": "安装与登录", "link": "/codex/install" },
     { "text": "接入 HiveGPT", "link": "/codex/hivegpt" },
     { "text": "接入 DeepSeek 等其他模型", "link": "/codex/providers" },

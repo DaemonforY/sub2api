@@ -11,7 +11,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 
 | 准备 | 在哪里 | 说明 |
 |---|---|---|
-| 账号 | [注册 HiveGPT](https://hivegpt.cn/register?utm_source=learn&utm_medium=connect) | 邮箱注册即可 |
+| 账号 | [注册 HiveGPT](https://hivegpt.cn/register?utm_source=learn&utm_medium=connect) | 微信扫码即可注册 |
 | 余额或订阅 | [充值 / 订阅](https://hivegpt.cn/purchase) | 两种方式的区别见 [订阅还是按量](https://hivegpt.cn/pricing) |
 | API Key | [API 密钥](https://hivegpt.cn/keys?action=create) | 创建时选的**分组**决定能用哪些模型、怎么计费 |
 
@@ -68,7 +68,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | Chatbox 对话客户端 | [Chatbox 接入第三方 API](/connect/chatbox) | 3 分钟 |
 | 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |
 
-最省事的办法：在「API 密钥」页找到你的 Key，点 **「使用密钥」**。弹窗会按你的分组和系统，直接生成 Codex、OpenCode 等客户端的配置，复制粘贴即可。
+最省事的办法：在「API 密钥」页找到你的 Key，点 **「使用密钥」**。用 Claude Code 或 Codex 的话，弹窗最上面的「一键安装」会自动装好并配置好（Windows 下载一个安装程序双击运行，Mac 粘贴一行命令），见 [一键安装 Claude Code 和 Codex](/connect/one-click)；其它客户端，弹窗会按你的分组和系统生成配置，复制粘贴即可。
 
 ## 查看可用模型
 

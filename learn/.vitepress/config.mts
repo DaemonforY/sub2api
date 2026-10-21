@@ -98,6 +98,7 @@ export default defineConfig({
           text: '接入教程',
           items: [
             { text: '开始之前', link: '/connect/' },
+            { text: '一键安装 Claude Code / Codex', link: '/connect/one-click' },
             { text: 'Codex 接入 HiveGPT', link: '/codex/hivegpt' },
             { text: '在常用工具里配置', link: '/connect/tools' },
             { text: 'Cherry Studio', link: '/connect/cherry-studio' },
