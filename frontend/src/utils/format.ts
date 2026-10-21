@@ -365,6 +365,24 @@ export function formatTokensK(tokens: number): string {
 }
 
 /**
+ * 格式化 token 数量：中文界面用 万/亿（"1.05亿"），其他语言用 K/M/B（"104.97M"）
+ * @param tokens token 数量
+ * @param digits 小数位数，默认 2
+ */
+export function formatTokenAmount(tokens: number, digits: number = 2): string {
+  const abs = Math.abs(tokens)
+  if (getLocale() === 'zh') {
+    if (abs >= 1e8) return `${(tokens / 1e8).toFixed(digits)}亿`
+    if (abs >= 1e4) return `${(tokens / 1e4).toFixed(digits)}万`
+    return tokens.toLocaleString()
+  }
+  if (abs >= 1e9) return `${(tokens / 1e9).toFixed(digits)}B`
+  if (abs >= 1e6) return `${(tokens / 1e6).toFixed(digits)}M`
+  if (abs >= 1e3) return `${(tokens / 1e3).toFixed(digits)}K`
+  return tokens.toLocaleString()
+}
+
+/**
  * 格式化大数字（K/M/B，保留 1 位小数）
  * @param num 数字
  * @param options allowBillions=false 时最高只显示到 M

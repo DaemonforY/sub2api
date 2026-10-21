@@ -109,6 +109,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { formatTokenAmount } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'vue-chartjs'
@@ -233,16 +234,7 @@ const doughnutOptions = computed(() => ({
   }
 }))
 
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2)}B`
-  } else if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(2)}M`
-  } else if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(2)}K`
-  }
-  return value.toLocaleString()
-}
+const formatTokens = (value: number): string => formatTokenAmount(value)
 
 const formatNumber = (value: number): string => {
   return toFiniteNumber(value).toLocaleString()

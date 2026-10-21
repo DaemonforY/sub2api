@@ -90,6 +90,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatTokenAmount } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 import type { AdminUsageStatsResponse } from '@/api/admin/usage'
 import type { UsageStatsResponse } from '@/types'
@@ -116,12 +117,7 @@ const strikeStandardCost = computed(() => props.strikeStandardCost)
 const formatDuration = (ms: number) =>
   ms < 1000 ? `${ms.toFixed(0)}ms` : `${(ms / 1000).toFixed(2)}s`
 
-const formatTokens = (value: number) => {
-  if (value >= 1e9) return (value / 1e9).toFixed(2) + 'B'
-  if (value >= 1e6) return (value / 1e6).toFixed(2) + 'M'
-  if (value >= 1e3) return (value / 1e3).toFixed(2) + 'K'
-  return value.toLocaleString()
-}
+const formatTokens = (value: number): string => formatTokenAmount(value)
 
 const cacheLabel = () => t('usage.cacheTotal')
 const cacheDetailLabel = () => t('usage.cacheBreakdown')

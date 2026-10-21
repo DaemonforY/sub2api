@@ -20,6 +20,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatTokenAmount } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 import {
   Chart as ChartJS,
@@ -204,16 +205,7 @@ const lineOptions = computed(() => ({
   }
 }))
 
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2)}B`
-  } else if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(2)}M`
-  } else if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(2)}K`
-  }
-  return value.toLocaleString()
-}
+const formatTokens = (value: number): string => formatTokenAmount(value)
 
 const formatCost = (value: number): string => {
   if (value >= 1000) {

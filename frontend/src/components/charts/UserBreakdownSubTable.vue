@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatTokenAmount } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import type { UserBreakdownItem } from '@/types'
@@ -56,12 +57,7 @@ const props = withDefaults(defineProps<{
 
 const showAccountCost = computed(() => props.showAccountCost)
 
-const formatTokens = (value: number): string => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`
-  return value.toLocaleString()
-}
+const formatTokens = (value: number): string => formatTokenAmount(value)
 
 const formatCost = (value: number | undefined | null): string => {
   if (value == null) return '0.0000'
