@@ -3,7 +3,7 @@
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-[28px] font-extrabold tracking-tight text-gray-900 dark:text-white">
           {{ t('auth.createAccount') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
@@ -277,7 +277,7 @@
         <button
           v-if="promoCodeEnabled && !promoOpen && !formData.promo_code"
           type="button"
-          class="text-sm text-primary-600 hover:underline dark:text-primary-400"
+          class="text-sm text-blue-600 hover:underline dark:text-sky-400"
           data-testid="register-promo-toggle"
           @click="promoOpen = true"
         >
@@ -463,7 +463,7 @@
         {{ t('auth.alreadyHaveAccount') }}
         <router-link
           :to="postRegisterRedirect ? { path: '/login', query: { redirect: postRegisterRedirect } } : '/login'"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="font-medium text-blue-600 transition-colors hover:text-blue-500 dark:text-sky-400 dark:hover:text-sky-300"
         >
           {{ t('auth.signIn') }}
         </router-link>

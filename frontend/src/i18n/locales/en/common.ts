@@ -236,6 +236,9 @@ export default {
 
   // Auth
   auth: {
+    layout: {
+      backHome: 'Back to home'
+    },
     welcomeBack: 'Welcome Back',
     signInToAccount: 'Sign in to your account to continue',
     signIn: 'Sign In',

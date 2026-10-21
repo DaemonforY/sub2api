@@ -3,7 +3,7 @@
     <div class="space-y-6">
       <!-- Title -->
       <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+        <h2 class="text-[28px] font-extrabold tracking-tight text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
         <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
@@ -128,7 +128,7 @@
             <router-link
               v-if="passwordResetEnabled && !backendModeEnabled"
               to="/forgot-password"
-              class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+              class="text-sm font-medium text-blue-600 transition-colors hover:text-blue-500 dark:text-sky-400 dark:hover:text-sky-300"
             >
               {{ t('auth.forgotPassword') }}
             </router-link>
@@ -269,7 +269,7 @@
         {{ t('auth.dontHaveAccount') }}
         <router-link
           :to="registerLink"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="font-medium text-blue-600 transition-colors hover:text-blue-500 dark:text-sky-400 dark:hover:text-sky-300"
         >
           {{ t('auth.signUp') }}
         </router-link>

@@ -236,6 +236,9 @@ export default {
 
   // Auth
   auth: {
+    layout: {
+      backHome: '返回首页'
+    },
     welcomeBack: '欢迎回来',
     signInToAccount: '登录您的账户以继续',
     signIn: '登录',
