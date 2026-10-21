@@ -947,6 +947,9 @@ async function main() {
   if (opts.restore) return restore()
 
   let key = (process.env.HIVEGPT_KEY || '').trim().replace(/^["']|["']$/g, '')
+  // A key that came with the command (the site's copy button or the Windows installer) means
+  // "just do it": no questions, the recommended tools are set up.
+  const keyFromCommand = Boolean(key)
   if (!key) {
     if (!process.stdin.isTTY) fail('没有拿到 Key。请设置 HIVEGPT_KEY 环境变量后重新运行（在「API 密钥」页点「使用密钥」可复制带 Key 的命令）。')
     key = (await readLine(`请粘贴你的 HiveGPT Key（在 ${BASE}/keys 复制，输入时显示为 *）: `, { secret: true })).trim()
@@ -962,6 +965,10 @@ async function main() {
   const recommended = hasClaude && !hasGpt ? 'claude' : hasGpt && !hasClaude ? 'codex' : 'all'
 
   let tools = String(opts.tools || '').toLowerCase()
+  if (!['claude', 'codex', 'all'].includes(tools) && keyFromCommand) {
+    tools = recommended
+    info(`将配置：${{ claude: 'Claude Code + Claude 桌面 App', codex: 'Codex 命令行 + Codex App', all: 'Claude Code、Claude 桌面 App、Codex 命令行和 Codex App' }[tools]}${tools === 'all' ? '（只想配其中一种，可以加 --tools=claude 或 --tools=codex 重新运行）' : ''}`)
+  }
   if (!['claude', 'codex', 'all'].includes(tools)) {
     const labels = { claude: '1', codex: '2', all: '3' }
     console.log(`\n要配置哪些工具？
@@ -1008,6 +1015,8 @@ async function main() {
   }
   console.log(`
 下一步：
+  ${bold('用桌面 App')}：完全退出 Claude / Codex App 再重新打开，就会用 HiveGPT 了。
+  ${bold('用命令行')}：
   1. ${bold('新开一个终端窗口')}（让新的 PATH 和配置生效）
   ${tools !== 'codex' ? `2. 进入项目文件夹，运行 ${cyan('claude')}` : `2. 进入项目文件夹，运行 ${cyan('codex')}`}${tools === 'all' ? `，或 ${cyan('codex')}` : ''}
   3. 想恢复原来的配置（DeepSeek、官方账号等）：重新运行安装命令并加 ${cyan('--restore')}

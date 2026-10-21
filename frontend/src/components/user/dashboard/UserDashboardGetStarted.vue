@@ -55,8 +55,27 @@
       </li>
     </ol>
 
+    <!-- One-click install (a double-click installer on Windows); the manual config.toml steps stay below. -->
+    <OneClickInstallPanel
+      v-if="configOpen && starterKey && oneClickSupported"
+      class="mx-4 mb-3"
+      :api-key="starterKey.key"
+      :base-url="apiBase"
+      source="get-started"
+      @used="onOneClickUsed"
+    />
+
     <!-- Set up Codex without a terminal: download config.toml, drop it into the .codex folder. -->
-    <div v-if="configOpen && starterKey" class="mx-4 mb-4 space-y-3 rounded-xl border border-primary-200 bg-white p-4 dark:border-primary-900/40 dark:bg-dark-800" data-testid="get-started-config">
+    <details
+      v-if="configOpen && starterKey"
+      :open="!oneClickSupported"
+      class="mx-4 mb-4 rounded-xl border border-primary-200 bg-white p-4 dark:border-primary-900/40 dark:bg-dark-800"
+      data-testid="get-started-config"
+    >
+      <summary v-if="oneClickSupported" class="cursor-pointer text-sm text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white" data-testid="get-started-manual">
+        {{ t('getStarted.codex.manualToggle') }}
+      </summary>
+      <div class="space-y-3" :class="oneClickSupported ? 'mt-3' : ''">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('getStarted.codex.title') }}</p>
         <div class="flex gap-1" role="tablist">
@@ -107,7 +126,8 @@
         {{ t('getStarted.codex.notes') }}
         <router-link to="/keys?action=use" class="text-primary-600 hover:underline">{{ t('getStarted.codex.otherTools') }}</router-link>
       </p>
-    </div>
+      </div>
+    </details>
 
     <div class="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-gray-100 px-6 py-3 text-xs text-gray-500 dark:border-dark-700 dark:text-dark-400">
       <template v-if="allDone">
@@ -141,6 +161,8 @@ import { track } from '@/utils/analytics'
 import { canvasUrl } from '@/constants/crossSites'
 import { chatboxImportLink, cherryStudioImportLink } from '@/utils/chatClientImport'
 import type { ApiKey } from '@/types'
+import OneClickInstallPanel from '@/components/keys/OneClickInstallPanel.vue'
+import { supportsOneClickInstall } from '@/utils/oneClickInstall'
 
 const props = defineProps<{
   userId: number
@@ -221,6 +243,18 @@ function openConfig(): void {
   configOpen.value = true
   if (!starterKey.value) void ensureStarterKey()
   track('guide_config_open', { os: os.value })
+}
+
+const apiBase = computed(() => appStore.cachedPublicSettings?.api_base_url || window.location.origin)
+// A starter key without a group platform (older API responses) is still worth trying.
+const oneClickSupported = computed(() => {
+  const platform = starterKey.value?.group?.platform
+  return !platform || supportsOneClickInstall(platform)
+})
+
+function onOneClickUsed(): void {
+  markGuideStep('copied', props.userId)
+  copied.value = true
 }
 
 function downloadConfig(): void {

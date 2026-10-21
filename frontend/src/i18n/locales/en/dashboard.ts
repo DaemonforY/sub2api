@@ -139,12 +139,20 @@ export default {
       },
       oneClick: {
         title: 'One-click install (recommended)',
-        description: 'Installs and configures Claude Code, the Claude desktop app, Codex CLI and the Codex app, downloading everything from mirrors in China. Already set up with DeepSeek or another provider, or signed in to an official account? Old configs are backed up first, sign-ins are kept, and you can restore them with one command.',
-        whereUnix: 'Open Terminal, paste this line and press Enter:',
-        whereWindows: 'Search the Start menu for "PowerShell", open it, paste this line and press Enter (no admin rights needed):',
-        keyWarning: 'The command contains this key, so don\'t share it.',
-        restore: 'To go back to your previous configs:',
-        manual: 'To set things up by hand or use another client, see the manual configuration below.'
+        description: 'Installs and configures Claude Code, the Claude desktop app, Codex CLI and the Codex app, downloading everything from mirrors in China, with no admin rights needed. Already set up with DeepSeek or another provider, or signed in to an official account? Old configs are backed up first, sign-ins are kept, and you can restore them with one command.',
+        windowsDownload: 'Download the installer',
+        windowsRun: 'Open your Downloads folder and double-click {name}. If the browser says the file may be harmful, choose Keep.',
+        windowsWarn: 'If a security prompt appears, click Run. If it is the blue "Windows protected your PC" screen, click More info, then Run anyway.',
+        windowsDone: 'When the black window says it is done, press any key to close it. The installer deletes itself (it contains your key).',
+        windowsPowerShell: 'Comfortable with PowerShell? Paste this line instead',
+        whereWindows: 'Search the Start menu for "PowerShell" and open it.',
+        macOpen: 'Press ⌘ + Space, type "Terminal" and press Return. A window opens.',
+        macPaste: 'Click Copy, go back to that window, press ⌘ + V to paste, then press Return:',
+        linuxOpen: 'Open a terminal (Ctrl + Alt + T on most systems).',
+        otherPaste: 'Click Copy, paste it into the window and press Enter:',
+        waitDone: 'Wait until it says it is done, then quit and reopen the Claude / Codex app, or open a new terminal and run claude / codex.',
+        keyWarning: 'The installer and the command contain this key, so don\'t share them.',
+        restore: 'To go back to your previous configs:'
       },
       chatClients: {
         title: 'Import into a chat app',
@@ -1075,7 +1083,7 @@ export default {
 
   getStarted: {
     title: 'Get started in three steps',
-    subtitle: 'No terminal needed: download one config file into a folder and use HiveGPT in Codex — about 3 minutes.',
+    subtitle: 'Double-click an installer on Windows or paste one line on a Mac, and use HiveGPT in Claude Code, Codex and their desktop apps — about 3 minutes.',
     doneTitle: "You're connected",
     doneSubtitle: 'We received your first request. Usage and costs are under Usage.',
     later: 'Later',
@@ -1107,9 +1115,9 @@ export default {
         action: 'Create a key'
       },
       config: {
-        title: 'Set up Codex',
-        hint: 'Download a config file and put it in the Codex folder — no terminal.',
-        done: 'Config file downloaded.',
+        title: 'Install and set up',
+        hint: 'Install Claude Code / Codex with your key filled in, in one go.',
+        done: 'Installer downloaded / command copied.',
         action: 'Start'
       },
       call: {
@@ -1122,6 +1130,7 @@ export default {
       title: 'Use HiveGPT in Codex (desktop app or VS Code extension)',
       os: { windows: 'Windows', mac: 'Mac', linux: 'Linux' },
       install: 'Install Codex and open it once (that creates the folder below).',
+      manualToggle: 'Rather not run an installer? Download the Codex config by hand',
       installLink: 'How to install',
       download: 'Download the config file with your key already in it:',
       open: {

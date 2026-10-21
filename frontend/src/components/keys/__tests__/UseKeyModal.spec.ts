@@ -793,7 +793,7 @@ describe('UseKeyModal', () => {
     const downloadedBlob = saveAsMock.mock.calls[0]?.[0] as Blob
     expect(JSON.parse(await readBlobAsText(downloadedBlob))).toEqual(manifest)
 
-    const windowsTab = wrapper.findAll('button').find((button) => button.text().trim() === 'Windows')
+    const windowsTab = wrapper.findAll('nav[aria-label="Tabs"] button').find((button) => button.text().trim() === 'Windows')
     expect(windowsTab).toBeDefined()
     await windowsTab!.trigger('click')
     await nextTick()
@@ -949,13 +949,14 @@ describe('UseKeyModal one-click install', () => {
       }
     })
 
-  it('shows copyable install commands with the key for each OS', async () => {
+  it('offers a double-click installer on Windows and a pasteable line on macOS', async () => {
     const wrapper = mountModal('anthropic')
-    await wrapper.get('[data-testid="one-click-os-unix"]').trigger('click')
+    await wrapper.get('[data-testid="one-click-os-mac"]').trigger('click')
     expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
       "curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='sk-one-click' bash"
     )
     await wrapper.get('[data-testid="one-click-os-windows"]').trigger('click')
+    expect(wrapper.find('[data-testid="one-click-download"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
       "$env:HIVEGPT_KEY='sk-one-click'; irm https://hivegpt.cn/install.ps1 | iex"
     )

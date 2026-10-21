@@ -52,3 +52,29 @@ export function oneClickRestoreCommand(os: InstallOS, baseUrl: string): string {
   }
   return `curl -fsSL ${base}/install.sh | ${custom ? `HIVEGPT_BASE_URL=${shellQuote(base)} ` : ''}bash -s -- --restore`
 }
+
+export const WINDOWS_INSTALLER_NAME = 'HiveGPT一键安装.cmd'
+
+/**
+ * A double-clickable installer for people who have never opened PowerShell: it sets the key and
+ * runs install.ps1, waits for a key press so the result can be read, then deletes itself so the
+ * key isn't left in the Downloads folder. ASCII only — cmd.exe reads it in the OEM code page.
+ * Returns null when the key or base URL holds characters cmd would interpret.
+ */
+export function windowsInstallerScript(baseUrl: string, apiKey: string): string | null {
+  const base = installBase(baseUrl) || DEFAULT_INSTALL_BASE
+  if (!/^[A-Za-z0-9_-]+$/.test(apiKey) || !/^https?:\/\/[A-Za-z0-9.:/-]+$/.test(base)) return null
+  const lines = [
+    '@echo off',
+    'rem HiveGPT one-click installer. It contains your API key, so do not share it.',
+    'rem It sets up Claude Code / Codex and deletes itself when done.',
+    'title HiveGPT',
+    `set "HIVEGPT_KEY=${apiKey}"`,
+    ...(base !== DEFAULT_INSTALL_BASE ? [`set "HIVEGPT_BASE_URL=${base}"`] : []),
+    `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm ${base}/install.ps1 | iex"`,
+    'echo.',
+    'pause',
+    '(goto) 2>nul & del "%~f0"'
+  ]
+  return `${lines.join('\r\n')}\r\n`
+}

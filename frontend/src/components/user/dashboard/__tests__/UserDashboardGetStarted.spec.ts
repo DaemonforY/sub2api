@@ -71,6 +71,20 @@ describe('UserDashboardGetStarted', () => {
     expect(w.find('[data-testid="get-started-waiting"]').exists()).toBe(true)
   })
 
+  it('offers a double-click Windows installer that carries the starter key', async () => {
+    const w = mountCard()
+    await flushPromises()
+    await w.get('[data-testid="one-click-os-windows"]').trigger('click')
+    await w.get('[data-testid="one-click-download"]').trigger('click')
+    const [name, script] = download.mock.calls[0] as [string, string]
+    expect(name).toBe('HiveGPT一键安装.cmd')
+    expect(script).toContain('set "HIVEGPT_KEY=sk-starter"')
+    expect(script).toContain('/install.ps1 | iex')
+    expect(w.get('[data-testid="get-started-step-config"]').attributes('data-done')).toBe('true')
+    // The manual config.toml steps are still there, folded away.
+    expect(w.find('[data-testid="get-started-manual"]').exists()).toBe(true)
+  })
+
   it('offers the canvas to newcomers who only want to draw', async () => {
     const w = mountCard()
     await flushPromises()

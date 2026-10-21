@@ -3,7 +3,8 @@ import {
   installBase,
   oneClickInstallCommand,
   oneClickRestoreCommand,
-  supportsOneClickInstall
+  supportsOneClickInstall,
+  windowsInstallerScript
 } from '../oneClickInstall'
 
 describe('oneClickInstall', () => {
@@ -41,5 +42,23 @@ describe('oneClickInstall', () => {
     expect(supportsOneClickInstall('grok')).toBe(false)
     expect(supportsOneClickInstall(null)).toBe(false)
     expect(installBase('https://hivegpt.cn/v1/')).toBe('https://hivegpt.cn')
+  })
+})
+
+describe('windowsInstallerScript', () => {
+  it('sets the key, runs install.ps1 and deletes itself, with CRLF line ends', () => {
+    const script = windowsInstallerScript('https://hivegpt.cn/v1', 'sk-abc_123')!
+    expect(script).toContain('set "HIVEGPT_KEY=sk-abc_123"\r\n')
+    expect(script).toContain('irm https://hivegpt.cn/install.ps1 | iex')
+    expect(script).not.toContain('HIVEGPT_BASE_URL')
+    expect(script.trimEnd().endsWith('del "%~f0"')).toBe(true)
+    expect(script.replace(/\r\n/g, '')).not.toContain('\n')
+    expect(/^[\x20-\x7e\r\n]*$/.test(script)).toBe(true)
+  })
+
+  it('passes another origin and refuses values cmd would interpret', () => {
+    expect(windowsInstallerScript('https://api.example.com', 'sk-x')).toContain('set "HIVEGPT_BASE_URL=https://api.example.com"')
+    expect(windowsInstallerScript('https://hivegpt.cn', 'sk-a&b')).toBeNull()
+    expect(windowsInstallerScript('https://hivegpt.cn', 'sk-%PATH%')).toBeNull()
   })
 })

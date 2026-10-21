@@ -139,12 +139,20 @@ export default {
       },
       oneClick: {
         title: '一键安装（推荐）',
-        description: '自动安装并配置 Claude Code、Claude 桌面 App、Codex 命令行和 Codex App，全程走国内镜像。已经配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，登录不会被删除，随时可以一键恢复。',
-        whereUnix: '打开「终端」，粘贴下面这行后回车：',
-        whereWindows: '在开始菜单搜索「PowerShell」并打开，粘贴下面这行后回车（不需要管理员权限）：',
-        keyWarning: '命令里带着这个密钥，不要发给别人。',
-        restore: '想换回原来的配置：',
-        manual: '想自己逐项配置，或使用其它客户端，可以看下方的手动配置。'
+        description: '自动安装并配置 Claude Code、Claude 桌面 App、Codex 命令行和 Codex App，全程走国内镜像，不需要管理员权限。已经配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，登录不会被删除，随时可以一键恢复。',
+        windowsDownload: '下载一键安装程序',
+        windowsRun: '打开「下载」文件夹，双击 {name}。浏览器提示「此类文件可能有害」时，选「保留」。',
+        windowsWarn: '弹出安全提示时点「运行」；如果是蓝色的「Windows 已保护你的电脑」，点「更多信息」，再点「仍要运行」。',
+        windowsDone: '等黑色窗口显示「全部完成」后按任意键关闭。安装程序会自动删除自己（它里面有你的密钥）。',
+        windowsPowerShell: '会用 PowerShell？也可以粘贴这一行',
+        whereWindows: '在开始菜单搜索「PowerShell」并打开。',
+        macOpen: '按键盘上的 ⌘ + 空格，输入「终端」，按回车，会打开一个窗口。',
+        macPaste: '点「复制」，回到那个窗口按 ⌘ + V 粘贴，再按回车：',
+        linuxOpen: '打开「终端」（多数系统可以按 Ctrl + Alt + T）。',
+        otherPaste: '点「复制」，在窗口里粘贴，再按回车：',
+        waitDone: '等它显示「全部完成」，然后完全退出再打开 Claude / Codex App，或者新开一个终端运行 claude / codex。',
+        keyWarning: '安装程序和命令里都带着这个密钥，不要发给别人。',
+        restore: '想换回原来的配置：'
       },
       chatClients: {
         title: '一键导入对话客户端',
@@ -1079,7 +1087,7 @@ export default {
 
   getStarted: {
     title: '三步开始使用',
-    subtitle: '不用命令行：下载一个配置文件放进文件夹，就能在 Codex 里用上 HiveGPT，大约 3 分钟。',
+    subtitle: 'Windows 下载一个安装程序双击运行，Mac 粘贴一行命令，就能在 Claude Code、Codex 和它们的桌面 App 里用上 HiveGPT，大约 3 分钟。',
     doneTitle: '接入成功',
     doneSubtitle: '已经收到你的第一次请求，之后的用量和费用都在「使用记录」里。',
     later: '稍后再说',
@@ -1111,9 +1119,9 @@ export default {
         action: '创建 Key'
       },
       config: {
-        title: '配置 Codex',
-        hint: '下载配置文件，放进 Codex 的文件夹，不用命令行。',
-        done: '配置文件已下载。',
+        title: '安装和配置',
+        hint: '一键装好 Claude Code / Codex 并填好你的 Key。',
+        done: '安装程序已下载 / 命令已复制。',
         action: '开始配置'
       },
       call: {
@@ -1126,6 +1134,7 @@ export default {
       title: '在 Codex 里用上 HiveGPT（桌面版、VS Code 插件都适用）',
       os: { windows: 'Windows', mac: 'Mac', linux: 'Linux' },
       install: '先装好 Codex 并打开一次（会自动建好下面这个文件夹）。',
+      manualToggle: '不想装程序？手动下载 Codex 配置文件',
       installLink: '怎么安装',
       download: '下载已经填好你的 Key 的配置文件：',
       open: {
