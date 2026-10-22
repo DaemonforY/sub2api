@@ -25,6 +25,14 @@ vi.mock('vue-router', () => ({
   useRoute: () => routeState,
 }))
 
+const qrcodeMocks = vi.hoisted(() => ({
+  toDataURL: vi.fn(async () => 'data:image/png;base64,qr'),
+}))
+
+vi.mock('qrcode', () => ({
+  default: { toDataURL: (...args: any[]) => (qrcodeMocks.toDataURL as any)(...args) },
+}))
+
 const authApiMocks = vi.hoisted(() => ({
   createWeChatQRLogin: vi.fn(),
   getWeChatQRLoginStatus: vi.fn(),
@@ -345,7 +353,11 @@ describe('ProfileIdentityBindingsSection', () => {
     expect(locationState.current.href).toBe('/api/v1/auth/oauth/wechat/sync-profile/start?redirect=%2Fprofile')
   })
 
-  it('explains the WeChat profile sync outside WeChat instead of showing the button', () => {
+  it('explains the WeChat profile sync on a phone browser instead of showing the button', () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Safari/604.1',
+    })
     const wrapper = mount(ProfileIdentityBindingsSection, {
       global: { plugins: [pinia] },
       props: {
@@ -357,9 +369,81 @@ describe('ProfileIdentityBindingsSection', () => {
     })
 
     expect(wrapper.find('[data-testid="profile-wechat-sync"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="profile-wechat-sync-qr-toggle"]').exists()).toBe(false)
     expect(wrapper.get('[data-testid="profile-wechat-sync-hint"]').text()).toBe(
       'profile.authBindings.wechatSyncHint',
     )
+  })
+
+  it('offers a sync QR on a computer and opens it for the default 微信用户_xxxx name', async () => {
+    locationState.current = { href: 'http://localhost/profile', origin: 'https://hivegpt.cn' } as any
+    Object.defineProperty(window, 'location', { configurable: true, value: locationState.current })
+    const wrapper = mount(ProfileIdentityBindingsSection, {
+      global: { plugins: [pinia] },
+      props: {
+        user: createUser({ username: '微信用户_ab12', auth_bindings: { wechat: { bound: true } } }),
+        wechatEnabled: true,
+        wechatOpenEnabled: false,
+        wechatMpEnabled: true,
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="profile-wechat-sync-hint"]').exists()).toBe(false)
+    expect(qrcodeMocks.toDataURL).toHaveBeenCalledWith(
+      'https://hivegpt.cn/api/v1/auth/oauth/wechat/sync-profile/start?redirect=%2Fprofile',
+      expect.any(Object),
+    )
+    expect(wrapper.get('[data-testid="profile-wechat-sync-qr"]').attributes('src')).toBe('data:image/png;base64,qr')
+    expect(wrapper.get('[data-testid="profile-wechat-sync-qr-toggle"]').text()).toBe(
+      'profile.authBindings.wechatSyncQrHide',
+    )
+    wrapper.unmount()
+  })
+
+  it('keeps the sync QR closed for a real nickname and polls until the name changes', async () => {
+    vi.useFakeTimers()
+    try {
+      const authStore = useAuthStore()
+      const refreshUser = vi
+        .spyOn(authStore, 'refreshUser')
+        .mockResolvedValueOnce(createUser({ username: '小蜂', auth_bindings: { wechat: { bound: true } } }))
+        .mockResolvedValueOnce(createUser({ username: '我是J哥', auth_bindings: { wechat: { bound: true } } }))
+      const appStore = useAppStore()
+      const showSuccess = vi.spyOn(appStore, 'showSuccess').mockImplementation(() => '' as any)
+      locationState.current = { href: 'http://localhost/profile', origin: 'https://hivegpt.cn' } as any
+      Object.defineProperty(window, 'location', { configurable: true, value: locationState.current })
+      const wrapper = mount(ProfileIdentityBindingsSection, {
+        global: { plugins: [pinia] },
+        props: {
+          user: createUser({ username: '小蜂', auth_bindings: { wechat: { bound: true } } }),
+          wechatEnabled: true,
+          wechatOpenEnabled: false,
+          wechatMpEnabled: true,
+        },
+      })
+      await flushPromises()
+      expect(wrapper.find('[data-testid="profile-wechat-sync-qr"]').exists()).toBe(false)
+
+      await wrapper.get('[data-testid="profile-wechat-sync-qr-toggle"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="profile-wechat-sync-qr"]').exists()).toBe(true)
+
+      await vi.advanceTimersByTimeAsync(4000)
+      expect(refreshUser).toHaveBeenCalledTimes(1)
+      expect(showSuccess).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(4000)
+      expect(refreshUser).toHaveBeenCalledTimes(2)
+      expect(showSuccess).toHaveBeenCalledWith('profile.authBindings.wechatSyncQrDone')
+      expect(wrapper.find('[data-testid="profile-wechat-sync-qr"]').exists()).toBe(false)
+
+      await vi.advanceTimersByTimeAsync(8000)
+      expect(refreshUser).toHaveBeenCalledTimes(2)
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows neither the sync button nor the hint while WeChat is not bound', () => {

@@ -981,6 +981,12 @@ export default {
     authBindings: {
       wechatSyncAction: 'Sync WeChat nickname and avatar',
       wechatSyncHint: 'Open your profile inside WeChat to sync your WeChat nickname and avatar',
+      wechatSyncQrAction: 'Scan to sync WeChat nickname and avatar',
+      wechatSyncQrHide: 'Hide QR code',
+      wechatSyncQrHint: 'Scan with WeChat to use your WeChat nickname and avatar here; scan again after changing them in WeChat.',
+      wechatSyncQrAlt: 'QR code to sync your WeChat nickname and avatar',
+      wechatSyncQrWaiting: 'Open WeChat Scan, scan the code and tap Allow on your phone. This page updates once it is synced.',
+      wechatSyncQrDone: 'WeChat profile synced. Your nickname is now "{name}"',
       title: 'Connected Sign-In Methods',
       description: 'View current bindings and connect another provider to this account.',
       bindAction: 'Bind {providerName}',

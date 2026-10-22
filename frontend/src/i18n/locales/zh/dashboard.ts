@@ -985,6 +985,12 @@ export default {
     authBindings: {
       wechatSyncAction: '同步微信昵称头像',
       wechatSyncHint: '在微信里打开个人资料页，可以同步微信昵称和头像',
+      wechatSyncQrAction: '扫码同步微信昵称头像',
+      wechatSyncQrHide: '收起二维码',
+      wechatSyncQrHint: '用微信扫码，就能把这里的昵称和头像换成你的微信资料；改了微信昵称后也可以再扫一次。',
+      wechatSyncQrAlt: '同步微信昵称头像的二维码',
+      wechatSyncQrWaiting: '打开微信「扫一扫」，扫码后在手机上点「允许」。同步好以后，这里会自动更新。',
+      wechatSyncQrDone: '已同步微信资料，昵称现在是「{name}」',
       title: '登录方式绑定',
       description: '查看当前绑定状态，并将更多第三方登录方式关联到这个账号。',
       bindAction: '绑定 {providerName}',

@@ -149,8 +149,32 @@
                 </button>
               </div>
 
+              <!-- PC: scan a QR with WeChat to run the sync on the phone; this page refreshes itself. -->
+              <div
+                v-if="item.provider === 'wechat' && item.bound && wechatSyncQrSupported"
+                class="space-y-3"
+                data-testid="profile-wechat-sync-qr-section"
+              >
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('profile.authBindings.wechatSyncQrHint') }}
+                </p>
+                <div
+                  v-if="showWeChatSyncQr && wechatSyncQrDataUrl"
+                  class="flex items-center gap-4"
+                >
+                  <img
+                    :src="wechatSyncQrDataUrl"
+                    :alt="t('profile.authBindings.wechatSyncQrAlt')"
+                    class="h-36 w-36 shrink-0 rounded-xl border border-gray-200 bg-white p-1 dark:border-dark-600"
+                    data-testid="profile-wechat-sync-qr"
+                  />
+                  <p class="text-xs leading-5 text-gray-500 dark:text-gray-400">
+                    {{ t('profile.authBindings.wechatSyncQrWaiting') }}
+                  </p>
+                </div>
+              </div>
               <p
-                v-if="item.provider === 'wechat' && item.bound && !inWeChatBrowser"
+                v-else-if="item.provider === 'wechat' && item.bound && !inWeChatBrowser"
                 class="text-xs text-gray-500 dark:text-gray-400"
                 data-testid="profile-wechat-sync-hint"
               >
@@ -196,6 +220,19 @@
               {{ t('profile.authBindings.wechatSyncAction') }}
             </button>
             <button
+              v-if="item.provider === 'wechat' && item.bound && wechatSyncQrSupported"
+              data-testid="profile-wechat-sync-qr-toggle"
+              type="button"
+              class="btn btn-secondary btn-sm"
+              @click="toggleWeChatSyncQr"
+            >
+              {{
+                showWeChatSyncQr
+                  ? t('profile.authBindings.wechatSyncQrHide')
+                  : t('profile.authBindings.wechatSyncQrAction')
+              }}
+            </button>
+            <button
               v-if="item.canBind"
               :data-testid="`profile-binding-${item.provider}-action`"
               type="button"
@@ -226,11 +263,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import {
   buildWeChatProfileSyncURL,
+  detectWeChatLoginTerminal,
   hasExplicitWeChatOAuthCapabilities,
   prepareOAuthBindAccessTokenCookie,
   resolveWeChatLoginPanels,
@@ -238,6 +276,7 @@ import {
   type WeChatLoginRequest,
   type WeChatOAuthPublicSettings,
 } from '@/api/auth'
+import QRCode from 'qrcode'
 import WechatLoginPanel from '@/components/auth/WechatLoginPanel.vue'
 import {
   bindEmailIdentity,
@@ -411,6 +450,89 @@ const PROFILE_PATH = '/profile'
 function syncWeChatProfile(): void {
   window.location.href = buildWeChatProfileSyncURL(PROFILE_PATH)
 }
+
+// On a computer the sync URL goes into a QR: scanned with WeChat it runs 网页授权 on the phone
+// (no sign-in needed there) and this page polls the user until the new name / avatar arrive.
+const WECHAT_SYNC_POLL_MS = 4000
+const WECHAT_SYNC_POLL_MAX_TICKS = 75 // 5 minutes
+const WECHAT_FALLBACK_USERNAME = /^微信用户(_[a-z0-9]{1,4})?$/
+const wechatSyncQrSupported = detectWeChatLoginTerminal() === 'pc'
+const showWeChatSyncQr = ref(false)
+const wechatSyncQrDataUrl = ref('')
+let wechatSyncPollTimer: ReturnType<typeof setInterval> | null = null
+
+function stopWeChatSyncPolling(): void {
+  if (wechatSyncPollTimer !== null) {
+    clearInterval(wechatSyncPollTimer)
+    wechatSyncPollTimer = null
+  }
+}
+
+function startWeChatSyncPolling(): void {
+  stopWeChatSyncPolling()
+  const before = currentUser.value
+  const snapshot = `${before?.username ?? ''}\n${before?.avatar_url ?? ''}`
+  let ticks = 0
+  let inFlight = false
+  wechatSyncPollTimer = setInterval(async () => {
+    ticks += 1
+    if (ticks > WECHAT_SYNC_POLL_MAX_TICKS) {
+      stopWeChatSyncPolling()
+      return
+    }
+    if (inFlight) return
+    inFlight = true
+    try {
+      const user = await authStore.refreshUser()
+      if (`${user?.username ?? ''}\n${user?.avatar_url ?? ''}` !== snapshot) {
+        stopWeChatSyncPolling()
+        showWeChatSyncQr.value = false
+        appStore.showSuccess(t('profile.authBindings.wechatSyncQrDone', { name: user?.username || '' }))
+      }
+    } catch {
+      // keep polling; a network blip shouldn't end the wait
+    } finally {
+      inFlight = false
+    }
+  }, WECHAT_SYNC_POLL_MS)
+}
+
+async function openWeChatSyncQr(): Promise<void> {
+  try {
+    const target = new URL(buildWeChatProfileSyncURL(PROFILE_PATH), window.location.origin).href
+    wechatSyncQrDataUrl.value = await QRCode.toDataURL(target, { width: 320, margin: 1, errorCorrectionLevel: 'M' })
+  } catch {
+    appStore.showError(t('common.tryAgain'))
+    return
+  }
+  showWeChatSyncQr.value = true
+  startWeChatSyncPolling()
+}
+
+function toggleWeChatSyncQr(): void {
+  if (showWeChatSyncQr.value) {
+    showWeChatSyncQr.value = false
+    stopWeChatSyncPolling()
+    return
+  }
+  void openWeChatSyncQr()
+}
+
+// Accounts still named 「微信用户_xxxx」 get the QR open right away (once per visit).
+let wechatSyncQrAutoOpened = false
+watch(
+  () => currentUser.value,
+  (user) => {
+    if (!wechatSyncQrSupported || wechatSyncQrAutoOpened || !user) return
+    if (getBindingStatusForUser(user, 'wechat') && WECHAT_FALLBACK_USERNAME.test(user.username || '')) {
+      wechatSyncQrAutoOpened = true
+      void openWeChatSyncQr()
+    }
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(stopWeChatSyncPolling)
 const wechatAccountName = computed(() => appStore.cachedPublicSettings?.wechat_mp_account_name?.trim() || '')
 const wechatFollowQrUrl = computed(() => appStore.cachedPublicSettings?.wechat_mp_follow_qr_url?.trim() || '')
 const wechatBindRequest = computed<WeChatLoginRequest>(() => ({
