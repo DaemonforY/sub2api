@@ -681,6 +681,8 @@ export default {
       daysRemaining: '剩余 {days} 天',
       hoursMinutesRemaining: '剩余 {hours} 小时 {minutes} 分钟',
       minutesRemaining: '剩余 {minutes} 分钟',
+      trialPending: '待开始 · 首次调用后可用 {days} 天',
+      trialPendingLapses: '{date} 前未使用则作废',
       remainingDays: '剩余天数',
       noExpiration: '无过期时间',
       status: {

@@ -113,11 +113,15 @@ func TestSignupTrialStartRunOnceClosesStale(t *testing.T) {
 func TestMarkPendingTrials(t *testing.T) {
 	repo := &memTrialStartRepo{}
 	require.NoError(t, repo.Create(context.Background(), 11, 3, 1))
+	require.NoError(t, repo.Create(context.Background(), 21, 4, 2))
 	s := NewSignupTrialStartService(repo, nil, nil)
-	subs := []UserSubscription{{ID: 10, UserID: 3}, {ID: 11, UserID: 3}}
-	markPendingTrials(context.Background(), s, 3, subs)
+	// An admin page mixes users.
+	subs := []UserSubscription{{ID: 10, UserID: 3}, {ID: 11, UserID: 3}, {ID: 21, UserID: 4}, {ID: 30, UserID: 5}}
+	markPendingTrials(context.Background(), s, subs)
 	require.Zero(t, subs[0].TrialPendingDays)
 	require.Equal(t, 1, subs[1].TrialPendingDays)
+	require.Equal(t, 2, subs[2].TrialPendingDays)
+	require.Zero(t, subs[3].TrialPendingDays)
 }
 
 func TestExpiryRemindersSkipPendingTrials(t *testing.T) {

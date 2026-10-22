@@ -681,6 +681,8 @@ export default {
       daysRemaining: '{days} days remaining',
       hoursMinutesRemaining: '{hours}h {minutes}m remaining',
       minutesRemaining: '{minutes}m remaining',
+      trialPending: 'Not started · {days}d from first call',
+      trialPendingLapses: 'Lapses unused at {date}',
       remainingDays: 'Remaining days',
       noExpiration: 'No expiration',
       status: {

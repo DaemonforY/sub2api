@@ -179,22 +179,43 @@
           @sort="handleSort"
         >
           <template #cell-user="{ row }">
-            <div class="flex items-center gap-2">
+            <div v-if="userColumnMode === 'email'" class="flex items-center gap-2">
               <div
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
               >
                 <span class="text-sm font-medium text-primary-700 dark:text-primary-300">
-                  {{ userColumnMode === 'email'
-                    ? (row.user?.email?.charAt(0).toUpperCase() || '?')
-                    : (row.user?.username?.charAt(0).toUpperCase() || '?')
-                  }}
+                  {{ row.user ? userIdentity(row.user).initial : '?' }}
+                </span>
+              </div>
+              <div v-if="row.user" class="min-w-0">
+                <div
+                  class="truncate font-medium text-gray-900 dark:text-white"
+                  :title="row.user.email"
+                  data-testid="subscription-user-primary"
+                >
+                  {{ userIdentity(row.user).primary }}
+                </div>
+                <div
+                  v-if="userIdentity(row.user).placeholder"
+                  class="truncate text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ userIdentity(row.user).secondary }}
+                </div>
+              </div>
+              <span v-else class="font-medium text-gray-900 dark:text-white">
+                {{ t('admin.redeem.userPrefix', { id: row.user_id }) }}
+              </span>
+            </div>
+            <div v-else class="flex items-center gap-2">
+              <div
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30"
+              >
+                <span class="text-sm font-medium text-primary-700 dark:text-primary-300">
+                  {{ row.user?.username?.charAt(0).toUpperCase() || '?' }}
                 </span>
               </div>
               <span class="font-medium text-gray-900 dark:text-white">
-                {{ userColumnMode === 'email'
-                  ? (row.user?.email || t('admin.redeem.userPrefix', { id: row.user_id }))
-                  : (row.user?.username || '-')
-                }}
+                {{ row.user?.username || '-' }}
               </span>
             </div>
           </template>
@@ -341,8 +362,16 @@
             </div>
           </template>
 
-          <template #cell-expires_at="{ value }">
-            <div v-if="value">
+          <template #cell-expires_at="{ value, row }">
+            <div v-if="value && row.trial_pending_days" data-testid="subscription-trial-pending">
+              <div class="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                {{ t('admin.subscriptions.trialPending', { days: row.trial_pending_days }) }}
+              </div>
+              <div class="text-xs text-gray-500" :title="formatDateTimeToMinute(value)">
+                {{ t('admin.subscriptions.trialPendingLapses', { date: formatDateTimeToMinute(value) }) }}
+              </div>
+            </div>
+            <div v-else-if="value">
               <span
                 class="text-sm"
                 :class="
@@ -595,7 +624,7 @@
           <p class="text-sm text-gray-600 dark:text-gray-400">
             {{ t('admin.subscriptions.adjustingFor') }}
             <span class="font-medium text-gray-900 dark:text-white">{{
-              extendingSubscription.user?.email
+              subscriptionUserLabel(extendingSubscription)
             }}</span>
           </p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -650,7 +679,7 @@
     <ConfirmDialog
       :show="showRevokeDialog"
       :title="t('admin.subscriptions.revokeSubscription')"
-      :message="t('admin.subscriptions.revokeConfirm', { user: revokingSubscription?.user?.email })"
+      :message="t('admin.subscriptions.revokeConfirm', { user: subscriptionUserLabel(revokingSubscription) })"
       :confirm-text="t('admin.subscriptions.revoke')"
       :cancel-text="t('common.cancel')"
       :danger="true"
@@ -662,7 +691,7 @@
     <ConfirmDialog
       :show="showRestoreDialog"
       :title="t('admin.subscriptions.restoreSubscription')"
-      :message="t('admin.subscriptions.restoreConfirm', { user: restoringSubscription?.user?.email })"
+      :message="t('admin.subscriptions.restoreConfirm', { user: subscriptionUserLabel(restoringSubscription) })"
       :confirm-text="t('admin.subscriptions.restore')"
       :cancel-text="t('common.cancel')"
       @confirm="confirmRestore"
@@ -673,7 +702,7 @@
     <ConfirmDialog
       :show="showResetQuotaConfirm"
       :title="t('admin.subscriptions.resetQuotaTitle')"
-      :message="t('admin.subscriptions.resetQuotaConfirm', { user: resettingSubscription?.user?.email })"
+      :message="t('admin.subscriptions.resetQuotaConfirm', { user: subscriptionUserLabel(resettingSubscription) })"
       :confirm-text="t('admin.subscriptions.resetQuota')"
       :cancel-text="t('common.cancel')"
       @confirm="confirmResetQuota"
@@ -762,7 +791,7 @@
 </template>
 
 <script setup lang="ts">
-import { displayEmail } from '@/utils/userDisplay'
+import { displayEmail, displayIdentity } from '@/utils/userDisplay'
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
@@ -811,6 +840,11 @@ const guideActionRows = computed(() => [
   { action: t('admin.subscriptions.guide.actions.resetQuota'), desc: t('admin.subscriptions.guide.actions.resetQuotaDesc') },
   { action: t('admin.subscriptions.guide.actions.revoke'), desc: t('admin.subscriptions.guide.actions.revokeDesc') }
 ])
+
+// Placeholder emails (WeChat sign-ups) show as the username.
+const userIdentity = (user: { email?: string | null; username?: string | null }) => displayIdentity(user, t)
+const subscriptionUserLabel = (sub: UserSubscription | null | undefined) =>
+  sub?.user ? userIdentity(sub.user).primary : ''
 
 // User column display mode: 'email' or 'username'
 const userColumnMode = ref<'email' | 'username'>('email')

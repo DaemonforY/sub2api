@@ -165,15 +165,29 @@ type pendingTrialLookup interface {
 	PendingForUsers(ctx context.Context, userIDs []int64) map[int64]PendingSignupTrial
 }
 
-// markPendingTrials sets TrialPendingDays on the user's subscriptions that are unused sign-up trials.
-func markPendingTrials(ctx context.Context, lookup pendingTrialLookup, userID int64, subs []UserSubscription) {
+// markPendingTrials sets TrialPendingDays on the subscriptions that are unused sign-up trials
+// (one user's list or an admin page of many users).
+func markPendingTrials(ctx context.Context, lookup pendingTrialLookup, subs []UserSubscription) {
 	if lookup == nil || len(subs) == 0 {
 		return
 	}
-	pending := lookup.PendingForUsers(ctx, []int64{userID})
+	pending := lookup.PendingForUsers(ctx, subscriptionUserIDs(subs))
 	for i := range subs {
 		if p, ok := pending[subs[i].ID]; ok {
 			subs[i].TrialPendingDays = p.TrialDays
 		}
 	}
+}
+
+// subscriptionUserIDs: the distinct users of subs, in order of first appearance.
+func subscriptionUserIDs(subs []UserSubscription) []int64 {
+	seen := make(map[int64]struct{}, len(subs))
+	ids := make([]int64, 0, len(subs))
+	for i := range subs {
+		if _, ok := seen[subs[i].UserID]; !ok {
+			seen[subs[i].UserID] = struct{}{}
+			ids = append(ids, subs[i].UserID)
+		}
+	}
+	return ids
 }

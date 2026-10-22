@@ -169,15 +169,7 @@ func (s *SubscriptionExpiryService) pendingTrialsOf(ctx context.Context, subs []
 	if s.pendingTrials == nil || len(subs) == 0 {
 		return nil
 	}
-	seen := map[int64]struct{}{}
-	userIDs := make([]int64, 0, len(subs))
-	for i := range subs {
-		if _, ok := seen[subs[i].UserID]; !ok {
-			seen[subs[i].UserID] = struct{}{}
-			userIDs = append(userIDs, subs[i].UserID)
-		}
-	}
-	return s.pendingTrials.PendingForUsers(ctx, userIDs)
+	return s.pendingTrials.PendingForUsers(ctx, subscriptionUserIDs(subs))
 }
 
 func (s *SubscriptionExpiryService) expiryReminderEnabled(ctx context.Context) bool {
