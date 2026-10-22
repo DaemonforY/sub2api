@@ -49,6 +49,8 @@ type CanvasMembershipPlan struct {
 type CanvasMembershipConfig struct {
 	Enabled bool                   `json:"enabled"`
 	Plans   []CanvasMembershipPlan `json:"plans"`
+	// WatermarkOff: 全站关闭水印 — everyone saves the original. Saves by signed-in users are still logged.
+	WatermarkOff bool `json:"watermark_off"`
 }
 
 // CanvasMembershipStatus is what the purchase page and the canvas show.
@@ -159,6 +161,11 @@ func (s *CanvasMembershipService) OnSale(ctx context.Context) bool {
 	return cfg.Enabled && len(cfg.Plans) > 0
 }
 
+// WatermarkOff reports whether the admin turned the watermark off for everyone.
+func (s *CanvasMembershipService) WatermarkOff(ctx context.Context) bool {
+	return s.Config(ctx).WatermarkOff
+}
+
 // PlanForOrder returns the plan a new order is for, rejecting it while sales are off.
 func (s *CanvasMembershipService) PlanForOrder(ctx context.Context, planID int64) (*CanvasMembershipPlan, error) {
 	cfg := s.Config(ctx)
@@ -248,14 +255,17 @@ func (s *CanvasMembershipService) Grant(ctx context.Context, userID int64, days 
 	return s.Until(ctx, userID)
 }
 
-// RecordUnmarkedSave logs one unwatermarked save; only members may save unwatermarked.
+// RecordUnmarkedSave logs one unwatermarked save; only members may save unwatermarked,
+// or anyone while the watermark is off for the whole site.
 func (s *CanvasMembershipService) RecordUnmarkedSave(ctx context.Context, save CanvasUnmarkedSave) error {
-	until, err := s.Until(ctx, save.UserID)
-	if err != nil {
-		return err
-	}
-	if until == nil {
-		return infraerrors.Forbidden("NOT_A_MEMBER", "创作会员已到期，保存的图片会带水印（Membership expired）")
+	if !s.WatermarkOff(ctx) {
+		until, err := s.Until(ctx, save.UserID)
+		if err != nil {
+			return err
+		}
+		if until == nil {
+			return infraerrors.Forbidden("NOT_A_MEMBER", "创作会员已到期，保存的图片会带水印（Membership expired）")
+		}
 	}
 	save.ClientIP = truncateRunes(save.ClientIP, 64)
 	save.UserAgent = truncateRunes(save.UserAgent, 255)

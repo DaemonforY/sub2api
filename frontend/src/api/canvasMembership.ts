@@ -22,6 +22,8 @@ export interface CanvasMembershipStatus {
 export interface CanvasMembershipConfig {
   enabled: boolean
   plans: CanvasMembershipPlan[]
+  /** 全站关闭水印: everyone saves the original. */
+  watermark_off?: boolean
 }
 
 export interface CanvasMember {

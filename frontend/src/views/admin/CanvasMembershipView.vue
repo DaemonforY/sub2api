@@ -6,6 +6,19 @@
         <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('canvasMembership.admin.hint') }}</p>
       </div>
 
+      <!-- Site-wide watermark switch -->
+      <div class="card space-y-2 p-4" data-testid="canvas-membership-watermark">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="font-semibold text-gray-900 dark:text-white">{{ t('canvasMembership.admin.watermarkOffTitle') }}</h3>
+          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input :checked="watermarkOff" type="checkbox" class="h-4 w-4" :disabled="switching" data-testid="canvas-membership-watermark-off" @change="toggleWatermark" />
+            {{ t('canvasMembership.admin.watermarkOff') }}
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('canvasMembership.admin.watermarkOffHint') }}</p>
+        <p class="text-xs text-amber-600 dark:text-amber-400">{{ t('canvasMembership.admin.watermarkOffRisk') }}</p>
+      </div>
+
       <!-- Plans -->
       <form class="card space-y-4 p-4" data-testid="canvas-membership-config" @submit.prevent="save">
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -109,6 +122,10 @@ const members = ref<CanvasMember[]>([])
 const showAll = ref(false)
 const saving = ref(false)
 const granting = ref(false)
+// The site-wide switch saves on its own, together with the plans as last saved (not unsaved edits in the form).
+const savedConfig = ref<CanvasMembershipConfig>({ enabled: false, plans: [] })
+const watermarkOff = ref(false)
+const switching = ref(false)
 const grantUser = ref('')
 const grantDays = ref<number>(30)
 
@@ -125,6 +142,8 @@ function addPlan() {
 
 function apply(res: { config: CanvasMembershipConfig; members: CanvasMember[] }) {
   config.value = { enabled: res.config.enabled, plans: res.config.plans.map((p) => ({ ...p, original_price: p.original_price || undefined })) }
+  savedConfig.value = res.config
+  watermarkOff.value = res.config.watermark_off === true
   members.value = res.members
 }
 
@@ -140,12 +159,35 @@ async function save() {
   saving.value = true
   try {
     const plans = config.value.plans.map((p) => ({ ...p, original_price: Number(p.original_price) || 0 }))
-    apply(await adminSaveCanvasMembership({ enabled: config.value.enabled, plans }))
+    apply(await adminSaveCanvasMembership({ enabled: config.value.enabled, plans, watermark_off: watermarkOff.value }))
     appStore.showSuccess(t('canvasMembership.admin.saved'))
   } catch (err) {
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
   } finally {
     saving.value = false
+  }
+}
+
+async function toggleWatermark(event: Event) {
+  const input = event.target as HTMLInputElement
+  const off = input.checked
+  if (off && !window.confirm(t('canvasMembership.admin.watermarkOffConfirm'))) {
+    input.checked = false
+    return
+  }
+  switching.value = true
+  try {
+    // Keep the form's unsaved plan edits; only the switch and the saved settings go out.
+    const draft = config.value
+    const res = await adminSaveCanvasMembership({ ...savedConfig.value, watermark_off: off })
+    apply(res)
+    config.value = draft
+    appStore.showSuccess(t(off ? 'canvasMembership.admin.watermarkOffSaved' : 'canvasMembership.admin.watermarkOnSaved'))
+  } catch (err) {
+    input.checked = watermarkOff.value
+    appStore.showError(extractApiErrorMessage(err, t('common.error')))
+  } finally {
+    switching.value = false
   }
 }
 

@@ -200,3 +200,23 @@ func TestCanvasMembershipTermsAndUnmarkedSaves(t *testing.T) {
 	_, err = svc.Grant(ctx, 7, 0)
 	require.Error(t, err)
 }
+
+func TestCanvasMembershipWatermarkOffForEveryone(t *testing.T) {
+	svc, repo, _ := newTestMembership()
+	ctx := context.Background()
+	require.False(t, svc.WatermarkOff(ctx))
+
+	// Sales off and no plans: the switch alone is a valid config, and survives a reload.
+	_, err := svc.SaveConfig(ctx, CanvasMembershipConfig{WatermarkOff: true})
+	require.NoError(t, err)
+	require.True(t, svc.WatermarkOff(ctx))
+	require.False(t, svc.OnSale(ctx))
+
+	// A non-member's save is accepted and still logged.
+	require.NoError(t, svc.RecordUnmarkedSave(ctx, CanvasUnmarkedSave{UserID: 9, Width: 1024, Height: 1024}))
+	require.Len(t, repo.saves, 1)
+
+	_, err = svc.SaveConfig(ctx, CanvasMembershipConfig{})
+	require.NoError(t, err)
+	require.Error(t, svc.RecordUnmarkedSave(ctx, CanvasUnmarkedSave{UserID: 9}))
+}

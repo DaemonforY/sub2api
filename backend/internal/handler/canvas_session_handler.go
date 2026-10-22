@@ -183,8 +183,15 @@ type unmarkedSaveRequest struct {
 	Height int `json:"height"`
 }
 
+// Site GET /api/v1/canvas/site — site-wide canvas switches, readable signed out (the canvas loads it on start).
+func (h *CanvasSessionHandler) Site(c *gin.Context) {
+	watermarkOff := h.membership != nil && h.membership.WatermarkOff(c.Request.Context())
+	response.Success(c, gin.H{"watermark_off": watermarkOff})
+}
+
 // UnmarkedSave POST /api/v1/canvas/unmarked-saves — a member saved an image without the watermark
-// (logged for 《人工智能生成合成内容标识办法》第九条). 403 when the membership has ended.
+// (logged for 《人工智能生成合成内容标识办法》第九条). 403 when the membership has ended, unless the
+// watermark is off for the whole site.
 func (h *CanvasSessionHandler) UnmarkedSave(c *gin.Context) {
 	_, user, ok := middleware.CanvasSessionFromContext(c)
 	if !ok {

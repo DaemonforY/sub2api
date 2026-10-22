@@ -47,6 +47,7 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 	canvas.Use(middleware.CanvasOriginGuard(canvasOrigins))
 	// Logout works with an expired or revoked cookie too (it still clears it).
 	canvas.POST("/logout", panelRateLimiter.PublicIP(), h.CanvasSession.Logout)
+	canvas.GET("/site", panelRateLimiter.PublicIP(), h.CanvasSession.Site)
 	signedIn := canvas.Group("")
 	signedIn.Use(middleware.CanvasSessionAuth(sessions))
 	signedIn.Use(middleware.BackendModeUserGuard(settingService))
