@@ -70,6 +70,7 @@ export function windowsInstallerScript(baseUrl: string, apiKey: string): string 
     'rem It sets up Claude Code / Codex and deletes itself when done.',
     'title HiveGPT',
     `set "HIVEGPT_KEY=${apiKey}"`,
+    'set "HIVEGPT_LAUNCHER=cmd"',
     ...(base !== DEFAULT_INSTALL_BASE ? [`set "HIVEGPT_BASE_URL=${base}"`] : []),
     `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm ${base}/install.ps1 | iex"`,
     'echo.',

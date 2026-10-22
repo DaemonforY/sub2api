@@ -151,7 +151,7 @@ export default {
         macPaste: 'Click Copy, go back to that window, press ⌘ + V to paste, then press Return:',
         linuxOpen: 'Open a terminal (Ctrl + Alt + T on most systems).',
         otherPaste: 'Click Copy, paste it into the window and press Enter:',
-        waitDone: 'Wait until it says it is done, then quit and reopen the Claude / Codex app, or open a new terminal and run claude / codex.',
+        waitDone: 'Wait until it says it is done, then follow the next steps it prints: these are command-line tools, so they won\'t show up in the Start menu. Type codex (or claude) in the window to use them, or codex app to install the desktop app.',
         keyWarning: 'The command and the installer contain this key, so don\'t share them.',
         restore: 'To go back to your previous configs:'
       },

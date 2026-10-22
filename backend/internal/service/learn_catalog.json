@@ -1019,7 +1019,7 @@
     "answer": [
      2
     ],
-    "explain": "Codex CLI 调用 gpt-5.5，需要 OpenAI 类分组；「GPT-按量」按用量从余额扣费。"
+    "explain": "Codex CLI 默认调用 gpt-6.1-sol，需要 OpenAI 类分组；「GPT-按量」按用量从余额扣费。"
    },
    {
     "q": "在终端里运行 codex 之前，为什么要先进入项目文件夹？",

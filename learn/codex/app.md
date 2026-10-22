@@ -47,7 +47,7 @@ codex app ~/code/api # 也可以直接指定目录
 这意味着两种用法：
 
 - **用 ChatGPT 账号登录**：第一次打开时选择用 ChatGPT 登录，按浏览器提示完成授权。本地任务、云端任务、GitHub 集成都可以用。
-- **用第三方模型接口（比如 HiveGPT）**：用 [一键安装](/connect/one-click) 自动写好配置，或者按 [接入 HiveGPT](/codex/hivegpt) 手动生成 `~/.codex/config.toml`（兼容模式还有 `~/.codex/auth.json`），然后完全退出再打开桌面应用，本地任务就会走 HiveGPT 的 `gpt-5.5`。如果应用仍停在登录页，选择用 API Key 继续的入口（文案以应用为准）。
+- **用第三方模型接口（比如 HiveGPT）**：用 [一键安装](/connect/one-click) 自动写好配置，或者按 [接入 HiveGPT](/codex/hivegpt) 手动生成 `~/.codex/config.toml`（兼容模式还有 `~/.codex/auth.json`），然后完全退出再打开桌面应用，本地任务就会走 HiveGPT 的 `gpt-6.1-sol`。如果应用仍停在登录页，选择用 API Key 继续的入口（文案以应用为准）。
 
 ::: warning 第三方 Key 不能用云端功能
 用 API Key（包括 HiveGPT 的 Key）时，只有在你电脑上运行的任务可用。「云端」运行方式、`chatgpt.com/codex` 上的任务、GitHub 里的 `@codex` 都要求 ChatGPT 账号和对应套餐，详见 [云端任务与 GitHub](/codex/cloud)。
@@ -90,7 +90,7 @@ codex app ~/code/api # 也可以直接指定目录
 |---|---|
 | 输入 `@` | 引用项目里的文件，或调用已安装的插件 |
 | `+` 或拖拽 | 附加图片、截图、文件 |
-| 模型选择 | 切换模型和推理强度，HiveGPT 默认是 `gpt-5.5`，其他可选项以列表为准 |
+| 模型选择 | 切换模型和推理强度，HiveGPT 默认是 `gpt-6.1-sol`，其他可选项以列表为准 |
 | 权限 / 审批 | 选择只读、默认（可改工作区、联网和越界要批准）、完全访问 |
 | 运行方式 | 本地 / Worktree / 云端，见下一节 |
 | 语音 | 口述任务 |

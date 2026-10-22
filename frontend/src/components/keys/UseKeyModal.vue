@@ -319,6 +319,7 @@ import type { GroupPlatform } from '@/types'
 import { canvasUrl } from '@/constants/crossSites'
 import { chatboxImportLink, cherryStudioImportLink } from '@/utils/chatClientImport'
 import { supportsOneClickInstall } from '@/utils/oneClickInstall'
+import { CODEX_DEFAULT_MODEL, pickCodexDefaultModel } from '@/utils/codexStarterConfig'
 import OneClickInstallPanel from '@/components/keys/OneClickInstallPanel.vue'
 import {
   findCodexCatalogModel,
@@ -723,8 +724,11 @@ const codexCatalogModelSlugs = computed(() =>
 )
 
 function selectCodexCatalogModel(preferredModel: string): string {
-  if (codexCatalogModelSlugs.value.includes(preferredModel)) return preferredModel
-  return codexCatalogModelSlugs.value[0] || preferredModel
+  const slugs = codexCatalogModelSlugs.value
+  if (slugs.includes(preferredModel)) return preferredModel
+  // The GPT default follows Codex's order through whatever the group's catalog has.
+  if (preferredModel === CODEX_DEFAULT_MODEL && slugs.length) return pickCodexDefaultModel(slugs)
+  return slugs[0] || preferredModel
 }
 
 function codexReasoningEffortTomlLine(modelSlug: string): string {
@@ -994,7 +998,7 @@ function generateOpenAIFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
 
-  const model = selectCodexCatalogModel('gpt-5.5')
+  const model = selectCodexCatalogModel(CODEX_DEFAULT_MODEL)
   const reasoningEffortLine = codexReasoningEffortTomlLine(model)
 
   // config.toml content
@@ -1279,7 +1283,7 @@ function generateRoutedCodexFiles(
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
   const preferredModels: Partial<Record<GroupPlatform, string>> = {
-    openai: 'gpt-5.5',
+    openai: CODEX_DEFAULT_MODEL,
     anthropic: 'claude-sonnet-4-6',
     gemini: 'gemini-2.5-pro',
     antigravity: 'claude-sonnet-4-6',
@@ -1287,7 +1291,7 @@ function generateRoutedCodexFiles(
     kimi: 'kimi-k2.5',
     zhipu: 'glm-4.7',
     deepseek: 'deepseek-v4-pro',
-    composite: 'gpt-5.5'
+    composite: CODEX_DEFAULT_MODEL
   }
   const preferredModel = preferredModels[platform] || ''
   const model = selectCodexCatalogModel(preferredModel)
@@ -1339,7 +1343,7 @@ supports_websockets = false`
 function generateOpenAIWsFiles(baseUrl: string, apiKey: string): FileConfig[] {
   const isWindows = activeTab.value === 'windows'
   const configDir = isWindows ? '%userprofile%\\.codex' : '~/.codex'
-  const model = selectCodexCatalogModel('gpt-5.5')
+  const model = selectCodexCatalogModel(CODEX_DEFAULT_MODEL)
   const reasoningEffortLine = codexReasoningEffortTomlLine(model)
 
   // config.toml content with WebSocket v2

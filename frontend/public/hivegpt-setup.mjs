@@ -545,8 +545,22 @@ function which(cmd, extraDirs = []) {
   return null
 }
 
+/**
+ * Runs a Windows .cmd / .bat shim through cmd.exe with the command line quoted by hand. Passing
+ * args with `shell: true` makes Node 24 print a DEP0190 security warning that worries users.
+ */
+function spawnCmdShim(bin, args, options = {}) {
+  const quoted = [bin, ...args].map((a) => (/[\s"&|<>^()]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a)).join(' ')
+  return spawnSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', `"${quoted}"`], {
+    encoding: 'utf8',
+    windowsHide: true,
+    windowsVerbatimArguments: true,
+    ...options
+  })
+}
+
 function commandVersion(bin) {
-  const r = IS_WIN && /\.(cmd|bat)$/i.test(bin) ? run(`"${bin}"`, ['--version'], { shell: true }) : run(bin, ['--version'])
+  const r = IS_WIN && /\.(cmd|bat)$/i.test(bin) ? spawnCmdShim(bin, ['--version']) : run(bin, ['--version'])
   const m = `${r.stdout || ''} ${r.stderr || ''}`.match(/(\d+\.\d+\.\d+)/)
   return m ? m[1] : null
 }
@@ -564,10 +578,13 @@ function npmInstall(pkg) {
   const cli = npmCliPath()
   for (const registry of NPM_REGISTRIES) {
     info(`从 ${registry} 安装 ${pkg} …`)
-    const args = ['install', '-g', '--prefix', NPM_PREFIX, `${pkg}@latest`, '--registry', registry, '--no-fund', '--no-audit', '--loglevel', 'error']
+    const args = ['install', '-g', '--prefix', NPM_PREFIX, `${pkg}@latest`, '--registry', registry, '--no-fund', '--no-audit', '--no-update-notifier', '--loglevel', 'error']
+    const env = { ...process.env, npm_config_registry: registry, npm_config_update_notifier: 'false', NO_UPDATE_NOTIFIER: '1' }
     const r = cli
-      ? spawnSync(process.execPath, [cli, ...args], { stdio: 'inherit', env: { ...process.env, npm_config_registry: registry } })
-      : spawnSync(IS_WIN ? 'npm.cmd' : 'npm', args, { stdio: 'inherit', shell: IS_WIN, env: { ...process.env, npm_config_registry: registry } })
+      ? spawnSync(process.execPath, [cli, ...args], { stdio: 'inherit', env })
+      : IS_WIN
+        ? spawnCmdShim('npm.cmd', args, { stdio: 'inherit', env, encoding: undefined })
+        : spawnSync('npm', args, { stdio: 'inherit', env })
     if (r.status === 0) return true
     warn(`从 ${registry} 安装失败，换下一个镜像重试…`)
   }
@@ -856,11 +873,13 @@ function updateCodexToml(text, topLines, providerBlock) {
   return `${out.join('\n').replace(/\n{3,}/g, '\n\n')}\n`
 }
 
+// Codex's own picker order (its bundled catalog's priority, 0.163). gpt-5.5 is deprecated upstream.
+const CODEX_MODEL_PREFERENCE = ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']
+
 function pickCodexModel(catalog, modelIds) {
   const slugs = (catalog?.models || []).map((m) => (typeof m?.slug === 'string' ? m.slug.trim() : '')).filter(Boolean)
   const pool = slugs.length ? slugs : modelIds
-  if (pool.includes('gpt-5.5')) return 'gpt-5.5'
-  return pool.find((id) => /^gpt-/i.test(id)) || pool[0] || 'gpt-5.5'
+  return CODEX_MODEL_PREFERENCE.find((id) => pool.includes(id)) || pool.find((id) => /^gpt-/i.test(id)) || pool[0] || CODEX_MODEL_PREFERENCE[0]
 }
 
 function codexReasoningEffort(catalog, slug) {
@@ -1013,14 +1032,57 @@ async function main() {
   } else {
     ok(bold('全部完成！'))
   }
-  console.log(`
-下一步：
-  ${bold('用桌面 App')}：完全退出 Claude / Codex App 再重新打开，就会用 HiveGPT 了。
-  ${bold('用命令行')}：
-  1. ${bold('新开一个终端窗口')}（让新的 PATH 和配置生效）
-  ${tools !== 'codex' ? `2. 进入项目文件夹，运行 ${cyan('claude')}` : `2. 进入项目文件夹，运行 ${cyan('codex')}`}${tools === 'all' ? `，或 ${cyan('codex')}` : ''}
-  3. 想恢复原来的配置（DeepSeek、官方账号等）：重新运行安装命令并加 ${cyan('--restore')}
-`)
+  printNextSteps(tools)
+}
+
+function codexAppInstalled() {
+  if (IS_MAC) return ['/Applications/Codex.app', '/Applications/ChatGPT.app', path.join(HOME, 'Applications', 'Codex.app'), path.join(HOME, 'Applications', 'ChatGPT.app')].some(exists)
+  if (IS_WIN) {
+    const packages = path.join(process.env.LOCALAPPDATA || '', 'Packages')
+    return exists(packages) && fs.readdirSync(packages).some((n) => /openai|chatgpt|codex/i.test(n))
+  }
+  return false
+}
+
+/** Steps a first-time user can follow as written: how to open a window, what to type, where the apps come from. */
+function printNextSteps(tools) {
+  const lines = ['', bold('下一步：')]
+  // The double-click installer (HiveGPT一键安装.cmd) closes its window at the end; install.ps1 run
+  // from PowerShell refreshes PATH, so that window can be used right away.
+  const viaCmd = process.env.HIVEGPT_LAUNCHER === 'cmd'
+  const open = IS_WIN
+    ? viaCmd
+      ? `按任意键关掉这个窗口后，按 ${bold('Win + R')}，输入 ${cyan('powershell')} 回车，打开一个新窗口`
+      : `就在这个窗口里输入也可以；以后按 ${bold('Win + R')}，输入 ${cyan('powershell')} 回车，打开一个新窗口`
+    : IS_MAC
+      ? `先${bold('关掉这个窗口')}，按 ${bold('⌘ + 空格')} 输入「终端」回车，打开一个新窗口（新装的命令要在新窗口里才能用）`
+      : `先${bold('关掉这个终端')}，再打开一个新的（新装的命令要在新窗口里才能用）`
+  lines.push(`  ${bold('打开窗口')}：${open}。`)
+  const cli = (label, name, folder) => [
+    `  ${bold(`用 ${label}`)}：在窗口里依次输入下面三行，每行按回车：`,
+    `      ${cyan(`mkdir ${folder}`)}`,
+    `      ${cyan(`cd ${folder}`)}`,
+    `      ${cyan(name)}`
+  ]
+  if (tools === 'all') lines.push('  （Codex 和 Claude Code 都装好了，想用哪个就输入下面哪一组。）')
+  if (tools !== 'claude') lines.push(...cli('Codex 命令行', 'codex', 'codex-test'))
+  if (tools !== 'codex') lines.push(...cli('Claude Code 命令行', 'claude', 'claude-test'))
+  lines.push('    第一次会问要不要信任这个文件夹，选「信任」；然后直接用中文告诉它你想做什么。')
+  if (tools !== 'claude') {
+    lines.push(codexAppInstalled()
+      ? `  ${bold('用 Codex 桌面 App')}：完全退出 App 再重新打开，新建一个任务，就会用 HiveGPT 了。`
+      : `  ${bold('想用有界面的 Codex 桌面 App')}：在窗口里输入 ${cyan('codex app')} 回车，会打开安装页（${IS_WIN ? 'Microsoft Store' : IS_MAC ? '自动下载安装' : 'Linux 暂无桌面版'}），装好打开即可，配置已经写好。`)
+  }
+  if (tools !== 'codex') {
+    lines.push(desktopInstalled()
+      ? `  ${bold('用 Claude 桌面 App')}：完全退出 App 再重新打开；登录过 claude.ai 的，在账户菜单里切到「HiveGPT」配置。`
+      : `  ${bold('想用 Claude 桌面 App')}：到 https://claude.ai/download 下载安装（需要能访问 claude.ai），打开就会用 HiveGPT。`)
+  }
+  const restore = IS_WIN
+    ? "$env:HIVEGPT_RESTORE='1'; irm " + BASE + '/install.ps1 | iex'
+    : `curl -fsSL ${BASE}/install.sh | bash -s -- --restore`
+  lines.push(`  ${bold('想换回原来的配置')}（DeepSeek、官方账号等）：运行 ${cyan(restore)}`, '')
+  console.log(lines.join('\n'))
 }
 
 main().catch((error) => {

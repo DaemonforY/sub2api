@@ -151,7 +151,7 @@ export default {
         macPaste: '点「复制」，回到那个窗口按 ⌘ + V 粘贴，再按回车：',
         linuxOpen: '打开「终端」（多数系统可以按 Ctrl + Alt + T）。',
         otherPaste: '点「复制」，在窗口里粘贴，再按回车：',
-        waitDone: '等它显示「全部完成」，然后完全退出再打开 Claude / Codex App，或者新开一个终端运行 claude / codex。',
+        waitDone: '等它显示「全部完成」，再照着窗口最后的「下一步」做：装好的是命令行工具，在开始菜单里搜不到，要在窗口里输入 codex（或 claude）来用；想要有界面的桌面版，在窗口里输入 codex app。',
         keyWarning: '命令和安装程序里都带着这个密钥，不要发给别人。',
         restore: '想换回原来的配置：'
       },

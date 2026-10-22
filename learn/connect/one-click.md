@@ -38,7 +38,7 @@ Claude 分组一般只允许 Claude Code 和 Claude 桌面 App 使用。想 Clau
 1. 按键盘上的 **Win + R**（Win 是左下角带 Windows 图标的键），在弹出的「运行」框里输入 `powershell`，按回车，会打开一个蓝色或黑色的窗口。
 2. 回到网页，在一键安装里点 **「复制」**。
 3. 回到 PowerShell 窗口，按 **Ctrl + V**（或单击右键）粘贴，再按 **回车**。
-4. 它会自动下载和配置。第一次运行要下载 Node.js 和 Claude Code / Codex，大约 1～3 分钟。看到 **「全部完成！」** 就好了，可以关掉窗口。
+4. 它会自动下载和配置。第一次运行要下载 Node.js 和 Claude Code / Codex，大约 1～3 分钟。看到 **「全部完成！」** 就装好了，接着看下面的 [装好之后怎么用](#装好之后怎么用)。
 
 命令长这样（你复制到的那行已经填好了自己的 Key）：
 
@@ -74,13 +74,34 @@ curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='你的 Key' bash
 
 Linux 也是这行命令：打开终端（多数系统可以按 `Ctrl + Alt + T`）粘贴运行即可。Alpine 等 musl 系统需要先自己装好 Node.js 22 以上版本。
 
-## 装好之后
+## 装好之后怎么用
 
-- **用桌面 App**：完全退出 Claude 桌面 App 或 Codex App（Mac 按 ⌘Q，Windows 在右下角托盘图标上右键退出），再重新打开。Codex App 要新建一个任务，配置才会生效。
-- **用命令行**：**新开一个终端窗口**，进入项目文件夹，运行 `claude` 或 `codex`。
-- 到 HiveGPT 的「使用记录」里，能看到刚才的调用。
+装好的是**命令行工具**：它在 PowerShell / 终端窗口里输入 `codex` 或 `claude` 来用，不会出现在开始菜单或「应用程序」里，在那里搜不到是正常的。想要有界面的版本，看下面的「桌面 App」。
 
-还没装桌面 App 的话，脚本会先把配置写好，装好 App 后打开就能用。Claude 桌面 App 从 [claude.ai/download](https://claude.ai/download) 下载（需要能访问 claude.ai），Codex App 见 [桌面应用与界面](/codex/app)。
+### 用命令行
+
+1. **打开窗口**
+   - Windows：刚才运行安装的 PowerShell 窗口可以直接用；以后按 **Win + R**，输入 `powershell` 回车。
+   - Mac：先关掉刚才的终端窗口，按 **⌘ + 空格** 输入「终端」回车，打开一个新的（新装的命令要在新窗口里才能用）。
+2. **新建一个文件夹并进去**，然后启动。每行输完按回车：
+
+   ```bash
+   mkdir codex-test
+   cd codex-test
+   codex
+   ```
+
+   用 Claude Code 就把最后一行换成 `claude`（文件夹名可以随便起）。
+3. 第一次会问要不要信任这个文件夹，选「信任」。然后直接用中文告诉它你想做什么，比如「帮我做一个记账的小网页」。
+
+Codex 默认用 `gpt-6.1-sol`（分组里没有时自动换成同系列可用的模型）；在 Codex 里输入 `/model` 可以切换。
+
+### 用桌面 App
+
+- **Codex 桌面 App**：没装的话，在 PowerShell / 终端里输入 `codex app` 回车，会打开安装页（Windows 是 Microsoft Store，Mac 会自动下载安装）。装好打开就会用 HiveGPT，配置已经写好；如果停在登录页，选用 API Key 继续的入口。已经装了的，**完全退出**再打开，新建一个任务。
+- **Claude 桌面 App**：没装的话从 [claude.ai/download](https://claude.ai/download) 下载（需要能访问 claude.ai）。装好打开就会用 HiveGPT；已经装了的，完全退出（Mac 按 ⌘Q，Windows 在右下角托盘图标上右键退出）再打开。
+
+到 HiveGPT 的「使用记录」里，能看到刚才的调用。
 
 ### Claude 桌面 App 之前登录过 claude.ai 账号
 
@@ -132,6 +153,7 @@ $env:HIVEGPT_RESTORE='1'; irm https://hivegpt.cn/install.ps1 | iex
 | 提示 Key 无效（401） | Key 复制不完整或已删除，回「API 密钥」页重新下载 / 复制 |
 | 提示 Key 不能用（403） | Key 被停用、设置了 IP 白名单，或没有分配分组，到「API 密钥」页检查 |
 | 下载 Node.js 或 Claude Code 失败 | 多是网络不稳，重新运行一次即可；公司网络拦截的话，换手机热点试试 |
+| 在开始菜单 / 启动台里搜不到 Codex、Claude Code | 正常：装的是命令行工具，要在 PowerShell / 终端里输入 `codex` 或 `claude`；想要桌面 App 见上文「用桌面 App」 |
 | 装完提示找不到 `claude` / `codex` 命令 | 关掉当前终端，**新开一个**再试；新的 PATH 只对新窗口生效 |
 | Claude Code 报「模型不存在」 | 当前终端里还留着旧的 `ANTHROPIC_MODEL`，新开一个终端再运行 |
 | 桌面 App 里没看到 HiveGPT 的模型 | 要**完全退出**再打开，只关窗口不算；Claude 桌面 App 还要切到「HiveGPT」配置（见上文） |

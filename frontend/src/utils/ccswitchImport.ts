@@ -1,6 +1,7 @@
 import type { GroupPlatform } from '@/types'
+import { CODEX_DEFAULT_MODEL } from '@/utils/codexStarterConfig'
 
-export const OPENAI_CC_SWITCH_CODEX_MODEL = 'gpt-5.5'
+export const OPENAI_CC_SWITCH_CODEX_MODEL = CODEX_DEFAULT_MODEL
 export const GROK_CC_SWITCH_MODEL = 'grok-4.5'
 
 export type CcSwitchClientType = 'claude' | 'gemini'

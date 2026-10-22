@@ -7,6 +7,23 @@
 
 export type DesktopOS = 'windows' | 'mac' | 'linux'
 
+/**
+ * Codex's default model for OpenAI-type groups, in Codex's own picker order (the priority in its
+ * bundled catalog, 0.163). gpt-5.5 is deprecated upstream. hivegpt-setup.mjs keeps the same list.
+ */
+export const CODEX_MODEL_PREFERENCE = ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']
+export const CODEX_DEFAULT_MODEL = CODEX_MODEL_PREFERENCE[0]
+
+/** The preferred model a group's catalog offers, else its first GPT model, else its first model. */
+export function pickCodexDefaultModel(available: string[]): string {
+  return (
+    CODEX_MODEL_PREFERENCE.find((m) => available.includes(m)) ||
+    available.find((m) => /^gpt-/i.test(m)) ||
+    available[0] ||
+    CODEX_DEFAULT_MODEL
+  )
+}
+
 export function detectDesktopOS(userAgent: string): DesktopOS {
   if (/windows/i.test(userAgent)) return 'windows'
   if (/mac os|macintosh/i.test(userAgent)) return 'mac'
@@ -22,7 +39,7 @@ function tomlString(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 
-export function codexStarterConfig(baseUrl: string, apiKey: string, model = 'gpt-5.5'): string {
+export function codexStarterConfig(baseUrl: string, apiKey: string, model = CODEX_DEFAULT_MODEL): string {
   const base = baseUrl.replace(/\/v1\/?$/, '').replace(/\/+$/, '')
   return `model_provider = "OpenAI"
 model = "${tomlString(model)}"

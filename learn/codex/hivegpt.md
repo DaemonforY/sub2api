@@ -1,11 +1,11 @@
 ---
 title: 接入 HiveGPT
-description: 在 HiveGPT 创建 OpenAI 类分组的 Key，用「使用密钥」弹窗生成 config.toml、auth.json 和模型目录，让 Codex CLI、IDE 扩展和桌面端都走 HiveGPT 调用 gpt-5.5。
+description: 在 HiveGPT 创建 OpenAI 类分组的 Key，用「使用密钥」弹窗生成 config.toml、auth.json 和模型目录，让 Codex CLI、IDE 扩展和桌面端都走 HiveGPT 调用 gpt-6.1-sol。
 ---
 
 # 接入 HiveGPT
 
-这是本站推荐的接入方式：Codex 本身照常安装，模型调用改走 [HiveGPT](https://hivegpt.cn) 的接口。配好之后，CLI、IDE 扩展、桌面端用的是同一份配置，默认模型是 `gpt-5.5`。
+这是本站推荐的接入方式：Codex 本身照常安装，模型调用改走 [HiveGPT](https://hivegpt.cn) 的接口。配好之后，CLI、IDE 扩展、桌面端用的是同一份配置，默认模型是 `gpt-6.1-sol`。
 
 ## 最快：一键安装
 
@@ -61,7 +61,7 @@ description: 在 HiveGPT 创建 OpenAI 类分组的 Key，用「使用密钥」�
 这个文件告诉 Codex 每个模型的名字、上下文窗口、支持哪些推理强度等信息，`/model` 里的列表就来自它。文件里只有模型元数据，没有 Key。
 
 ::: tip 先获取目录，再复制配置
-获取目录后，弹窗生成的 `config.toml` 会根据目录里 `gpt-5.5` 的默认档位自动补上一行 `model_reasoning_effort`。所以顺序是：先获取目录，再复制下一步的配置。
+获取目录后，弹窗生成的 `config.toml` 会根据目录里 `gpt-6.1-sol` 的默认档位自动补上一行 `model_reasoning_effort`。所以顺序是：先获取目录，再复制下一步的配置。
 :::
 
 ## 第四步：写入 config.toml 和 auth.json
@@ -78,8 +78,8 @@ Windows 按 `Win + R`，输入 `%USERPROFILE%\.codex` 回车；提示找不到�
 
 ```toml
 model_provider = "OpenAI"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
+model = "gpt-6.1-sol"
+review_model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"   # 获取目录后才会出现，档位以弹窗为准
 disable_response_storage = true
 model_catalog_json = "~/.codex/codex-models.json"
@@ -143,7 +143,7 @@ codex
 
 能正常回复，就说明 Codex 已经通过 HiveGPT 调用到模型。再做两个检查：
 
-- 输入 `/status`，确认模型是 `gpt-5.5`、提供方是 OpenAI（即 HiveGPT 地址）。
+- 输入 `/status`，确认模型是 `gpt-6.1-sol`、提供方是 OpenAI（即 HiveGPT 地址）。
 - 输入 `/model`，能看到模型目录里的模型和推理强度选项。
 
 到 HiveGPT 的「使用记录」里，应该能看到刚才这次调用。
@@ -160,8 +160,8 @@ codex
 
 ```toml
 model_provider = "hivegpt"
-model = "gpt-5.5"
-review_model = "gpt-5.5"
+model = "gpt-6.1-sol"
+review_model = "gpt-6.1-sol"
 model_catalog_json = "~/.codex/codex-models.json"
 
 [model_providers.hivegpt]
