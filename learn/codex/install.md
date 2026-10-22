@@ -23,7 +23,7 @@ Codex CLI 本身是 Rust 编译的单个可执行文件，不依赖 Node.js 运�
 ## 选择安装方式
 
 ::: tip 国内用户最省事的办法
-用 HiveGPT 的 [一键安装](/connect/one-click)：Windows 下载一个安装程序双击运行，Mac 粘贴一行命令。它从国内镜像装好 Node.js 和 Codex，并直接配置好 HiveGPT，不用再看下面的安装方式和登录步骤。
+用 HiveGPT 的 [一键安装](/connect/one-click)：Windows 打开 PowerShell、Mac 打开终端，粘贴一行命令。它从国内镜像装好 Node.js 和 Codex，并直接配置好 HiveGPT，不用再看下面的安装方式和登录步骤。
 :::
 
 四种方式装出来的是同一个程序，选一种即可。不确定就按下表选：

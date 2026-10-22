@@ -68,7 +68,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | Chatbox 对话客户端 | [Chatbox 接入第三方 API](/connect/chatbox) | 3 分钟 |
 | 沉浸式翻译（网页、PDF 翻译） | [沉浸式翻译接入 GPT API](/connect/immersive-translate) | 3 分钟 |
 
-最省事的办法：在「API 密钥」页找到你的 Key，点 **「使用密钥」**。用 Claude Code 或 Codex 的话，弹窗最上面的「一键安装」会自动装好并配置好（Windows 下载一个安装程序双击运行，Mac 粘贴一行命令），见 [一键安装 Claude Code 和 Codex](/connect/one-click)；其它客户端，弹窗会按你的分组和系统生成配置，复制粘贴即可。
+最省事的办法：在「API 密钥」页找到你的 Key，点 **「使用密钥」**。用 Claude Code 或 Codex 的话，弹窗最上面的「一键安装」会自动装好并配置好（Windows 打开 PowerShell、Mac 打开终端，粘贴一行命令），见 [一键安装 Claude Code 和 Codex](/connect/one-click)；其它客户端，弹窗会按你的分组和系统生成配置，复制粘贴即可。
 
 ## 查看可用模型
 

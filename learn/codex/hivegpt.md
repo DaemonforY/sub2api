@@ -9,7 +9,7 @@ description: 在 HiveGPT 创建 OpenAI 类分组的 Key，用「使用密钥」�
 
 ## 最快：一键安装
 
-不想手动改文件的话，用「使用密钥」弹窗最上面的 **「一键安装」**：Windows 下载一个安装程序双击运行，Mac 打开「终端」粘贴一行命令。它会从国内镜像装好 Codex（没有 Node.js 也会一起装），写好下面这些配置和模型目录；已经用 ChatGPT 账号登录过、或配过 DeepSeek 的也没关系，原配置会先备份，可以一键恢复。步骤见 [一键安装 Claude Code 和 Codex](/connect/one-click)。
+不想手动改文件的话，用「使用密钥」弹窗最上面的 **「一键安装」**：Windows 打开 PowerShell、Mac 打开「终端」，粘贴一行命令。它会从国内镜像装好 Codex（没有 Node.js 也会一起装），写好下面这些配置和模型目录；已经用 ChatGPT 账号登录过、或配过 DeepSeek 的也没关系，原配置会先备份，可以一键恢复。步骤见 [一键安装 Claude Code 和 Codex](/connect/one-click)。
 
 一键安装写入的是 API Key 模式的配置（Key 写在 `config.toml` 的 `experimental_bearer_token`，不改 `auth.json`）。下面是手动配置的完整步骤，想弄清楚每一项是干什么的，或者想自己控制配置，就接着往下看。
 

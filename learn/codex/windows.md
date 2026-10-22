@@ -10,7 +10,7 @@ Codex 早期只在 macOS 和 Linux 上有完整体验，Windows 用户基本都�
 这一页帮你选路线、装好、把沙箱配对，并解决 Windows 上特有的路径、换行符和中文乱码问题。
 
 ::: tip 只想在 Windows 上尽快用上 Codex
-用 HiveGPT 的 [一键安装](/connect/one-click)：在「使用密钥」弹窗里下载 `HiveGPT一键安装.cmd`，双击运行，就会装好原生 Windows 版的 Codex 和 Claude Code（需要的 Node.js、Git 也会装），并配置好 HiveGPT，不需要管理员权限。
+用 HiveGPT 的 [一键安装](/connect/one-click)：按 Win + R 输入 `powershell` 回车，把「使用密钥」弹窗里复制的那行命令粘贴进去回车，就会装好原生 Windows 版的 Codex 和 Claude Code（需要的 Node.js、Git 也会装），并配置好 HiveGPT，不需要管理员权限。
 :::
 
 ## 先选路线：原生还是 WSL2

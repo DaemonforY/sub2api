@@ -25,42 +25,38 @@
     </div>
     <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-400">{{ t('keys.useKeyModal.oneClick.description') }}</p>
 
-    <!-- Windows: download a ready-made installer and double-click it -->
-    <template v-if="os === 'windows' && windowsScript">
-      <ol class="mt-3 space-y-2 text-sm text-gray-700 dark:text-dark-200">
+    <!-- Paste one line: PowerShell on Windows (works under Smart App Control), Terminal elsewhere -->
+    <ol class="mt-3 space-y-2 text-sm text-gray-700 dark:text-dark-200">
+      <li class="flex gap-2">
+        <span class="font-semibold text-emerald-600">1</span>
+        <span>{{ os === 'mac' ? t('keys.useKeyModal.oneClick.macOpen') : os === 'windows' ? t('keys.useKeyModal.oneClick.windowsOpen') : t('keys.useKeyModal.oneClick.linuxOpen') }}</span>
+      </li>
+      <li class="flex gap-2">
+        <span class="font-semibold text-emerald-600">2</span>
+        <span class="min-w-0 flex-1 space-y-1">
+          <span class="block">{{ os === 'mac' ? t('keys.useKeyModal.oneClick.macPaste') : os === 'windows' ? t('keys.useKeyModal.oneClick.windowsPaste') : t('keys.useKeyModal.oneClick.otherPaste') }}</span>
+          <CommandLine :command="command" @copy="copyCommand" :copied="copied" />
+        </span>
+      </li>
+      <li class="flex gap-2"><span class="font-semibold text-emerald-600">3</span><span>{{ t('keys.useKeyModal.oneClick.waitDone') }}</span></li>
+    </ol>
+
+    <!-- Windows fallback: a double-click installer. Smart App Control blocks unsigned downloaded
+         scripts with no override, so it comes second and says how to unblock it. -->
+    <details v-if="os === 'windows' && windowsScript" class="mt-2 text-xs text-gray-500 dark:text-gray-400" data-testid="one-click-cmd-fallback">
+      <summary class="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">{{ t('keys.useKeyModal.oneClick.cmdFallback') }}</summary>
+      <ol class="mt-2 space-y-1.5 text-gray-600 dark:text-dark-300">
         <li class="flex flex-wrap items-center gap-2">
           <span class="font-semibold text-emerald-600">1</span>
-          <button type="button" class="btn btn-primary btn-sm" data-testid="one-click-download" @click="downloadInstaller">
+          <button type="button" class="btn btn-secondary btn-sm" data-testid="one-click-download" @click="downloadInstaller">
             ⬇ {{ t('keys.useKeyModal.oneClick.windowsDownload') }}
           </button>
         </li>
         <li class="flex gap-2"><span class="font-semibold text-emerald-600">2</span><span>{{ t('keys.useKeyModal.oneClick.windowsRun', { name: WINDOWS_INSTALLER_NAME }) }}</span></li>
-        <li class="flex gap-2"><span class="font-semibold text-emerald-600">3</span><span>{{ t('keys.useKeyModal.oneClick.windowsWarn') }}</span></li>
+        <li class="flex gap-2"><span class="font-semibold text-emerald-600">3</span><span>{{ t('keys.useKeyModal.oneClick.windowsBlocked') }}</span></li>
         <li class="flex gap-2"><span class="font-semibold text-emerald-600">4</span><span>{{ t('keys.useKeyModal.oneClick.windowsDone') }}</span></li>
       </ol>
-      <details class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        <summary class="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">{{ t('keys.useKeyModal.oneClick.windowsPowerShell') }}</summary>
-        <div class="mt-1"><CommandLine :command="command" @copy="copyCommand" :copied="copied" /></div>
-      </details>
-    </template>
-
-    <!-- macOS: open Terminal, paste one line -->
-    <template v-else>
-      <ol class="mt-3 space-y-2 text-sm text-gray-700 dark:text-dark-200">
-        <li class="flex gap-2">
-          <span class="font-semibold text-emerald-600">1</span>
-          <span>{{ os === 'mac' ? t('keys.useKeyModal.oneClick.macOpen') : os === 'windows' ? t('keys.useKeyModal.oneClick.whereWindows') : t('keys.useKeyModal.oneClick.linuxOpen') }}</span>
-        </li>
-        <li class="flex gap-2">
-          <span class="font-semibold text-emerald-600">2</span>
-          <span class="min-w-0 flex-1 space-y-1">
-            <span class="block">{{ os === 'mac' ? t('keys.useKeyModal.oneClick.macPaste') : t('keys.useKeyModal.oneClick.otherPaste') }}</span>
-            <CommandLine :command="command" @copy="copyCommand" :copied="copied" />
-          </span>
-        </li>
-        <li class="flex gap-2"><span class="font-semibold text-emerald-600">3</span><span>{{ t('keys.useKeyModal.oneClick.waitDone') }}</span></li>
-      </ol>
-    </template>
+    </details>
 
     <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
       {{ t('keys.useKeyModal.oneClick.keyWarning') }}

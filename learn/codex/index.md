@@ -10,7 +10,7 @@ Codex 是 OpenAI 的编程智能体：它在你的项目里读代码、改文件
 这套教程按「先用起来，再用顺手，最后用进团队流程」排了 27 篇，内容对照 Codex 的官方源码和命令行帮助整理，会随版本更新。
 
 ::: tip 国内直接用
-不需要海外账号：在 HiveGPT 创建一个 Key，用「使用密钥」弹窗里的「一键安装」，Windows 双击一个安装程序、Mac 粘贴一行命令，就能装好 Codex 并接入 HiveGPT，按用量计费。见 [一键安装](/connect/one-click)；想手动配置看 [接入 HiveGPT](/codex/hivegpt)。
+不需要海外账号：在 HiveGPT 创建一个 Key，用「使用密钥」弹窗里的「一键安装」，在 PowerShell（Windows）或终端（Mac）里粘贴一行命令，就能装好 Codex 并接入 HiveGPT，按用量计费。见 [一键安装](/connect/one-click)；想手动配置看 [接入 HiveGPT](/codex/hivegpt)。
 :::
 
 ## 怎么读

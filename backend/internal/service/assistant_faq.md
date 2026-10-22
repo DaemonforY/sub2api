@@ -23,10 +23,10 @@ HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册�
 链接：/learn/connect/
 在「API 密钥」页点某个 Key 的「使用密钥」：Claude Code 和 Codex 用最上面的「一键安装」最省事（见下一条）；OpenCode 等其它工具，弹窗会生成配置，复制粘贴即可。各种用法的教程在 AI 学习站「接入教程」（/learn/connect/）：Codex 看「接入 HiveGPT」（/learn/codex/hivegpt）；OpenCode、CodeBuddy、Cherry Studio、Chatbox 等支持 OpenAI 兼容接口的工具看「在常用工具里配置」（/learn/connect/tools）；Python、Node.js、curl 看「用 SDK 调用」（/learn/connect/sdk）。Codex 要用 GPT 分组的 Key。
 
-## 一键安装 Claude Code、Codex（Windows、Mac、Linux，不会用命令行也行）
+## 一键安装 Claude Code、Codex（Windows、Mac、Linux，不会用命令行也行；智能应用控制拦截怎么办）
 链接：/learn/connect/one-click
-在「API 密钥」页点某个 Key 的「使用密钥」，最上面是「一键安装」（新用户在仪表盘的「三步开始使用」里也有）。Windows：点「下载一键安装程序」，到「下载」文件夹双击 HiveGPT一键安装.cmd；浏览器提示文件可能有害时选「保留」，出现「Windows 已保护你的电脑」时点「更多信息」→「仍要运行」，等窗口显示「全部完成」后按任意键关闭，安装程序会自动删除自己。Mac：按 ⌘+空格 输入「终端」回车，把复制的那行命令按 ⌘+V 粘贴后回车。Linux 在终端里粘贴同一行命令。
-它会从国内镜像装好 Claude Code、Codex 命令行（需要的 Node.js、Git 也会装），并配置好 Claude 桌面 App 和 Codex App，不需要管理员权限。Claude 分组的 Key 配 Claude Code 和 Claude 桌面 App，GPT 分组的 Key 配 Codex。以前配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，账号登录不会被删除。装好后桌面 App 要完全退出再打开（Claude 桌面 App 登录过 claude.ai 的，要在账户菜单里切到「HiveGPT」配置），命令行要新开一个终端再运行 claude 或 codex。想换回原来的配置，运行弹窗里「想换回原来的配置」那行命令。详细步骤和常见问题见 AI 学习站「一键安装 Claude Code 和 Codex」（/learn/connect/one-click）。安装程序和命令里带着 Key，不要发给别人。
+在「API 密钥」页点某个 Key 的「使用密钥」，最上面是「一键安装」（新用户在仪表盘的「三步开始使用」里也有）。Windows：点「复制」，按 Win+R 输入 powershell 回车，在打开的窗口里按 Ctrl+V（或单击右键）粘贴后回车，等显示「全部完成」。Mac：按 ⌘+空格 输入「终端」回车，把复制的那行命令按 ⌘+V 粘贴后回车。Windows 也可以展开「不想用 PowerShell？」下载 HiveGPT一键安装.cmd 双击运行；如果提示「智能应用控制已阻止可能不安全的文件」，这是 Windows 11 的智能应用控制拦下了从网上下载的脚本，没有「仍要运行」按钮：右键这个文件 → 属性 → 在「常规」页最下面勾选「解除锁定」→ 确定，再双击；还是不行就用 PowerShell 那一行，不建议关闭智能应用控制。Linux 在终端里粘贴同一行命令。
+它会从国内镜像装好 Claude Code、Codex 命令行（需要的 Node.js、Git 也会装），并配置好 Claude 桌面 App 和 Codex App，不需要管理员权限。Claude 分组的 Key 配 Claude Code 和 Claude 桌面 App，GPT 分组的 Key 配 Codex。以前配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，账号登录不会被删除。装好后桌面 App 要完全退出再打开（Claude 桌面 App 登录过 claude.ai 的，要在账户菜单里切到「HiveGPT」配置），命令行要新开一个终端再运行 claude 或 codex。想换回原来的配置，运行弹窗里「想换回原来的配置」那行命令。详细步骤和常见问题见 AI 学习站「一键安装 Claude Code 和 Codex」（/learn/connect/one-click）。命令和安装程序里带着 Key，不要发给别人。
 
 ## 能用 Claude Code 吗、Claude 怎么收费
 链接：/pricing

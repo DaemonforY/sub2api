@@ -1,13 +1,13 @@
 ---
 title: 一键安装 Claude Code 和 Codex
-description: 不用懂命令行：Windows 下载一个安装程序双击运行，Mac 粘贴一行命令，自动装好 Claude Code、Codex 并配置 Claude 桌面 App 和 Codex App。全程国内镜像，兼容已经配过 DeepSeek 或登录过官方账号的电脑，随时一键恢复。
+description: 不用懂命令行：Windows 打开 PowerShell、Mac 打开终端，粘贴一行命令，自动装好 Claude Code、Codex 并配置 Claude 桌面 App 和 Codex App。全程国内镜像，兼容已经配过 DeepSeek 或登录过官方账号的电脑，随时一键恢复。
 ---
 
 # 一键安装 Claude Code 和 Codex
 
 在 HiveGPT 网站上点一下，就能把 **Claude Code**、**Codex 命令行**装好，并把 **Claude 桌面 App**、**Codex App** 配成走 HiveGPT。整个过程大约 3 分钟：
 
-- **不用懂命令行**：Windows 是下载一个安装程序双击运行；Mac 只需要打开「终端」粘贴一行。
+- **不用懂命令行**：Windows 打开 PowerShell、Mac 打开「终端」，粘贴一行命令回车就行，下面每一步都写清楚了按哪个键。
 - **国内网络直接装**：Node.js、Claude Code、Codex 都从国内镜像（npmmirror，失败自动换腾讯云、华为云）下载，不访问 GitHub、claude.ai 或 openai.com。
 - **不用管理员权限**：需要的 Node.js 装在你自己的用户文件夹（`~/.hivegpt`）里，不改系统。
 - **不怕弄乱原来的配置**：以前配过 DeepSeek 等其它服务、或登录过 Claude / ChatGPT 官方账号都没关系。旧配置会先备份，账号登录不会被删除，随时可以一键恢复。
@@ -25,23 +25,40 @@ description: 不用懂命令行：Windows 下载一个安装程序双击运行�
 
 Claude 分组一般只允许 Claude Code 和 Claude 桌面 App 使用。想 Claude 和 Codex 都用，就建两个 Key，分别运行一次。
 
-## 第二步：拿到安装程序或命令
+## 第二步：复制安装命令
 
 在 Key 列表里找到这个 Key，点「使用密钥」，最上面就是 **「⚡ 一键安装（推荐）」**，它会自动选好你电脑的系统。刚注册的新用户在「仪表盘」的「三步开始使用」里也能看到同样的内容。
 
-::: warning 安装程序和命令里都带着你的 Key
-不要发给别人，也不要贴到群里或截图分享。Windows 的安装程序运行完会自动删除自己。
+::: warning 命令里带着你的 Key
+不要发给别人，也不要贴到群里或截图分享。
 :::
 
-## Windows：双击运行
+## Windows：在 PowerShell 里粘贴一行
 
-1. 点 **「下载一键安装程序」**，得到 `HiveGPT一键安装.cmd`。
-2. 浏览器提示「此类文件可能有害」时，选 **「保留」**（Edge 在下载列表里点「…」→「保留」）。
-3. 打开「下载」文件夹，**双击** `HiveGPT一键安装.cmd`。
-4. 如果弹出「打开文件 - 安全警告」，点 **「运行」**；如果是蓝色的「Windows 已保护你的电脑」，点 **「更多信息」**，再点 **「仍要运行」**。
-5. 会打开一个黑色窗口，自动下载和配置。第一次运行要下载 Node.js 和 Claude Code / Codex，大约 1～3 分钟。看到 **「全部完成！」** 后按任意键关闭窗口。
+1. 按键盘上的 **Win + R**（Win 是左下角带 Windows 图标的键），在弹出的「运行」框里输入 `powershell`，按回车，会打开一个蓝色或黑色的窗口。
+2. 回到网页，在一键安装里点 **「复制」**。
+3. 回到 PowerShell 窗口，按 **Ctrl + V**（或单击右键）粘贴，再按 **回车**。
+4. 它会自动下载和配置。第一次运行要下载 Node.js 和 Claude Code / Codex，大约 1～3 分钟。看到 **「全部完成！」** 就好了，可以关掉窗口。
 
-会用 PowerShell 的话，也可以展开「会用 PowerShell？也可以粘贴这一行」，把那行命令粘贴到 PowerShell 里回车，效果一样。
+命令长这样（你复制到的那行已经填好了自己的 Key）：
+
+```powershell
+$env:HIVEGPT_KEY='你的 Key'; irm https://hivegpt.cn/install.ps1 | iex
+```
+
+不需要管理员权限，也不用改「执行策略」。
+
+### 备选：下载安装程序双击运行
+
+一键安装里展开「不想用 PowerShell？也可以下载安装程序双击运行」，可以下载 `HiveGPT一键安装.cmd`：
+
+1. 浏览器提示「此类文件可能有害」时，选 **「保留」**（Edge 在下载列表里点「…」→「保留」）。
+2. 打开「下载」文件夹，**双击** `HiveGPT一键安装.cmd`；弹出「打开文件 - 安全警告」时点 **「运行」**。
+3. 看到「全部完成！」后按任意键关闭窗口。安装程序运行完会自动删除自己（它里面有你的 Key）。
+
+::: warning 提示「智能应用控制已阻止可能不安全的文件」
+这是 Windows 11 的「智能应用控制」：它会拦下所有从网上下载、没有数字签名的脚本文件，而且没有「仍要运行」按钮。解决办法：在「下载」文件夹里**右键** `HiveGPT一键安装.cmd` → **属性** → 在「常规」页最下面勾选 **「解除锁定」** → 确定，再双击。还是打不开，就用上面 PowerShell 的方法，它不下载脚本文件，不会被拦。不建议为了安装去关闭智能应用控制。
+:::
 
 ## Mac：粘贴一行命令
 
@@ -108,8 +125,10 @@ $env:HIVEGPT_RESTORE='1'; irm https://hivegpt.cn/install.ps1 | iex
 
 | 现象 | 处理 |
 |---|---|
+| 双击安装程序提示「智能应用控制已阻止可能不安全的文件」 | 右键文件 → 属性 → 勾选「解除锁定」→ 确定，再双击；或者直接用 PowerShell 那一行命令 |
 | 浏览器不让下载 `.cmd` 文件 | 在下载列表里选「保留」；还是不行，就改用 PowerShell 那一行命令 |
-| 杀毒软件拦截了安装程序 | 安装程序只是下载并运行 `https://hivegpt.cn/install.ps1`，可以选择允许；不放心就用 PowerShell 那一行，效果一样 |
+| 杀毒软件拦截了安装程序 | 安装程序只是下载并运行 `https://hivegpt.cn/install.ps1`，可以选择允许；或者直接用 PowerShell 那一行，效果一样 |
+| PowerShell 里粘贴后没反应 | 粘贴后要再按一次回车；PowerShell 窗口每行开头是 `PS C:\Users\…>`；如果开头没有 `PS`，打开的是「命令提示符」，关掉它，按 Win + R 重新输入 `powershell` |
 | 提示 Key 无效（401） | Key 复制不完整或已删除，回「API 密钥」页重新下载 / 复制 |
 | 提示 Key 不能用（403） | Key 被停用、设置了 IP 白名单，或没有分配分组，到「API 密钥」页检查 |
 | 下载 Node.js 或 Claude Code 失败 | 多是网络不稳，重新运行一次即可；公司网络拦截的话，换手机热点试试 |

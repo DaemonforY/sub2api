@@ -949,14 +949,16 @@ describe('UseKeyModal one-click install', () => {
       }
     })
 
-  it('offers a double-click installer on Windows and a pasteable line on macOS', async () => {
+  it('leads with the PowerShell line on Windows and keeps the installer as a fallback', async () => {
     const wrapper = mountModal('anthropic')
     await wrapper.get('[data-testid="one-click-os-mac"]').trigger('click')
     expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
       "curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='sk-one-click' bash"
     )
     await wrapper.get('[data-testid="one-click-os-windows"]').trigger('click')
-    expect(wrapper.find('[data-testid="one-click-download"]').exists()).toBe(true)
+    // Smart App Control blocks downloaded .cmd files, so the installer sits in a fold below the command.
+    expect(wrapper.get('[data-testid="one-click-cmd-fallback"]').find('[data-testid="one-click-download"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="one-click-cmd-fallback"]').text()).toContain('keys.useKeyModal.oneClick.windowsBlocked')
     expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
       "$env:HIVEGPT_KEY='sk-one-click'; irm https://hivegpt.cn/install.ps1 | iex"
     )
