@@ -3298,7 +3298,10 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 		)
 		return
 	}
-	if failoverErr.StatusCode >= 500 && c.GetBool(ctxKeyOpenAIHostedWebSearch) {
+	// Only an actual upstream 5xx answer can blame the web_search tool. A dropped or reset
+	// connection says nothing about the request (Codex sends web_search on every turn), so it
+	// stays a retryable 5xx instead of a 400 telling the user to remove the tool.
+	if failoverErr.StatusCode >= 500 && !failoverErr.ConnectionFailure && c.GetBool(ctxKeyOpenAIHostedWebSearch) {
 		service.SetOpsUpstreamError(c, failoverErr.StatusCode, msgHostedWebSearchFailed, "")
 		h.handleStreamingAwareError(c, http.StatusBadRequest, "invalid_request_error", msgHostedWebSearchFailed, streamStarted)
 		return

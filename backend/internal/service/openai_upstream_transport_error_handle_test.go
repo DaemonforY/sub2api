@@ -358,3 +358,18 @@ func TestHandleOpenAIAccountUpstreamError_RecordsOllamaActivityOnly(t *testing.T
 	_, ok = deferred.lastUsedUpdates.Load(int64(505))
 	require.False(t, ok, "non-Ollama non-2xx must not schedule Ollama activity")
 }
+
+// A connection reset before any HTTP status (prod 2026-10-22: hivegpt → gorustai via Cloudflare)
+// must be flagged as a connection failure, so the handler does not blame the request's tools.
+func TestHandleOpenAIUpstreamTransportError_MarksConnectionFailure(t *testing.T) {
+	svc := &OpenAIGatewayService{accountRepo: &openaiTransportAccountRepoStub{}}
+	account := &Account{ID: 1, Name: "sub2api", Platform: PlatformOpenAI}
+	c, _ := newOpenAITransportErrTestContext()
+
+	err := svc.handleOpenAIUpstreamTransportError(context.Background(), c, account,
+		errors.New(`Post "https://gorustai.com/v1/responses": read tcp 172.18.0.4:59486->104.21.47.189:443: read: connection reset by peer`), false)
+
+	var fo *UpstreamFailoverError
+	require.True(t, errors.As(err, &fo))
+	require.True(t, fo.ConnectionFailure)
+}
