@@ -156,6 +156,8 @@ export default {
     monthly: 'Monthly',
     daysRemaining: '{days} days remaining',
     expiresOn: 'Expires on {date}',
+    trialPending: 'Starts at your first call, then lasts {days} day(s)',
+    trialPendingUntil: 'Void if still unused by {date}',
     resetIn: 'Resets in {time}',
     quotaEndsIn: 'Quota ends in {time}',
     windowNotActive: 'Awaiting first use',

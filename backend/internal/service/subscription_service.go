@@ -60,6 +60,16 @@ type SubscriptionService struct {
 
 	// userSubsChanged runs when a user's subscriptions change (smart billing forgets its cache).
 	userSubsChanged func(userID int64)
+
+	// pendingTrials marks unused sign-up trials in the user's lists (see SignupTrialStartService).
+	pendingTrials pendingTrialLookup
+}
+
+// SetPendingTrialLookup lets the user's subscription lists say which sign-up trials haven't started.
+func (s *SubscriptionService) SetPendingTrialLookup(lookup pendingTrialLookup) {
+	if s != nil {
+		s.pendingTrials = lookup
+	}
 }
 
 // NewSubscriptionService 创建订阅服务
@@ -805,6 +815,7 @@ func (s *SubscriptionService) ListUserSubscriptions(ctx context.Context, userID 
 	}
 	normalizeExpiredWindows(subs)
 	normalizeSubscriptionStatus(subs)
+	markPendingTrials(ctx, s.pendingTrials, userID, subs)
 	return subs, nil
 }
 
@@ -815,6 +826,7 @@ func (s *SubscriptionService) ListActiveUserSubscriptions(ctx context.Context, u
 		return nil, err
 	}
 	normalizeExpiredWindows(subs)
+	markPendingTrials(ctx, s.pendingTrials, userID, subs)
 	return subs, nil
 }
 

@@ -762,6 +762,10 @@ type UserSubscription struct {
 	WeeklyUsageUSD  float64 `json:"weekly_usage_usd"`
 	MonthlyUsageUSD float64 `json:"monthly_usage_usd"`
 
+	// TrialPendingDays > 0: an unused sign-up trial that runs this many days from the first call;
+	// expires_at is then when it lapses unused.
+	TrialPendingDays int `json:"trial_pending_days,omitempty"`
+
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	RevokedAt *time.Time `json:"revoked_at,omitempty"`

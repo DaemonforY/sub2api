@@ -88,6 +88,11 @@
               <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.signupTrialDedupHint') }}</p>
             </div>
             <div>
+              <label class="input-label" for="growth-signup-trial-unused">{{ t('growth.admin.settings.signupTrialUnusedDays') }}</label>
+              <input id="growth-signup-trial-unused" v-model.number="form.signup_trial_unused_days" type="number" min="0" max="90" step="1" class="input" data-testid="signup-trial-unused-days" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.signupTrialUnusedHint') }}</p>
+            </div>
+            <div>
               <label class="input-label" for="growth-shadow-free">{{ t('growth.admin.settings.shadowFreeDaily') }}</label>
               <input id="growth-shadow-free" v-model.number="form.shadow_free_daily_usd" type="number" min="0" max="100" step="0.1" class="input" />
               <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.shadowFreeDailyHint') }}</p>
@@ -389,6 +394,7 @@ async function save() {
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       price_lock_grace_days: Math.max(0, Math.round(Number(form.value.price_lock_grace_days) || 0)),
       signup_trial_dedup_days: Math.min(365, Math.max(0, Math.round(Number(form.value.signup_trial_dedup_days) || 0))),
+      signup_trial_unused_days: Math.min(90, Math.max(0, Math.round(Number(form.value.signup_trial_unused_days) || 0))),
       shadow_free_daily_usd: Math.min(100, Math.max(0, Number(form.value.shadow_free_daily_usd) || 0)),
       risk_burst_threshold: Math.min(100, Math.max(2, Math.round(Number(form.value.risk_burst_threshold) || 3))),
       edu_discount_percent: Number(form.value.edu_discount_percent) || 0,

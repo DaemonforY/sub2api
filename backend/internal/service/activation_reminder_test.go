@@ -131,3 +131,91 @@ func TestReminderAddressOK(t *testing.T) {
 		require.False(t, reminderAddressOK(bad), bad)
 	}
 }
+
+type memReminderWeChat struct {
+	to      []int64
+	text    string
+	outcome WeChatNoticeOutcome
+	err     error
+}
+
+func (m *memReminderWeChat) SendCustomText(_ context.Context, userID int64, text string) (WeChatNoticeOutcome, error) {
+	if m.err != nil {
+		return WeChatNoticeNotApplicable, m.err
+	}
+	m.to = append(m.to, userID)
+	m.text = text
+	return m.outcome, nil
+}
+
+func TestActivationReminderSendsWeChatToPlaceholderUsers(t *testing.T) {
+	s, repo, mailer, settings := newReminderFixture()
+	ctx := context.Background()
+	require.NoError(t, s.SetEnabled(ctx, true))
+	settings.data[SettingKeyFrontendURL] = "https://hivegpt.cn"
+	repo.due[1] = ActivationReminderUser{ID: 2, Email: "wechat-abc@wechat.invalid", Username: "微信用户_ab12",
+		TrialDays: 1, TrialGroup: "Codex-轻量版", TrialUntil: time.Date(2026, 10, 16, 4, 30, 0, 0, time.UTC)}
+	wc := &memReminderWeChat{outcome: WeChatNoticeDelivered}
+	s.SetWeChat(wc)
+
+	n, err := s.RunOnce(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 3, n)
+	require.Equal(t, []string{"a@qq.com", "c@163.com"}, mailer.to)
+	require.Equal(t, []int64{2}, wc.to)
+	require.True(t, repo.sent[2])
+	require.True(t, strings.HasPrefix(wc.text, "你好！"), "placeholder WeChat names are not used as a greeting")
+	require.Contains(t, wc.text, `<a href="https://hivegpt.cn/dashboard?utm_source=wechat&amp;utm_medium=activation&amp;utm_campaign=dashboard">打开控制台</a>`)
+	require.Contains(t, wc.text, "1 天「Codex-轻量版」试用还没开始计时")
+	require.Contains(t, wc.text, "10月16日 12:30 前") // Beijing time
+
+	n, err = s.RunOnce(ctx)
+	require.NoError(t, err)
+	require.Zero(t, n)
+	require.Len(t, wc.to, 1)
+}
+
+func TestActivationReminderWeChatSkippedIsMarkedNotCounted(t *testing.T) {
+	s, repo, _, _ := newReminderFixture()
+	ctx := context.Background()
+	require.NoError(t, s.SetEnabled(ctx, true))
+	s.SetWeChat(&memReminderWeChat{outcome: WeChatNoticeSkipped})
+	n, err := s.RunOnce(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, n) // the two emails
+	require.True(t, repo.sent[2], "outside the 48-hour window: never retried")
+}
+
+func TestActivationReminderWeChatErrorRetriesNextRun(t *testing.T) {
+	s, repo, _, _ := newReminderFixture()
+	ctx := context.Background()
+	require.NoError(t, s.SetEnabled(ctx, true))
+	s.SetWeChat(&memReminderWeChat{err: errors.New("wechat down")})
+	n, err := s.RunOnce(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, n) // user 1 emailed, stopped at user 2
+	require.False(t, repo.sent[2])
+	require.False(t, repo.sent[3])
+}
+
+func TestActivationReminderWeChatTextWithoutTrial(t *testing.T) {
+	text := ActivationReminderWeChatText("https://hivegpt.cn", ActivationReminderUser{Username: "玲儿"})
+	require.True(t, strings.HasPrefix(text, "你好，玲儿！"))
+	require.NotContains(t, text, "试用")
+	require.Contains(t, text, "canvas.hivegpt.cn")
+}
+
+func TestActivationReminderStatusIncludesWeChat(t *testing.T) {
+	s, _, _, _ := newReminderFixture()
+	ctx := context.Background()
+	st, err := s.Status(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, st.Due)
+	require.Empty(t, st.WeChatPreview)
+
+	s.SetWeChat(&memReminderWeChat{})
+	st, err = s.Status(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 3, st.Due)
+	require.Contains(t, st.WeChatPreview, "试用还没开始计时")
+}

@@ -66,6 +66,8 @@ export interface ActivationReminderStatus {
   subject: string
   /** The email's HTML. */
   preview: string
+  /** The 公众号 客服消息 WeChat-only sign-ups get ("" when the 公众号 isn't wired). */
+  wechat_preview?: string
 }
 
 export async function getReminder(): Promise<ActivationReminderStatus> {

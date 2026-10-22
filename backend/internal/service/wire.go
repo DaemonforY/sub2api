@@ -76,6 +76,7 @@ func ProvideAuthService(
 	affiliateService *AffiliateService,
 	userPlatformQuotaRepo UserPlatformQuotaRepository,
 	signupTrialGuard *SignupTrialGuard,
+	signupTrialStarts *SignupTrialStartService,
 ) *AuthService {
 	svc := NewAuthService(
 		entClient,
@@ -95,6 +96,7 @@ func ProvideAuthService(
 	svc.SetTencentCaptchaService(tencentCaptchaService)
 	svc.SetAliyunCaptchaService(aliyunCaptchaService)
 	svc.SetSignupTrialGuard(signupTrialGuard)
+	svc.SetSignupTrialStarts(signupTrialStarts)
 	return svc
 }
 
@@ -1187,6 +1189,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePaymentService,
 	ProvideGrowthService,
 	NewSignupTrialGuard,
+	ProvideSignupTrialStartService,
 	ProvideUserShadowService,
 	ProvideContentLogService,
 	ProvideConversationArchiveService,

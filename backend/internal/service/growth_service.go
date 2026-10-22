@@ -75,6 +75,10 @@ type GrowthSettings struct {
 	// 注册试用去重: a sign-up from a browser or IP /24 that got the sign-up default subscriptions
 	// within this many days is silently restricted (静默限制; 0 = off). See SignupTrialGuard.
 	SignupTrialDedupDays int `json:"signup_trial_dedup_days"`
+	// 注册试用从第一次调用开始计时: a sign-up default subscription shorter than this many days is
+	// granted for this window and its term starts at the first call (0 = starts at sign-up). See
+	// SignupTrialStartService.
+	SignupTrialUnusedDays int `json:"signup_trial_unused_days"`
 	// 静默限制: also restrict sign-ups that share a browser or /24 with a banned or restricted account,
 	// and how much free credit a restricted account may use a day (see UserShadowService).
 	ShadowLinkedFlagged bool    `json:"shadow_linked_flagged"`
@@ -235,7 +239,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
 		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
 		SettingKeyGrowthSignupTrialDedupDays, SettingKeyGrowthShadowLinkedFlagged, SettingKeyGrowthShadowFreeDailyUSD,
-		SettingKeyGrowthShadowBlockPayments,
+		SettingKeyGrowthShadowBlockPayments, SettingKeyGrowthSignupTrialUnusedDays,
 		SettingKeyRiskLinkedSignup, SettingKeyRiskTrialDay1, SettingKeyRiskRelayFree, SettingKeyRiskBurstSignups,
 		SettingKeyRiskBurstThreshold, SettingKeyRiskInviteeFingerprint, SettingKeyRiskTrialSameIP,
 	})
@@ -257,6 +261,7 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 		InviteeSignupBonus:      clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupBonus], 0), 0, growthSignupBonusMax),
 		InviteeSignupDailyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupDailyLimit], growthSignupDailyLimitDefault), 1, growthSignupDailyLimitMax)),
 		SignupTrialDedupDays:    int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupTrialDedupDays], growthSignupTrialDedupDaysDefault), 0, growthSignupTrialDedupDaysMax)),
+		SignupTrialUnusedDays:   int(clampFloat(parseFloatOr(vals[SettingKeyGrowthSignupTrialUnusedDays], growthSignupTrialUnusedDaysDefault), 0, growthSignupTrialUnusedDaysMax)),
 		ShadowLinkedFlagged:     vals[SettingKeyGrowthShadowLinkedFlagged] != "false", // on unless turned off
 		ShadowBlockPayments:     vals[SettingKeyGrowthShadowBlockPayments] != "false", // on unless turned off
 		ShadowFreeDailyUSD:      clampFloat(parseFloatOr(vals[SettingKeyGrowthShadowFreeDailyUSD], growthShadowFreeDailyUSDDefault), 0, growthShadowFreeDailyUSDMax),
@@ -310,6 +315,9 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if in.SignupTrialDedupDays < 0 || in.SignupTrialDedupDays > growthSignupTrialDedupDaysMax {
 		return nil, infraerrors.BadRequest("INVALID_SIGNUP_TRIAL_DEDUP_DAYS", "注册试用去重天数需在 0 到 365 之间，0 表示不去重（Sign-up trial dedup must be 0–365 days）")
 	}
+	if in.SignupTrialUnusedDays < 0 || in.SignupTrialUnusedDays > growthSignupTrialUnusedDaysMax {
+		return nil, infraerrors.BadRequest("INVALID_SIGNUP_TRIAL_UNUSED_DAYS", "注册试用未使用作废天数需在 0 到 90 之间，0 表示注册即开始计时（Unused sign-up trial window must be 0–90 days）")
+	}
 	if !finite(in.ShadowFreeDailyUSD) || in.ShadowFreeDailyUSD < 0 || in.ShadowFreeDailyUSD > growthShadowFreeDailyUSDMax {
 		return nil, infraerrors.BadRequest("INVALID_SHADOW_FREE_DAILY", "静默限制每日免费额度需在 0 到 100 美元之间（Daily free allowance must be 0–100 USD）")
 	}
@@ -347,6 +355,7 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthSignupBonus:            strconv.FormatFloat(in.InviteeSignupBonus, 'f', -1, 64),
 		SettingKeyGrowthSignupDailyLimit:       strconv.Itoa(in.InviteeSignupDailyLimit),
 		SettingKeyGrowthSignupTrialDedupDays:   strconv.Itoa(in.SignupTrialDedupDays),
+		SettingKeyGrowthSignupTrialUnusedDays:  strconv.Itoa(in.SignupTrialUnusedDays),
 		SettingKeyGrowthShadowLinkedFlagged:    strconv.FormatBool(in.ShadowLinkedFlagged),
 		SettingKeyGrowthShadowFreeDailyUSD:     strconv.FormatFloat(in.ShadowFreeDailyUSD, 'f', -1, 64),
 		SettingKeyGrowthShadowBlockPayments:    strconv.FormatBool(in.ShadowBlockPayments),

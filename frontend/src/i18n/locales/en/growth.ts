@@ -348,6 +348,8 @@ export default {
         shadowBlockPayments: 'Restricted accounts cannot pay online',
         shadowBlockPaymentsHint: 'A restricted account that never paid sees "Online payment is not available for this account. Please contact support." when ordering — no money taken, so no paid-but-unserved disputes. Accounts that paid before can still renew. Orders placed and paid before the restriction are fulfilled and noted in User insights → Risk events and the order log.',
         signupTrialDedupDays: 'Restrict a second sign-up trial from the same browser within (days)',
+        signupTrialUnusedDays: 'Sign-up trial starts at the first call: keep an unused trial for (days)',
+        signupTrialUnusedHint: 'Sign-up trials shorter than this (e.g. 1 day) are granted for this many days, and once the user makes the first call they run N days from that moment; unused ones lapse. 0 = start at sign-up.',
         signupTrialDedupHint: 'Browser only. Sharing just an IP range (a school lab, an office) never restricts anyone; it is only reported in Risk events, and automatic restrictions never spread to others. 0 = off.',
         shadowFreeDaily: 'Daily free credit for restricted accounts ($)',
         shadowFreeDailyHint: 'Sign-up subscription, gifted balance and promo codes together; accounts that paid are not capped.',

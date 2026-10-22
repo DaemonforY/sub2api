@@ -312,6 +312,47 @@ func (s *WeChatTemplateNoticeService) Deliver(ctx context.Context, event string,
 	return WeChatNoticeNotApplicable, weChatMPAPIErrorFor(code, msg)
 }
 
+// weChatCustomSendAPI sends a 客服消息. WeChat only delivers it within 48 hours of the user's last
+// interaction with the 公众号 (following it, scanning its QR code, sending it a message), which covers
+// the QR / 发「登录」 sign-ups a day earlier; 网页授权 sign-ups inside WeChat may have none.
+const weChatCustomSendAPI = "/cgi-bin/message/custom/send"
+
+// SendCustomText sends text (may contain <a href> links) to userID's openid as a 客服消息. It needs no
+// template, so it is ready as soon as the 公众号 AppID / AppSecret are; it is not gated by 微信提醒.
+func (s *WeChatTemplateNoticeService) SendCustomText(ctx context.Context, userID int64, text string) (WeChatNoticeOutcome, error) {
+	if s == nil || s.mp == nil {
+		return WeChatNoticeNotApplicable, nil
+	}
+	mpCfg, err := s.mp.Config(ctx)
+	if err != nil || !mpCfg.MPReady {
+		return WeChatNoticeNotApplicable, nil
+	}
+	openid, err := s.OpenIDForUser(ctx, mpCfg.AppID, userID)
+	if err != nil {
+		return WeChatNoticeNotApplicable, err
+	}
+	if openid == "" {
+		return WeChatNoticeNotApplicable, nil
+	}
+	body := map[string]any{"touser": openid, "msgtype": "text", "text": map[string]string{"content": text}}
+	_, err = s.mp.callAPI(ctx, mpCfg, http.MethodPost, weChatCustomSendAPI, nil, body)
+	if err == nil {
+		return WeChatNoticeDelivered, nil
+	}
+	code, msg, ok := weChatMPAPIErrorCode(err)
+	if !ok {
+		return WeChatNoticeNotApplicable, err
+	}
+	switch code {
+	case 45015, 45047, 43004, 43101, 40003, 48001:
+		// Outside the 48-hour window, too many messages, not following / refused, unknown openid,
+		// or no 客服 permission: this user can't get it now.
+		logger.LegacyPrintf("service.wechat_notice", "[WeChatNotice] custom message to user %d skipped: errcode %d %s", userID, code, msg)
+		return WeChatNoticeSkipped, nil
+	}
+	return WeChatNoticeNotApplicable, weChatMPAPIErrorFor(code, msg)
+}
+
 // warnRateLimited logs a warning at most once per hour per key.
 func (s *WeChatTemplateNoticeService) warnRateLimited(key, msg string) bool {
 	s.warnMu.Lock()

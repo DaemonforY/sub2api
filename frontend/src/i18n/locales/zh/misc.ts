@@ -153,6 +153,8 @@ export default {
     monthly: '每月',
     daysRemaining: '剩余 {days} 天',
     expiresOn: '{date} 到期',
+    trialPending: '第一次调用后开始计时，可用 {days} 天',
+    trialPendingUntil: '{date} 前没用过的话，试用会作废',
     resetIn: '{time} 后重置',
     quotaEndsIn: '额度将在 {time} 后结束',
     windowNotActive: '等待首次使用',

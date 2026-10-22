@@ -36,6 +36,10 @@ type UserSubscription struct {
 	User           *User
 	Group          *Group
 	AssignedByUser *User
+
+	// TrialPendingDays > 0: an unused sign-up trial that runs this many days from the first call
+	// (ExpiresAt is then when it lapses unused). Not stored on the row; see SignupTrialStartService.
+	TrialPendingDays int
 }
 
 func (s *UserSubscription) IsActive() bool {

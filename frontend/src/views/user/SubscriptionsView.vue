@@ -83,7 +83,14 @@
           <!-- Usage Progress -->
           <div class="space-y-4 p-4">
             <!-- Expiration Info -->
-            <div v-if="subscription.expires_at" class="flex items-center justify-between text-sm">
+            <div v-if="subscription.trial_pending_days && subscription.expires_at" class="space-y-0.5 text-sm" data-testid="subscription-trial-pending">
+              <div class="flex items-center justify-between">
+                <span class="text-gray-500 dark:text-dark-400">{{ t('userSubscriptions.expires') }}</span>
+                <span class="font-medium text-emerald-600 dark:text-emerald-400">{{ t('userSubscriptions.trialPending', { days: subscription.trial_pending_days }) }}</span>
+              </div>
+              <p class="text-right text-xs text-gray-400">{{ t('userSubscriptions.trialPendingUntil', { date: formatDateTimeToMinute(new Date(subscription.expires_at)) }) }}</p>
+            </div>
+            <div v-else-if="subscription.expires_at" class="flex items-center justify-between text-sm">
               <span class="text-gray-500 dark:text-dark-400">{{
                 t('userSubscriptions.expires')
               }}</span>

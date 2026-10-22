@@ -2078,6 +2078,8 @@ export interface UserSubscription {
   updated_at: string
   revoked_at?: string | null
   expires_at: string | null
+  /** > 0: an unused sign-up trial that runs this many days from the first call; expires_at is when it lapses unused. */
+  trial_pending_days?: number
   user?: User
   group?: Group
 }

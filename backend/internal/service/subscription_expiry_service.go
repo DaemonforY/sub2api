@@ -41,6 +41,16 @@ type SubscriptionExpiryService struct {
 
 	smtpWarningMu   sync.Mutex
 	lastSMTPWarning time.Time
+
+	// pendingTrials: unused sign-up trials get no "expires soon" email (their expiry is the unused window).
+	pendingTrials pendingTrialLookup
+}
+
+// SetPendingTrialLookup skips expiry reminders for sign-up trials that haven't started.
+func (s *SubscriptionExpiryService) SetPendingTrialLookup(lookup pendingTrialLookup) {
+	if s != nil {
+		s.pendingTrials = lookup
+	}
 }
 
 func NewSubscriptionExpiryService(userSubRepo UserSubscriptionRepository, interval time.Duration) *SubscriptionExpiryService {
@@ -142,13 +152,32 @@ func (s *SubscriptionExpiryService) sendExpiryReminders(ctx context.Context) {
 			log.Printf("[SubscriptionExpiry] List active subscriptions for reminder failed: %v", err)
 			return
 		}
+		pending := s.pendingTrialsOf(ctx, subs)
 		for i := range subs {
+			if _, ok := pending[subs[i].ID]; ok {
+				continue
+			}
 			s.sendExpiryReminderIfDue(ctx, &subs[i])
 		}
 		if pag == nil || page >= pag.Pages || len(subs) == 0 {
 			return
 		}
 	}
+}
+
+func (s *SubscriptionExpiryService) pendingTrialsOf(ctx context.Context, subs []UserSubscription) map[int64]PendingSignupTrial {
+	if s.pendingTrials == nil || len(subs) == 0 {
+		return nil
+	}
+	seen := map[int64]struct{}{}
+	userIDs := make([]int64, 0, len(subs))
+	for i := range subs {
+		if _, ok := seen[subs[i].UserID]; !ok {
+			seen[subs[i].UserID] = struct{}{}
+			userIDs = append(userIDs, subs[i].UserID)
+		}
+	}
+	return s.pendingTrials.PendingForUsers(ctx, userIDs)
 }
 
 func (s *SubscriptionExpiryService) expiryReminderEnabled(ctx context.Context) bool {

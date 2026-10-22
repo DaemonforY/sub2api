@@ -275,8 +275,8 @@ export default {
       guide_config_open: 'Opened the Codex setup'
     },
     reminder: {
-      title: 'Get-started reminder email',
-      hint: 'Users who signed up 24–72 hours ago and have not made an API call get one "three steps" email (create a key, copy the config, send a first request) — once per user. Runs hourly; email (SMTP) must be set up in Settings.',
+      title: 'Get-started reminder',
+      hint: 'Users who signed up 24–72 hours ago and have not made an API call get one reminder, checked hourly. Users with an email get the "three steps" email (SMTP must be set up); WeChat-only users get an official-account customer-service message (the official account must be set up). WeChat only allows it within 48 hours of the user\'s last interaction with the account — QR and 「登录」-code sign-ups qualify; the rest are skipped.',
       on: 'On',
       off: 'Off',
       turnOn: 'Turn on',
@@ -285,7 +285,8 @@ export default {
       preview: 'Preview email',
       hidePreview: 'Hide preview',
       subject: 'Subject',
-      confirm: 'This emails real users: within an hour {due} people, then one email to each new user who qualifies. Turn it on?'
+      wechatPreview: 'WeChat message (sent to WeChat-only users; links are tappable in WeChat)',
+      confirm: 'This emails and messages real users: within an hour {due} people, then one email to each new user who qualifies. Turn it on?'
     },
     empty: 'No data yet',
     loadFailed: 'Failed to load'

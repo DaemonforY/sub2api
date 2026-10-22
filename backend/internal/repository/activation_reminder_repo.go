@@ -19,7 +19,17 @@ func NewActivationReminderRepository(db *sql.DB) service.ActivationReminderRepos
 
 func (r *activationReminderRepository) DueUsers(ctx context.Context, from, to time.Time, limit int) ([]service.ActivationReminderUser, error) {
 	rows, err := r.db.QueryContext(ctx, `
-SELECT u.id, u.email, COALESCE(u.username, '') FROM users u
+SELECT u.id, u.email, COALESCE(u.username, ''),
+       COALESCE(t.trial_days, 0), COALESCE(t.group_name, ''), COALESCE(t.pending_expires_at, 'epoch'::timestamptz)
+FROM users u
+LEFT JOIN LATERAL (
+    SELECT st.trial_days, st.pending_expires_at, COALESCE(g.name, '') AS group_name
+    FROM signup_trial_starts st
+    JOIN user_subscriptions s ON s.id = st.subscription_id AND s.deleted_at IS NULL AND s.expires_at = st.pending_expires_at
+    LEFT JOIN groups g ON g.id = s.group_id
+    WHERE st.user_id = u.id AND st.closed_reason IS NULL
+    ORDER BY st.created_at LIMIT 1
+) t ON TRUE
 WHERE u.role <> 'admin' AND u.status = 'active' AND u.deleted_at IS NULL
   AND u.created_at >= $1 AND u.created_at < $2
   AND NOT EXISTS (SELECT 1 FROM usage_logs l WHERE l.user_id = u.id)
@@ -32,7 +42,7 @@ ORDER BY u.created_at LIMIT $3`, from, to, limit)
 	var out []service.ActivationReminderUser
 	for rows.Next() {
 		var u service.ActivationReminderUser
-		if err := rows.Scan(&u.ID, &u.Email, &u.Username); err != nil {
+		if err := rows.Scan(&u.ID, &u.Email, &u.Username, &u.TrialDays, &u.TrialGroup, &u.TrialUntil); err != nil {
 			return nil, err
 		}
 		out = append(out, u)

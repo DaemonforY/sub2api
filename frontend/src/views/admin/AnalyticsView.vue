@@ -43,6 +43,10 @@
         <div v-if="showPreview" class="space-y-1">
           <p class="text-xs text-gray-500">{{ t('admin.analytics.reminder.subject') }}：{{ reminder.subject }}</p>
           <iframe :srcdoc="reminder.preview" sandbox="" class="h-[520px] w-full rounded-lg border border-gray-200 bg-white dark:border-dark-600" :title="reminder.subject"></iframe>
+          <template v-if="reminder.wechat_preview">
+            <p class="pt-2 text-xs text-gray-500">{{ t('admin.analytics.reminder.wechatPreview') }}</p>
+            <pre class="whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200" data-testid="analytics-reminder-wechat">{{ reminder.wechat_preview }}</pre>
+          </template>
         </div>
       </div>
 

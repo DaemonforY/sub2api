@@ -14,7 +14,9 @@ import (
 
 // Activation reminder: one email, once, to people who signed up 24–72 hours ago and haven't made
 // an API call yet — two ways to get going (draw on the canvas, or set up Codex), with links. Off until an admin turns it on in
-// 后台「数据看板」.
+// 后台「数据看板」. WeChat-only sign-ups (placeholder address) get the same nudge as a 公众号 客服消息
+// instead; WeChat only delivers it within 48 hours of their last interaction with the 公众号, so
+// those who can't get it are marked done without retries.
 const (
 	SettingKeyActivationReminderEnabled = "activation_reminder_enabled"
 
@@ -31,6 +33,10 @@ type ActivationReminderUser struct {
 	ID       int64
 	Email    string
 	Username string
+	// An unused sign-up trial that starts on the first call (TrialDays 0 when there is none).
+	TrialDays  int
+	TrialGroup string
+	TrialUntil time.Time
 }
 
 type ActivationReminderRepository interface {
@@ -44,10 +50,15 @@ type activationReminderMailer interface {
 	SendEmail(ctx context.Context, to, subject, body string) error
 }
 
+type activationReminderWeChat interface {
+	SendCustomText(ctx context.Context, userID int64, text string) (WeChatNoticeOutcome, error)
+}
+
 type ActivationReminderService struct {
 	repo     ActivationReminderRepository
 	settings SettingRepository
 	mailer   activationReminderMailer
+	wechat   activationReminderWeChat
 	now      func() time.Time
 	mu       sync.Mutex
 	stop     chan struct{}
@@ -58,13 +69,19 @@ func NewActivationReminderService(repo ActivationReminderRepository, settings Se
 	return &ActivationReminderService{repo: repo, settings: settings, mailer: mailer, now: time.Now, stop: make(chan struct{})}
 }
 
+// SetWeChat sends the reminder to WeChat-only sign-ups as a 公众号 客服消息.
+func (s *ActivationReminderService) SetWeChat(w activationReminderWeChat) { s.wechat = w }
+
 // ProvideActivationReminderService starts the hourly run.
-func ProvideActivationReminderService(repo ActivationReminderRepository, settings SettingRepository, email *EmailService) *ActivationReminderService {
+func ProvideActivationReminderService(repo ActivationReminderRepository, settings SettingRepository, email *EmailService, wechat *WeChatTemplateNoticeService) *ActivationReminderService {
 	var mailer activationReminderMailer
 	if email != nil {
 		mailer = email
 	}
 	s := NewActivationReminderService(repo, settings, mailer)
+	if wechat != nil {
+		s.SetWeChat(wechat)
+	}
 	go func() {
 		t := time.NewTicker(activationReminderInterval)
 		defer t.Stop()
@@ -100,7 +117,7 @@ func (s *ActivationReminderService) SetEnabled(ctx context.Context, on bool) err
 
 // RunOnce sends the reminders that are due. Returns how many went out.
 func (s *ActivationReminderService) RunOnce(ctx context.Context) (int, error) {
-	if s == nil || s.mailer == nil || !s.Enabled(ctx) {
+	if s == nil || (s.mailer == nil && s.wechat == nil) || !s.Enabled(ctx) {
 		return 0, nil
 	}
 	s.mu.Lock()
@@ -113,7 +130,22 @@ func (s *ActivationReminderService) RunOnce(ctx context.Context) (int, error) {
 	base := s.siteURL(ctx)
 	sent := 0
 	for _, u := range users {
-		if !reminderAddressOK(u.Email) {
+		if s.wechat != nil && IsPlaceholderEmail(u.Email) {
+			outcome, err := s.wechat.SendCustomText(ctx, u.ID, ActivationReminderWeChatText(base, u))
+			if err != nil {
+				// WeChat API trouble: stop here and try the rest next hour.
+				logger.LegacyPrintf("service.activation_reminder", "[ActivationReminder] wechat to user %d failed: %v", u.ID, err)
+				return sent, nil
+			}
+			if err := s.repo.MarkSent(ctx, u.ID); err != nil {
+				return sent, err
+			}
+			if outcome == WeChatNoticeDelivered {
+				sent++
+			}
+			continue
+		}
+		if s.mailer == nil || !reminderAddressOK(u.Email) {
 			_ = s.repo.MarkSent(ctx, u.ID) // never retry placeholder addresses
 			continue
 		}
@@ -140,6 +172,8 @@ type ActivationReminderStatus struct {
 	Due     int    `json:"due"` // would go out on the next run
 	Subject string `json:"subject"`
 	Preview string `json:"preview"` // the email's HTML
+	// WeChatPreview is the 客服消息 WeChat-only sign-ups get ("" when the 公众号 isn't wired).
+	WeChatPreview string `json:"wechat_preview"`
 }
 
 func (s *ActivationReminderService) Status(ctx context.Context) (*ActivationReminderStatus, error) {
@@ -154,14 +188,20 @@ func (s *ActivationReminderService) Status(ctx context.Context) (*ActivationRemi
 	}
 	n := 0
 	for _, u := range due {
-		if reminderAddressOK(u.Email) {
+		if reminderAddressOK(u.Email) || (s.wechat != nil && IsPlaceholderEmail(u.Email)) {
 			n++
 		}
 	}
-	return &ActivationReminderStatus{
+	out := &ActivationReminderStatus{
 		Enabled: s.Enabled(ctx), Sent: sent, Due: n, Subject: activationReminderSubject,
 		Preview: ActivationReminderBody(s.siteURL(ctx), ""),
-	}, nil
+	}
+	if s.wechat != nil {
+		out.WeChatPreview = ActivationReminderWeChatText(s.siteURL(ctx), ActivationReminderUser{
+			TrialDays: 1, TrialGroup: "Codex-轻量版", TrialUntil: now.Add(6 * 24 * time.Hour),
+		})
+	}
+	return out, nil
 }
 
 func (s *ActivationReminderService) siteURL(ctx context.Context) string {
@@ -228,6 +268,34 @@ func ActivationReminderBody(base, username string) string {
 </body></html>`, hello, html.EscapeString(activationReminderCanvas+"?utm_source=email&utm_medium=activation&utm_campaign=canvas"),
 		link("/keys?action=create", "key"), link("/keys?action=use", "config"), link("/learn/codex/hivegpt", "tutorial"),
 		link("/purchase", "purchase"), link("/dashboard", "dashboard"))
+}
+
+// ActivationReminderWeChatText is the 客服消息 for WeChat-only sign-ups (plain text; WeChat renders
+// <a href> links).
+func ActivationReminderWeChatText(base string, u ActivationReminderUser) string {
+	hello := "你好"
+	if name := strings.TrimSpace(u.Username); name != "" && !strings.HasPrefix(name, "微信用户") && !strings.HasPrefix(name, "wechat_") {
+		hello = "你好，" + name
+	}
+	link := func(href, text string) string {
+		return fmt.Sprintf(`<a href="%s">%s</a>`, html.EscapeString(href), text)
+	}
+	utm := "utm_source=wechat&utm_medium=activation&utm_campaign="
+	parts := []string{
+		hello + "！你在 HiveGPT 注册一天了，还没用过。选一个，3 分钟就能用上：",
+		"🎨 用 AI 画图：" + link(activationReminderCanvas+"?"+utm+"canvas", "打开无限画布") + "，输入一句话就出图",
+		"💻 用 Codex / Claude Code 写代码：" + link(base+"/dashboard?"+utm+"dashboard", "打开控制台") + "，按「三步开始使用」一键安装",
+	}
+	if u.TrialDays > 0 && !u.TrialUntil.IsZero() {
+		group := strings.TrimSpace(u.TrialGroup)
+		if group == "" {
+			group = "试用"
+		}
+		until := u.TrialUntil.In(time.FixedZone("Asia/Shanghai", 8*3600)).Format("1月2日 15:04")
+		parts = append(parts, fmt.Sprintf("⏳ 你的 %d 天「%s」试用还没开始计时：第一次调用后才开始算，%s 前开始用都有效。", u.TrialDays, group, until))
+	}
+	parts = append(parts, "遇到问题，可以问首页右下角的智能客服。")
+	return strings.Join(parts, "\n\n")
 }
 
 func sepFor(path string) string {

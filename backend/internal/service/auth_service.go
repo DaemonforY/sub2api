@@ -88,6 +88,7 @@ type AuthService struct {
 	defaultSubAssigner    DefaultSubscriptionAssigner
 	userPlatformQuotaRepo UserPlatformQuotaRepository
 	signupTrialGuard      *SignupTrialGuard
+	signupTrialStarts     *SignupTrialStartService
 }
 
 type CaptchaProof struct {
@@ -154,6 +155,11 @@ func (s *AuthService) SetTencentCaptchaService(tencentCaptchaService *TencentCap
 
 func (s *AuthService) SetAliyunCaptchaService(aliyunCaptchaService *AliyunCaptchaService) {
 	s.aliyunCaptchaService = aliyunCaptchaService
+}
+
+// SetSignupTrialStarts makes short sign-up trials start on the first call (注册试用从第一次调用开始计时).
+func (s *AuthService) SetSignupTrialStarts(starts *SignupTrialStartService) {
+	s.signupTrialStarts = starts
 }
 
 // SetSignupTrialGuard turns on the sign-up checks (注册试用去重 / 自动静默限制).
@@ -903,8 +909,40 @@ func (s *AuthService) assignSignupSubscriptions(ctx context.Context, userID int6
 	if s.signupTrialGuard != nil {
 		s.signupTrialGuard.Inspect(ctx, userID, len(items) > 0)
 	}
-	s.assignSubscriptions(ctx, userID, items, "auto assigned by signup defaults")
+	if s.signupTrialStarts == nil || s.defaultSubAssigner == nil || userID <= 0 {
+		s.assignSubscriptions(ctx, userID, items, signupDefaultsNote)
+		return
+	}
+	unused := s.signupTrialStarts.UnusedDays(ctx)
+	rest := make([]DefaultSubscriptionSetting, 0, len(items))
+	for _, item := range items {
+		if unused <= 0 || item.ValidityDays <= 0 || item.ValidityDays >= unused {
+			rest = append(rest, item)
+			continue
+		}
+		// Granted for the unused window; SignupTrialStartService moves it to the first call.
+		sub, extended, err := s.defaultSubAssigner.AssignOrExtendSubscription(ctx, &AssignSubscriptionInput{
+			UserID:       userID,
+			GroupID:      item.GroupID,
+			ValidityDays: unused,
+			Notes:        signupDefaultsNote,
+		})
+		if err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to assign default subscription: user_id=%d group_id=%d err=%v", userID, item.GroupID, err)
+			continue
+		}
+		if extended || sub == nil {
+			continue
+		}
+		if err := s.signupTrialStarts.Register(ctx, sub, item.ValidityDays); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to record first-call trial: user_id=%d subscription_id=%d err=%v", userID, sub.ID, err)
+		}
+	}
+	s.assignSubscriptions(ctx, userID, rest, signupDefaultsNote)
 }
+
+// signupDefaultsNote marks sign-up trial subscriptions; risk rules and user insights match on it.
+const signupDefaultsNote = "auto assigned by signup defaults"
 
 func (s *AuthService) assignSubscriptions(ctx context.Context, userID int64, items []DefaultSubscriptionSetting, notes string) {
 	if s.settingService == nil || s.defaultSubAssigner == nil || userID <= 0 {
