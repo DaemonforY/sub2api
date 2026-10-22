@@ -1120,4 +1120,29 @@ describe('WechatCallbackView', () => {
     expect(setTokenMock).toHaveBeenCalledWith('wechat-quick-token')
     expect(replaceMock).toHaveBeenCalledWith('/canvas-connect?state=abc&return=/image')
   })
+
+  it('sends the 30-day invite code with the one-tap sign-up when the oauth copy was lost', async () => {
+    // WeChat's in-app browser can come back from 网页授权 without sessionStorage.
+    quickRegisterMock.mockReset()
+    localStorage.setItem('affiliate_referral_code', JSON.stringify({ code: 'KOLAFF', expiresAt: Date.now() + 60_000 }))
+    exchangePendingOAuthCompletionMock.mockResolvedValue({
+      auth_result: 'pending_session',
+      step: 'choose_account_action_required',
+      redirect: '/dashboard',
+      email: 'wx@wechat-connect.invalid',
+      resolved_email: 'wx@wechat-connect.invalid',
+      create_account_allowed: true,
+    })
+    quickRegisterMock.mockResolvedValue({ access_token: 'wechat-quick-token', refresh_token: 'r', expires_in: 600, token_type: 'Bearer' })
+
+    const wrapper = mount(WechatCallbackView, {
+      global: { stubs: { AuthLayout: { template: '<div><slot /></div>' }, Icon: true, RouterLink: { template: '<a><slot /></a>' }, transition: false } },
+    })
+    await flushPromises()
+    await wrapper.get('[data-testid="wechat-choice-quick-register"]').trigger('click')
+    await flushPromises()
+
+    expect(quickRegisterMock).toHaveBeenCalledTimes(1)
+    expect(quickRegisterMock.mock.calls[0]?.[1]).toBe('KOLAFF')
+  })
 })

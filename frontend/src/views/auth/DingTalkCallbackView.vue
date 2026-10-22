@@ -256,7 +256,7 @@ import {
 } from '@/api/auth'
 import {
   clearAllAffiliateReferralCodes,
-  loadOAuthAffiliateCode,
+  loadSignupAffiliateCode,
   oauthAffiliatePayload
 } from '@/utils/oauthAffiliate'
 
@@ -639,7 +639,7 @@ async function handleSubmitInvitation() {
 
   isSubmitting.value = true
   try {
-    const affCode = loadOAuthAffiliateCode()
+    const affCode = loadSignupAffiliateCode()
     const decision = currentAdoptionDecision()
     const { data: completion } = await apiClient.post<DingTalkPendingActionResponse>(
       '/auth/oauth/dingtalk/complete-registration',
@@ -691,7 +691,7 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
         }
         : {}),
       invitation_code: payload.invitationCode || undefined,
-      ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
+      ...oauthAffiliatePayload(loadSignupAffiliateCode()),
       ...serializeAdoptionDecision(currentAdoptionDecision())
     })
     await finalizePendingAccountResponse(data)

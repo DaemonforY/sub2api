@@ -111,6 +111,13 @@ export function loadOAuthAffiliateCode(): string {
   }
 }
 
+// The invite code to send when an OAuth sign-up completes: the one copied for this OAuth
+// round-trip, else the 30-day referral code. In-app browsers (WeChat) can lose sessionStorage
+// across the provider redirect, and the invitee would then sign up without their inviter.
+export function loadSignupAffiliateCode(now = Date.now()): string {
+  return loadOAuthAffiliateCode() || loadAffiliateReferralCode(now)
+}
+
 export function clearOAuthAffiliateCode(): void {
   if (typeof window === 'undefined') {
     return

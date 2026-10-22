@@ -160,7 +160,7 @@ import {
 } from '@/api/auth'
 import {
   clearAllAffiliateReferralCodes,
-  loadOAuthAffiliateCode,
+  loadSignupAffiliateCode,
   oauthAffiliatePayload
 } from '@/utils/oauthAffiliate'
 
@@ -344,7 +344,7 @@ async function handleSubmitRegistration() {
   try {
     const payload: { password: string; invitation_code?: string; aff_code?: string } = {
       password: password.value,
-      ...oauthAffiliatePayload(loadOAuthAffiliateCode())
+      ...oauthAffiliatePayload(loadSignupAffiliateCode())
     }
     if (invitationRequired.value) {
       payload.invitation_code = code

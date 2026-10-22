@@ -359,7 +359,7 @@ import {
 } from '@/api/auth'
 import {
   clearAllAffiliateReferralCodes,
-  loadOAuthAffiliateCode,
+  loadSignupAffiliateCode,
   oauthAffiliatePayload
 } from '@/utils/oauthAffiliate'
 
@@ -893,7 +893,7 @@ async function handleSubmitInvitation() {
 
   isSubmitting.value = true
   try {
-    const affCode = loadOAuthAffiliateCode()
+    const affCode = loadSignupAffiliateCode()
     const decision = currentAdoptionDecision()
     const completion: PendingWeChatCompletion = legacyPendingOAuthToken.value
       ? (
@@ -923,7 +923,7 @@ async function handleQuickRegister() {
   accountActionError.value = ''
   isSubmitting.value = true
   try {
-    const affCode = loadOAuthAffiliateCode()
+    const affCode = loadSignupAffiliateCode()
     const decision = currentAdoptionDecision()
     const completion = await quickRegisterWeChatOAuth(decision, affCode || undefined)
     await finalizePendingAccountResponse(completion as PendingWeChatCompletion)
@@ -972,7 +972,7 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
         }
         : {}),
       invitation_code: payload.invitationCode || undefined,
-      ...oauthAffiliatePayload(loadOAuthAffiliateCode()),
+      ...oauthAffiliatePayload(loadSignupAffiliateCode()),
       // Sign-up attribution (visitor ID + first touch), as the email register sends it.
       ...signupAttribution(),
       ...serializeAdoptionDecision(currentAdoptionDecision())

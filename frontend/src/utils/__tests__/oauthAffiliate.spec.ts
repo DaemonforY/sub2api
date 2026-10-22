@@ -4,6 +4,7 @@ import {
   clearOAuthAffiliateCode,
   loadAffiliateReferralCode,
   loadOAuthAffiliateCode,
+  loadSignupAffiliateCode,
   resolveAffiliateReferralCode,
   storeAffiliateReferralCode,
   storeOAuthAffiliateCode
@@ -44,5 +45,18 @@ describe('oauthAffiliate', () => {
 
     clearAffiliateReferralCode()
     expect(loadAffiliateReferralCode()).toBe('')
+  })
+
+  it('falls back to the persistent referral code when the oauth copy is gone', () => {
+    // WeChat's in-app browser can drop sessionStorage across the OAuth redirect.
+    storeAffiliateReferralCode('PERSISTED')
+    expect(loadSignupAffiliateCode()).toBe('PERSISTED')
+
+    storeOAuthAffiliateCode('OAUTH')
+    expect(loadSignupAffiliateCode()).toBe('OAUTH')
+
+    clearOAuthAffiliateCode()
+    clearAffiliateReferralCode()
+    expect(loadSignupAffiliateCode()).toBe('')
   })
 })
