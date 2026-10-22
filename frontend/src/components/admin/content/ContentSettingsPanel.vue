@@ -16,7 +16,7 @@
         </label>
         <label class="text-sm">
           <span class="input-label">{{ t('admin.content.settings.model') }}</span>
-          <input v-model.trim="form.model" class="input" placeholder="gpt-5.5" />
+          <input v-model.trim="form.model" class="input" placeholder="gpt-6.1-sol" />
           <span class="input-hint">{{ t('admin.content.settings.modelHint') }}</span>
         </label>
       </div>

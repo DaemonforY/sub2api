@@ -244,7 +244,7 @@ func (s *TutorService) model(ctx context.Context) string {
 			return st.Model
 		}
 	}
-	return "gpt-5.5"
+	return "gpt-6.1-sol"
 }
 
 func (s *TutorService) day() string { return learnDayStart(s.now()).Format("20060102") }

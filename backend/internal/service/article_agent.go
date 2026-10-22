@@ -336,7 +336,7 @@ func (s *ArticleAgentService) model(ctx context.Context) string {
 			return st.Model
 		}
 	}
-	return "gpt-5.5"
+	return "gpt-6.1-sol"
 }
 
 func (s *ArticleAgentService) Get(ctx context.Context, userID, id int64) (*ArticleProject, error) {

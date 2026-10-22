@@ -266,7 +266,7 @@ func (s *SiteBuilderService) model(ctx context.Context) string {
 			return st.Model
 		}
 	}
-	return "gpt-5.5"
+	return "gpt-6.1-sol"
 }
 
 // Create saves the draft and starts writing the page.

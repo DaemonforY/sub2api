@@ -13,7 +13,7 @@ export default {
     apiKeyPlaceholder: '粘贴一个 sk- 开头的 Key',
     apiKeyHint: '不填：没有免费次数，学员全部用自己的 Key 运行。填了：学员每天有免费次数，费用记在这个 Key 上——用管理员账号在「API 密钥」页新建一个 Key，分组选「GPT-按量」，并设使用额度上限。Key 加密保存，保存后不再显示。',
     model: '模型',
-    modelHint: '课程调用的模型，学员的 Key 需要在 GPT 分组里（只有 GPT 分组的 Key 会出现在学员的选择列表里），例如 gpt-5.5。',
+    modelHint: '课程调用的模型，学员的 Key 需要在 GPT 分组里（只有 GPT 分组的 Key 会出现在学员的选择列表里），例如 gpt-6.1-sol。',
     freeRuns: '每人每天免费次数',
     dailyCap: '全站每天上限',
     dailyCapHint: '所有人加起来每天最多用学习专用 Key 调用多少次（运行、助教、面试评分都算），0 表示不限制。',

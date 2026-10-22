@@ -13,7 +13,7 @@ export default {
     apiKeyPlaceholder: 'Paste a key starting with sk-',
     apiKeyHint: 'Leave empty: no free calls, learners always run on their own key. Set it: learners get free calls a day billed on this key — create it under API Keys with an admin account, in the GPT pay-as-you-go group, with a usage limit. Stored encrypted and never shown again.',
     model: 'Model',
-    modelHint: 'The model lessons call; learners need a key in a GPT group (only those are offered to them), e.g. gpt-5.5.',
+    modelHint: 'The model lessons call; learners need a key in a GPT group (only those are offered to them), e.g. gpt-6.1-sol.',
     freeRuns: 'Free runs per learner per day',
     dailyCap: 'Site-wide daily cap',
     dailyCapHint: 'Most calls a day on the learning key across everyone (runs, tutor, interview grading); 0 = no cap.',

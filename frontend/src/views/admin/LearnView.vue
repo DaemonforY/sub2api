@@ -22,7 +22,7 @@
           </label>
           <label class="text-sm">
             <span class="input-label">{{ t('admin.learn.model') }}</span>
-            <input v-model="form.model" class="input" placeholder="gpt-5.5" data-testid="learn-model" />
+            <input v-model="form.model" class="input" placeholder="gpt-6.1-sol" data-testid="learn-model" />
             <span class="input-hint">{{ t('admin.learn.modelHint') }}</span>
           </label>
           <label class="text-sm">

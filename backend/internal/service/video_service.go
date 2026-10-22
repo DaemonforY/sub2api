@@ -27,7 +27,7 @@ const (
 	videoMaxRunsSiteWide  = 8
 	videoRunTimeout       = 30 * time.Minute
 	videoSceneParallelism = 3
-	videoDefaultModel     = "gpt-5.5"
+	videoDefaultModel     = "gpt-6.1-sol"
 	videoSceneTailPause   = 0.6 // seconds of silence after each scene's narration
 	videoMinSceneSeconds  = 3.0
 	videoMaxScenes        = 12

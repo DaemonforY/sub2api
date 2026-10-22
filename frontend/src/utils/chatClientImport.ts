@@ -7,7 +7,7 @@
  * Both clients show the provider and ask before saving it.
  */
 
-export const CHAT_CLIENT_DEFAULT_MODEL = 'gpt-5.5'
+export const CHAT_CLIENT_DEFAULT_MODEL = 'gpt-6.1-sol'
 
 /** Site root without a trailing slash or /v1, e.g. https://hivegpt.cn */
 export function chatClientRoot(baseUrl: string): string {

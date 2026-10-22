@@ -216,7 +216,7 @@ func (s *WritingStyleService) model(ctx context.Context) string {
 	if st, _ := s.learn.loadSettings(ctx); st.Model != "" {
 		return st.Model
 	}
-	return "gpt-5.5"
+	return "gpt-6.1-sol"
 }
 
 // Quote is the expected cost of analysing this many characters on the key (nil when unknown).

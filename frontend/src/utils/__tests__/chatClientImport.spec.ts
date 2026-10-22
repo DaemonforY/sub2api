@@ -25,6 +25,6 @@ describe('chat client import links', () => {
     expect(cfg.type).toBe('openai')
     expect(cfg.settings.apiHost + cfg.settings.apiPath).toBe('https://hivegpt.cn/v1/chat/completions')
     expect(cfg.settings.apiKey).toBe('sk-abc')
-    expect(cfg.settings.models[0].modelId).toBe('gpt-5.5')
+    expect(cfg.settings.models[0].modelId).toBe('gpt-6.1-sol')
   })
 })
