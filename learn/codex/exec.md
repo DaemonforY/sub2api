@@ -32,7 +32,7 @@ codex exec "列出这个项目的主要模块，以及每个模块的入口文�
 codex exec -s workspace-write "把 src/utils 里所有 var 改成 let/const，改完运行 npm test"
 
 # 指定工作目录、模型和推理强度
-codex exec -C ~/work/shop -m gpt-5.5 -c model_reasoning_effort="high" "找出订单金额计算的 bug 并修复"
+codex exec -C ~/work/shop -m gpt-6.1-sol -c model_reasoning_effort="high" "找出订单金额计算的 bug 并修复"
 ```
 
 `exec` 有一个别名 `e`，`codex e "..."` 等价。
@@ -84,7 +84,7 @@ codex exec -s workspace-write -i design/login.png "按这张设计稿实现 src/
 
 | 用途 | 参数 | 说明 |
 |---|---|---|
-| 模型 | `-m, --model` | 指定模型，例如 `gpt-5.5` |
+| 模型 | `-m, --model` | 指定模型，例如 `gpt-6.1-sol` |
 | | `--oss`、`--local-provider` | 使用本地开源模型（lmstudio / ollama） |
 | 权限 | `-s, --sandbox` | `read-only` / `workspace-write` / `danger-full-access` |
 | | `--dangerously-bypass-approvals-and-sandbox` | 不要沙箱、不要审批。只能在本身已隔离的环境（一次性容器）里用 |
@@ -333,7 +333,7 @@ CI 里没有浏览器，不能 `codex login`。用 HiveGPT 的 Key 时，推荐*
 
 1. 在 HiveGPT「API 密钥」页为 CI 单独创建一个 OpenAI 类分组（如「GPT-按量」）的 Key，方便单独限额和吊销。获取 Key 的完整步骤见 [接入 HiveGPT](/codex/hivegpt)。
 2. 仓库 Settings → Secrets and variables → Actions，新建 secret `HIVEGPT_API_KEY`。
-3. （可选）把「使用密钥」弹窗里下载的 `codex-models.json` 提交到仓库，例如 `.github/codex/codex-models.json`，这样 Codex 能认出 gpt-5.5 的上下文长度等信息。
+3. （可选）把「使用密钥」弹窗里下载的 `codex-models.json` 提交到仓库，例如 `.github/codex/codex-models.json`，这样 Codex 能认出 gpt-6.1-sol 的上下文长度等信息。
 
 工作流里在一个临时的 `CODEX_HOME` 中写出配置：
 
@@ -371,7 +371,7 @@ jobs:
           mkdir -p "$CODEX_HOME"
           cat > "$CODEX_HOME/config.toml" <<EOF
           model_provider = "hivegpt"
-          model = "gpt-5.5"
+          model = "gpt-6.1-sol"
           model_catalog_json = "$GITHUB_WORKSPACE/.github/codex/codex-models.json"
 
           [model_providers.hivegpt]
@@ -399,7 +399,7 @@ jobs:
 - `CODEX_HOME` 指向 runner 的临时目录，作业结束就清理，不会把配置和会话留在共享的 runner 上。
 - 审查只读代码，沿用默认的只读沙箱。
 - 发评论用的是 GitHub 自带的 `github.token`，Codex 本身拿不到它，也不需要。
-- 没有提交 `codex-models.json` 时，删掉 `model_catalog_json` 那一行也能跑，只是 Codex 会把 gpt-5.5 当成未知模型、使用默认参数。
+- 没有提交 `codex-models.json` 时，删掉 `model_catalog_json` 那一行也能跑，只是 Codex 会把 gpt-6.1-sol 当成未知模型、使用默认参数。
 
 ::: details 另一种写法：直接写 config.toml + auth.json
 如果你想和本机保持完全一样的配置，也可以把「使用密钥」弹窗生成的 `config.toml` 存成仓库变量，`auth.json` 的内容 `{"OPENAI_API_KEY": "你的 Key"}` 存成 secret，在步骤里写出这两个文件：
@@ -478,7 +478,7 @@ codex_review:
     - |
       cat > "$CODEX_HOME/config.toml" <<EOF
       model_provider = "hivegpt"
-      model = "gpt-5.5"
+      model = "gpt-6.1-sol"
 
       [model_providers.hivegpt]
       name = "HiveGPT"
@@ -541,7 +541,7 @@ const codex = new Codex({
 });
 
 const thread = codex.startThread({
-  model: "gpt-5.5",
+  model: "gpt-6.1-sol",
   workingDirectory: "/path/to/repo",
   sandboxMode: "workspace-write",
 });

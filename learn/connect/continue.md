@@ -5,7 +5,7 @@ description: 在 VS Code 或 JetBrains 的 Continue 插件里接入 HiveGPT：~/
 
 # Continue 插件配置 OpenAI 兼容 API
 
-**最短答案：** 编辑 `~/.continue/config.yaml`，加一个 `provider: openai` 的模型，`apiBase` 填 `https://hivegpt.cn/v1`，`apiKey` 填你的 HiveGPT Key，`model` 填 `gpt-5.5`；保存后在 VS Code 里执行 **Reload Window**，在 Continue 面板顶部选这个模型即可。
+**最短答案：** 编辑 `~/.continue/config.yaml`，加一个 `provider: openai` 的模型，`apiBase` 填 `https://hivegpt.cn/v1`，`apiKey` 填你的 HiveGPT Key，`model` 填 `gpt-6.1-sol`；保存后在 VS Code 里执行 **Reload Window**，在 Continue 面板顶部选这个模型即可。
 
 ::: warning Continue 已停止维护
 2026 年 Continue 官方宣布不再维护：GitHub 仓库已改为只读，VS Code 版的最后一个正式版本是 2.0，JetBrains 插件停在 1.0.67。现有版本还能正常使用，但以后不会再修 bug、适配新模型。
@@ -38,9 +38,9 @@ version: 0.0.1
 schema: v1
 
 models:
-  - name: GPT-5.5（HiveGPT）
+  - name: GPT-6.1-Sol（HiveGPT）
     provider: openai
-    model: gpt-5.5
+    model: gpt-6.1-sol
     apiBase: https://hivegpt.cn/v1
     apiKey: ${{ secrets.HIVEGPT_API_KEY }}
     roles: [chat, edit, apply]
@@ -70,7 +70,7 @@ models:
 
 ## 第三步：开始用
 
-在 Continue 面板顶部的模型下拉里选「GPT-5.5（HiveGPT）」：
+在 Continue 面板顶部的模型下拉里选「GPT-6.1-Sol（HiveGPT）」：
 
 - **Chat**：问问题、解释代码。选中代码后按 `Cmd/Ctrl + L` 加入对话。
 - **Edit**：选中代码按 `Cmd/Ctrl + I`，说要怎么改。

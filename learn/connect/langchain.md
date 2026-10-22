@@ -5,12 +5,12 @@ description: 在 LangChain（Python 和 LangChain.js）里用 ChatOpenAI 接入 
 
 # LangChain 接入 HiveGPT
 
-**只改创建模型的那一行：** Python 里用 `ChatOpenAI(model="gpt-5.5", base_url="https://hivegpt.cn/v1", api_key=...)`；LangChain.js 里用 `new ChatOpenAI({ model: 'gpt-5.5', apiKey, configuration: { baseURL: 'https://hivegpt.cn/v1' } })`。链、Agent、RAG 等其他代码都不用动。
+**只改创建模型的那一行：** Python 里用 `ChatOpenAI(model="gpt-6.1-sol", base_url="https://hivegpt.cn/v1", api_key=...)`；LangChain.js 里用 `new ChatOpenAI({ model: 'gpt-6.1-sol', apiKey, configuration: { baseURL: 'https://hivegpt.cn/v1' } })`。链、Agent、RAG 等其他代码都不用动。
 
 ```python
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-5.5", base_url="https://hivegpt.cn/v1", api_key="sk-你的Key")
+llm = ChatOpenAI(model="gpt-6.1-sol", base_url="https://hivegpt.cn/v1", api_key="sk-你的Key")
 print(llm.invoke("用一句话介绍你自己").content)
 ```
 
@@ -49,7 +49,7 @@ import os
 from langchain_openai import ChatOpenAI
 
 llm = ChatOpenAI(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     base_url="https://hivegpt.cn/v1",
     api_key=os.environ["HIVEGPT_API_KEY"],
     max_retries=3,  # 429 / 5xx 自动重试
@@ -78,7 +78,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-5.5", base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
+llm = ChatOpenAI(model="gpt-6.1-sol", base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "你是{role}，用不超过 100 字回答。"),
@@ -106,7 +106,7 @@ import os
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
-llm = ChatOpenAI(model="gpt-5.5", base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
+llm = ChatOpenAI(model="gpt-6.1-sol", base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
 
 
 class Review(BaseModel):
@@ -130,7 +130,7 @@ from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
-llm = ChatOpenAI(model="gpt-5.5", base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
+llm = ChatOpenAI(model="gpt-6.1-sol", base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
 
 
 @tool
@@ -185,7 +185,7 @@ npm install @langchain/openai @langchain/core
 import { ChatOpenAI } from '@langchain/openai'
 
 const llm = new ChatOpenAI({
-  model: 'gpt-5.5',
+  model: 'gpt-6.1-sol',
   apiKey: process.env.HIVEGPT_API_KEY,
   configuration: { baseURL: 'https://hivegpt.cn/v1' },
   maxRetries: 3,

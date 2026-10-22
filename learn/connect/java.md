@@ -43,7 +43,7 @@ public class Basic {
                 .build();
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-5.5")
+                .model("gpt-6.1-sol")
                 .addSystemMessage("你是一位耐心的编程老师，回答简洁。")
                 .addUserMessage("Java 的接口和抽象类有什么区别？")
                 .build();
@@ -78,7 +78,7 @@ public class Stream {
                 .build();
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-5.5")
+                .model("gpt-6.1-sol")
                 .addUserMessage("写一首关于秋天的四行小诗")
                 .build();
 
@@ -115,7 +115,7 @@ public class Errors {
                 .build();
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-                .model("gpt-5.5")
+                .model("gpt-6.1-sol")
                 .addUserMessage("你好")
                 .build();
         try {
@@ -181,13 +181,13 @@ SDK 也能读环境变量：设置 `OPENAI_BASE_URL=https://hivegpt.cn/v1` 和 `
 ```properties [Spring AI 2.x]
 spring.ai.openai.base-url=https://hivegpt.cn/v1
 spring.ai.openai.api-key=${HIVEGPT_API_KEY}
-spring.ai.openai.chat.model=gpt-5.5
+spring.ai.openai.chat.model=gpt-6.1-sol
 ```
 
 ```properties [Spring AI 1.x]
 spring.ai.openai.base-url=https://hivegpt.cn
 spring.ai.openai.api-key=${HIVEGPT_API_KEY}
-spring.ai.openai.chat.options.model=gpt-5.5
+spring.ai.openai.chat.options.model=gpt-6.1-sol
 ```
 
 :::

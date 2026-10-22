@@ -5,7 +5,7 @@ description: 在 Obsidian 的 Copilot 插件（V4）里用 BYOK「Add a custom p
 
 # Obsidian Copilot 接入 GPT API
 
-**四步接入：** 在 Obsidian 的「设置 → Copilot → BYOK」里点 **Add a provider → Add a custom provider**；**Base URL** 填 `https://hivegpt.cn/v1`，**API key** 填你的 HiveGPT Key，**Model ID** 填 `gpt-5.5` 后点 Add；**Enable CORS** 保持关闭，保存。然后在 Copilot 的 Quick Chat 里选这个模型就能用。
+**四步接入：** 在 Obsidian 的「设置 → Copilot → BYOK」里点 **Add a provider → Add a custom provider**；**Base URL** 填 `https://hivegpt.cn/v1`，**API key** 填你的 HiveGPT Key，**Model ID** 填 `gpt-6.1-sol` 后点 Add；**Enable CORS** 保持关闭，保存。然后在 Copilot 的 Quick Chat 里选这个模型就能用。
 
 > 更新于 2026-10，基于 Obsidian Copilot V4（4.0.x）。旧版本（V2 / V3）的界面不同，见文末。
 
@@ -27,7 +27,7 @@ description: 在 Obsidian 的 Copilot 插件（V4）里用 BYOK「Add a custom p
 | API key | 你的 HiveGPT Key（`sk-` 开头），可以点 Test 检查 |
 | Base URL | `https://hivegpt.cn/v1` |
 | Enable CORS | **关闭**（默认） |
-| Model ID | 输入 `gpt-5.5`，点 Add；也可以用 Search available models 从列表里选 |
+| Model ID | 输入 `gpt-6.1-sol`，点 Add；也可以用 Search available models 从列表里选 |
 
 点 **Save** 保存。
 
@@ -39,7 +39,7 @@ Test 显示 Verified 只说明 Key 有效，不代表每个模型都能用；模
 
 ## 第三步：在 Quick Chat 里使用
 
-新添加的模型会自动出现在 **Basic → Agents** 的 Quick Chat 模型里。打开 Copilot 的聊天面板，在模型下拉里选 `HiveGPT` 下的 `gpt-5.5`，试试：
+新添加的模型会自动出现在 **Basic → Agents** 的 Quick Chat 模型里。打开 Copilot 的聊天面板，在模型下拉里选 `HiveGPT` 下的 `gpt-6.1-sol`，试试：
 
 > 把当前笔记总结成 5 条要点，每条不超过 20 字。
 
@@ -53,7 +53,7 @@ Copilot V4 把笔记库的语义搜索移到了单独的 **Miyo** 应用里（�
 
 如果你的 Copilot 还是旧版本，设置里是 **Add Custom Model**：
 
-1. Model Name 填 `gpt-5.5`。
+1. Model Name 填 `gpt-6.1-sol`。
 2. Provider 选 **3rd party (openai-format)**。
 3. Base URL 填 `https://hivegpt.cn/v1`，API Key 填你的 Key。
 4. CORS 选项不用勾选，点 Verify，再点 Add Model。

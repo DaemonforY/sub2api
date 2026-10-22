@@ -14,24 +14,24 @@ description: 在 Codex 里选择模型、设置推理强度、推理摘要和回
 | 方式 | 写法 | 作用范围 |
 |---|---|---|
 | 会话内切换 | `/model` | 立即生效，并保存为默认值 |
-| 命令行参数 | `codex -m gpt-5.5` | 只对这一次运行有效 |
-| 配置文件 | `model = "gpt-5.5"` | 长期默认 |
+| 命令行参数 | `codex -m gpt-6.1-sol` | 只对这一次运行有效 |
+| 配置文件 | `model = "gpt-6.1-sol"` | 长期默认 |
 
 ```bash
-codex -m gpt-5.5                      # 交互模式指定模型
-codex exec -m gpt-5.5 "补全单元测试"    # 非交互模式同样可用
+codex -m gpt-6.1-sol                      # 交互模式指定模型
+codex exec -m gpt-6.1-sol "补全单元测试"    # 非交互模式同样可用
 ```
 
 ```toml
 # ~/.codex/config.toml
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 ```
 
 在会话里输入 `/model`，会先列出可选模型，再列出该模型支持的推理强度。选完从下一轮生效，同时写回配置文件，下次启动沿用。
 
 ### HiveGPT 下有哪些模型
 
-通过 [接入 HiveGPT](/codex/hivegpt) 使用 Codex 时，当前默认模型是 **gpt-5.5**。可选模型由两样东西决定：
+通过 [接入 HiveGPT](/codex/hivegpt) 使用 Codex 时，当前默认模型是 **gpt-6.1-sol**（OpenAI 定位为编程和日常工作的主力款；以前的默认 gpt-5.5 已是旧版）。可选模型由两样东西决定：
 
 - 你的 Key 所在分组开放了哪些模型；
 - 配置里的 `model_catalog_json = "~/.codex/codex-models.json"`，也就是「使用密钥」弹窗里下载的模型目录文件。`/model` 的列表就来自这里。
@@ -54,7 +54,7 @@ Codex 需要知道每个模型的上下文窗口、支持哪些推理强度、�
 model_reasoning_effort = "medium"
 ```
 
-可选值由模型自己声明。以 gpt-5.5 为例，Codex 内置目录里它支持四档，默认 `medium`：
+可选值由模型自己声明。以 gpt-6.1-sol 为例，Codex 内置目录里它支持 `low` 到 `ultra` 六档，默认 `low`；下面是最常用的四档：
 
 | 推理强度 | 速度 | token 消耗 | 适合 |
 |---|---|---|---|
@@ -63,7 +63,7 @@ model_reasoning_effort = "medium"
 | `high` | 较慢 | 较多 | 跨文件重构、复杂业务逻辑、不熟悉的代码库 |
 | `xhigh` | 最慢 | 最多 | 疑难 bug（并发、内存、偶发问题）、架构设计、安全审查 |
 
-源码里推理强度的取值范围更大，还有 `none`、`minimal`、`max`、`ultra` 等，但**某个模型实际支持哪些，以 `/model` 里显示的为准**。写了模型不支持的值，Codex 会提示或回退。
+再往上还有 `max`、`ultra`，源码里另有 `none`、`minimal` 等，但**某个模型实际支持哪些，以 `/model` 里显示的为准**。写了模型不支持的值，Codex 会提示或回退。
 
 几个经验：
 
@@ -108,7 +108,7 @@ model_reasoning_summary = "auto"   # auto / concise / detailed / none
 model_verbosity = "low"   # low / medium / high
 ```
 
-`low` 时回复干脆，改完代码只说结果和要点；`high` 时会详细解释每一处改动。gpt-5.5 在内置目录里默认是 `low`。学习阶段想多看解释，可以调到 `medium` 或 `high`；熟练之后 `low` 更省 token 也更好读。
+`low` 时回复干脆，改完代码只说结果和要点；`high` 时会详细解释每一处改动。gpt-6.1-sol 在内置目录里默认是 `low`。学习阶段想多看解释，可以调到 `medium` 或 `high`；熟练之后 `low` 更省 token 也更好读。
 
 ## 按任务推荐的组合
 
@@ -125,7 +125,7 @@ model_verbosity = "low"   # low / medium / high
 `review_model` 让 `/review` 和 `codex review` 使用单独的模型，主会话不受影响：
 
 ```toml
-review_model = "gpt-5.5"
+review_model = "gpt-6.1-sol"
 ```
 
 ## 速度、成本和质量怎么权衡
@@ -143,7 +143,7 @@ review_model = "gpt-5.5"
 
 ## 上下文窗口与自动压缩
 
-Codex 会根据模型目录里的上下文窗口大小，在快满时自动压缩历史。gpt-5.5 在内置目录里的上下文窗口是 272K token。相关配置：
+Codex 会根据模型目录里的上下文窗口大小，在快满时自动压缩历史。gpt-6.1-sol 在内置目录里的上下文窗口是 272K token。相关配置：
 
 ```toml
 model_auto_compact_token_limit = 200000   # 达到多少 token 时自动压缩
@@ -164,8 +164,8 @@ Codex 可以通过 `model_providers` 接入其他兼容 OpenAI Responses 接口�
 
 ## 小结
 
-- 选模型：`/model`（会存为默认）、`-m`（只这一次）、`model =`（长期默认）；HiveGPT 下可选模型以 `/model` 列表为准，默认 gpt-5.5。
-- 推理强度先用 `medium`，卡住再升到 `high` / `xhigh`；可选档位由模型决定，gpt-5.5 支持 low 到 xhigh。
+- 选模型：`/model`（会存为默认）、`-m`（只这一次）、`model =`（长期默认）；HiveGPT 下可选模型以 `/model` 列表为准，默认 gpt-6.1-sol。
+- 推理强度先用 `medium`，卡住再升到 `high` / `xhigh`；可选档位由模型决定，gpt-6.1-sol 支持 low 到 ultra。
 - `model_reasoning_summary` 管推理摘要，`model_verbosity` 管回复长短，`plan_mode_reasoning_effort` 单独管计划模式。
 - 花费主要来自上下文长度和推理强度：换任务 `/new`，长任务 `/compact`，临时攻坚用命令行或 profile。
 - 第三方模型只支持 Responses 协议，推理类参数按对方文档设置。

@@ -41,7 +41,7 @@ from openpyxl import load_workbook
 
 INPUT_COLUMN = "用户评论"     # 要处理的那一列的表头
 OUTPUT_COLUMN = "分析结果"    # 结果写到这一列（没有会自动新建）
-MODEL = "gpt-5.5"
+MODEL = "gpt-6.1-sol"
 WORKERS = 5                    # 同时处理几行，太大会触发 429
 PROMPT = """判断下面这条用户评论的情感（正面 / 负面 / 中性），并用不超过 15 个字概括原因。
 只输出一行，格式：情感｜原因
@@ -130,7 +130,7 @@ if __name__ == "__main__":
 
 ## 大概花多少钱
 
-按 `gpt-5.5` 的标价，一条 50 字的评论加上提示词约 120 token 输入、20 token 输出，每行约 $0.0012，**1000 行约 $1.2**。换成便宜的小模型可以再便宜几十倍。实际花费以 [使用记录](https://hivegpt.cn/usage) 为准，算法见 [token 怎么算钱](/connect/tokens)。
+按 `gpt-6.1-sol` 的标价，一条 50 字的评论加上提示词约 120 token 输入、20 token 输出，每行约 $0.0004，**1000 行约 $0.44**。换成便宜的小模型可以再便宜几十倍。实际花费以 [使用记录](https://hivegpt.cn/usage) 为准，算法见 [token 怎么算钱](/connect/tokens)。
 
 ## 常见问题
 

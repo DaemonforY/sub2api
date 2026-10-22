@@ -12,7 +12,7 @@ from openai import OpenAI
 
 client = OpenAI(base_url="https://hivegpt.cn/v1", api_key="sk-你的Key")
 resp = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[{"role": "user", "content": "用一句话介绍你自己"}],
 )
 print(resp.choices[0].message.content)
@@ -65,7 +65,7 @@ client = OpenAI(
 )
 
 resp = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[
         {"role": "system", "content": "你是一位耐心的编程老师，回答简洁。"},
         {"role": "user", "content": "Python 的列表和元组有什么区别？"},
@@ -88,7 +88,7 @@ from openai import OpenAI
 client = OpenAI(base_url="https://hivegpt.cn/v1", api_key=os.environ["HIVEGPT_API_KEY"])
 
 stream = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[{"role": "user", "content": "写一首关于秋天的四行小诗"}],
     stream=True,
     stream_options={"include_usage": True},  # 最后一块带上用量
@@ -114,7 +114,7 @@ messages = [{"role": "system", "content": "你是一位旅行规划助手。"}]
 
 for question in ["我五月想去云南玩 5 天", "预算 5000 元够吗？", "那第一天怎么安排？"]:
     messages.append({"role": "user", "content": question})
-    resp = client.chat.completions.create(model="gpt-5.5", messages=messages)
+    resp = client.chat.completions.create(model="gpt-6.1-sol", messages=messages)
     answer = resp.choices[0].message.content
     messages.append({"role": "assistant", "content": answer})
     print(f"问：{question}\n答：{answer}\n")
@@ -141,7 +141,7 @@ class Contact(BaseModel):
 
 
 resp = client.chat.completions.parse(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[
         {"role": "system", "content": "从用户的话里提取联系人信息。"},
         {"role": "user", "content": "我是李雷，住在杭州，电话 138 0000 1234"},
@@ -185,7 +185,7 @@ tools = [{
 }]
 
 messages = [{"role": "user", "content": "北京今天天气怎么样？适合跑步吗？"}]
-resp = client.chat.completions.create(model="gpt-5.5", messages=messages, tools=tools)
+resp = client.chat.completions.create(model="gpt-6.1-sol", messages=messages, tools=tools)
 msg = resp.choices[0].message
 
 if msg.tool_calls:
@@ -194,7 +194,7 @@ if msg.tool_calls:
         args = json.loads(call.function.arguments)
         result = get_weather(**args)
         messages.append({"role": "tool", "tool_call_id": call.id, "content": json.dumps(result, ensure_ascii=False)})
-    resp = client.chat.completions.create(model="gpt-5.5", messages=messages, tools=tools)
+    resp = client.chat.completions.create(model="gpt-6.1-sol", messages=messages, tools=tools)
 
 print(resp.choices[0].message.content)
 ```
@@ -217,7 +217,7 @@ limit = asyncio.Semaphore(5)  # 最多同时 5 个请求
 async def translate(text: str) -> str:
     async with limit:
         resp = await client.chat.completions.create(
-            model="gpt-5.5",
+            model="gpt-6.1-sol",
             messages=[{"role": "user", "content": f"翻译成英文，只输出译文：{text}"}],
         )
         return resp.choices[0].message.content
@@ -258,7 +258,7 @@ def reason(e: openai.APIStatusError) -> str:
 
 try:
     resp = client.chat.completions.create(
-        model="gpt-5.5",
+        model="gpt-6.1-sol",
         messages=[{"role": "user", "content": "你好"}],
     )
     print(resp.choices[0].message.content)

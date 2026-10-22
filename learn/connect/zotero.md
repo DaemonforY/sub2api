@@ -5,7 +5,7 @@ description: 在 Zotero 7 里用 Translate for Zotero（自定义GPT）翻译 PD
 
 # Zotero 接入 GPT API
 
-**翻译用 Translate for Zotero，提问用 llm-for-zotero，两个插件都填 `https://hivegpt.cn/v1` 和你的 HiveGPT Key。** 翻译插件里要选 **自定义GPT1**（不要选 ChatGPT），接口填 `https://hivegpt.cn/v1/chat/completions`、模型填 `gpt-5.5`；读文献插件选 Customized 服务商、协议选 OpenAI-Compatible Chat，API 基础 URL 填 `https://hivegpt.cn/v1`。
+**翻译用 Translate for Zotero，提问用 llm-for-zotero，两个插件都填 `https://hivegpt.cn/v1` 和你的 HiveGPT Key。** 翻译插件里要选 **自定义GPT1**（不要选 ChatGPT），接口填 `https://hivegpt.cn/v1/chat/completions`、模型填 `gpt-6.1-sol`；读文献插件选 Customized 服务商、协议选 OpenAI-Compatible Chat，API 基础 URL 填 `https://hivegpt.cn/v1`。
 
 > 更新于 2026-10，基于 Zotero 7、Translate for Zotero 2.4.x 和 llm-for-zotero 3.9.x。插件更新快，菜单名称以你看到的为准。
 
@@ -29,7 +29,7 @@ description: 在 Zotero 7 里用 Translate for Zotero（自定义GPT）翻译 PD
 | 字段 | 填什么 |
 |---|---|
 | 接口 | `https://hivegpt.cn/v1/chat/completions` |
-| 模型 | `gpt-5.5`，或分组里更便宜的模型 |
+| 模型 | `gpt-6.1-sol`，或分组里更便宜的模型 |
 | 温度 | 保持默认 `1.0` |
 | 接口格式 | OpenAI (chat/completions) |
 | 提示词 | 保持默认，必须包含 `${sourceText}` |
@@ -63,7 +63,7 @@ description: 在 Zotero 7 里用 Translate for Zotero（自定义GPT）翻译 PD
 |---|---|
 | API 基础 URL | `https://hivegpt.cn/v1` |
 | 密钥 / API Key | 你的 HiveGPT Key |
-| 模型名称 | `gpt-5.5` |
+| 模型名称 | `gpt-6.1-sol` |
 
 4. 点 **测试连接**，显示成功就配好了。
 

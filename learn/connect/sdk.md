@@ -40,14 +40,14 @@ client = OpenAI(
 
 # 对话
 resp = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[{"role": "user", "content": "用三句话解释什么是 API"}],
 )
 print(resp.choices[0].message.content)
 
 # 流式输出：边生成边打印
 stream = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[{"role": "user", "content": "写一首关于秋天的四行小诗"}],
     stream=True,
 )
@@ -71,7 +71,7 @@ const client = new OpenAI({
 })
 
 const resp = await client.chat.completions.create({
-  model: 'gpt-5.5',
+  model: 'gpt-6.1-sol',
   messages: [{ role: 'user', content: '用三句话解释什么是 API' }],
 })
 console.log(resp.choices[0].message.content)
@@ -83,7 +83,7 @@ Codex 等新工具用的是 Responses 接口，HiveGPT 同样支持：
 
 ```python
 resp = client.responses.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     input="给我三个学习 Python 的小项目点子",
 )
 print(resp.output_text)
@@ -115,7 +115,7 @@ with open("cat.png", "wb") as f:
 curl https://hivegpt.cn/v1/chat/completions \
   -H "Authorization: Bearer $HIVEGPT_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-5.5", "messages": [{"role": "user", "content": "你好"}]}'
+  -d '{"model": "gpt-6.1-sol", "messages": [{"role": "user", "content": "你好"}]}'
 ```
 
 ## 下一步

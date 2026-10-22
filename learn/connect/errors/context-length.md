@@ -19,7 +19,7 @@ description: 调用 GPT 等大模型 API 时报 context_length_exceeded、This m
 - 这次的问题
 - 再加上这次要输出的内容（`max_completion_tokens`）
 
-`gpt-5.5` 的上下文上限约 105 万 token，日常对话很难超；但上限小一些的模型，或者一次塞进好几本书、一个大代码仓库时，就会超。各模型的上限看 [模型广场](https://hivegpt.cn/model-plaza)。
+主力模型 `gpt-6.1-sol` 的上下文上限约 105 万 token（超过 27.2 万的请求按长上下文价计费），日常对话很难超；但上限小一些的模型，或者一次塞进好几本书、一个大代码仓库时，就会超。各模型的上限看 [模型广场](https://hivegpt.cn/model-plaza)。
 
 ## 常见的报错
 

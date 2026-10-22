@@ -13,7 +13,7 @@ description: 在 OpenCode、CodeBuddy 等编程工具，以及 Cherry Studio、C
 |---|---|
 | API 地址（Base URL） | `https://hivegpt.cn/v1`，个别工具填 `https://hivegpt.cn` |
 | API Key | 你在 [API 密钥](https://hivegpt.cn/keys) 页创建的 Key |
-| 模型 | 你的分组里可用的模型，例如 `gpt-5.5`，用 [`/v1/models`](/connect/#查看可用模型) 查 |
+| 模型 | 你的分组里可用的模型，例如 `gpt-6.1-sol`，用 [`/v1/models`](/connect/#查看可用模型) 查 |
 
 ::: tip 菜单名称以工具当前版本为准
 各工具更新很快，下面写的是要找的设置项，具体菜单的位置和叫法可能和你看到的略有不同。
@@ -53,7 +53,7 @@ OpenCode 是开源的终端编程助手。HiveGPT 的「使用密钥」弹窗能
 如果你用的 IDE 助手支持「自定义模型」或「OpenAI 兼容接口」：
 
 1. 打开模型设置，新增一个自定义模型（提供商类型选 OpenAI / OpenAI 兼容）。
-2. API 地址填 `https://hivegpt.cn/v1`，API Key 填你的 Key，模型名填 `gpt-5.5` 等分组里的模型。
+2. API 地址填 `https://hivegpt.cn/v1`，API Key 填你的 Key，模型名填 `gpt-6.1-sol` 等分组里的模型。
 3. 保存后在对话里切换到这个模型，发一句话测试。
 
 只支持官方账号登录、没有自定义模型入口的工具，用不了第三方接口。

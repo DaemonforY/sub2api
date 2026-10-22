@@ -31,8 +31,8 @@ description: 在 LobeChat（LobeHub）和 NextChat（ChatGPT-Next-Web）里接�
 | 使用客户端请求模式 | **关闭** |
 
 3. 在 **连通性检查** 里点 **检查**。
-4. 在 **模型列表** 里点 **获取模型列表**，打开要用的模型；没有的话点 **添加模型**，模型 ID 填 `gpt-5.5`，最大上下文窗口填 `1050000`，打开「支持视觉识别」和「支持技能使用」。
-5. 回到对话，在模型选择里选 OpenAI 下的 `gpt-5.5`。
+4. 在 **模型列表** 里点 **获取模型列表**，打开要用的模型；没有的话点 **添加模型**，模型 ID 填 `gpt-6.1-sol`，最大上下文窗口填 `272000`（超过 27.2 万 token 按长上下文价计费），打开「支持视觉识别」和「支持技能使用」。
+5. 回到对话，在模型选择里选 OpenAI 下的 `gpt-6.1-sol`。
 
 也可以用 **创建自定义 AI 服务商**（请求格式选 openai，代理地址填 `https://hivegpt.cn/v1`），和官方 OpenAI 分开管理。
 
@@ -43,7 +43,7 @@ LobeHub 2.x 自建需要 PostgreSQL 数据库和几项密钥（`DATABASE_URL`、
 ```bash
 OPENAI_API_KEY=sk-你的Key
 OPENAI_PROXY_URL=https://hivegpt.cn/v1
-OPENAI_MODEL_LIST=-all,+gpt-5.5=GPT-5.5
+OPENAI_MODEL_LIST=-all,+gpt-6.1-sol=GPT-6.1-Sol
 ```
 
 `OPENAI_MODEL_LIST` 里 `-all` 隐藏所有内置模型，`+` 添加模型，`=` 后面是显示名称。
@@ -58,8 +58,8 @@ OPENAI_MODEL_LIST=-all,+gpt-5.5=GPT-5.5
 docker run -d -p 3000:3000 \
   -e OPENAI_API_KEY=sk-你的Key \
   -e BASE_URL=https://hivegpt.cn \
-  -e CUSTOM_MODELS=-all,+gpt-5.5 \
-  -e DEFAULT_MODEL=gpt-5.5 \
+  -e CUSTOM_MODELS=-all,+gpt-6.1-sol \
+  -e DEFAULT_MODEL=gpt-6.1-sol \
   -e CODE=设置一个访问密码 \
   -e HIDE_USER_API_KEY=1 \
   yidadaa/chatgpt-next-web
@@ -69,7 +69,7 @@ docker run -d -p 3000:3000 \
 |---|---|
 | `BASE_URL` | `https://hivegpt.cn`，**不要带 /v1**，NextChat 会自己加 |
 | `OPENAI_API_KEY` | 你的 HiveGPT Key |
-| `CUSTOM_MODELS` | `-all` 隐藏内置模型，`+gpt-5.5` 添加模型，多个用英文逗号隔开 |
+| `CUSTOM_MODELS` | `-all` 隐藏内置模型，`+gpt-6.1-sol` 添加模型，多个用英文逗号隔开 |
 | `DEFAULT_MODEL` | 默认模型 |
 | `CODE` | **访问密码**，多个用逗号隔开。不设的话任何人打开网址都能用你的 Key |
 | `HIDE_USER_API_KEY` | 设为 1 时用户不能填自己的 Key |
@@ -87,7 +87,7 @@ docker run -d -p 3000:3000 \
 | 模型服务商 | OpenAI |
 | 接口地址 | 保持默认，用服务器上配置的 `BASE_URL` |
 | API Key | 你的 HiveGPT Key |
-| 自定义模型名 | `gpt-5.5`，多个用英文逗号隔开 |
+| 自定义模型名 | `gpt-6.1-sol`，多个用英文逗号隔开 |
 
 接口地址改成 `https://hivegpt.cn` 时会变成浏览器直接请求，也能用，但 Key 会保存在当前浏览器里。部署给别人用时，保持默认、用服务器端的 `BASE_URL` 更安全。
 

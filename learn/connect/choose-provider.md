@@ -30,7 +30,7 @@ description: 选 GPT 等大模型 API 中转服务时要看什么：计价是否
 curl https://你的服务地址/v1/chat/completions \
   -H "Authorization: Bearer sk-你的Key" \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-5.5", "messages": [{"role": "user", "content": "你是什么模型？"}]}'
+  -d '{"model": "gpt-6.1-sol", "messages": [{"role": "user", "content": "你是什么模型？"}]}'
 ```
 
 看返回里的 `model` 和 `usage`。注意：模型自己说「我是 XX」并不可靠，以返回的字段和实际效果为准。

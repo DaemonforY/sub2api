@@ -30,7 +30,7 @@ description: Codex CLI 一页速查：安装登录、启动参数、子命令、
 | 参数 | 作用 |
 |---|---|
 | `codex "指令"` | 带着第一条消息启动 |
-| `-m, --model <模型>` | 指定模型，如 `-m gpt-5.5` |
+| `-m, --model <模型>` | 指定模型，如 `-m gpt-6.1-sol` |
 | `-s, --sandbox <模式>` | `read-only` / `workspace-write` / `danger-full-access` |
 | `-a, --ask-for-approval <策略>` | `untrusted` / `on-request` / `never`（`on-failure` 已废弃） |
 | `--dangerously-bypass-approvals-and-sandbox` | 无沙箱、无审批，别名 `--yolo`。只在外部已隔离的环境用 |
@@ -184,10 +184,10 @@ description: Codex CLI 一页速查：安装登录、启动参数、子命令、
 
 | 键 | 示例 | 说明 |
 |---|---|---|
-| `model` | `"gpt-5.5"` | 默认模型 |
+| `model` | `"gpt-6.1-sol"` | 默认模型 |
 | `model_provider` | `"OpenAI"` | 使用哪个 provider，对应 `[model_providers.<id>]` |
 | `model_reasoning_effort` | `"medium"` | 推理强度，可选值取决于模型 |
-| `review_model` | `"gpt-5.5"` | `/review` 使用的模型 |
+| `review_model` | `"gpt-6.1-sol"` | `/review` 使用的模型 |
 | `model_catalog_json` | `"~/.codex/codex-models.json"` | 自定义模型目录文件 |
 | `model_context_window` | `400000` | 手动指定上下文窗口（一般不用设） |
 | `model_auto_compact_token_limit` | `300000` | 达到多少 token 时自动压缩 |

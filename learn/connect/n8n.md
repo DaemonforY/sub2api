@@ -5,7 +5,7 @@ description: 在 n8n 里创建 OpenAI 凭证，把 Base URL 改成 https://hiveg
 
 # n8n 接入 OpenAI 兼容接口
 
-**在 n8n 里新建一个 OpenAI 凭证，API Key 填你的 HiveGPT Key，Base URL 改成 `https://hivegpt.cn/v1`。** 之后在 AI Agent、Basic LLM Chain 节点上挂一个 **OpenAI Chat Model**，选这个凭证，Model 选 **ID** 并填 `gpt-5.5`，工作流就能调用 GPT 了。
+**在 n8n 里新建一个 OpenAI 凭证，API Key 填你的 HiveGPT Key，Base URL 改成 `https://hivegpt.cn/v1`。** 之后在 AI Agent、Basic LLM Chain 节点上挂一个 **OpenAI Chat Model**，选这个凭证，Model 选 **ID** 并填 `gpt-6.1-sol`，工作流就能调用 GPT 了。
 
 > 更新于 2026-10，基于 n8n 2.x（界面是英文）。模型名以你的 Key 能用的为准，见 [查看可用模型](/connect/#查看可用模型)。
 
@@ -43,7 +43,7 @@ OpenAI Chat Model 节点自己也有一个 Base URL 选项，但填在凭证里�
      ```
 3. 点节点下方 Chat Model 处的 **+**，选 **OpenAI Chat Model**：
    - **Credential** 选刚建的 HiveGPT 凭证。
-   - **Model** 切到 **ID**，填 `gpt-5.5`。
+   - **Model** 切到 **ID**，填 `gpt-6.1-sol`。
 4. 点 **Execute workflow** 运行，结果在节点输出的 `output` 字段里。
 
 常见的用法：定时抓取 RSS → 让模型总结 → 发到飞书 / 企业微信；表单提交 → 让模型分类和提取信息 → 写进表格。
@@ -65,7 +65,7 @@ Model 的 **From List** 会从 HiveGPT 读取模型列表；列表加载不出�
 
 ## OpenAI 节点（Message a Model）
 
-除了 Chat Model 子节点，n8n 还有一个单独的 **OpenAI** 节点，选 **Message a Model** 就能直接对话。它用同一个凭证，调用的是 Responses 接口，HiveGPT 同样支持。Model 同样选 **ID** 填 `gpt-5.5`。
+除了 Chat Model 子节点，n8n 还有一个单独的 **OpenAI** 节点，选 **Message a Model** 就能直接对话。它用同一个凭证，调用的是 Responses 接口，HiveGPT 同样支持。Model 同样选 **ID** 填 `gpt-6.1-sol`。
 
 ## 嵌入（Embeddings OpenAI）
 

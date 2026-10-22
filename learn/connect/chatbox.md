@@ -5,7 +5,7 @@ description: 在 Chatbox 里添加自定义提供方（OpenAI API 兼容），�
 
 # Chatbox 接入第三方 API
 
-**三步接入：** 在 Chatbox 的「设置 → 模型提供方」底部点「添加」，API 模式选 **OpenAI API 兼容**；**API 主机**填 `https://hivegpt.cn/v1`，**API 路径**保持 `/chat/completions`，**API 密钥**填你的 HiveGPT Key；点「获取」加载模型列表，选 `gpt-5.5` 等模型后保存，新建对话就能用。
+**三步接入：** 在 Chatbox 的「设置 → 模型提供方」底部点「添加」，API 模式选 **OpenAI API 兼容**；**API 主机**填 `https://hivegpt.cn/v1`，**API 路径**保持 `/chat/completions`，**API 密钥**填你的 HiveGPT Key；点「获取」加载模型列表，选 `gpt-6.1-sol` 等模型后保存，新建对话就能用。
 
 > 更新于 2026-10，基于 Chatbox 当前版本。不同版本里「API 主机」也可能叫「API 域名」或「Base URL」，意思一样。
 
@@ -39,7 +39,7 @@ description: 在 Chatbox 里添加自定义提供方（OpenAI API 兼容），�
 ## 第三步：添加模型并测试
 
 1. 点 **检查**，确认 Key 和地址能用。
-2. 点 **获取**，从 HiveGPT 加载你的分组可用的模型，勾选要用的模型，例如 `gpt-5.5`。获取不到时点 **新建**，手动填模型 ID。
+2. 点 **获取**，从 HiveGPT 加载你的分组可用的模型，勾选要用的模型，例如 `gpt-6.1-sol`。获取不到时点 **新建**，手动填模型 ID。
 3. 保存后回到对话界面，新建对话，在输入框上方的模型选择里切换到 `HiveGPT` 下的模型，发一句话测试。
 
 你的分组能用哪些模型，以 [`/v1/models`](/connect/#查看可用模型) 的返回为准。每次对话的用量和费用可以在 [使用记录](https://hivegpt.cn/usage) 里查到。

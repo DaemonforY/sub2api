@@ -62,7 +62,7 @@ config.toml 用的是 TOML 格式。会下面这些就够了：
 # 井号后面是注释
 
 # 键 = 值；字符串必须加双引号
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 
 # 布尔值和数字不加引号
 hide_agent_reasoning = false
@@ -100,11 +100,11 @@ Codex 默认会忽略不认识的键（启动时可能有一条警告），所�
 ### 模型相关
 
 ```toml
-model = "gpt-5.5"                  # 默认模型
+model = "gpt-6.1-sol"                  # 默认模型
 model_reasoning_effort = "medium"  # 推理强度：low / medium / high / xhigh，具体取决于模型
 model_reasoning_summary = "auto"   # 推理摘要：auto / concise / detailed / none
 model_verbosity = "medium"         # 回复详略：low / medium / high
-review_model = "gpt-5.5"           # /review 使用的模型，可以和主模型不同
+review_model = "gpt-6.1-sol"           # /review 使用的模型，可以和主模型不同
 plan_mode_reasoning_effort = "high"  # 计划模式单独的推理强度
 ```
 
@@ -232,10 +232,10 @@ memories = true                       # 功能开关，名称见 codex features 
 # ===== 顶层键：必须放在所有 [表] 之前 =====
 
 # 模型
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"      # 难题用 /model 临时调高
 model_reasoning_summary = "auto"
-review_model = "gpt-5.5"
+review_model = "gpt-6.1-sol"
 plan_mode_reasoning_effort = "high"    # 计划阶段多想一点
 
 # 权限：工作区内放手做，越界再问

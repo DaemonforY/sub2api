@@ -76,7 +76,7 @@ model_reasoning_effort = "high"
 ```toml
 # 默认用 HiveGPT（这部分由「使用密钥」弹窗生成，这里只作示意）
 model_provider = "OpenAI"
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 
 [model_providers.OpenAI]
 name = "OpenAI"

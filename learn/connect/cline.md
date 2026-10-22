@@ -5,7 +5,7 @@ description: 在 VS Code 的 Cline 插件里选 OpenAI Compatible，填 Base URL
 
 # Cline 配置自定义 API
 
-**三步接入：** 点 Cline 面板上的 ⚙️ 设置，API Provider 选 **OpenAI Compatible**；**Base URL** 填 `https://hivegpt.cn/v1`，**API Key** 填你的 HiveGPT Key，**Model ID** 填 `gpt-5.5` 等你分组里的模型；展开 Model Configuration 填好上下文窗口和最大输出，保存后在 Cline 里发一个任务试试。
+**三步接入：** 点 Cline 面板上的 ⚙️ 设置，API Provider 选 **OpenAI Compatible**；**Base URL** 填 `https://hivegpt.cn/v1`，**API Key** 填你的 HiveGPT Key，**Model ID** 填 `gpt-6.1-sol` 等你分组里的模型；展开 Model Configuration 填好上下文窗口和最大输出，保存后在 Cline 里发一个任务试试。
 
 > 更新于 2026-10，基于 Cline 当前版本（界面是英文）。模型名以你的 Key 能用的为准，见 [查看可用模型](/connect/#查看可用模型)。
 
@@ -26,20 +26,20 @@ description: 在 VS Code 的 Cline 插件里选 OpenAI Compatible，填 Base URL
 |---|---|
 | Base URL | `https://hivegpt.cn/v1` |
 | API Key | 你的 HiveGPT Key（`sk-` 开头） |
-| Model ID | `gpt-5.5`（下拉里没有就选 Use custom model ID 手动输入） |
+| Model ID | `gpt-6.1-sol`（下拉里没有就选 Use custom model ID 手动输入） |
 
 Custom Headers、Azure 相关的选项（Set Azure API version、Use Azure Identity Authentication）都不用填。
 
 ## 第三步：填 Model Configuration
 
-展开 **Model Configuration**，按你选的模型填（下面是 `gpt-5.5` 的数值）：
+展开 **Model Configuration**，按你选的模型填（下面是 `gpt-6.1-sol` 的数值）：
 
 | 字段 | 填什么 | 说明 |
 |---|---|---|
-| Supports Images | 勾选 | gpt-5.5 能看图，可以把截图发给 Cline |
-| Context Window Size | `1050000` | 模型的上下文上限；想控制花费可以填小一些，如 `200000` |
+| Supports Images | 勾选 | gpt-6.1-sol 能看图，可以把截图发给 Cline |
+| Context Window Size | `272000` | 超过 27.2 万 token 的请求按长上下文价计费，填这个数能避免意外的高价；想更省可以填小一些，如 `200000` |
 | Max Output Tokens | `32000` | 单次最多输出多少，上限 128000 |
-| Input Price / 1M tokens | `5` | 用来在 Cline 里显示花费估算 |
+| Input Price / 1M tokens | `2` | 用来在 Cline 里显示花费估算 |
 | Output Price / 1M tokens | `30` | 同上 |
 | Temperature | 不填 | 推理类模型只接受默认值，填了可能报错 |
 
@@ -67,9 +67,9 @@ Roo Code 的 GitHub 仓库已在 2026 年 5 月归档，插件还能用但不再
 
 1. 打开 Roo Code 的 **设置 → 提供商**（英文界面是 Settings → Providers）。
 2. **API 提供商** 选 **OpenAI Compatible**。
-3. **OpenAI 基础 URL** 填 `https://hivegpt.cn/v1`，**API 密钥** 填你的 Key，**模型** 填 `gpt-5.5`。
+3. **OpenAI 基础 URL** 填 `https://hivegpt.cn/v1`，**API 密钥** 填你的 Key，**模型** 填 `gpt-6.1-sol`。
 4. 保持 **启用流式传输** 勾选；**使用 Azure 服务**、**启用 R1 模型参数** 不要勾。
-5. 在模型信息里填 **上下文窗口大小** `1050000`、**最大输出 Token 数** `32000`，勾选 **图像支持**。
+5. 在模型信息里填 **上下文窗口大小** `272000`（超过 27.2 万 token 按长上下文价计费）、**最大输出 Token 数** `32000`，勾选 **图像支持**。
 
 Roo Code 只支持模型原生的工具调用（function calling），GPT 系列模型都支持。
 

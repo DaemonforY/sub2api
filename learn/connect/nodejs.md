@@ -12,7 +12,7 @@ import OpenAI from 'openai'
 
 const client = new OpenAI({ baseURL: 'https://hivegpt.cn/v1', apiKey: 'sk-你的Key' })
 const resp = await client.chat.completions.create({
-  model: 'gpt-5.5',
+  model: 'gpt-6.1-sol',
   messages: [{ role: 'user', content: '用一句话介绍你自己' }],
 })
 console.log(resp.choices[0].message.content)
@@ -61,7 +61,7 @@ const client = new OpenAI({
 })
 
 const resp = await client.chat.completions.create({
-  model: 'gpt-5.5',
+  model: 'gpt-6.1-sol',
   messages: [
     { role: 'system', content: '你是一位耐心的编程老师，回答简洁。' },
     { role: 'user', content: 'JavaScript 的 let 和 const 有什么区别？' },
@@ -81,7 +81,7 @@ import OpenAI from 'openai'
 const client = new OpenAI({ baseURL: 'https://hivegpt.cn/v1', apiKey: process.env.HIVEGPT_API_KEY })
 
 const stream = await client.chat.completions.create({
-  model: 'gpt-5.5',
+  model: 'gpt-6.1-sol',
   messages: [{ role: 'user', content: '写一首关于秋天的四行小诗' }],
   stream: true,
   stream_options: { include_usage: true }, // 最后一块带上用量
@@ -106,7 +106,7 @@ const messages = [{ role: 'system', content: '你是一位旅行规划助手。'
 
 for (const question of ['我五月想去云南玩 5 天', '预算 5000 元够吗？', '那第一天怎么安排？']) {
   messages.push({ role: 'user', content: question })
-  const resp = await client.chat.completions.create({ model: 'gpt-5.5', messages })
+  const resp = await client.chat.completions.create({ model: 'gpt-6.1-sol', messages })
   const answer = resp.choices[0].message.content
   messages.push({ role: 'assistant', content: answer })
   console.log(`问：${question}\n答：${answer}\n`)
@@ -137,7 +137,7 @@ const Contact = z.object({
 })
 
 const resp = await client.chat.completions.parse({
-  model: 'gpt-5.5',
+  model: 'gpt-6.1-sol',
   messages: [
     { role: 'system', content: '从用户的话里提取联系人信息。' },
     { role: 'user', content: '我是李雷，住在杭州，电话 138 0000 1234' },
@@ -174,7 +174,7 @@ const tools = [{
 }]
 
 const messages = [{ role: 'user', content: '北京今天天气怎么样？适合跑步吗？' }]
-let resp = await client.chat.completions.create({ model: 'gpt-5.5', messages, tools })
+let resp = await client.chat.completions.create({ model: 'gpt-6.1-sol', messages, tools })
 const msg = resp.choices[0].message
 
 if (msg.tool_calls?.length) {
@@ -183,7 +183,7 @@ if (msg.tool_calls?.length) {
     const result = getWeather(JSON.parse(call.function.arguments))
     messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) })
   }
-  resp = await client.chat.completions.create({ model: 'gpt-5.5', messages, tools })
+  resp = await client.chat.completions.create({ model: 'gpt-6.1-sol', messages, tools })
 }
 console.log(resp.choices[0].message.content)
 ```
@@ -201,7 +201,7 @@ const client = new OpenAI({ baseURL: 'https://hivegpt.cn/v1', apiKey: process.en
 
 async function translate(text) {
   const resp = await client.chat.completions.create({
-    model: 'gpt-5.5',
+    model: 'gpt-6.1-sol',
     messages: [{ role: 'user', content: `翻译成英文，只输出译文：${text}` }],
   })
   return resp.choices[0].message.content
@@ -241,7 +241,7 @@ const client = new OpenAI({
 
 try {
   const resp = await client.chat.completions.create({
-    model: 'gpt-5.5',
+    model: 'gpt-6.1-sol',
     messages: [{ role: 'user', content: '你好' }],
   })
   console.log(resp.choices[0].message.content)
@@ -280,7 +280,7 @@ app.post('/api/chat', async (req, res) => {
   const messages = req.body.messages ?? []
   res.setHeader('Content-Type', 'text/plain; charset=utf-8')
   try {
-    const stream = await client.chat.completions.create({ model: 'gpt-5.5', messages, stream: true })
+    const stream = await client.chat.completions.create({ model: 'gpt-6.1-sol', messages, stream: true })
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content
       if (text) res.write(text)

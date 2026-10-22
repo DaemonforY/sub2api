@@ -5,7 +5,7 @@ description: 在沉浸式翻译（Immersive Translate）浏览器插件里接入
 
 # 沉浸式翻译接入 GPT API
 
-**关键一点：沉浸式翻译的「自定义 API 接口地址」要填完整地址** `https://hivegpt.cn/v1/chat/completions`，不能只填 `https://hivegpt.cn/v1`。APIKEY 填你的 HiveGPT Key，模型选「自定义模型」并填 `gpt-5.5` 等你分组里的模型名，点「测试服务」通过后，把它设为默认翻译服务即可。
+**关键一点：沉浸式翻译的「自定义 API 接口地址」要填完整地址** `https://hivegpt.cn/v1/chat/completions`，不能只填 `https://hivegpt.cn/v1`。APIKEY 填你的 HiveGPT Key，模型选「自定义模型」并填 `gpt-6.1-sol` 等你分组里的模型名，点「测试服务」通过后，把它设为默认翻译服务即可。
 
 > 更新于 2026-10，基于沉浸式翻译浏览器插件当前版本。插件改版时菜单位置可能略有不同。
 
@@ -26,7 +26,7 @@ description: 在沉浸式翻译（Immersive Translate）浏览器插件里接入
 | 自定义翻译服务名称 | 随便写，例如 `HiveGPT` |
 | 自定义 API 接口地址 | `https://hivegpt.cn/v1/chat/completions` |
 | APIKEY | 你的 HiveGPT Key（`sk-` 开头） |
-| 模型 | 选「自定义模型」，填 `gpt-5.5` 等你分组里的模型名 |
+| 模型 | 选「自定义模型」，填 `gpt-6.1-sol` 等你分组里的模型名 |
 
 ::: warning 地址要写到 /chat/completions
 大多数工具只填 `https://hivegpt.cn/v1`，会自己补后面的路径，沉浸式翻译不会。只填到 `/v1` 时，测试会提示「这是接口的 Base URL，不能直接打开」；只填 `https://hivegpt.cn` 时，请求会发到网站首页，提示返回内容不是 JSON。

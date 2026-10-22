@@ -42,7 +42,7 @@ client = OpenAI(
 )
 
 stream = client.chat.completions.create(
-    model="gpt-5.5",
+    model="gpt-6.1-sol",
     messages=[{"role": "user", "content": "写一篇 3000 字的产品方案"}],
     stream=True,     # 长回答用流式
 )

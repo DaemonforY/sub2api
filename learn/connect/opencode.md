@@ -44,20 +44,20 @@ Windows 可以用 `scoop install opencode` 或 `choco install opencode`，官方
         "apiKey": "{env:HIVEGPT_API_KEY}"
       },
       "models": {
-        "gpt-5.5": {
-          "name": "GPT-5.5",
-          "limit": { "context": 1050000, "output": 128000 },
+        "gpt-6.1-sol": {
+          "name": "GPT-6.1 Sol",
+          "limit": { "context": 272000, "output": 128000 },
           "options": { "store": false }
         },
         "gpt-6-luna": {
           "name": "GPT-6 Luna",
-          "limit": { "context": 1050000, "output": 128000 },
+          "limit": { "context": 272000, "output": 128000 },
           "options": { "store": false }
         }
       }
     }
   },
-  "model": "openai/gpt-5.5",
+  "model": "openai/gpt-6.1-sol",
   "small_model": "openai/gpt-6-luna"
 }
 ```
@@ -68,6 +68,7 @@ Windows 可以用 `scoop install opencode` 或 `choco install opencode`，官方
 - `baseURL` 要带 `/v1`，见 [Base URL 要不要加 /v1](/connect/base-url)。
 - `"store": false` 不能省：接口不支持在服务端保存对话，不写可能报错。
 - `{env:HIVEGPT_API_KEY}` 表示从环境变量读 Key。在 `~/.zshrc` 或 `~/.bashrc` 里加一行 `export HIVEGPT_API_KEY="sk-你的Key"`，重开终端生效。
+- `limit.context` 填 `272000`：超过 27.2 万 token 的请求按长上下文价计费，OpenCode 会在接近这个数时压缩上下文。
 - `model` 是默认模型，写成「提供方/模型名」；`small_model` 用来做起标题这类小任务，用便宜的模型就行。
 - `models` 里只列你的分组有的模型，名字以 `/v1/models` 返回的为准。
 - 内置的 `openai` 提供方自带一份 OpenAI 模型列表，所以 `/models` 里还会出现 `gpt-5.5-pro`、`-fast` 这类名字。不在你分组里的选了会报「不支持模型」，只选你在 `models` 里写的那几个。
@@ -112,7 +113,7 @@ opencode run -m openai/gpt-6-luna "解释一下这个项目的目录结构"
 
 ## 省钱提示
 
-- 日常改代码用 `gpt-5.5` 或更便宜的 `gpt-6.1-sol`，简单问答、起标题用 `gpt-6-luna`。各模型价格见 [模型怎么选](/connect/models)。
+- 日常改代码用 `gpt-6.1-sol`，最难的问题临时换 `gpt-6-astra`，简单问答、起标题用 `gpt-6-luna`。各模型价格见 [模型怎么选](/connect/models)。
 - 对话越长，每次请求带的上下文越多。一个任务做完就 `/new` 开新会话，长会话用 `/compact`。
 - 在 [使用记录](https://hivegpt.cn/usage) 里看每次请求花了多少。
 

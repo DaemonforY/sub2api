@@ -61,7 +61,7 @@ description: OpenAI 兼容接口的 Base URL（API 地址）到底填 https://hi
 curl https://hivegpt.cn/v1/chat/completions \
   -H "Authorization: Bearer sk-你的Key" \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-5.5", "messages": [{"role": "user", "content": "你好"}]}'
+  -d '{"model": "gpt-6.1-sol", "messages": [{"role": "user", "content": "你好"}]}'
 ```
 
 能返回回答，说明 Key 和接口都没问题，再回到工具里对照上面的表格调整地址。还没有 Key 的话，先到 [API 密钥](https://hivegpt.cn/keys?action=create) 页创建一个。

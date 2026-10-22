@@ -5,7 +5,7 @@ description: 用 GPT API 识别图片内容：本地图片转 base64 或直接�
 
 # GPT 看图识图 API
 
-**一句话：** 把图片放进消息的 `content` 里，和文字问题一起发过去就行。Chat Completions 用 `{"type": "image_url", "image_url": {"url": ...}}`，`url` 可以是网上的图片链接，也可以是本地图片转成的 `data:image/png;base64,...`。gpt-6.1-sol、gpt-6-luna、gpt-5.5 等模型都能看图。
+**一句话：** 把图片放进消息的 `content` 里，和文字问题一起发过去就行。Chat Completions 用 `{"type": "image_url", "image_url": {"url": ...}}`，`url` 可以是网上的图片链接，也可以是本地图片转成的 `data:image/png;base64,...`。gpt-6.1-sol、gpt-6-luna、gpt-6.1-sol 等模型都能看图。
 
 > 更新于 2026-10，本页示例都在 HiveGPT 上实际跑过。
 
@@ -159,7 +159,7 @@ print(resp.output_text)
 |---|---|
 | `gpt-6-luna` | $0.0005 |
 | `gpt-6.1-sol` | $0.009 |
-| `gpt-5.5` | $0.023 |
+| `gpt-6-astra` | $0.045 |
 
 批量识别几百上千张图时，先用 gpt-6-luna 试几张，准确率够就用它。多轮对话里图片会跟着历史记录重复发送，每轮都计费，问完图片相关的问题最好开新对话。
 

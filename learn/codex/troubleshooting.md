@@ -110,7 +110,7 @@ Codex 遇到接口错误时通常会显示 `unexpected status 401 Unauthorized: 
 | **403**「账户余额不足（Insufficient account balance）」 | 按量分组余额用完 | 控制台充值，或改用有效订阅分组的 Key |
 | **429**「并发上限」「排队的请求太多」 | 同时开的会话、子代理太多，超过 Key 或账号的并发限制 | 减少并行会话；等前面的任务完成；必要时调整 Key 的并发设置 |
 | **429**「上游模型服务限流中」 | 上游临时限流 | 等 1–2 分钟重试；Codex 会自动重试几次（`request_max_retries` 默认 4） |
-| **503**「暂时没有可处理…请求的上游账号」/ `no available account` | 账号都在忙，或这个分组**不支持你选的模型** | 先 `/model` 换成列表里的 gpt-5.5 试试；确认 Key 属于 OpenAI 类分组；仍不行稍后再试 |
+| **503**「暂时没有可处理…请求的上游账号」/ `no available account` | 账号都在忙，或这个分组**不支持你选的模型** | 先 `/model` 换成列表里的 gpt-6.1-sol 试试；确认 Key 属于 OpenAI 类分组；仍不行稍后再试 |
 | 「不支持模型 xxx（Model … is not supported…）」 | 配置里的 `model` 写了分组没有的模型 | 把 `model` 改成分组支持的模型，模型列表以 HiveGPT 控制台和 `/model` 为准 |
 | 502 / 503「上游服务暂时不可用 / 过载」 | 上游故障 | 稍后重试；这类错误 HiveGPT 不扣费 |
 
@@ -149,7 +149,7 @@ stream_idle_timeout_ms = 600000
 
 ## 四、模型列表不对
 
-**现象**：`/model` 里看不到 gpt-5.5，或者列出的是一堆你的分组里没有的模型；或者启动时有警告 `Model metadata for 'xxx' not found. Defaulting to fallback metadata`。
+**现象**：`/model` 里看不到 gpt-6.1-sol，或者列出的是一堆你的分组里没有的模型；或者启动时有警告 `Model metadata for 'xxx' not found. Defaulting to fallback metadata`。
 
 **原因**：Codex 用「模型目录」决定能选哪些模型、每个模型的上下文长度和支持的推理强度。HiveGPT 的配置用 `model_catalog_json` 指向本地的 `codex-models.json`。文件不存在、路径写错或内容损坏，Codex 就会退回内置目录，或者把你的模型当成未知模型、用保守的默认参数（上下文可能被算小，导致过早压缩）。
 
@@ -157,7 +157,7 @@ stream_idle_timeout_ms = 600000
 
 1. 确认文件存在：`ls -l ~/.codex/codex-models.json`。没有的话，在「使用密钥」弹窗里重新下载，放到 `~/.codex/`。
 2. 确认 `config.toml` 里 `model_catalog_json` 的路径和文件实际位置一致。Windows 上路径写法见下面的 Windows 一节。
-3. 运行 `codex debug models`，输出里应该能看到 gpt-5.5。
+3. 运行 `codex debug models`，输出里应该能看到 gpt-6.1-sol。
 4. HiveGPT 上线新模型后，重新下载一次这个文件即可。
 
 ## 五、沙箱拒绝命令
@@ -271,7 +271,7 @@ tool_timeout_sec = 120
 
 5. **项目配置没生效**：`<项目>/.codex/config.toml` 只在项目被信任时加载。第一次在项目里启动 Codex 时会询问是否信任；也可以在用户配置里加 `[projects."/项目的绝对路径"]` 和 `trust_level = "trusted"`。
 6. **`-p` 报错**：新版本的 `-p <名字>` 读取的是独立文件 `~/.codex/<名字>.config.toml`。如果主配置里同时存在旧写法 `[profiles.<名字>]` 或 `profile = "<名字>"`，会直接报错，提示你把设置挪到独立文件里。按提示迁移即可。
-7. **`-c` 的值没按预期解析**：值按 TOML 解析，字符串要带引号且外面再套一层 shell 引号，例如 `-c 'model="gpt-5.5"'`、`-c model_reasoning_effort='"high"'`。解析失败时会被当作普通字符串。
+7. **`-c` 的值没按预期解析**：值按 TOML 解析，字符串要带引号且外面再套一层 shell 引号，例如 `-c 'model="gpt-6.1-sol"'`、`-c model_reasoning_effort='"high"'`。解析失败时会被当作普通字符串。
 8. **会话里改过设置**：`/model`、`/permissions` 的选择在当前会话中优先于配置文件。重开会话再看。
 
 ## 怎么看日志

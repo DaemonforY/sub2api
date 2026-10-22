@@ -5,7 +5,7 @@ description: 在 Dify 1.x（云端和私有部署）里安装 OpenAI-API-compati
 
 # Dify 接入 OpenAI 兼容模型
 
-**四步接入：** 在 Dify 的「集成（或设置）→ 模型供应商」里安装 **OpenAI-API-compatible** 插件；点「添加模型」，模型类型选 LLM，**模型名称**填 `gpt-5.5`，**API Base URL** 填 `https://hivegpt.cn/v1`，**API Key** 填你的 HiveGPT Key；按下表填好上下文长度和函数调用；保存后在「默认模型」里把它设为系统推理模型，应用和工作流就能用了。
+**四步接入：** 在 Dify 的「集成（或设置）→ 模型供应商」里安装 **OpenAI-API-compatible** 插件；点「添加模型」，模型类型选 LLM，**模型名称**填 `gpt-6.1-sol`，**API Base URL** 填 `https://hivegpt.cn/v1`，**API Key** 填你的 HiveGPT Key；按下表填好上下文长度和函数调用；保存后在「默认模型」里把它设为系统推理模型，应用和工作流就能用了。
 
 > 更新于 2026-10，基于 Dify 1.x 和 OpenAI-API-compatible 插件。不同版本里菜单可能叫「集成 → 模型供应商」或「设置 → 模型供应商」。
 
@@ -30,8 +30,8 @@ description: 在 Dify 1.x（云端和私有部署）里安装 OpenAI-API-compati
 | 字段 | 填什么 |
 |---|---|
 | 模型类型 | LLM |
-| 模型名称 | `gpt-5.5` |
-| 模型显示名称 | 可选，如 `HiveGPT gpt-5.5` |
+| 模型名称 | `gpt-6.1-sol` |
+| 模型显示名称 | 可选，如 `HiveGPT gpt-6.1-sol` |
 | API Key | 你的 HiveGPT Key（`sk-` 开头） |
 | API Base URL | `https://hivegpt.cn/v1`（**要带 /v1**） |
 | 对话类型 | 对话（Chat） |
@@ -39,7 +39,7 @@ description: 在 Dify 1.x（云端和私有部署）里安装 OpenAI-API-compati
 | 最大 token 上限 | `16384` |
 | 函数调用类型 | Tool Call |
 | 流式函数调用 | 支持 |
-| 视觉支持 | 支持（gpt-5.5 能看图） |
+| 视觉支持 | 支持（gpt-6.1-sol 能看图） |
 | 结构化输出 | 支持 |
 | API 类型 | Chat Completions API（默认） |
 | token 参数名 | 自动，或选「使用 max_completion_tokens」 |
@@ -51,13 +51,13 @@ description: 在 Dify 1.x（云端和私有部署）里安装 OpenAI-API-compati
 ## 第三步：设为默认模型
 
 1. 在模型供应商页右上角点 **默认模型**（有的版本叫「系统模型设置」）。
-2. **系统推理模型** 选刚添加的 `gpt-5.5`，保存。
+2. **系统推理模型** 选刚添加的 `gpt-6.1-sol`，保存。
 
 没有单独选模型的应用和节点会用这个默认模型。
 
 ## 第四步：在应用和工作流里使用
 
-- **聊天助手 / Agent**：在应用的编排页右上角的模型选择里，选 OpenAI-API-compatible 下的 `gpt-5.5`。
+- **聊天助手 / Agent**：在应用的编排页右上角的模型选择里，选 OpenAI-API-compatible 下的 `gpt-6.1-sol`。
 - **工作流**：在 LLM 节点里选择模型；用到工具调用的 Agent 节点，需要第二步里把函数调用类型设为 Tool Call。
 
 ## 嵌入模型（知识库）

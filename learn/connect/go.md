@@ -55,7 +55,7 @@ func main() {
 	)
 
 	resp, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
-		Model: "gpt-5.5",
+		Model: "gpt-6.1-sol",
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.SystemMessage("你是一位耐心的编程老师，回答简洁。"),
 			openai.UserMessage("Go 的 goroutine 和线程有什么区别？"),
@@ -92,7 +92,7 @@ func main() {
 	)
 
 	stream := client.Chat.Completions.NewStreaming(context.Background(), openai.ChatCompletionNewParams{
-		Model:    "gpt-5.5",
+		Model:    "gpt-6.1-sol",
 		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage("写一首关于秋天的四行小诗")},
 	})
 	for stream.Next() {
@@ -134,7 +134,7 @@ func main() {
 	messages := []openai.ChatCompletionMessageParamUnion{openai.SystemMessage("你是一位旅行规划助手。")}
 	for _, question := range []string{"我五月想去云南玩 5 天", "预算 5000 元够吗？", "那第一天怎么安排？"} {
 		messages = append(messages, openai.UserMessage(question))
-		resp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{Model: "gpt-5.5", Messages: messages})
+		resp, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{Model: "gpt-6.1-sol", Messages: messages})
 		if err != nil {
 			panic(err)
 		}
@@ -170,7 +170,7 @@ func main() {
 	)
 
 	resp, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
-		Model:    "gpt-5.5",
+		Model:    "gpt-6.1-sol",
 		Messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage("你好")},
 	})
 	var apiErr *openai.Error

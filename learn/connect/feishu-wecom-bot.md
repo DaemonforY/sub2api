@@ -56,7 +56,7 @@ WECOM_WEBHOOK = os.environ.get("WECOM_WEBHOOK")     # https://qyapi.weixin.qq.co
 
 
 def ask(prompt: str) -> str:
-    resp = client.chat.completions.create(model="gpt-5.5", messages=[{"role": "user", "content": prompt}])
+    resp = client.chat.completions.create(model="gpt-6.1-sol", messages=[{"role": "user", "content": prompt}])
     return resp.choices[0].message.content.strip()
 
 

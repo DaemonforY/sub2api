@@ -73,7 +73,7 @@ multi_agent = true                  # 当前版本默认开启，写出来便于
 [agents]
 max_threads = 4                     # 同一会话同时打开的子代理上限，默认 6
 max_depth = 1                       # 嵌套深度：1 表示子代理不能再派生子代理，默认 1
-default_subagent_model = "gpt-5.5"  # 子代理默认模型，不设则继承主代理
+default_subagent_model = "gpt-6.1-sol"  # 子代理默认模型，不设则继承主代理
 default_subagent_reasoning_effort = "medium"
 ```
 

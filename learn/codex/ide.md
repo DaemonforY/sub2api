@@ -40,7 +40,7 @@ windsurf --install-extension openai.chatgpt  # Windsurf
 - **用 ChatGPT 账号登录**：本地任务和云端任务都能用。
 - **用 API Key**：只能跑本地任务。
 
-扩展和 CLI、桌面应用读的是同一个 `~/.codex` 目录（Windows 是 `%USERPROFILE%\.codex`）。所以要接 HiveGPT，不需要在扩展里另外配置，按 [接入 HiveGPT](/codex/hivegpt) 生成 `~/.codex/config.toml` 和 `~/.codex/auth.json` 就行，然后重启编辑器（或在命令面板执行「Developer: Reload Window」）。扩展启动时读到 `auth.json` 里的 Key，就会直接用 `config.toml` 里配置的服务地址和 `gpt-5.5` 模型。
+扩展和 CLI、桌面应用读的是同一个 `~/.codex` 目录（Windows 是 `%USERPROFILE%\.codex`）。所以要接 HiveGPT，不需要在扩展里另外配置，按 [接入 HiveGPT](/codex/hivegpt) 生成 `~/.codex/config.toml` 和 `~/.codex/auth.json` 就行，然后重启编辑器（或在命令面板执行「Developer: Reload Window」）。扩展启动时读到 `auth.json` 里的 Key，就会直接用 `config.toml` 里配置的服务地址和 `gpt-6.1-sol` 模型。
 
 ::: tip 验证接入是否生效
 在扩展里发一句「你现在用的是什么模型？用一句话回答」只能看出模型的自述，不可靠。更准确的办法是去 HiveGPT 控制台的使用记录里看有没有这次请求，或者在终端跑一次 `codex`，用 `/status` 看当前的模型和服务商，两者配置相同。
@@ -53,7 +53,7 @@ windsurf --install-extension openai.chatgpt  # Windsurf
 | 位置 | 作用 |
 |---|---|
 | 模式切换 | Chat / Agent / Agent（完全访问），见下一节 |
-| 模型与推理强度 | 默认 `gpt-5.5`，其他可选项以 `/model` 或下拉列表为准 |
+| 模型与推理强度 | 默认 `gpt-6.1-sol`，其他可选项以 `/model` 或下拉列表为准 |
 | 本地 / 云端 | 任务在本机跑，还是委派到云端（需 ChatGPT 账号） |
 | 自动上下文开关 | 是否自动带上当前文件和选区 |
 | `@` | 引用工作区里的其他文件 |
@@ -109,7 +109,7 @@ Codex 改完文件后，面板里会列出改动的文件，点击就用编辑�
 扩展会读取 `~/.codex/config.toml` 里的大部分设置，常用的有：
 
 ```toml
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 
 # 默认权限
@@ -151,7 +151,7 @@ file_opener = "vscode"   # 可选 vscode / vscode-insiders / cursor / windsurf /
 ## 小结
 
 - VS Code、Cursor、Windsurf 用同一个扩展 `openai.chatgpt`，安装时认准发布者 OpenAI。
-- 扩展和 CLI 共用 `~/.codex`，按 [接入 HiveGPT](/codex/hivegpt) 配好后重载窗口即可使用 `gpt-5.5`。
+- 扩展和 CLI 共用 `~/.codex`，按 [接入 HiveGPT](/codex/hivegpt) 配好后重载窗口即可使用 `gpt-6.1-sol`。
 - 当前文件、选区、打开的标签页会作为上下文自动带入，选区越精确越好。
 - 日常用 Agent 模式；完全访问会跳过所有确认，谨慎使用。
 - 云端委派需要 ChatGPT 账号，第三方 Key 只能跑本地。

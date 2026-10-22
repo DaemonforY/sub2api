@@ -37,7 +37,7 @@ codex exec "给 README 补一节安装说明"     # 非交互执行，做完就�
 
 | 参数 | 说明 | 示例 |
 |---|---|---|
-| `-m, --model` | 本次使用的模型 | `codex -m gpt-5.5` |
+| `-m, --model` | 本次使用的模型 | `codex -m gpt-6.1-sol` |
 | `-c, --config key=value` | 临时覆盖任意配置项，可重复 | `-c model_reasoning_effort="high"` |
 | `-p, --profile 名称` | 叠加 `~/.codex/名称.config.toml` 这份配置 | `codex -p deep` |
 | `--enable 功能` | 打开一个功能开关，等于 `-c features.功能=true` | `--enable memories` |
@@ -102,7 +102,7 @@ codex -s workspace-write -a on-request
 
 ```bash
 # 字符串：外层单引号保护内层双引号
-codex -c 'model="gpt-5.5"' -c 'model_reasoning_effort="high"'
+codex -c 'model="gpt-6.1-sol"' -c 'model_reasoning_effort="high"'
 
 # 布尔值
 codex -c sandbox_workspace_write.network_access=true
@@ -118,7 +118,7 @@ codex -c mcp_servers.github.enabled=false
 ```
 
 ::: details 为什么推荐外层用单引号
-在 bash / zsh 里，`-c model="gpt-5.5"` 的双引号会被 shell 吃掉，Codex 收到的是 `model=gpt-5.5`。这种情况下它解析 TOML 失败，退回成字符串，结果碰巧也对；但遇到数组、带特殊字符的值就会出错。养成 `-c 'key="value"'` 的习惯最稳。PowerShell 里同样用单引号包住整个参数。
+在 bash / zsh 里，`-c model="gpt-6.1-sol"` 的双引号会被 shell 吃掉，Codex 收到的是 `model=gpt-6.1-sol`。这种情况下它解析 TOML 失败，退回成字符串，结果碰巧也对；但遇到数组、带特殊字符的值就会出错。养成 `-c 'key="value"'` 的习惯最稳。PowerShell 里同样用单引号包住整个参数。
 :::
 
 命令行参数的优先级最高，会盖过 profile 和 `config.toml` 里的值，但只对这一次运行有效。完整的优先级顺序见 [config.toml 基础](/codex/config)。

@@ -30,7 +30,7 @@ HiveGPT 提供和 OpenAI 一致的接口。几乎所有支持「自定义 OpenAI
 | Base URL / API 地址 | `https://hivegpt.cn/v1` |
 | API Key | 你在「API 密钥」页创建的 `sk-` 开头的 Key |
 | 接口类型 | OpenAI 兼容（Chat Completions；Codex 用 Responses） |
-| 模型 | 你的分组里可用的模型，例如 `gpt-5.5`，查法见下文 |
+| 模型 | 你的分组里可用的模型，例如 `gpt-6.1-sol`，查法见下文 |
 
 ::: warning 有的工具会自己补 /v1
 如果工具提示「接口地址多了一个 /v1」，把 Base URL 换成 `https://hivegpt.cn` 再试（去掉末尾的 `/v1`）；提示「少了 /v1」就反过来。各工具的具体填法见 [Base URL 末尾要不要加 /v1](/connect/base-url)。
@@ -87,7 +87,7 @@ curl https://hivegpt.cn/v1/models \
 curl https://hivegpt.cn/v1/chat/completions \
   -H "Authorization: Bearer $HIVEGPT_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-5.5", "messages": [{"role": "user", "content": "用一句话介绍你自己"}]}'
+  -d '{"model": "gpt-6.1-sol", "messages": [{"role": "user", "content": "用一句话介绍你自己"}]}'
 ```
 
 能看到回答，说明 Key、余额（或订阅）和网络都没问题；控制台首页的「三步开始使用」也会自动打勾。之后在任何工具里出问题，基本就是那个工具的配置写错了。

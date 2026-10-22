@@ -66,7 +66,7 @@ open-webui serve        # 默认端口 8080
 
 ### 只显示你要用的模型
 
-不填 Model IDs 时，Open WebUI 会列出接口返回的所有模型（二十多个）。在 Model IDs 里逐个输入 `gpt-6.1-sol`、`gpt-6-luna`、`gpt-5.5` 并点 **+**，模型列表里就只剩这几个，用起来清爽很多。
+不填 Model IDs 时，Open WebUI 会列出接口返回的所有模型（二十多个）。在 Model IDs 里逐个输入 `gpt-6.1-sol`、`gpt-6-luna`、`gpt-6-astra` 并点 **+**，模型列表里就只剩这几个，用起来清爽很多。
 
 ## 第四步：开始聊天
 

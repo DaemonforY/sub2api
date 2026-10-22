@@ -5,9 +5,9 @@ description: HiveGPT 上的 GPT 模型怎么选：gpt-6-astra、gpt-6.1-sol、gp
 
 # GPT 模型怎么选
 
-**一句话：** 不知道选哪个就用 **gpt-6.1-sol**，效果好、价格适中；翻译、总结、分类这类量大的简单任务用 **gpt-6-luna**，便宜几十倍；写代码（Codex 等）用 **gpt-5.5**；最难的问题才用 **gpt-6-astra**。画图用 **gpt-image-2**。
+**一句话：** 不知道选哪个就用 **gpt-6.1-sol**，效果好、价格适中；翻译、总结、分类这类量大的简单任务用 **gpt-6-luna**，便宜几十倍；写代码（Codex 等）也用 **gpt-6.1-sol**，它是 Codex 现在的默认模型；最难的问题才用 **gpt-6-astra**。gpt-5.5 已是旧版，新项目不要再用。画图用 **gpt-image-2**。
 
-> 价格是 HiveGPT 的实收价，更新于 2026-10-09，最新以 [模型广场](https://hivegpt.cn/model-plaza) 为准。你的 Key 能用哪些模型，以 [`/v1/models`](/connect/#查看可用模型) 返回的为准。
+> 价格是 HiveGPT 的实收价，更新于 2026-10-22，最新以 [模型广场](https://hivegpt.cn/model-plaza) 为准。你的 Key 能用哪些模型，以 [`/v1/models`](/connect/#查看可用模型) 返回的为准。
 
 ## 推荐搭配
 
@@ -15,7 +15,7 @@ description: HiveGPT 上的 GPT 模型怎么选：gpt-6-astra、gpt-6.1-sol、gp
 |---|---|---|
 | 日常问答、写作、分析，不知道选哪个 | `gpt-6.1-sol` | GPT-6 系列的均衡款，OpenAI 的说法是效果接近 Astra、价格低很多 |
 | 翻译、总结、分类、提取信息，批量处理 | `gpt-6-luna` | 最便宜、速度快，适合量大的简单任务 |
-| 写代码：Codex、OpenCode、Cline | `gpt-5.5` | Codex 的默认模型，编程和专业任务表现稳定 |
+| 写代码：Codex、OpenCode、Cline | `gpt-6.1-sol` | Codex 的默认模型，OpenAI 定位为编程和日常工作的主力款 |
 | 很难的推理、长文档深度分析、重要决策 | `gpt-6-astra` | 目前最强，也最贵 |
 | 生成和修改图片 | `gpt-image-2` | 能写清楚中文字，见 [图片 API 教程](/connect/image-api) |
 
@@ -30,7 +30,7 @@ description: HiveGPT 上的 GPT 模型怎么选：gpt-6-astra、gpt-6.1-sol、gp
 | `gpt-6.1-sol` | $2 | $0.1 | $10 | $5.7 |
 | `gpt-5.6-terra` | $2 | $0.2 | $12 | $6.8 |
 | `gpt-5.4` | $2.5 | $0.25 | $15 | $8.5 |
-| `gpt-5.5` | $5 | $0.5 | $30 | $16.9 |
+| `gpt-5.5`（旧版） | $5 | $0.5 | $30 | $16.9 |
 | `gpt-5.6-sol` | $5 | $0.5 | $30 | $16.9 |
 | `gpt-6-astra` | $10 | $1 | $50 | $28.5 |
 
@@ -54,7 +54,7 @@ description: HiveGPT 上的 GPT 模型怎么选：gpt-6-astra、gpt-6.1-sol、gp
 
 **GPT-5.6 系列（2026-07 发布）**：同样分 Sol（均衡）、Terra（中档，相当于以前的 mini）、Luna（小模型，相当于以前的 nano）三档。`gpt-5.6` 就是 `gpt-5.6-sol`。现在同价位一般选 GPT-6 系列更划算。
 
-**GPT-5.5 / 5.4**：上一代的主力模型，编程和专业任务很稳，很多编程工具默认用它们。
+**GPT-5.5 / 5.4**：上一代的主力模型，已经是旧版。以前很多编程工具默认用它们，现在 Codex 的默认已经换成 gpt-6.1-sol，新项目直接用 gpt-6.1-sol。
 
 ## 不建议再用的模型
 
@@ -62,7 +62,8 @@ description: HiveGPT 上的 GPT 模型怎么选：gpt-6-astra、gpt-6.1-sol、gp
 
 | 模型 | 情况 | 换成 |
 |---|---|---|
-| `gpt-5.3-codex-spark` | OpenAI 已于 2026-09 下线 | `gpt-5.5` |
+| `gpt-5.3-codex-spark` | OpenAI 已于 2026-09 下线 | `gpt-6.1-sol` |
+| `gpt-5.5` | OpenAI 已列为旧版（Codex 里标为 Legacy），价格是 gpt-6.1-sol 的两倍多 | `gpt-6.1-sol` |
 | `gpt-4o-audio-preview`、`gpt-4o-realtime-preview` | OpenAI 已于 2026-05 下线 | — |
 | `gpt-image-1` | OpenAI 计划 2026-10-23 下线 | `gpt-image-2` |
 | `gpt-5.2`、`gpt-5.2-pro` | 上上代，价格不占优；`-pro` 只能用 Responses 接口 | `gpt-6.1-sol` / `gpt-6-astra` |
@@ -79,7 +80,7 @@ description: HiveGPT 上的 GPT 模型怎么选：gpt-6-astra、gpt-6.1-sol、gp
 
 ## 常见问题
 
-**gpt-6.1-sol 和 gpt-5.5 哪个好？** 日常问答和分析用 gpt-6.1-sol，更新、更便宜；写代码、用 Codex 等编程工具时 gpt-5.5 更稳。两个都试一下，按效果选。
+**gpt-6.1-sol 和 gpt-5.5 哪个好？** 用 gpt-6.1-sol。它更新、更便宜（输入、输出都不到 gpt-5.5 的一半），也是 Codex 现在的默认模型；gpt-5.5 已是旧版。
 
 **最便宜的是哪个？** gpt-6-luna，每 100 万 token 输入 $0.1、输出 $0.5，问 1000 次普通问题约 $0.3。
 

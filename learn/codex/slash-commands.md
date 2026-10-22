@@ -133,7 +133,7 @@ Codex 正在干活时，部分命令会被拒绝，因为它们会改变会话�
 
 弹出列表后先选模型，再选推理强度（low、medium、high 等，具体选项取决于模型）。选择从下一轮对话开始生效，并且会作为默认值写回配置文件里的 `model` 和 `model_reasoning_effort`，下次启动仍然沿用。
 
-实用节奏：日常改代码用默认的 `gpt-5.5` + medium；碰到难排查的 bug、跨多个模块的重构，临时调到 high 或 xhigh；做完记得调回来，否则下次启动还是高强度，费时间也费 token。只想临时用一次高强度，用命令行 `codex -c 'model_reasoning_effort="high"'` 更合适，它不会改动配置文件。
+实用节奏：日常改代码用默认的 `gpt-6.1-sol` + medium；碰到难排查的 bug、跨多个模块的重构，临时调到 high 或 xhigh；做完记得调回来，否则下次启动还是高强度，费时间也费 token。只想临时用一次高强度，用命令行 `codex -c 'model_reasoning_effort="high"'` 更合适，它不会改动配置文件。
 
 ### /permissions：调整权限
 

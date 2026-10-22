@@ -139,13 +139,13 @@ codex mcp list                                       # 查看已配置的服务�
 
 ## 模型与推理强度
 
-**模型**决定能力上限和价格。通过 HiveGPT 接入时默认是 `gpt-5.5`；可选的其他模型以会话里 `/model` 列出的为准。
+**模型**决定能力上限和价格。通过 HiveGPT 接入时默认是 `gpt-6.1-sol`；可选的其他模型以会话里 `/model` 列出的为准。
 
 **推理强度**（reasoning effort）决定模型回答前「想多久」，常见档位是 `low`、`medium`、`high`、`xhigh`，有的模型还有 `minimal` 或 `max`，具体支持哪些由模型决定。想得越久，复杂问题越靠谱，但速度越慢、消耗的 token 越多。
 
 ```toml
 # ~/.codex/config.toml
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 ```
 
