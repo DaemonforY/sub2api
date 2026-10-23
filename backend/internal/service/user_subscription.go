@@ -208,25 +208,32 @@ func (s *UserSubscription) MonthlyResetTime() *time.Time {
 	return &t
 }
 
+// withinLimit: usage has not reached limit yet and usage+additionalCost still fits. Usage at
+// exactly the limit is used up — billing (billing_cache_service) rejects it with >=, so smart
+// billing must move such a request on instead of keeping it on the subscription.
+func withinLimit(usage, additionalCost, limit float64) bool {
+	return usage < limit && usage+additionalCost <= limit
+}
+
 func (s *UserSubscription) CheckDailyLimit(group *Group, additionalCost float64) bool {
 	if !group.HasDailyLimit() {
 		return true
 	}
-	return s.DailyUsageUSD+additionalCost <= *group.DailyLimitUSD
+	return withinLimit(s.DailyUsageUSD, additionalCost, *group.DailyLimitUSD)
 }
 
 func (s *UserSubscription) CheckWeeklyLimit(group *Group, additionalCost float64) bool {
 	if !group.HasWeeklyLimit() {
 		return true
 	}
-	return s.WeeklyUsageUSD+additionalCost <= *group.WeeklyLimitUSD
+	return withinLimit(s.WeeklyUsageUSD, additionalCost, *group.WeeklyLimitUSD)
 }
 
 func (s *UserSubscription) CheckMonthlyLimit(group *Group, additionalCost float64) bool {
 	if !group.HasMonthlyLimit() {
 		return true
 	}
-	return s.MonthlyUsageUSD+additionalCost <= *group.MonthlyLimitUSD
+	return withinLimit(s.MonthlyUsageUSD, additionalCost, *group.MonthlyLimitUSD)
 }
 
 func (s *UserSubscription) CheckAllLimits(group *Group, additionalCost float64) (daily, weekly, monthly bool) {
