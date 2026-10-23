@@ -92,12 +92,73 @@ func (e *OpenAIImagesUpstreamError) clientMessage() string {
 		return "Upstream request failed"
 	}
 	if trimmed := strings.TrimSpace(e.Message); trimmed != "" {
+		if e.isSafetyRejection() {
+			return openAIImagesSafetyMessage(trimmed)
+		}
 		return trimmed
 	}
 	if trimmed := strings.TrimSpace(e.Code); trimmed != "" {
+		if e.isSafetyRejection() {
+			return openAIImagesSafetyMessage(trimmed)
+		}
 		return trimmed
 	}
 	return "Upstream request failed"
+}
+
+// isSafetyRejection: the prompt or a reference picture was refused by OpenAI's image safety system
+// (a 4xx, not an upstream failure).
+func (e *OpenAIImagesUpstreamError) isSafetyRejection() bool {
+	if e == nil || (e.StatusCode >= http.StatusInternalServerError && e.StatusCode != 0) {
+		return false
+	}
+	code := strings.ToLower(e.Code)
+	return code == "moderation_blocked" || strings.Contains(code, "content_policy") || strings.Contains(code, "safety_violation") ||
+		isOpenAIImagesContentPolicyRefusal(e.Message)
+}
+
+var openAIImagesSafetyCategories = []struct{ key, zh string }{
+	{"sexual", "色情或性暗示"},
+	{"minor", "未成年人"},
+	{"violence", "暴力血腥"},
+	{"self-harm", "自残"},
+	{"self_harm", "自残"},
+	{"hate", "仇恨歧视"},
+	{"harassment", "骚扰"},
+	{"illicit", "违法内容"},
+	{"public_figure", "真实名人"},
+	{"likeness", "真人肖像"},
+}
+
+// openAIImagesSafetyMessage tells the user in Chinese why no picture came back and what to change;
+// the upstream's own text (with its request ID) stays in parentheses for support and classifiers.
+func openAIImagesSafetyMessage(upstream string) string {
+	for _, r := range upstream {
+		if r >= 0x4e00 && r <= 0x9fff {
+			return upstream // already explained in Chinese
+		}
+	}
+	lower := strings.ToLower(upstream)
+	var hit []string
+	seen := map[string]bool{}
+	if i := strings.Index(lower, "safety_violations="); i >= 0 {
+		list := lower[i:]
+		if j := strings.Index(list, "]"); j >= 0 {
+			list = list[:j]
+		}
+		for _, c := range openAIImagesSafetyCategories {
+			if strings.Contains(list, c.key) && !seen[c.zh] {
+				seen[c.zh] = true
+				hit = append(hit, c.zh)
+			}
+		}
+	}
+	what := ""
+	if len(hit) > 0 {
+		what = "描述或参考图被判定涉及" + strings.Join(hit, "、") + "，"
+	}
+	return "图片没有生成：触发了 OpenAI 的内容安全审核，" + what +
+		"请换一种说法再试（去掉暴露、性感、暴力等字眼，避免真实人物和未成年人）；本次请求未扣费（" + upstream + "）"
 }
 
 // IsOpenAIImagesRetryableUpstreamError reports whether an Images error is an
