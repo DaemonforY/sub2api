@@ -86,9 +86,20 @@
             </div>
           </div>
         </div>
+        <!-- 卡密商品: the delivered key, or paid and waiting for restock -->
+        <div v-if="isGoodsOrder && goodsDelivery" class="space-y-2" data-testid="result-goods-key">
+          <p class="text-center text-sm text-gray-600 dark:text-gray-300">{{ t('goods.result.delivered') }}</p>
+          <GoodsKeyCard :delivery="goodsDelivery" />
+        </div>
+        <p v-else-if="goodsWaiting" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-100" data-testid="result-goods-waiting">{{ t('goods.result.waiting') }}</p>
+        <p v-else-if="isGoodsOrder && isSuccess" class="text-center text-sm text-gray-500 dark:text-gray-400">{{ t('goods.result.delivering') }}</p>
         <InviteAfterPurchaseCard v-if="showInvite" />
         <!-- Actions -->
-        <div v-if="isMembershipOrder" class="space-y-3">
+        <div v-if="isGoodsOrder" class="flex gap-3">
+          <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
+          <button class="btn btn-primary flex-1" data-testid="result-goods-back" @click="router.push(goodsDelivery ? `/goods/${goodsDelivery.goods_slug}` : '/dashboard')">{{ goodsDelivery ? t('goods.result.backToGoods') : t('goods.result.home') }}</button>
+        </div>
+        <div v-else-if="isMembershipOrder" class="space-y-3">
           <p v-if="isSuccess" class="text-center text-sm text-gray-600 dark:text-gray-300" data-testid="result-membership-done">{{ t('canvasMembership.result.done') }}</p>
           <div class="flex gap-3">
             <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
@@ -115,6 +126,8 @@ import { canvasUrl } from '@/constants/crossSites'
 import { useRoute, useRouter } from 'vue-router'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
 import InviteAfterPurchaseCard from '@/components/payment/InviteAfterPurchaseCard.vue'
+import GoodsKeyCard from '@/components/goods/GoodsKeyCard.vue'
+import { getOrderDelivery, type GoodsDelivery } from '@/api/goods'
 import { useAppStore } from '@/stores/app'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
@@ -193,10 +206,13 @@ const isSuccess = computed(() => {
 })
 
 const isPending = computed(() => {
-  return isPendingStatus(order.value?.status)
+  return isPendingStatus(order.value?.status) || goodsWaiting.value
 })
 
 const statusTitle = computed(() => {
+  if (goodsWaiting.value) {
+    return t('goods.result.waitingTitle')
+  }
   if (isSuccess.value) {
     return t('payment.result.success')
   }
@@ -220,12 +236,39 @@ const isCourseOrder = computed(() => !!order.value && 'order_type' in order.valu
 const isMembershipOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'membership')
 const canvasBackUrl = canvasUrl({ path: '/image', medium: 'membership-paid' })
 
+// 卡密商品 orders show the delivered key. A paid order that found no key in stock is FAILED with
+// paid_at set: it is delivered automatically after the admin restocks.
+const isGoodsOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'goods')
+const goodsDelivery = ref<GoodsDelivery | null>(null)
+const goodsWaiting = computed(() =>
+  isGoodsOrder.value && !goodsDelivery.value && normalizeOrderStatus(order.value?.status) === 'FAILED' && !!order.value && 'paid_at' in order.value && !!order.value.paid_at
+)
+let goodsDeliveryTries = 0
+let goodsDeliveryTimer: ReturnType<typeof setTimeout> | null = null
+
+async function loadGoodsDelivery(): Promise<void> {
+  const o = order.value
+  if (!hasOrderId(o) || o.order_type !== 'goods' || goodsDelivery.value || !authStore.isAuthenticated) return
+  if (!isSuccessStatus(o.status)) return
+  try {
+    goodsDelivery.value = await getOrderDelivery(o.id)
+  } catch {
+    // shown as 「正在发货」; the key is also on the product page
+  }
+  // Fulfilment may still be running (PAID / RECHARGING): look again a few times.
+  if (!goodsDelivery.value && goodsDeliveryTries < 5) {
+    goodsDeliveryTries += 1
+    goodsDeliveryTimer = setTimeout(() => void loadGoodsDelivery(), 2000)
+  }
+}
+
 function setResolvedOrder(nextOrder: ResolvedOrder | null): void {
   order.value = nextOrder
   if (nextOrder && 'currency' in nextOrder && nextOrder.currency) {
     currency.value = normalizePaymentCurrency(nextOrder.currency)
   }
   refreshUserBalanceForSuccessfulOrder(nextOrder)
+  void loadGoodsDelivery()
 }
 
 function refreshUserBalanceForSuccessfulOrder(nextOrder: ResolvedOrder | null): void {
@@ -484,5 +527,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   clearStatusRefreshTimer()
+  if (goodsDeliveryTimer !== null) clearTimeout(goodsDeliveryTimer)
 })
 </script>

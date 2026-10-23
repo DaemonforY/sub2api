@@ -6,11 +6,11 @@
       </div>
       <template v-else>
         <!-- Not sure which to pick: the public comparison page -->
-        <p v-if="paymentPhase === 'select' && !selectedPlan && !course && !membership" class="text-right text-sm">
+        <p v-if="paymentPhase === 'select' && !selectedPlan && !course && !membership && !goodsItem" class="text-right text-sm">
           <router-link to="/pricing" class="text-primary-600 hover:underline dark:text-primary-400" data-testid="payment-compare-link">{{ t('pricing.compareLink') }}</router-link>
         </p>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course && !membership" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course && !membership && !goodsItem" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
             class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
@@ -163,6 +163,55 @@
               </button>
             </template>
             <button class="btn btn-secondary w-full" @click="leaveCourse">{{ t('common.cancel') }}</button>
+          </template>
+          <!-- 卡密商品 checkout (/purchase?goods=<slug>) -->
+          <template v-else-if="goodsItem">
+            <div class="card p-5" data-testid="goods-checkout">
+              <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('goods.checkout.label') }}</p>
+              <h3 class="mt-1 text-lg font-bold text-gray-900 dark:text-white">{{ goodsItem.name }}</h3>
+              <p v-if="goodsItem.subtitle" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ goodsItem.subtitle }}</p>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span v-if="goodsItem.original_price > goodsItem.price" class="text-sm text-gray-400 line-through">{{ formatCny(goodsItem.original_price) }}</span>
+                <span class="text-2xl font-bold text-primary-600 dark:text-primary-400" data-testid="goods-checkout-price">{{ formatCny(goodsItem.price) }}</span>
+              </div>
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">⚡ {{ t('goods.checkout.hint') }}</p>
+            </div>
+            <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
+              <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
+            </div>
+            <template v-else>
+              <div class="card p-6">
+                <PaymentMethodSelector :methods="goodsMethodOptions" :selected="selectedMethod" @select="selectedMethod = $event" />
+              </div>
+              <div v-if="feeRate > 0" class="card p-6">
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatCny(goodsItem.price) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                    <span class="text-gray-900 dark:text-white">{{ formatCny(goodsFeeAmount) }}</span>
+                  </div>
+                  <div class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                    <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
+                    <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatCny(goodsTotalAmount) }}</span>
+                  </div>
+                </div>
+              </div>
+              <label class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <input v-model="goodsAgree" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0" data-testid="goods-agree" />
+                <span>{{ t('goods.checkout.agree') }}</span>
+              </label>
+              <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitGoods || submitting" data-testid="goods-pay" @click="confirmGoods">
+                <span v-if="submitting" class="flex items-center justify-center gap-2">
+                  <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  {{ t('common.processing') }}
+                </span>
+                <span v-else>{{ t('payment.createOrder') }} {{ formatCny(goodsTotalAmount) }}</span>
+              </button>
+            </template>
+            <button class="btn btn-secondary w-full" @click="leaveGoods">{{ t('common.cancel') }}</button>
           </template>
           <!-- Top-up Tab -->
           <template v-else-if="activeTab === 'recharge'">
@@ -484,6 +533,7 @@ import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSele
 import { buildPaymentErrorToastMessage, describePaymentScenarioError } from './paymentUx'
 import { hasWechatResumeQuery, parseWechatResumeRoute, stripWechatResumeQuery } from './paymentWechatResume'
 import { getCourse, strikePrice, type Course } from '@/api/courses'
+import { getGoods, type GoodsProduct } from '@/api/goods'
 import { getCanvasMembership, type CanvasMembershipPlan, type CanvasMembershipStatus } from '@/api/canvasMembership'
 
 const i18n = useI18n()
@@ -1013,6 +1063,65 @@ async function loadCourseFromQuery(): Promise<void> {
     }
   } catch (err: unknown) {
     appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('courses.loadFailed')))
+  }
+}
+
+// --- 卡密商品 checkout (/purchase?goods=<slug>) ---
+const goodsItem = ref<GoodsProduct | null>(null)
+const goodsAgree = ref(false)
+
+const goodsFeeAmount = computed(() => {
+  const price = goodsItem.value?.price ?? 0
+  if (feeRate.value <= 0 || price <= 0) return 0
+  return ceilPaymentAmount((price * feeRate.value) / 100, DEFAULT_PAYMENT_CURRENCY)
+})
+const goodsTotalAmount = computed(() => roundPaymentAmount((goodsItem.value?.price ?? 0) + goodsFeeAmount.value, DEFAULT_PAYMENT_CURRENCY))
+
+const goodsMethodOptions = computed<PaymentMethodOption[]>(() =>
+  enabledMethods.value.map((type) => {
+    const ml = visibleMethods.value[type]
+    return {
+      type,
+      display_name: ml?.display_name,
+      fee_rate: ml?.fee_rate ?? 0,
+      available: ml?.available !== false
+        && normalizePaymentCurrency(ml?.currency) === DEFAULT_PAYMENT_CURRENCY
+        && amountFitsMethod(goodsTotalAmount.value, type),
+    }
+  })
+)
+
+const canSubmitGoods = computed(() =>
+  goodsItem.value !== null
+    && goodsAgree.value
+    && goodsMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)
+)
+
+// The goods id travels as plan_id (like 创作会员), so the WeChat payment resume carries it too.
+async function confirmGoods() {
+  const g = goodsItem.value
+  if (!g || !canSubmitGoods.value || submitting.value) return
+  await createOrder(g.price, 'goods', g.id)
+}
+
+function leaveGoods() {
+  const slug = goodsItem.value?.slug
+  goodsItem.value = null
+  router.push(slug ? `/goods/${slug}` : '/purchase')
+}
+
+async function loadGoodsFromQuery(): Promise<void> {
+  const slug = typeof route.query.goods === 'string' ? route.query.goods.trim() : ''
+  if (!slug) return
+  try {
+    goodsItem.value = await getGoods(slug)
+    // Pick a CNY method when the default one is not.
+    const usable = goodsMethodOptions.value.find(m => m.available)
+    if (usable && !goodsMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)) {
+      selectedMethod.value = usable.type
+    }
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('goods.notFound')))
   }
 }
 
@@ -1571,6 +1680,7 @@ onMounted(async () => {
     }
     await loadCourseFromQuery()
     await loadMembershipFromQuery()
+    await loadGoodsFromQuery()
     await resumeWechatPaymentFromQuery()
     if (checkout.value.balance_disabled) {
       activeTab.value = 'subscription'

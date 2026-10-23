@@ -105,6 +105,7 @@ type Handlers struct {
 	// ConversationArchive is 对话归档 (admin only).
 	ConversationArchive *ConversationArchiveHandler
 	CanvasMembership    *CanvasMembershipHandler
+	CardGoods           *CardGoodsHandler
 }
 
 // BuildInfo contains build-time information

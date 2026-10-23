@@ -93,6 +93,8 @@ type CreateOrderRequest struct {
 	MembershipTerms bool
 	// membershipPlan is the 创作会员 plan of a membership order (PlanID; set while validating).
 	membershipPlan *CanvasMembershipPlan
+	// goods is the 卡密商品 of a goods order (PlanID; set while validating).
+	goods *CardGoods
 }
 
 type CreateOrderResponse struct {
@@ -209,6 +211,7 @@ type PaymentService struct {
 	growthService            *GrowthService
 	courses                  *CourseService
 	membership               *CanvasMembershipService
+	goods                    *CardGoodsService
 	// shadow: 静默限制 accounts can't create orders; late payments are noted (see PaymentShadowGuard).
 	shadow PaymentShadowGuard
 }
@@ -227,6 +230,11 @@ func NewPaymentService(entClient *dbent.Client, registry *payment.Registry, load
 // SetCanvasMembershipService enables 创作会员 orders.
 func (s *PaymentService) SetCanvasMembershipService(m *CanvasMembershipService) {
 	s.membership = m
+}
+
+// SetCardGoodsService enables 卡密商品 orders.
+func (s *PaymentService) SetCardGoodsService(g *CardGoodsService) {
+	s.goods = g
 }
 
 // SetCourseService enables course orders.

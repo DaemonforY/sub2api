@@ -230,6 +230,16 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: 'Course', titleKey: 'courses.title' }
   },
   {
+    path: '/goods/:slug([a-z0-9-]+)',
+    name: 'GoodsDetail',
+    component: () => import('@/views/GoodsDetailView.vue'),
+    meta: { requiresAuth: false, title: 'Goods', titleKey: 'goods.title' }
+  },
+  {
+    path: '/muse',
+    redirect: '/goods/muse'
+  },
+  {
     path: '/my-learning',
     name: 'MyLearning',
     component: () => import('@/views/user/MyLearningView.vue'),
@@ -777,6 +787,18 @@ const routes: RouteRecordRaw[] = [
       title: 'Conversation archive',
       titleKey: 'admin.conversationArchive.title',
       descriptionKey: 'admin.conversationArchive.description'
+    }
+  },
+  {
+    path: '/admin/goods',
+    name: 'AdminGoods',
+    component: () => import('@/views/admin/GoodsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Card-key goods',
+      titleKey: 'goods.admin.title',
+      descriptionKey: 'goods.admin.description'
     }
   },
   {

@@ -22,6 +22,7 @@ import shareCard from './shareCard'
 import siteBuilder from './siteBuilder'
 import style from './style'
 import games from './games'
+import goods from './goods'
 
 export default {
   ...landing,
@@ -48,4 +49,5 @@ export default {
   ...siteBuilder,
   ...style,
   ...games,
+  ...goods,
 }

@@ -49,6 +49,9 @@ const (
 	// OrderTypeMembership buys 创作会员 days (plan_id names the plan in the request only;
 	// the order keeps the days in subscription_days).
 	OrderTypeMembership = "membership"
+	// OrderTypeGoods buys one key of a 卡密商品 (plan_id names the goods in the request; the order
+	// keeps it in goods_id); fulfilment hands the buyer a key from stock.
+	OrderTypeGoods = "goods"
 )
 
 // Entity statuses shared across users, groups, etc.

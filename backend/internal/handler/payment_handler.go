@@ -568,6 +568,7 @@ type PublicOrderResult struct {
 	RefundRequestReason *string    `json:"refund_request_reason,omitempty"`
 	PlanID              *int64     `json:"plan_id,omitempty"`
 	CourseID            *int64     `json:"course_id,omitempty"`
+	GoodsID             *int64     `json:"goods_id,omitempty"`
 }
 
 // PublicOrderVerifyResult is returned by the legacy anonymous out_trade_no
@@ -604,6 +605,7 @@ func buildPublicOrderResult(order *dbent.PaymentOrder) PublicOrderResult {
 		RefundRequestReason: order.RefundRequestReason,
 		PlanID:              order.PlanID,
 		CourseID:            order.CourseID,
+		GoodsID:             order.GoodsID,
 	}
 }
 
@@ -714,6 +716,7 @@ type PaymentOrderResult struct {
 	RefundRequestReason *string    `json:"refund_request_reason,omitempty"`
 	PlanID              *int64     `json:"plan_id,omitempty"`
 	CourseID            *int64     `json:"course_id,omitempty"`
+	GoodsID             *int64     `json:"goods_id,omitempty"`
 	ProviderInstanceID  *string    `json:"provider_instance_id,omitempty"`
 }
 
@@ -753,6 +756,7 @@ func sanitizePaymentOrderForResponse(order *dbent.PaymentOrder) *PaymentOrderRes
 		RefundRequestReason: order.RefundRequestReason,
 		PlanID:              order.PlanID,
 		CourseID:            order.CourseID,
+		GoodsID:             order.GoodsID,
 		ProviderInstanceID:  order.ProviderInstanceID,
 	}
 }

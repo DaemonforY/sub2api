@@ -225,6 +225,20 @@ func (_c *PaymentOrderCreate) SetNillableCourseID(v *int64) *PaymentOrderCreate 
 	return _c
 }
 
+// SetGoodsID sets the "goods_id" field.
+func (_c *PaymentOrderCreate) SetGoodsID(v int64) *PaymentOrderCreate {
+	_c.mutation.SetGoodsID(v)
+	return _c
+}
+
+// SetNillableGoodsID sets the "goods_id" field if the given value is not nil.
+func (_c *PaymentOrderCreate) SetNillableGoodsID(v *int64) *PaymentOrderCreate {
+	if v != nil {
+		_c.SetGoodsID(*v)
+	}
+	return _c
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (_c *PaymentOrderCreate) SetProviderInstanceID(v string) *PaymentOrderCreate {
 	_c.mutation.SetProviderInstanceID(v)
@@ -787,6 +801,10 @@ func (_c *PaymentOrderCreate) createSpec() (*PaymentOrder, *sqlgraph.CreateSpec)
 		_spec.SetField(paymentorder.FieldCourseID, field.TypeInt64, value)
 		_node.CourseID = &value
 	}
+	if value, ok := _c.mutation.GoodsID(); ok {
+		_spec.SetField(paymentorder.FieldGoodsID, field.TypeInt64, value)
+		_node.GoodsID = &value
+	}
 	if value, ok := _c.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
 		_node.ProviderInstanceID = &value
@@ -1255,6 +1273,30 @@ func (u *PaymentOrderUpsert) AddCourseID(v int64) *PaymentOrderUpsert {
 // ClearCourseID clears the value of the "course_id" field.
 func (u *PaymentOrderUpsert) ClearCourseID() *PaymentOrderUpsert {
 	u.SetNull(paymentorder.FieldCourseID)
+	return u
+}
+
+// SetGoodsID sets the "goods_id" field.
+func (u *PaymentOrderUpsert) SetGoodsID(v int64) *PaymentOrderUpsert {
+	u.Set(paymentorder.FieldGoodsID, v)
+	return u
+}
+
+// UpdateGoodsID sets the "goods_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsert) UpdateGoodsID() *PaymentOrderUpsert {
+	u.SetExcluded(paymentorder.FieldGoodsID)
+	return u
+}
+
+// AddGoodsID adds v to the "goods_id" field.
+func (u *PaymentOrderUpsert) AddGoodsID(v int64) *PaymentOrderUpsert {
+	u.Add(paymentorder.FieldGoodsID, v)
+	return u
+}
+
+// ClearGoodsID clears the value of the "goods_id" field.
+func (u *PaymentOrderUpsert) ClearGoodsID() *PaymentOrderUpsert {
+	u.SetNull(paymentorder.FieldGoodsID)
 	return u
 }
 
@@ -1995,6 +2037,34 @@ func (u *PaymentOrderUpsertOne) UpdateCourseID() *PaymentOrderUpsertOne {
 func (u *PaymentOrderUpsertOne) ClearCourseID() *PaymentOrderUpsertOne {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.ClearCourseID()
+	})
+}
+
+// SetGoodsID sets the "goods_id" field.
+func (u *PaymentOrderUpsertOne) SetGoodsID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetGoodsID(v)
+	})
+}
+
+// AddGoodsID adds v to the "goods_id" field.
+func (u *PaymentOrderUpsertOne) AddGoodsID(v int64) *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddGoodsID(v)
+	})
+}
+
+// UpdateGoodsID sets the "goods_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertOne) UpdateGoodsID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateGoodsID()
+	})
+}
+
+// ClearGoodsID clears the value of the "goods_id" field.
+func (u *PaymentOrderUpsertOne) ClearGoodsID() *PaymentOrderUpsertOne {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearGoodsID()
 	})
 }
 
@@ -2955,6 +3025,34 @@ func (u *PaymentOrderUpsertBulk) UpdateCourseID() *PaymentOrderUpsertBulk {
 func (u *PaymentOrderUpsertBulk) ClearCourseID() *PaymentOrderUpsertBulk {
 	return u.Update(func(s *PaymentOrderUpsert) {
 		s.ClearCourseID()
+	})
+}
+
+// SetGoodsID sets the "goods_id" field.
+func (u *PaymentOrderUpsertBulk) SetGoodsID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.SetGoodsID(v)
+	})
+}
+
+// AddGoodsID adds v to the "goods_id" field.
+func (u *PaymentOrderUpsertBulk) AddGoodsID(v int64) *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.AddGoodsID(v)
+	})
+}
+
+// UpdateGoodsID sets the "goods_id" field to the value that was provided on create.
+func (u *PaymentOrderUpsertBulk) UpdateGoodsID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.UpdateGoodsID()
+	})
+}
+
+// ClearGoodsID clears the value of the "goods_id" field.
+func (u *PaymentOrderUpsertBulk) ClearGoodsID() *PaymentOrderUpsertBulk {
+	return u.Update(func(s *PaymentOrderUpsert) {
+		s.ClearGoodsID()
 	})
 }
 

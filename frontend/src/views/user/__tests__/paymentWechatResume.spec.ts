@@ -81,3 +81,11 @@ describe('stripWechatResumeQuery', () => {
     expect(stripWechatResumeQuery({ course: 'ai-agent', course_id: '5', wechat_resume: '1' })).toEqual({ course: 'ai-agent' })
   })
 })
+
+describe('parseWechatResumeRoute goods', () => {
+  it('keeps a 卡密商品 order a goods order (plan_id carries the goods id)', () => {
+    const parsed = parseWechatResumeRoute({ wechat_resume_token: 'tok', order_type: 'goods', plan_id: '7', payment_type: 'wxpay' }, [], 10)
+    expect(parsed?.orderType).toBe('goods')
+    expect(parsed?.planId).toBe(7)
+  })
+})

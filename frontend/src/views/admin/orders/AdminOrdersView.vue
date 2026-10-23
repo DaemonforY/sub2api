@@ -215,6 +215,7 @@ const orderTypeFilterOptions = computed(() => [
   { value: 'subscription', label: t('payment.admin.subscriptionOrder') },
   { value: 'course', label: t('payment.admin.courseOrder') },
   { value: 'membership', label: t('payment.admin.membershipOrder') },
+  { value: 'goods', label: t('payment.admin.goodsOrder') },
 ])
 
 async function showOrderDetail(order: PaymentOrder) {

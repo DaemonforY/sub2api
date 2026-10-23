@@ -143,6 +143,7 @@ func RegisterAdminRoutes(
 		registerGeoMonitorRoutes(admin, h)
 		registerContentEngineRoutes(admin, h)
 		registerCanvasMembershipAdminRoutes(admin, h)
+		registerCardGoodsAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
 		registerConversationArchiveRoutes(admin, h, stepUpAuth)
@@ -1241,6 +1242,21 @@ func registerCanvasMembershipAdminRoutes(admin *gin.RouterGroup, h *handler.Hand
 	admin.GET("/canvas-membership", h.CanvasMembership.AdminGet)
 	admin.PUT("/canvas-membership", h.CanvasMembership.AdminSave)
 	admin.POST("/canvas-membership/grant", h.CanvasMembership.AdminGrant)
+}
+
+// registerCardGoodsAdminRoutes 卡密商品：商品设置、导入 / 作废卡密、发货记录。
+func registerCardGoodsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.CardGoods == nil {
+		return
+	}
+	g := admin.Group("/goods")
+	g.GET("", h.CardGoods.AdminList)
+	g.POST("", h.CardGoods.AdminCreate)
+	g.PUT("/:id", h.CardGoods.AdminUpdate)
+	g.DELETE("/:id", h.CardGoods.AdminDelete)
+	g.POST("/:id/import", h.CardGoods.AdminImport)
+	g.GET("/:id/items", h.CardGoods.AdminItems)
+	g.POST("/:id/items/void", h.CardGoods.AdminVoidItems)
 }
 
 // registerUserRiskAdminRoutes 用户画像、风控事件和静默限制。

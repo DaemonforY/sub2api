@@ -578,6 +578,7 @@ export default {
       subscriptionOrder: 'Subscription',
       courseOrder: 'Course',
       membershipOrder: 'Creator membership',
+      goodsOrder: 'Card-key goods',
       paidAt: 'Paid At',
       completedAt: 'Completed At',
       expiresAt: 'Expires At',

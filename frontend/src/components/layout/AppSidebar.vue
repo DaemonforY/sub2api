@@ -973,6 +973,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/image-tools', label: t('nav.imageToolsAdmin'), icon: PhotoIcon, hideInSimpleMode: true },
     { path: '/admin/sites', label: t('nav.sitesAdmin'), icon: GlobeIcon, hideInSimpleMode: true },
     { path: '/admin/canvas-membership', label: t('nav.canvasMembershipAdmin'), icon: CreditCardIcon, hideInSimpleMode: true },
+    { path: '/admin/goods', label: t('nav.goodsAdmin'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/community', label: t('nav.communityAdmin'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/courses', label: t('nav.coursesAdmin'), icon: BookIcon, hideInSimpleMode: true },
     { path: '/admin/course-creators', label: t('nav.courseCreatorsAdmin'), icon: UsersIcon, hideInSimpleMode: true },

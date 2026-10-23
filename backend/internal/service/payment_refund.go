@@ -266,6 +266,11 @@ func (s *PaymentService) prepDeduct(ctx context.Context, o *dbent.PaymentOrder, 
 		}
 		return nil
 	}
+	if o.OrderType == payment.OrderTypeGoods {
+		// A delivered key can't be taken back; the admin decides before refunding.
+		p.DeductionType = payment.DeductionTypeNone
+		return nil
+	}
 	if o.OrderType == payment.OrderTypeCourse {
 		// Nothing to take back from the balance: a full refund ends the course access by itself.
 		p.DeductionType = payment.DeductionTypeNone

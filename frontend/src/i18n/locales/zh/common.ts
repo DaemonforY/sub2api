@@ -225,6 +225,7 @@ export default {
     assistantAdmin: '智能客服',
     opsAgentAdmin: '运维助手',
     canvasMembershipAdmin: '创作会员',
+    goodsAdmin: '卡密商品',
     analyticsAdmin: '数据看板',
     userInsightsAdmin: '用户画像',
     conversationArchiveAdmin: '对话归档',

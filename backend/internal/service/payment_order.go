@@ -70,6 +70,14 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
+	if req.OrderType == payment.OrderTypeGoods {
+		if s.goods == nil || req.PlanID <= 0 {
+			return nil, ErrCardGoodsNotFound
+		}
+		if req.goods, err = s.goods.GoodsForOrder(ctx, req.UserID, req.PlanID); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.checkCancelRateLimit(ctx, req.UserID, cfg); err != nil {
 		return nil, err
 	}
@@ -93,6 +101,8 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		orderAmount, limitAmount = course.CurrentPrice, course.CurrentPrice
 	} else if req.membershipPlan != nil {
 		orderAmount, limitAmount = req.membershipPlan.Price, req.membershipPlan.Price
+	} else if req.goods != nil {
+		orderAmount, limitAmount = req.goods.Price, req.goods.Price
 	} else if req.OrderType == payment.OrderTypeBalance {
 		orderAmount = calculateCreditedBalance(req.Amount, cfg.BalanceRechargeMultiplier)
 	}
@@ -109,6 +119,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	if req.membershipPlan != nil && methodCurrency != payment.DefaultPaymentCurrency {
 		return nil, ErrCanvasMembershipCurrency
+	}
+	if req.goods != nil && methodCurrency != payment.DefaultPaymentCurrency {
+		return nil, ErrCardGoodsCurrency
 	}
 	payAmountStr, payAmount, err := calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate, methodCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
 	if err != nil {
@@ -130,6 +143,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	if req.membershipPlan != nil && selectedCurrency != payment.DefaultPaymentCurrency {
 		return nil, ErrCanvasMembershipCurrency
+	}
+	if req.goods != nil && selectedCurrency != payment.DefaultPaymentCurrency {
+		return nil, ErrCardGoodsCurrency
 	}
 	if selectedCurrency != methodCurrency {
 		payAmountStr, payAmount, err = calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate, selectedCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
@@ -168,8 +184,8 @@ func (s *PaymentService) validateOrderInput(ctx context.Context, req CreateOrder
 	if req.OrderType == payment.OrderTypeSubscription {
 		return s.validateSubOrder(ctx, req)
 	}
-	if req.OrderType == payment.OrderTypeCourse || req.OrderType == payment.OrderTypeMembership {
-		// Checked and priced by the course / membership service.
+	if req.OrderType == payment.OrderTypeCourse || req.OrderType == payment.OrderTypeMembership || req.OrderType == payment.OrderTypeGoods {
+		// Checked and priced by the course / membership / goods service.
 		return nil, nil
 	}
 	if math.IsNaN(req.Amount) || math.IsInf(req.Amount, 0) || req.Amount <= 0 {
@@ -265,6 +281,9 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	}
 	if req.membershipPlan != nil {
 		b.SetSubscriptionDays(req.membershipPlan.Days)
+	}
+	if req.goods != nil {
+		b.SetGoodsID(req.goods.ID)
 	}
 	order, err := b.Save(ctx)
 	if err != nil {
@@ -476,6 +495,9 @@ func (s *PaymentService) invokeProvider(ctx context.Context, order *dbent.Paymen
 	}
 	if req.membershipPlan != nil {
 		subject = applyPaymentProductNameAffix("创作会员 "+req.membershipPlan.Name, cfg)
+	}
+	if req.goods != nil {
+		subject = applyPaymentProductNameAffix(req.goods.Name, cfg)
 	}
 	outTradeNo := order.OutTradeNo
 	canonicalReturnURL, err := CanonicalizeReturnURL(req.ReturnURL, req.SrcHost, req.SrcURL)

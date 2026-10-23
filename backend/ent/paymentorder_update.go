@@ -392,6 +392,33 @@ func (_u *PaymentOrderUpdate) ClearCourseID() *PaymentOrderUpdate {
 	return _u
 }
 
+// SetGoodsID sets the "goods_id" field.
+func (_u *PaymentOrderUpdate) SetGoodsID(v int64) *PaymentOrderUpdate {
+	_u.mutation.ResetGoodsID()
+	_u.mutation.SetGoodsID(v)
+	return _u
+}
+
+// SetNillableGoodsID sets the "goods_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdate) SetNillableGoodsID(v *int64) *PaymentOrderUpdate {
+	if v != nil {
+		_u.SetGoodsID(*v)
+	}
+	return _u
+}
+
+// AddGoodsID adds value to the "goods_id" field.
+func (_u *PaymentOrderUpdate) AddGoodsID(v int64) *PaymentOrderUpdate {
+	_u.mutation.AddGoodsID(v)
+	return _u
+}
+
+// ClearGoodsID clears the value of the "goods_id" field.
+func (_u *PaymentOrderUpdate) ClearGoodsID() *PaymentOrderUpdate {
+	_u.mutation.ClearGoodsID()
+	return _u
+}
+
 // SetProviderInstanceID sets the "provider_instance_id" field.
 func (_u *PaymentOrderUpdate) SetProviderInstanceID(v string) *PaymentOrderUpdate {
 	_u.mutation.SetProviderInstanceID(v)
@@ -977,6 +1004,15 @@ func (_u *PaymentOrderUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if _u.mutation.CourseIDCleared() {
 		_spec.ClearField(paymentorder.FieldCourseID, field.TypeInt64)
 	}
+	if value, ok := _u.mutation.GoodsID(); ok {
+		_spec.SetField(paymentorder.FieldGoodsID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedGoodsID(); ok {
+		_spec.AddField(paymentorder.FieldGoodsID, field.TypeInt64, value)
+	}
+	if _u.mutation.GoodsIDCleared() {
+		_spec.ClearField(paymentorder.FieldGoodsID, field.TypeInt64)
+	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)
 	}
@@ -1488,6 +1524,33 @@ func (_u *PaymentOrderUpdateOne) AddCourseID(v int64) *PaymentOrderUpdateOne {
 // ClearCourseID clears the value of the "course_id" field.
 func (_u *PaymentOrderUpdateOne) ClearCourseID() *PaymentOrderUpdateOne {
 	_u.mutation.ClearCourseID()
+	return _u
+}
+
+// SetGoodsID sets the "goods_id" field.
+func (_u *PaymentOrderUpdateOne) SetGoodsID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.ResetGoodsID()
+	_u.mutation.SetGoodsID(v)
+	return _u
+}
+
+// SetNillableGoodsID sets the "goods_id" field if the given value is not nil.
+func (_u *PaymentOrderUpdateOne) SetNillableGoodsID(v *int64) *PaymentOrderUpdateOne {
+	if v != nil {
+		_u.SetGoodsID(*v)
+	}
+	return _u
+}
+
+// AddGoodsID adds value to the "goods_id" field.
+func (_u *PaymentOrderUpdateOne) AddGoodsID(v int64) *PaymentOrderUpdateOne {
+	_u.mutation.AddGoodsID(v)
+	return _u
+}
+
+// ClearGoodsID clears the value of the "goods_id" field.
+func (_u *PaymentOrderUpdateOne) ClearGoodsID() *PaymentOrderUpdateOne {
+	_u.mutation.ClearGoodsID()
 	return _u
 }
 
@@ -2105,6 +2168,15 @@ func (_u *PaymentOrderUpdateOne) sqlSave(ctx context.Context) (_node *PaymentOrd
 	}
 	if _u.mutation.CourseIDCleared() {
 		_spec.ClearField(paymentorder.FieldCourseID, field.TypeInt64)
+	}
+	if value, ok := _u.mutation.GoodsID(); ok {
+		_spec.SetField(paymentorder.FieldGoodsID, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedGoodsID(); ok {
+		_spec.AddField(paymentorder.FieldGoodsID, field.TypeInt64, value)
+	}
+	if _u.mutation.GoodsIDCleared() {
+		_spec.ClearField(paymentorder.FieldGoodsID, field.TypeInt64)
 	}
 	if value, ok := _u.mutation.ProviderInstanceID(); ok {
 		_spec.SetField(paymentorder.FieldProviderInstanceID, field.TypeString, value)

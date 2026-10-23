@@ -238,6 +238,9 @@ func (s *PaymentService) executeFulfillment(ctx context.Context, oid int64) erro
 	if o.OrderType == payment.OrderTypeMembership {
 		return s.ExecuteMembershipFulfillment(ctx, oid)
 	}
+	if o.OrderType == payment.OrderTypeGoods {
+		return s.ExecuteGoodsFulfillment(ctx, oid)
+	}
 	return s.ExecuteBalanceFulfillment(ctx, oid)
 }
 
@@ -576,6 +579,39 @@ func (s *PaymentService) ExecuteMembershipFulfillment(ctx context.Context, oid i
 		return err
 	}
 	return s.markCompleted(ctx, o, lease, "MEMBERSHIP_SUCCESS")
+}
+
+// ExecuteGoodsFulfillment hands the buyer a key of the 卡密商品 they bought. With no key left the
+// order fails with 「库存不足」 and stays paid; the admin's next import retries it.
+func (s *PaymentService) ExecuteGoodsFulfillment(ctx context.Context, oid int64) error {
+	o, err := s.entClient.PaymentOrder.Get(ctx, oid)
+	if err != nil {
+		return infraerrors.NotFound("NOT_FOUND", "order not found")
+	}
+	if o.Status == OrderStatusCompleted {
+		return nil
+	}
+	if psIsRefundStatus(o.Status) {
+		return infraerrors.BadRequest("INVALID_STATUS", "refund-related order cannot fulfill")
+	}
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusFailed && o.Status != OrderStatusRecharging {
+		return infraerrors.BadRequest("INVALID_STATUS", "order cannot fulfill in status "+o.Status)
+	}
+	if o.GoodsID == nil || s.goods == nil {
+		return infraerrors.BadRequest("INVALID_STATUS", "missing goods info")
+	}
+	lease, err := s.acquirePaymentFulfillmentLease(ctx, o)
+	if err != nil {
+		return err
+	}
+	if lease == nil {
+		return nil
+	}
+	if err := s.goods.DeliverOrder(ctx, o.ID, o.UserID, *o.GoodsID); err != nil {
+		s.markFailed(ctx, oid, lease, err)
+		return err
+	}
+	return s.markCompleted(ctx, o, lease, "GOODS_SUCCESS")
 }
 
 // ExecuteCourseFulfillment opens the bought course for the buyer.

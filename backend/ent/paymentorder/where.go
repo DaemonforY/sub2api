@@ -150,6 +150,11 @@ func CourseID(v int64) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldCourseID, v))
 }
 
+// GoodsID applies equality check predicate on the "goods_id" field. It's identical to GoodsIDEQ.
+func GoodsID(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldGoodsID, v))
+}
+
 // ProviderInstanceID applies equality check predicate on the "provider_instance_id" field. It's identical to ProviderInstanceIDEQ.
 func ProviderInstanceID(v string) predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldEQ(FieldProviderInstanceID, v))
@@ -1343,6 +1348,56 @@ func CourseIDIsNil() predicate.PaymentOrder {
 // CourseIDNotNil applies the NotNil predicate on the "course_id" field.
 func CourseIDNotNil() predicate.PaymentOrder {
 	return predicate.PaymentOrder(sql.FieldNotNull(FieldCourseID))
+}
+
+// GoodsIDEQ applies the EQ predicate on the "goods_id" field.
+func GoodsIDEQ(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldEQ(FieldGoodsID, v))
+}
+
+// GoodsIDNEQ applies the NEQ predicate on the "goods_id" field.
+func GoodsIDNEQ(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNEQ(FieldGoodsID, v))
+}
+
+// GoodsIDIn applies the In predicate on the "goods_id" field.
+func GoodsIDIn(vs ...int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIn(FieldGoodsID, vs...))
+}
+
+// GoodsIDNotIn applies the NotIn predicate on the "goods_id" field.
+func GoodsIDNotIn(vs ...int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotIn(FieldGoodsID, vs...))
+}
+
+// GoodsIDGT applies the GT predicate on the "goods_id" field.
+func GoodsIDGT(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGT(FieldGoodsID, v))
+}
+
+// GoodsIDGTE applies the GTE predicate on the "goods_id" field.
+func GoodsIDGTE(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldGTE(FieldGoodsID, v))
+}
+
+// GoodsIDLT applies the LT predicate on the "goods_id" field.
+func GoodsIDLT(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLT(FieldGoodsID, v))
+}
+
+// GoodsIDLTE applies the LTE predicate on the "goods_id" field.
+func GoodsIDLTE(v int64) predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldLTE(FieldGoodsID, v))
+}
+
+// GoodsIDIsNil applies the IsNil predicate on the "goods_id" field.
+func GoodsIDIsNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldIsNull(FieldGoodsID))
+}
+
+// GoodsIDNotNil applies the NotNil predicate on the "goods_id" field.
+func GoodsIDNotNil() predicate.PaymentOrder {
+	return predicate.PaymentOrder(sql.FieldNotNull(FieldGoodsID))
 }
 
 // ProviderInstanceIDEQ applies the EQ predicate on the "provider_instance_id" field.

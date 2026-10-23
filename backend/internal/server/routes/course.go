@@ -41,6 +41,8 @@ func RegisterCourseRoutes(
 		mine.GET("/:id/delivery", h.Course.Delivery)
 	}
 
+	registerCardGoodsRoutes(v1, h, jwtAuth, optionalJWT, settingService, panelRateLimiter)
+
 	// Creator center: courses reviewed by an admin before they go live; sales and withdrawals.
 	creator := v1.Group("/user/creator")
 	creator.Use(gin.HandlerFunc(jwtAuth))
@@ -65,4 +67,31 @@ func RegisterCourseRoutes(
 		creator.POST("/withdrawals", h.Course.CreatorWithdraw)
 		creator.POST("/withdrawals/:id/cancel", h.Course.CreatorCancelWithdraw)
 	}
+}
+
+// registerCardGoodsRoutes: 卡密商品 pages (anonymous browsing; a signed-in buyer also sees their keys)
+// and the buyer's delivered keys.
+func registerCardGoodsRoutes(
+	v1 *gin.RouterGroup,
+	h *handler.Handlers,
+	jwtAuth middleware.JWTAuthMiddleware,
+	optionalJWT middleware.OptionalJWTAuthMiddleware,
+	settingService *service.SettingService,
+	panelRateLimiter *middleware.PanelRateLimiter,
+) {
+	if h.CardGoods == nil {
+		return
+	}
+	public := v1.Group("/goods")
+	public.Use(panelRateLimiter.PublicIP())
+	public.Use(gin.HandlerFunc(optionalJWT))
+	public.Use(middleware.BackendModeUserGuard(settingService))
+	public.GET("/:slug", h.CardGoods.Product)
+
+	mine := v1.Group("/user/goods")
+	mine.Use(gin.HandlerFunc(jwtAuth))
+	mine.Use(middleware.BackendModeUserGuard(settingService))
+	mine.Use(panelRateLimiter.Global())
+	mine.GET("/deliveries", h.CardGoods.Deliveries)
+	mine.GET("/orders/:id/delivery", h.CardGoods.OrderDelivery)
 }

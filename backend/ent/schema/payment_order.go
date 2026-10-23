@@ -91,6 +91,10 @@ func (PaymentOrder) Fields() []ent.Field {
 		field.Int64("course_id").
 			Optional().
 			Nillable(),
+		// goods_id: the card-key goods bought by an order_type = goods order (卡密商品).
+		field.Int64("goods_id").
+			Optional().
+			Nillable(),
 		field.String("provider_instance_id").
 			Optional().
 			Nillable().

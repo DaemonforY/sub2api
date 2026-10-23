@@ -21,7 +21,7 @@ export type OrderStatus =
 
 export type PaymentType = 'alipay' | 'wxpay' | 'alipay_direct' | 'wxpay_direct' | 'stripe' | 'easypay' | 'airwallex'
 
-export type OrderType = 'balance' | 'subscription' | 'course' | 'membership'
+export type OrderType = 'balance' | 'subscription' | 'course' | 'membership' | 'goods'
 
 // ==================== Configuration ====================
 
@@ -110,6 +110,7 @@ export interface PaymentOrder {
   refund_request_reason?: string
   plan_id?: number
   course_id?: number
+  goods_id?: number
   provider_instance_id?: string
 }
 
