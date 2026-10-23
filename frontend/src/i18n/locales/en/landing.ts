@@ -169,6 +169,7 @@ export default {
     // Home page, 2026-10 redesign: one slogan, what the sign-up credit buys, prompt first then sign up
     v3: {
       nav: {
+        chat: 'AI Chat',
         draw: 'Draw',
         write: 'Write',
         code: 'Code',

@@ -222,13 +222,13 @@ func (h *ChatHandler) Upload(c *gin.Context) {
 	learnReply(c, out, err)
 }
 
-// File GET /chat/files/:name — one of the user's pictures.
+// File GET /chat/files/:name[?preview=1] — one of the user's pictures (preview: a small JPEG).
 func (h *ChatHandler) File(c *gin.Context) {
 	subject, ok := requireAuth(c)
 	if !ok {
 		return
 	}
-	data, mime, err := h.svc.File(c.Request.Context(), subject.UserID, c.Param("name"))
+	data, mime, err := h.svc.File(c.Request.Context(), subject.UserID, c.Param("name"), c.Query("preview") == "1")
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

@@ -82,6 +82,8 @@ export default {
     drawingHint: 'Usually 30 s to 2 min; it finishes even if you close the page',
     editThisImage: 'Edit this image',
     download: 'Download',
+    imageLoading: 'Loading image…',
+    downloadFailed: 'Download failed, please retry',
     imageGone: 'Image unavailable',
     failed: 'Generation failed, please retry',
     stopped: 'Stopped',

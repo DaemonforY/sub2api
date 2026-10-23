@@ -475,14 +475,21 @@ func (s *ChatService) saveFile(ctx context.Context, userID int64, data []byte) (
 	return f, nil
 }
 
-// File returns a picture of the user's, for the page to show.
-func (s *ChatService) File(ctx context.Context, userID int64, name string) ([]byte, string, error) {
+// File returns a picture of the user's: the original, or with preview a smaller JPEG for the page.
+func (s *ChatService) File(ctx context.Context, userID int64, name string, preview bool) ([]byte, string, error) {
 	f, err := s.repo.GetFile(ctx, name)
 	if err != nil {
 		return nil, "", err
 	}
 	if f == nil || f.UserID != userID {
 		return nil, "", ErrChatFileGone
+	}
+	if preview {
+		data, mime, err := s.files.Preview(name)
+		if err != nil {
+			return nil, "", ErrChatFileGone
+		}
+		return data, mime, nil
 	}
 	data, err := s.files.Read(name)
 	if err != nil {

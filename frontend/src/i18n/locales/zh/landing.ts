@@ -169,6 +169,7 @@ export default {
     // 首页 2026-10 改版：一句 slogan、送多少说成具体的东西、先写提示词再注册
     v3: {
       nav: {
+        chat: 'AI 对话',
         draw: '画图',
         write: '写作',
         code: '编程',

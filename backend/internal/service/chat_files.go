@@ -23,6 +23,11 @@ import (
 const (
 	ChatFileMaxBytes  = 20 << 20
 	chatFileMaxPixels = 40_000_000
+	// The page shows pictures as JPEG previews: a drawn 1536×1024 PNG is 2–3 MB, which took 11 s
+	// to reach a user in China; its preview is about a tenth of that.
+	chatPreviewEdge     = 1280
+	chatPreviewMinBytes = 400 << 10
+	chatPreviewSuffix   = ".preview.jpg"
 )
 
 var (
@@ -114,10 +119,49 @@ func (s *ChatFileStore) DataURL(name string) string {
 	return "data:" + http.DetectContentType(data) + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
 
+// Preview is the picture for showing on the page: a JPEG of at most 1280 px, made on first use and
+// kept beside the original. Small files and GIFs are returned as they are.
+func (s *ChatFileStore) Preview(name string) ([]byte, string, error) {
+	p, ok := s.path(name)
+	if !ok {
+		return nil, "", os.ErrNotExist
+	}
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return nil, "", err
+	}
+	mime := http.DetectContentType(data)
+	if len(data) <= chatPreviewMinBytes || mime == "image/gif" {
+		return data, mime, nil
+	}
+	if cached, err := os.ReadFile(p + chatPreviewSuffix); err == nil && len(cached) > 0 {
+		return cached, "image/jpeg", nil
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return data, mime, nil
+	}
+	b := img.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if edge := max(w, h); edge > chatPreviewEdge {
+		w, h = max(1, w*chatPreviewEdge/edge), max(1, h*chatPreviewEdge/edge)
+	}
+	var out bytes.Buffer
+	if err := encodeJPEGTo(&out, scaleTo(img, w, h), 85); err != nil {
+		return data, mime, nil
+	}
+	tmp := p + ".tmp" + chatPreviewSuffix
+	if os.WriteFile(tmp, out.Bytes(), 0o644) == nil && os.Rename(tmp, p+chatPreviewSuffix) != nil {
+		_ = os.Remove(tmp)
+	}
+	return out.Bytes(), "image/jpeg", nil
+}
+
 func (s *ChatFileStore) Remove(names ...string) {
 	for _, name := range names {
 		if p, ok := s.path(name); ok {
 			_ = os.Remove(p)
+			_ = os.Remove(p + chatPreviewSuffix)
 		}
 	}
 }

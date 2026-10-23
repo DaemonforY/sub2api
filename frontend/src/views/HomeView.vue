@@ -138,6 +138,15 @@
         </div>
 
         <div class="flex shrink-0 items-center gap-1 sm:gap-2">
+          <!-- On phones the links above are hidden; AI 对话 stays reachable here. -->
+          <a
+            :href="chatLink"
+            class="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 md:hidden dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300"
+            data-testid="home-nav-chat-mobile"
+            @click="trackCta('nav-chat')"
+          >
+            <Icon name="chat" size="xs" />{{ t('home.v3.nav.chat') }}
+          </a>
           <LocaleSwitcher />
           <button
             @click="toggleTheme"
@@ -436,7 +445,9 @@ const signupBonus = computed(() => Number(appStore.cachedPublicSettings?.signup_
 const signupBonusText = computed(() => String(Math.round(signupBonus.value * 100) / 100))
 const trackCta = (where: string) => track('cta_click', { where })
 
+const chatLink = '/chat?utm_source=home&utm_medium=nav'
 const navLinks = [
+  { key: 'chat', href: chatLink, external: false },
   { key: 'draw', href: canvasLink('nav-draw', '/image'), external: true },
   { key: 'write', href: '/editor/?utm_source=home&utm_medium=nav', external: false },
   { key: 'code', href: '/learn/codex/hivegpt?utm_source=home&utm_medium=nav', external: false },

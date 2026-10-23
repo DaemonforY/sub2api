@@ -129,17 +129,31 @@ export async function uploadFile(file: Blob, filename = 'image.jpg'): Promise<Ch
 
 const fileURLs = new Map<string, Promise<string>>()
 
-/** An object URL for one of the user's pictures (fetched once with the login token). */
-export function fileURL(name: string): Promise<string> {
-  let p = fileURLs.get(name)
+/**
+ * An object URL for one of the user's pictures, fetched once with the login token. The page shows
+ * previews (a JPEG of at most 1280 px); the original is for 下载 and the full-size view.
+ */
+export function fileURL(name: string, preview = true): Promise<string> {
+  const key = (preview ? 'p:' : 'o:') + name
+  let p = fileURLs.get(key)
   if (!p) {
     p = apiClient
-      .get<Blob>(`/chat/files/${encodeURIComponent(name)}`, { responseType: 'blob', timeout: 60_000 })
+      .get<Blob>(`/chat/files/${encodeURIComponent(name)}`, {
+        params: preview ? { preview: 1 } : {},
+        responseType: 'blob',
+        timeout: 120_000
+      })
       .then((res) => URL.createObjectURL(res.data as unknown as Blob))
-    p.catch(() => fileURLs.delete(name))
-    fileURLs.set(name, p)
+    p.catch(() => fileURLs.delete(key))
+    fileURLs.set(key, p)
   }
   return p
+}
+
+/** Forgets a picture that failed to show, so the next fileURL call fetches it again. */
+export function forgetFileURL(name: string) {
+  fileURLs.delete('p:' + name)
+  fileURLs.delete('o:' + name)
 }
 
 async function authedFetch(url: string, init: RequestInit): Promise<Response> {

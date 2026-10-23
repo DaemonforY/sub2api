@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -516,7 +517,7 @@ func TestChatPicturesAreSentAndCopied(t *testing.T) {
 	require.ErrorIs(t, err, ErrChatFileInvalid)
 
 	// Someone else can't use or read it.
-	_, _, err = f.svc.File(ctx, 8, up.Name)
+	_, _, err = f.svc.File(ctx, 8, up.Name, false)
 	require.ErrorIs(t, err, ErrChatFileGone)
 
 	var events []ChatEvent
@@ -537,7 +538,7 @@ func TestChatPicturesAreSentAndCopied(t *testing.T) {
 	require.Equal(t, ChatStatusDone, done.Status)
 	require.Equal(t, ChatKindImage, done.Kind)
 	require.Len(t, done.Files, 1)
-	data, mime, err := f.svc.File(ctx, 7, done.Files[0])
+	data, mime, err := f.svc.File(ctx, 7, done.Files[0], false)
 	require.NoError(t, err)
 	require.Equal(t, "image/png", mime)
 	require.NotEmpty(t, data)
@@ -628,4 +629,49 @@ func TestChatUpstreamFailedKeepsChineseGatewayMessages(t *testing.T) {
 	require.Equal(t, "余额不足，请充值后再试（Insufficient balance）", chatErrText(err))
 	err = chatUpstreamFailed([]byte(`{"error":{"message":"upstream overloaded"}}`), 529)
 	require.Equal(t, "模型服务出错：upstream overloaded，请稍后再试（Chat failed）", chatErrText(err))
+}
+
+func TestChatFilePreviewIsSmallJPEG(t *testing.T) {
+	store := NewChatFileStore(t.TempDir())
+	// Noise does not compress, so this PNG is well over the preview threshold.
+	img := image.NewRGBA(image.Rect(0, 0, 1600, 1000))
+	seed := uint32(1)
+	for i := range img.Pix {
+		seed = seed*1664525 + 1013904223
+		img.Pix[i] = byte(seed >> 24)
+	}
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, img))
+	require.Greater(t, buf.Len(), chatPreviewMinBytes)
+	stored, err := store.Save(buf.Bytes())
+	require.NoError(t, err)
+
+	prev, mime, err := store.Preview(stored.Name)
+	require.NoError(t, err)
+	require.Equal(t, "image/jpeg", mime)
+	require.Less(t, len(prev), buf.Len())
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(prev))
+	require.NoError(t, err)
+	require.Equal(t, 1280, cfg.Width)
+	require.Equal(t, 800, cfg.Height)
+	// Made once, then read back.
+	p, _ := store.path(stored.Name)
+	_, err = os.Stat(p + chatPreviewSuffix)
+	require.NoError(t, err)
+	again, _, err := store.Preview(stored.Name)
+	require.NoError(t, err)
+	require.Equal(t, prev, again)
+	// The orphan sweep doesn't list previews; removing the original takes the preview too.
+	require.Equal(t, []string{stored.Name}, store.OlderThan(time.Now().Add(time.Hour)))
+	store.Remove(stored.Name)
+	_, err = os.Stat(p + chatPreviewSuffix)
+	require.True(t, os.IsNotExist(err))
+
+	// Small pictures are served as they are.
+	small, err := store.Save(testPNG(t))
+	require.NoError(t, err)
+	data, mime, err := store.Preview(small.Name)
+	require.NoError(t, err)
+	require.Equal(t, "image/png", mime)
+	require.Equal(t, testPNG(t), data)
 }

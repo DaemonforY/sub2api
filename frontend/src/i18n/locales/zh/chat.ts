@@ -82,6 +82,8 @@ export default {
     drawingHint: '一般需要 30 秒到 2 分钟，关掉页面也会继续画完',
     editThisImage: '基于这张修改',
     download: '下载',
+    imageLoading: '图片加载中…',
+    downloadFailed: '下载失败，请重试',
     imageGone: '图片已失效',
     failed: '生成失败，请重试',
     stopped: '已停止生成',

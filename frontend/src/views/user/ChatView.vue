@@ -176,7 +176,7 @@
             @regenerate="regenerate"
             @edit="(content) => editAndSend(m, content)"
             @edit-image="editImage"
-            @open-image="lightbox = $event"
+            @open-image="openImage"
             @media="stick && scrollToBottom()"
           />
         </div>
@@ -672,6 +672,17 @@ function regenerate() {
 
 function editAndSend(m: ChatMessage, content: string) {
   void send({ content, files: m.files }, { editId: m.id, kind: m.kind })
+}
+
+// The viewer shows the preview at once and swaps in the original when it arrives.
+async function openImage(name: string) {
+  try {
+    lightbox.value = await chatAPI.fileURL(name)
+    const full = await chatAPI.fileURL(name, false)
+    if (lightbox.value) lightbox.value = full
+  } catch {
+    // the preview stays
+  }
 }
 
 function editImage(name: string) {

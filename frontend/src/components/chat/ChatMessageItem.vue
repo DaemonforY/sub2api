@@ -48,10 +48,16 @@
           <span class="px-6 text-center text-xs text-gray-400">{{ t('chat.drawingHint') }}</span>
         </div>
         <div v-for="f in message.files" :key="f" class="inline-block">
-          <ChatImage :name="f" box-class="w-full max-w-md aspect-auto min-h-40" @open="$emit('open-image', $event)" @loaded="loaded[f] = $event; $emit('media')" />
+          <ChatImage
+            :name="f"
+            box-class="w-full max-w-md aspect-auto min-h-40"
+            placeholder-class="h-64 w-64 max-w-full"
+            @open="$emit('open-image', $event)"
+            @loaded="loaded[f] = true; $emit('media')"
+          />
           <div class="mt-2 flex flex-wrap gap-2">
             <button type="button" class="chat-pill" @click="$emit('edit-image', f)"><Icon name="edit" size="xs" />{{ t('chat.editThisImage') }}</button>
-            <a v-if="loaded[f]" :href="loaded[f]" :download="`hivegpt-${message.id}.png`" class="chat-pill"><Icon name="download" size="xs" />{{ t('chat.download') }}</a>
+            <button v-if="loaded[f]" type="button" class="chat-pill" @click="download(f)"><Icon name="download" size="xs" />{{ t('chat.download') }}</button>
           </div>
         </div>
       </template>
@@ -84,7 +90,8 @@ import { computed, nextTick, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import { useClipboard } from '@/composables/useClipboard'
-import type { ChatMessage } from '@/api/chat'
+import { fileURL, type ChatMessage } from '@/api/chat'
+import { useAppStore } from '@/stores/app'
 import ChatImage from './ChatImage.vue'
 import { renderChatMarkdown } from './chatMarkdown'
 import 'highlight.js/styles/github-dark.css'
@@ -102,15 +109,16 @@ const emit = defineEmits<{
   (e: 'regenerate'): void
   (e: 'edit', content: string): void
   (e: 'edit-image', name: string): void
-  (e: 'open-image', src: string): void
+  (e: 'open-image', name: string): void
   /** A picture finished loading (the message grew). */
   (e: 'media'): void
 }>()
 
 const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
+const appStore = useAppStore()
 const html = computed(() => renderChatMarkdown(props.message.content, t('chat.copy')))
-const loaded = reactive<Record<string, string>>({})
+const loaded = reactive<Record<string, boolean>>({})
 
 const editing = ref(false)
 const draft = ref('')
@@ -131,6 +139,21 @@ function saveEdit() {
   if (!text) return
   editing.value = false
   emit('edit', text)
+}
+
+// 下载 saves the original (the page shows a smaller preview).
+async function download(name: string) {
+  try {
+    const url = await fileURL(name, false)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `hivegpt-${props.message.id}.${name.split('.').pop() || 'png'}`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  } catch {
+    appStore.showError(t('chat.downloadFailed'))
+  }
 }
 
 function onMdClick(e: MouseEvent) {
