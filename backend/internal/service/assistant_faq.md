@@ -28,6 +28,10 @@ HiveGPT（hivegpt.cn）是兼容 OpenAI 接口的 AI 模型 API 平台：注册�
 在「API 密钥」页点某个 Key 的「使用密钥」，最上面是「一键安装」（新用户在仪表盘的「三步开始使用」里也有）。Windows：点「复制」，按 Win+R 输入 powershell 回车，在打开的窗口里按 Ctrl+V（或单击右键）粘贴后回车，等显示「全部完成」。Mac：按 ⌘+空格 输入「终端」回车，把复制的那行命令按 ⌘+V 粘贴后回车。Windows 也可以展开「不想用 PowerShell？」下载 HiveGPT一键安装.cmd 双击运行；如果提示「智能应用控制已阻止可能不安全的文件」，这是 Windows 11 的智能应用控制拦下了从网上下载的脚本，没有「仍要运行」按钮：右键这个文件 → 属性 → 在「常规」页最下面勾选「解除锁定」→ 确定，再双击；还是不行就用 PowerShell 那一行，不建议关闭智能应用控制。Linux 在终端里粘贴同一行命令。
 它会从国内镜像装好 Claude Code、Codex 命令行（需要的 Node.js、Git 也会装），并配置好 Claude 桌面 App 和 Codex App，不需要管理员权限。Claude 分组的 Key 配 Claude Code 和 Claude 桌面 App，GPT 分组的 Key 配 Codex。以前配过 DeepSeek 等其它服务、或登录过官方账号也没关系：旧配置会先备份，账号登录不会被删除。装的是命令行工具，在开始菜单或「应用程序」里搜不到是正常的。装好后怎么用：Windows 在刚才的 PowerShell 窗口里（以后按 Win+R 输入 powershell 打开）、Mac 关掉终端再重新打开一个，然后依次输入 mkdir codex-test、cd codex-test、codex（用 Claude Code 就把最后一个换成 claude），每行回车；第一次问是否信任文件夹选「信任」，然后用中文说想做什么。想要有界面的 Codex 桌面 App：在窗口里输入 codex app 回车，会打开安装页（Windows 是 Microsoft Store），装好打开就会用 HiveGPT；Claude 桌面 App 从 claude.ai/download 下载。已经装了桌面 App 的要完全退出再打开（Claude 桌面 App 登录过 claude.ai 的，要在账户菜单里切到「HiveGPT」配置）。Codex 默认模型是 gpt-6.1-sol，在 Codex 里输入 /model 可以切换。想换回原来的配置，运行弹窗里「想换回原来的配置」那行命令。详细步骤和常见问题见 AI 学习站「一键安装 Claude Code 和 Codex」（/learn/connect/one-click）。命令和安装程序里带着 Key，不要发给别人。
 
+## Codex 桌面 App 突然发不了消息：提交消息时出错 / 无法开始此聊天（Work browser access requires an authenticated account）
+链接：/learn/codex/hivegpt
+这是 Codex 桌面 App 更新（26.1013 及以后）带来的限制，和 HiveGPT 的 Key、余额无关，请求根本没有发到 HiveGPT。新版左上角多了「Work」模式，它要用官方 ChatGPT 账号登录才能用，用 API Key 接入时选了它就会报这个错。解决：点左上角显示「ChatGPT Work」的地方，切回「Codex」，再发消息。还不行的话，在 Codex 设置里关掉浏览器（Browser）功能，或者用命令行版 codex（不受影响）。
+
 ## 能用 Claude Code 吗、Claude 怎么收费
 链接：/pricing
 能用。在「API 密钥」页创建 Key 时选「Claude-按量」分组，然后点这个 Key 的「使用密钥」，用最上面的「一键安装」自动装好并配置 Claude Code 和 Claude 桌面 App；也可以手动复制 Claude Code 的配置（ANTHROPIC_BASE_URL 和 ANTHROPIC_AUTH_TOKEN）按提示设置。Claude 分组只支持 Claude Code 客户端，Cherry Studio、Chatbox、Codex 或自己写代码调用 Claude 都会被拒绝；这些工具请用 GPT 分组的 Key。
