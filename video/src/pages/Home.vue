@@ -72,6 +72,14 @@
             </button>
           </div>
         </section>
+        <p v-if="lowBalanceTip" class="mx-auto mt-3 max-w-5xl rounded-xl bg-amber-50 px-4 py-2.5 text-sm leading-6 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200" data-testid="low-balance-tip">
+          <template v-if="balance <= 0">余额不足，Claude 暂时用不了。<a :href="`${MAIN_SITE_URL}/purchase`" target="_blank" class="font-medium underline">去充值</a>，或者换成 GPT-5.5 试试。</template>
+          <template v-else>
+            你的余额还有 ${{ balance.toFixed(2) }}。Claude 按 3 倍计费，做一个 1 分钟的视频大约要 $1–3，余额用完会停在半路。建议先做短动画试试效果：
+            <button v-if="mode === 'film' && length !== 'short'" class="font-medium underline" @click="length = 'short'">改成约 30 秒</button>
+            <button v-if="mode === 'film'" class="ml-2 font-medium underline" @click="mode = 'motion'">改做 AI 动画</button>
+          </template>
+        </p>
         <p class="mx-auto mt-2 max-w-5xl text-center text-xs text-ink-400">用 HiveGPT 账号登录，按实际用量从账户余额扣费。一个 1 分钟的视频通常需要 2–5 分钟生成，期间可以关掉页面。</p>
         <p class="mx-auto mt-1 max-w-5xl text-center text-xs text-ink-500">已经有做好的视频或 SVG 动画？<RouterLink to="/upload" class="font-medium text-brand-600 hover:underline" data-testid="home-upload">上传作品 →</RouterLink></p>
 
@@ -124,7 +132,7 @@ import HistorySidebar from '../components/HistorySidebar.vue'
 import Picker from '../components/Picker.vue'
 import StyleCard from '../components/StyleCard.vue'
 import WorkCard from '../components/WorkCard.vue'
-import { api, catalog, session, signIn, textModels } from '../lib/api'
+import { MAIN_SITE_URL, api, catalog, session, signIn, textModels } from '../lib/api'
 import { toast, toastError } from '../lib/toast'
 import { prefs, savePrefs } from '../lib/prefs'
 
@@ -181,6 +189,11 @@ const lengthOptions = [
   { value: 'standard', label: '约 1 分钟', hint: '5–7 个分镜' },
   { value: 'long', label: '2–3 分钟', hint: '8–10 个分镜' }
 ]
+// Claude runs cost several times GPT (group rate 3×); with a small balance a full film can stop
+// halfway, so suggest a short one first.
+const LOW_BALANCE_USD = 5
+const balance = computed(() => Number(session.me?.balance ?? 0))
+const lowBalanceTip = computed(() => !!session.me && model.value.startsWith('claude') && balance.value < LOW_BALANCE_USD && (mode.value === 'film' || balance.value <= 0))
 const secondOptions = [6, 8, 12, 16].map((s) => ({ value: s, label: `${s} 秒` }))
 const motionCategories = computed(() => cat.value.categories.filter((c) => c.mode === 'motion'))
 const filteredStyles = computed(() => cat.value.styles.filter((s) => !genre.value || s.id === 'auto' || s.genre === genre.value))
