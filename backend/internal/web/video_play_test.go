@@ -66,6 +66,15 @@ func TestVideoPlayPage(t *testing.T) {
 	assert.Equal(t, http.StatusNotModified, get("/play/"+id, etag).Code)
 	assert.Equal(t, http.StatusNotFound, get("/play/aaaaaaaa-abec-44c8-8ae8-6c5b6cc934db", "").Code, "not a public work")
 
+	// A chunk from an older build is a 404, not the app page; app routes still get the page.
+	w = get("/assets/Project-old.js", "")
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.NotContains(t, w.Body.String(), "<html>")
+	assert.Equal(t, http.StatusNotFound, get("/player/gone.js", "").Code)
+	w = get("/p/"+id, "")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "video")
+
 	w = get("/player/runtime.js?v=abc", "")
 	assert.Equal(t, staticAssetsCacheControl, w.Header().Get("Cache-Control"), "versioned assets are immutable")
 	w = get("/player/runtime.js", "")

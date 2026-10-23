@@ -309,6 +309,13 @@ func (s *FrontendServer) serveVideo(c *gin.Context, cleanPath string) {
 		return
 	}
 	name := "video/" + cleanPath
+	if !s.isFile(name) && videoStaticPath(cleanPath) {
+		// A chunk from an older build: answer 404 rather than the app's HTML, so the page's
+		// dynamic import fails as a load error and the router reloads into the current build.
+		c.String(http.StatusNotFound, "Not found")
+		c.Abort()
+		return
+	}
 	if cleanPath == "index.html" || !s.isFile(name) {
 		name = "video/index.html"
 	}
@@ -345,6 +352,12 @@ func (s *FrontendServer) serveVideo(c *gin.Context, cleanPath string) {
 	}
 	http.ServeFileFS(c.Writer, c.Request, s.distFS, name)
 	c.Abort()
+}
+
+// videoStaticPath reports whether a video-app path names a build file (scripts, styles, fonts, the
+// player), which must never fall back to the SPA page.
+func videoStaticPath(p string) bool {
+	return strings.HasPrefix(p, "assets/") || strings.HasPrefix(p, "player/") || strings.HasPrefix(p, "fonts/")
 }
 
 // requestHost is the request's host without port, lower-cased.
