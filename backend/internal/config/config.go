@@ -75,6 +75,7 @@ type Config struct {
 	ImageTools              ImageToolsConfig              `mapstructure:"image_tools"`
 	Sites                   SitesConfig                   `mapstructure:"sites"`
 	Video                   VideoConfig                   `mapstructure:"video"`
+	Chat                    ChatConfig                    `mapstructure:"chat"`
 	IndexNow                IndexNowConfig                `mapstructure:"indexnow"`
 	Community               CommunityConfig               `mapstructure:"community"`
 	CanvasCloud             CanvasCloudConfig             `mapstructure:"canvas_cloud"`
@@ -786,6 +787,12 @@ type VideoConfig struct {
 	// Dir stores narration audio; keep it on the persistent data volume.
 	Dir string `mapstructure:"dir"`
 	// GatewayURL overrides where the agent sends model calls (default: this server on loopback).
+	GatewayURL string `mapstructure:"gateway_url"`
+}
+
+// ChatConfig is AI 对话 (/chat).
+type ChatConfig struct {
+	// GatewayURL overrides where model calls go (default: this server on loopback).
 	GatewayURL string `mapstructure:"gateway_url"`
 }
 
@@ -2147,6 +2154,7 @@ func setDefaults() {
 	viper.SetDefault("video.domain", "")
 	viper.SetDefault("video.dir", "./data/video")
 	viper.SetDefault("video.gateway_url", "")
+	viper.SetDefault("chat.gateway_url", "")
 	viper.SetDefault("community.dir", "./data/community")
 	viper.SetDefault("canvas_cloud.dir", "./data/canvas-cloud")
 	viper.SetDefault("sites.main_site_url", "https://hivegpt.cn")

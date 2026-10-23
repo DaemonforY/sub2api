@@ -350,6 +350,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    // Not /chat/:id: the server sends /chat/* to the gateway (OpenAI paths without /v1).
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('@/views/user/ChatView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'AI Chat',
+      titleKey: 'chat.title'
+    }
+  },
+  {
     path: '/batch-image',
     name: 'BatchImageGuide',
     alias: '/docs/batch-image',

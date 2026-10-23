@@ -765,6 +765,31 @@ func ProvideCourseService(repo CourseRepository, encryptor SecretEncryptor, cfg 
 	return svc
 }
 
+// ProvideChatService wires AI 对话: model calls go to this server's own gateway on loopback, pictures
+// live beside the community's (community.dir/../chat). Replies a previous process left running are
+// marked interrupted, and unsent or orphaned pictures are swept hourly.
+func ProvideChatService(repo ChatRepository, keys APIKeyRepository, cfg *config.Config) *ChatService {
+	port, dir := 8080, "./data/chat"
+	if cfg != nil {
+		if cfg.Server.Port > 0 {
+			port = cfg.Server.Port
+		}
+		if cfg.Community.Dir != "" {
+			dir = filepath.Join(filepath.Dir(filepath.Clean(cfg.Community.Dir)), "chat")
+		}
+	}
+	gateway := "http://127.0.0.1:" + strconv.Itoa(port)
+	if cfg != nil && cfg.Chat.GatewayURL != "" {
+		gateway = cfg.Chat.GatewayURL
+	}
+	svc := NewChatService(repo, keys, NewChatFileStore(dir), gateway)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	svc.RecoverInterrupted(ctx)
+	svc.StartSweeper()
+	return svc
+}
+
 // ProvideSiteHostingService wires static-site hosting (SITES_DOMAIN enables it) and starts the hourly
 // subscription / renewal maintenance.
 func ProvideSiteHostingService(repo SiteHostingRepository, subs UserSubscriptionRepository, cache *BillingCacheService, settings SettingRepository, cfg *config.Config) *SiteHostingService {
@@ -1205,6 +1230,7 @@ var ProviderSet = wire.NewSet(
 	ProvideCanvasSessionService,
 	ProvideCanvasMembershipService,
 	NewCardGoodsService,
+	ProvideChatService,
 	ProvideCanvasCloudService,
 	ProvideCommunityService,
 	ProvideCourseService,

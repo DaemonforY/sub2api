@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ch-g" x1="8" y1="56" x2="56" y2="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+  <!-- A speech bubble with three dots -->
+  <path d="M10 18C10 12.477 14.477 8 20 8H40C45.523 8 50 12.477 50 18V32C50 37.523 45.523 42 40 42H26L15 51V42.4C12.064 41.1 10 38.17 10 34.8V18Z" stroke="url(#ch-g)" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="21" cy="25" r="3.2" fill="url(#ch-g)"/>
+  <circle cx="30" cy="25" r="3.2" fill="url(#ch-g)"/>
+  <circle cx="39" cy="25" r="3.2" fill="url(#ch-g)"/>
+  <!-- AI sparkle -->
+  <path d="M51 36L53.6 43.4L61 46L53.6 48.6L51 56L48.4 48.6L41 46L48.4 43.4L51 36Z" fill="#7C3AED"/>
+</svg>

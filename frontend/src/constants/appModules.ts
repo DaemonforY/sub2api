@@ -31,6 +31,14 @@ export const APP_MODULES: AppModule[] = [
     badgeKey: 'appModules.badgeNew'
   },
   {
+    key: 'chat',
+    labelKey: 'appModules.chat.name',
+    descriptionKey: 'appModules.chat.description',
+    iconUrl: '/apps/chat.svg',
+    to: '/chat',
+    badgeKey: 'appModules.badgeNew'
+  },
+  {
     key: 'editor',
     labelKey: 'appModules.editor.name',
     descriptionKey: 'appModules.editor.description',

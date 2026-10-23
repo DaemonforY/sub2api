@@ -168,6 +168,7 @@ func registerRoutes(
 	routes.RegisterCourseRoutes(v1, h, jwtAuth, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterLearnRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterEditorRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
+	routes.RegisterChatRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterStyleRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterAssistantRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterTutorRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)

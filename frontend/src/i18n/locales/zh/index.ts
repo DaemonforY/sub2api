@@ -23,6 +23,7 @@ import siteBuilder from './siteBuilder'
 import style from './style'
 import games from './games'
 import goods from './goods'
+import chat from './chat'
 
 export default {
   ...landing,
@@ -50,4 +51,5 @@ export default {
   ...style,
   ...games,
   ...goods,
+  ...chat,
 }

@@ -71,6 +71,10 @@ export default {
     sectionTitle: 'AI 应用',
     sectionHint: '更多应用陆续上线',
     badgeNew: '新',
+    chat: {
+      name: 'AI 对话',
+      description: '网页上直接和 GPT、Claude 聊天，能识图、能画图，记录跨设备同步'
+    },
     canvas: {
       name: '无限画布',
       description: '文生图、改图、裁剪美化，作品可一键投稿站内活动'

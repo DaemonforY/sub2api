@@ -41,6 +41,10 @@ func (r *accountDeletionRepository) PurgeOwnedContent(ctx context.Context, userI
 		// archive service (ListObjectsV2 + DeleteObjects on the user's prefixes).
 		`DELETE FROM conversation_archive_images WHERE user_id = $1`,
 		`DELETE FROM conversation_archive_turns WHERE user_id = $1`,
+		// AI 对话: messages cascade; the picture files are removed by the chat sweeper once their
+		// rows are gone.
+		`DELETE FROM chat_conversations WHERE user_id = $1`,
+		`DELETE FROM chat_files WHERE user_id = $1`,
 	} {
 		if _, err := r.db.ExecContext(ctx, q, userID); err != nil {
 			return fmt.Errorf("purge owned content: %w", err)

@@ -71,6 +71,10 @@ export default {
     sectionTitle: 'AI apps',
     sectionHint: 'More apps coming soon',
     badgeNew: 'New',
+    chat: {
+      name: 'AI Chat',
+      description: 'Chat with GPT and Claude in the browser, with images in and out; history syncs across devices'
+    },
     canvas: {
       name: 'Infinite Canvas',
       description: 'Generate and edit images, crop and retouch, submit to contests in one click'

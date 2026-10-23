@@ -23,6 +23,11 @@ describe('app modules', () => {
     expect(appModuleLink(editor, 'sidebar').href).toBe('/editor/?utm_source=hivegpt&utm_medium=sidebar')
   })
 
+  it('links AI 对话 as an in-app route', () => {
+    const chat = APP_MODULES.find((m) => m.key === 'chat')!
+    expect(appModuleLink(chat, 'sidebar')).toEqual({ to: '/chat' })
+  })
+
   it('renders external modules on the dashboard as new-tab links', () => {
     const wrapper = mount(UserDashboardApps, { global: { stubs: { RouterLink: true } } })
     const link = wrapper.get('[data-testid="dashboard-app-canvas"]')
