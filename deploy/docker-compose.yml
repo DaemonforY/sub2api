@@ -144,6 +144,11 @@ services:
       # Narration audio and users' uploaded videos / SVG animations. Keep it under /app/data (the
       # sub2api_data volume) so files survive container updates.
       - VIDEO_DIR=${VIDEO_DIR:-/app/data/video}
+      # Claude Code version the gateway presents when it forwards non-Claude-Code requests (chat
+      # completions, the video site) on Claude OAuth accounts. Anthropic refuses new models for old
+      # versions ("version 2.1.280 or newer is required"); raise it to a recent CLI release.
+      # Empty = the built-in baseline.
+      - SUB2API_CLAUDE_CLI_VERSION=${SUB2API_CLAUDE_CLI_VERSION:-}
 
       # =======================================================================
       # Gemini OAuth Configuration (for Gemini accounts)
