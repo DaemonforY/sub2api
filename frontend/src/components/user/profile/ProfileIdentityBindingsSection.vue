@@ -285,6 +285,7 @@ import {
   unbindAuthIdentity,
 } from '@/api/user'
 import Icon from '@/components/icons/Icon.vue'
+import { isWeChatFallbackUsername } from '@/utils/userDisplay'
 import { useAppStore, useAuthStore } from '@/stores'
 import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/types'
 
@@ -455,7 +456,6 @@ function syncWeChatProfile(): void {
 // (no sign-in needed there) and this page polls the user until the new name / avatar arrive.
 const WECHAT_SYNC_POLL_MS = 4000
 const WECHAT_SYNC_POLL_MAX_TICKS = 75 // 5 minutes
-const WECHAT_FALLBACK_USERNAME = /^微信用户(_[a-z0-9]{1,4})?$/
 const wechatSyncQrSupported = detectWeChatLoginTerminal() === 'pc'
 const showWeChatSyncQr = ref(false)
 const wechatSyncQrDataUrl = ref('')
@@ -524,7 +524,7 @@ watch(
   () => currentUser.value,
   (user) => {
     if (!wechatSyncQrSupported || wechatSyncQrAutoOpened || !user) return
-    if (getBindingStatusForUser(user, 'wechat') && WECHAT_FALLBACK_USERNAME.test(user.username || '')) {
+    if (getBindingStatusForUser(user, 'wechat') && isWeChatFallbackUsername(user.username)) {
       wechatSyncQrAutoOpened = true
       void openWeChatSyncQr()
     }

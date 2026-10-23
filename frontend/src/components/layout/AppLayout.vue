@@ -20,6 +20,8 @@
         <slot />
       </main>
     </div>
+
+    <RequireNicknameDialog />
   </div>
 </template>
 
@@ -33,6 +35,7 @@ import { useOnboardingStore } from '@/stores/onboarding'
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
 import LowBalanceBanner from './LowBalanceBanner.vue'
+import RequireNicknameDialog from '@/components/user/RequireNicknameDialog.vue'
 
 const appStore = useAppStore()
 const authStore = useAuthStore()

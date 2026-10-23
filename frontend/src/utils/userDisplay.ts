@@ -96,3 +96,13 @@ export function placeholderEmailHint(email: string | null | undefined, t: Transl
   if (!provider) return ''
   return t('userDisplay.emailUnbound', { provider: t(`userDisplay.login.${provider}`) })
 }
+
+/**
+ * The name the server gives a WeChat sign-up when WeChat returned no nickname (QR / code logins
+ * only get an openid): 「微信用户」 or 「微信用户_」 + up to 4 letters/digits. Matches wechatFallbackUsername.
+ */
+const WECHAT_FALLBACK_USERNAME = /^微信用户(_[a-z0-9]{1,4})?$/
+
+export function isWeChatFallbackUsername(username: string | null | undefined): boolean {
+  return WECHAT_FALLBACK_USERNAME.test((username || '').trim())
+}
