@@ -544,9 +544,21 @@ func TestSplitSpeechText(t *testing.T) {
 func TestEdgeSecMSGEC(t *testing.T) {
 	at := time.Date(2026, 10, 9, 5, 2, 0, 0, time.UTC)
 	a := edgeSecMSGEC(at)
-	require.Len(t, a, 64)
+	require.Len(t, a, 16+1+64)
 	require.Equal(t, a, edgeSecMSGEC(at.Add(2*time.Minute)), "same 5-minute window")
 	require.NotEqual(t, a, edgeSecMSGEC(at.Add(5*time.Minute)))
+}
+
+// Expected values from rany2/edge-tts generate_sec_ms_gec_v2.
+func TestEdgeSecMSGECv2Vectors(t *testing.T) {
+	for ts, want := range map[int64]string{
+		0:          "52BC7A17B50DFEC9-28C4394775C8751CD2F6859C030C06DB1489ACAB3B3A7651831FC26895177ED6",
+		1700000000: "2CD23A2CA0B2595A-F3C846C370E05F9CC83ACC5F995C5F5D87A4D0F14CE8936A0F902E64099E38A2",
+		1761300000: "FB5DBA9FF3D535F8-C63AE68E039A9D5A9ADD9FA6648858E3F6A6E20D99B3E279E5440EBEA674C198",
+		1793000123: "2D53AE79BABA1836-B8B1E1EB63A0281B58B809609078BF1D6D5147978D4835960D423F7C73F4B098",
+	} {
+		require.Equal(t, want, edgeSecMSGEC(time.Unix(ts, 0)), "ts %d", ts)
+	}
 }
 
 // TestEdgeTTSProtocol runs the client against a fake read-aloud websocket.

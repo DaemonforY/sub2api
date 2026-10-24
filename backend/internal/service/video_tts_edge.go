@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -108,15 +107,6 @@ func NewEdgeTTS() *EdgeTTS {
 	return &EdgeTTS{dialer: &websocket.Dialer{HandshakeTimeout: 15 * time.Second, EnableCompression: true}, url: edgeWSSURL, now: time.Now}
 }
 
-// edgeSecMSGEC is the anti-abuse token the service expects: SHA-256 of the Windows file time
-// (rounded down to 5 minutes, in 100 ns ticks) followed by the trusted client token.
-func edgeSecMSGEC(now time.Time) string {
-	ticks := now.Unix() + edgeWinEpoch
-	ticks -= ticks % 300
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%d%s", ticks*10_000_000, edgeTrustedClientToken)))
-	return strings.ToUpper(hex.EncodeToString(sum[:]))
-}
-
 func edgeID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
@@ -157,7 +147,7 @@ func (e *EdgeTTS) Synthesize(ctx context.Context, text, voice string, rate int) 
 
 func (e *EdgeTTS) synthesizeChunk(ctx context.Context, text, voice string, rate int) (*VideoSpeech, error) {
 	now := e.now().Add(time.Duration(e.skew.Load()))
-	url := fmt.Sprintf("%s?TrustedClientToken=%s&Sec-MS-GEC=%s&Sec-MS-GEC-Version=1-%s&ConnectionId=%s",
+	url := fmt.Sprintf("%s?TrustedClientToken=%s&Sec-MS-GEC=%s&Sec-MS-GEC-Version=2-%s&ConnectionId=%s",
 		e.url, edgeTrustedClientToken, edgeSecMSGEC(now), edgeChromiumVersion, edgeID())
 	header := http.Header{}
 	header.Set("Pragma", "no-cache")

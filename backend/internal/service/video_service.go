@@ -244,6 +244,7 @@ func (s *VideoService) finish(r *videoRun, err error, ctx context.Context) {
 		p.Status, p.Error = VideoStatusFailed, "生成超过 30 分钟仍未完成，已停止，可以点「继续生成」（Timed out）"
 	default:
 		p.Status, p.Error = VideoStatusFailed, videoErrorText(err)
+		slog.Warn("video: run failed", "id", p.ID, "err", err)
 	}
 	status, msg := p.Status, p.Error
 	r.mu.Unlock()
