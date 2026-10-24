@@ -37,6 +37,9 @@ const (
 	PromptSortPopular     = "popular"
 	PromptSortRecommended = "recommended"
 	PromptSortLatest      = "latest"
+	// Only for a user's own prompts: by their last use / their use count.
+	PromptSortUsed     = "used"
+	PromptSortMostUsed = "most_used"
 
 	promptTitleMaxRunes       = 60
 	promptTextMaxRunes        = 8000
@@ -44,7 +47,7 @@ const (
 	promptTagMaxRunes         = 16
 	promptMaxTags             = 8
 	promptMaxScenes           = 4
-	promptUserMaxItems        = 500
+	promptUserMaxItems        = 2000
 	promptListMaxPageSize     = 60
 	promptRecommendMax        = 60
 	// A repeated use by the same user only counts again after this long (the global "most used" order).
@@ -58,7 +61,7 @@ var (
 	ErrPromptTitleRequired = infraerrors.BadRequest("PROMPT_TITLE_REQUIRED", "请填写标题")
 	ErrPromptTextRequired  = infraerrors.BadRequest("PROMPT_TEXT_REQUIRED", "请填写提示词内容")
 	ErrPromptTooLong       = infraerrors.BadRequest("PROMPT_TOO_LONG", "提示词太长（上限 8000 字），请精简后再保存")
-	ErrPromptTooMany       = infraerrors.BadRequest("PROMPT_TOO_MANY", "最多保存 500 条自己的提示词，请先删除一些不用的")
+	ErrPromptTooMany       = infraerrors.BadRequest("PROMPT_TOO_MANY", "最多保存 2000 条自己的提示词，请先删除一些不用的（Too many prompts）")
 	ErrPromptInvalidScene  = infraerrors.BadRequest("PROMPT_INVALID_SCENE", "场景分类不正确")
 	ErrPromptInvalidStatus = infraerrors.BadRequest("PROMPT_INVALID_STATUS", "状态不正确")
 	ErrPromptInvalidKind   = infraerrors.BadRequest("PROMPT_INVALID_KIND", "类型只能是图片或视频")
@@ -106,8 +109,11 @@ type PromptItem struct {
 	DedupeKey          string     `json:"-"`
 	SyncHash           string     `json:"-"`
 	PublishedAt        *time.Time `json:"published_at,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	// FolderID / Pinned: the owner's own organisation (only shown to them).
+	FolderID  *int64    `json:"folder_id,omitempty"`
+	Pinned    bool      `json:"pinned,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // PublicView drops moderation details before an item leaves the admin API.
@@ -119,6 +125,8 @@ func (p PromptItem) PublicView() PromptItem {
 	p.Curated = false
 	if !p.Mine {
 		p.ReviewNote = ""
+		p.FolderID = nil
+		p.Pinned = false
 	}
 	if p.SourceID == PromptSourceUser && !p.Mine {
 		p.Author = ""
@@ -145,6 +153,8 @@ type PromptListQuery struct {
 	Featured *bool
 	// Owner lists one user's own items (any status).
 	OwnerUserID int64
+	// FolderID narrows an owner listing: 0 = every folder, -1 = 未分类, > 0 = that folder.
+	FolderID int64
 }
 
 func (q *PromptListQuery) normalize() {
@@ -161,8 +171,12 @@ func (q *PromptListQuery) normalize() {
 	if q.Kind != "image" && q.Kind != "video" {
 		q.Kind = ""
 	}
-	if q.Sort != PromptSortRecommended && q.Sort != PromptSortLatest {
+	ownSort := q.OwnerUserID > 0 && (q.Sort == PromptSortUsed || q.Sort == PromptSortMostUsed)
+	if q.Sort != PromptSortRecommended && q.Sort != PromptSortLatest && !ownSort {
 		q.Sort = PromptSortPopular
+	}
+	if q.OwnerUserID <= 0 || q.FolderID < -1 {
+		q.FolderID = 0
 	}
 	if q.Page < 1 {
 		q.Page = 1
@@ -293,6 +307,21 @@ type PromptLibraryRepository interface {
 	InsertCover(ctx context.Context, file string, userID, size int64) error
 	CountCoversSince(ctx context.Context, userID int64, since time.Time) (int, error)
 	CoverOwnedBy(ctx context.Context, file string, userID int64) (bool, error)
+
+	// 我的提示词: folders, pinning, bulk import.
+	ListFolders(ctx context.Context, userID int64) ([]PromptFolder, error)
+	// CountByFolder counts the user's prompts per folder; key 0 is 未分类.
+	CountByFolder(ctx context.Context, userID int64) (map[int64]int64, error)
+	CreateFolder(ctx context.Context, folder *PromptFolder) error
+	UpdateFolder(ctx context.Context, folder *PromptFolder) error
+	// DeleteFolder removes a folder; its prompts go to 未分类, or are deleted with withItems.
+	DeleteFolder(ctx context.Context, userID, id int64, withItems bool) (bool, error)
+	FolderOwnedBy(ctx context.Context, id, userID int64) (bool, error)
+	CountFolders(ctx context.Context, userID int64) (int, error)
+	// BatchMine applies op to the given prompts the user owns (others are ignored).
+	BatchMine(ctx context.Context, userID int64, ids []int64, op PromptMineBatchOp) (int64, error)
+	// OwnedDedupeKeys returns which of keys the user already has a prompt for.
+	OwnedDedupeKeys(ctx context.Context, userID int64, keys []string) (map[string]bool, error)
 }
 
 // PromptLibraryService implements the library for the canvas, users and admins.
@@ -648,6 +677,8 @@ type PromptUserInput struct {
 	CoverURL    string   `json:"cover_url"`
 	// Share asks for the prompt to be listed publicly (after review).
 	Share bool `json:"share"`
+	// FolderID: nil keeps the folder (edits) / 未分类 (new prompts); 0 = 未分类; > 0 = one of the user's folders.
+	FolderID *int64 `json:"folder_id,omitempty"`
 }
 
 func normalizePromptTags(tags []string) []string {
@@ -688,7 +719,7 @@ func (s *PromptLibraryService) validateUserInput(ctx context.Context, userID int
 		return ErrPromptTooLong
 	}
 	if in.Title == "" {
-		in.Title = PromptDisplayTitle("", in.Prompt, nil)
+		in.Title = PromptDisplayTitle("", promptTemplateText(in.Prompt), nil)
 	}
 	if in.Title == "" {
 		return ErrPromptTitleRequired
@@ -720,6 +751,15 @@ func (s *PromptLibraryService) validateUserInput(ctx context.Context, userID int
 			return ErrPromptInvalidCover
 		}
 		in.CoverURL = PromptCoverURL(file)
+	}
+	if in.FolderID != nil && *in.FolderID > 0 {
+		owned, err := s.repo.FolderOwnedBy(ctx, *in.FolderID, userID)
+		if err != nil {
+			return err
+		}
+		if !owned {
+			return ErrPromptFolderNotFound
+		}
 	}
 	return nil
 }
@@ -782,6 +822,7 @@ func (s *PromptLibraryService) CreateMine(ctx context.Context, userID int64, in 
 	owner := userID
 	item := &PromptItem{SourceID: PromptSourceUser, ExternalID: hex.EncodeToString(buf[:]), OwnerUserID: &owner, ReferenceImageURLs: []string{}, SourceTags: []string{}}
 	s.applyUserInput(item, in)
+	item.FolderID = folderRef(in.FolderID)
 	setPromptSharing(item, in.Share, true)
 	if err := s.repo.Insert(ctx, item); err != nil {
 		return nil, err
@@ -825,6 +866,9 @@ func (s *PromptLibraryService) UpdateMine(ctx context.Context, userID, id int64,
 	changed := item.Title != in.Title || item.Prompt != in.Prompt || item.Description != in.Description || item.CoverURL != in.CoverURL ||
 		strings.Join(item.Tags, "\x00") != strings.Join(in.Tags, "\x00")
 	s.applyUserInput(item, in)
+	if in.FolderID != nil {
+		item.FolderID = folderRef(in.FolderID)
+	}
 	setPromptSharing(item, in.Share, changed)
 	if err := s.repo.Update(ctx, item); err != nil {
 		return nil, err

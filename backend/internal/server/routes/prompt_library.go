@@ -33,8 +33,14 @@ func RegisterPromptLibraryRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKe
 		keyed.PUT("/items/:id/favorite", h.PromptLibrary.Favorite)
 		keyed.GET("/mine", h.PromptLibrary.ListMine)
 		keyed.POST("/mine", h.PromptLibrary.CreateMine)
+		keyed.POST("/mine/import", h.PromptLibrary.ImportMine)
+		keyed.POST("/mine/batch", h.PromptLibrary.BatchMine)
 		keyed.PUT("/mine/:id", h.PromptLibrary.UpdateMine)
 		keyed.DELETE("/mine/:id", h.PromptLibrary.DeleteMine)
 		keyed.POST("/covers", h.PromptLibrary.UploadCover)
+		keyed.GET("/folders", h.PromptLibrary.ListFolders)
+		keyed.POST("/folders", h.PromptLibrary.CreateFolder)
+		keyed.PUT("/folders/:id", h.PromptLibrary.UpdateFolder)
+		keyed.DELETE("/folders/:id", h.PromptLibrary.DeleteFolder)
 	}
 }

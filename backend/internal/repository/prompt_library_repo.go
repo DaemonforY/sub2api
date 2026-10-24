@@ -30,7 +30,7 @@ SELECT i.id, i.source_id,
        CASE WHEN i.title_zh <> '' THEN i.title_zh ELSE i.title END, i.title, i.title_zh, i.prompt, i.description, i.cover_url,
        i.reference_image_urls, i.source_tags, i.scenes, i.tags, i.model, i.lang, i.needs_reference, i.auto_flags,
        i.author, i.source_url, i.visibility, i.status, i.review_note, i.curated, i.featured, i.quality_score,
-       i.use_count, i.favorite_count, i.dedupe_key, i.published_at, i.created_at, i.updated_at
+       i.use_count, i.favorite_count, i.dedupe_key, i.published_at, i.folder_id, i.pinned, i.created_at, i.updated_at
 FROM prompt_items i
 LEFT JOIN prompt_sources ps ON ps.id = i.source_id
 LEFT JOIN users u ON u.id = i.owner_user_id`
@@ -45,11 +45,12 @@ func scanPromptItem(row rowScanner) (*service.PromptItem, error) {
 		tags      pq.StringArray
 		flags     pq.StringArray
 		published sql.NullTime
+		folder    sql.NullInt64
 	)
 	if err := row.Scan(&item.ID, &item.SourceID, &item.SourceName, &item.ExternalID, &owner, &item.OwnerEmail, &item.Kind, &item.Title,
 		&item.OriginalTitle, &item.TitleZh, &item.Prompt, &item.Description, &item.CoverURL, &refs, &srcTags, &scenes, &tags, &item.Model, &item.Lang, &item.NeedsReference,
 		&flags, &item.Author, &item.SourceURL, &item.Visibility, &item.Status, &item.ReviewNote, &item.Curated, &item.Featured,
-		&item.QualityScore, &item.UseCount, &item.FavoriteCount, &item.DedupeKey, &published, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		&item.QualityScore, &item.UseCount, &item.FavoriteCount, &item.DedupeKey, &published, &folder, &item.Pinned, &item.CreatedAt, &item.UpdatedAt); err != nil {
 		return nil, err
 	}
 	if owner.Valid {
@@ -59,6 +60,10 @@ func scanPromptItem(row rowScanner) (*service.PromptItem, error) {
 	if published.Valid {
 		t := published.Time
 		item.PublishedAt = &t
+	}
+	if folder.Valid {
+		id := folder.Int64
+		item.FolderID = &id
 	}
 	if item.OriginalTitle == item.Title {
 		item.OriginalTitle = ""
@@ -123,6 +128,12 @@ func buildPromptWhere(q service.PromptListQuery, withScene bool) *promptWhere {
 	switch {
 	case q.OwnerUserID > 0:
 		w.add("i.owner_user_id = ?", q.OwnerUserID)
+		switch {
+		case q.FolderID == -1:
+			w.add("i.folder_id IS NULL")
+		case q.FolderID > 0:
+			w.add("i.folder_id = ?", q.FolderID)
+		}
 	case !q.Admin:
 		w.add("i.status = 'active' AND i.visibility = 'public'")
 	default:
@@ -170,8 +181,21 @@ func buildPromptWhere(q service.PromptListQuery, withScene bool) *promptWhere {
 	return w
 }
 
-func promptOrderBy(sort string) string {
-	switch sort {
+func promptOrderBy(q service.PromptListQuery) string {
+	if q.OwnerUserID > 0 {
+		// 「我的」: pinned first; "used" / "most_used" read the owner's own uses (the owner id is a
+		// validated int64, so it is inlined rather than bound).
+		uses := fmt.Sprintf("(SELECT %%s FROM prompt_item_uses pu WHERE pu.user_id = %d AND pu.item_id = i.id)", q.OwnerUserID)
+		switch q.Sort {
+		case service.PromptSortUsed:
+			return " ORDER BY i.pinned DESC, " + fmt.Sprintf(uses, "pu.last_used_at") + " DESC NULLS LAST, i.created_at DESC, i.id DESC"
+		case service.PromptSortMostUsed:
+			return " ORDER BY i.pinned DESC, COALESCE(" + fmt.Sprintf(uses, "pu.uses") + ", 0) DESC, i.created_at DESC, i.id DESC"
+		default:
+			return " ORDER BY i.pinned DESC, i.created_at DESC, i.id DESC"
+		}
+	}
+	switch q.Sort {
 	case service.PromptSortRecommended:
 		return " ORDER BY (i.quality_score + CASE WHEN i.featured THEN 6 ELSE 0 END + LEAST(ln(1 + i.use_count) * 2, 10)) DESC, i.id DESC"
 	case service.PromptSortLatest:
@@ -206,7 +230,7 @@ func (r *promptLibraryRepository) List(ctx context.Context, q service.PromptList
 		totalCh <- r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM prompt_items i"+w.sql(), w.args...).Scan(&total)
 	}()
 	args := append(append([]any{}, w.args...), q.PageSize, (q.Page-1)*q.PageSize)
-	query := promptItemSelect + w.sql() + promptOrderBy(q.Sort) + fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(w.args)+1, len(w.args)+2)
+	query := promptItemSelect + w.sql() + promptOrderBy(q) + fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(w.args)+1, len(w.args)+2)
 	items, err := r.queryItems(ctx, query, args...)
 	if countErr := <-totalCh; countErr != nil {
 		return nil, 0, countErr
@@ -245,14 +269,14 @@ func (r *promptLibraryRepository) Insert(ctx context.Context, item *service.Prom
 	return r.db.QueryRowContext(ctx, `
 INSERT INTO prompt_items (source_id, external_id, owner_user_id, kind, title, prompt, description, cover_url, reference_image_urls,
     source_tags, scenes, tags, model, lang, needs_reference, auto_flags, author, source_url, visibility, status, review_note,
-    curated, featured, quality_score, dedupe_key, published_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+    curated, featured, quality_score, dedupe_key, published_at, folder_id, pinned)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
 RETURNING id, created_at, updated_at`,
 		item.SourceID, item.ExternalID, item.OwnerUserID, item.Kind, item.Title, item.Prompt, item.Description, item.CoverURL,
 		encodeStringList(item.ReferenceImageURLs), encodeStringList(item.SourceTags), pq.Array(nonNilStrings(item.Scenes)),
 		pq.Array(nonNilStrings(item.Tags)), item.Model, item.Lang, item.NeedsReference, pq.Array(nonNilStrings(item.AutoFlags)),
 		item.Author, item.SourceURL, item.Visibility, item.Status, item.ReviewNote, item.Curated, item.Featured, item.QualityScore,
-		item.DedupeKey, item.PublishedAt,
+		item.DedupeKey, item.PublishedAt, item.FolderID, item.Pinned,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
 }
 
@@ -260,13 +284,13 @@ func (r *promptLibraryRepository) Update(ctx context.Context, item *service.Prom
 	return r.db.QueryRowContext(ctx, `
 UPDATE prompt_items SET kind = $2, title = $3, prompt = $4, description = $5, cover_url = $6, scenes = $7, tags = $8, model = $9,
     lang = $10, needs_reference = $11, auto_flags = $12, visibility = $13, status = $14, review_note = $15, curated = $16,
-    featured = $17, quality_score = $18, dedupe_key = $19, published_at = $20, title_zh = $21, updated_at = NOW()
+    featured = $17, quality_score = $18, dedupe_key = $19, published_at = $20, title_zh = $21, folder_id = $22, pinned = $23, updated_at = NOW()
 WHERE id = $1
 RETURNING updated_at`,
 		item.ID, item.Kind, item.Title, item.Prompt, item.Description, item.CoverURL, pq.Array(nonNilStrings(item.Scenes)),
 		pq.Array(nonNilStrings(item.Tags)), item.Model, item.Lang, item.NeedsReference, pq.Array(nonNilStrings(item.AutoFlags)),
 		item.Visibility, item.Status, item.ReviewNote, item.Curated, item.Featured, item.QualityScore, item.DedupeKey, item.PublishedAt,
-		item.TitleZh,
+		item.TitleZh, item.FolderID, item.Pinned,
 	).Scan(&item.UpdatedAt)
 }
 

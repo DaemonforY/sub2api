@@ -39,6 +39,19 @@ func PromptListQueryFromRequest(c *gin.Context) service.PromptListQuery {
 	}
 }
 
+// promptFolderQuery reads ?folder= of a 「我的」 listing: "unfiled" = 未分类, an id = that folder.
+func promptFolderQuery(c *gin.Context) int64 {
+	raw := strings.TrimSpace(c.Query("folder"))
+	if raw == "unfiled" {
+		return -1
+	}
+	id, _ := strconv.ParseInt(raw, 10, 64)
+	if id < 0 {
+		return 0
+	}
+	return id
+}
+
 func promptPathID(c *gin.Context) (int64, bool) {
 	id, err := strconv.ParseInt(strings.TrimSpace(c.Param("id")), 10, 64)
 	if err != nil || id <= 0 {
@@ -135,7 +148,9 @@ func (h *PromptLibraryHandler) ListMine(c *gin.Context) {
 	if !ok {
 		return
 	}
-	res, err := h.service.ListMine(c.Request.Context(), userID, PromptListQueryFromRequest(c))
+	q := PromptListQueryFromRequest(c)
+	q.FolderID = promptFolderQuery(c)
+	res, err := h.service.ListMine(c.Request.Context(), userID, q)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -243,4 +258,131 @@ func (h *PromptLibraryHandler) UploadCover(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"url": url})
+}
+
+// ImportMine POST /api/v1/prompt-library/mine/import  {items, folder_id}
+func (h *PromptLibraryHandler) ImportMine(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Items    []service.PromptUserInput `json:"items"`
+		FolderID int64                     `json:"folder_id"`
+	}
+	// 100 prompts of up to 8000 characters (3 bytes each) plus titles and tags.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 3<<20)
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "请求格式不正确（Invalid request）")
+		return
+	}
+	res, err := h.service.ImportMine(c.Request.Context(), userID, in.Items, in.FolderID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, res)
+}
+
+// BatchMine POST /api/v1/prompt-library/mine/batch  {ids, action, folder_id}
+func (h *PromptLibraryHandler) BatchMine(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		IDs []int64 `json:"ids"`
+		service.PromptMineBatchOp
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "请求格式不正确（Invalid request）")
+		return
+	}
+	n, err := h.service.BatchMine(c.Request.Context(), userID, in.IDs, in.PromptMineBatchOp)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"affected": n})
+}
+
+// ListFolders GET /api/v1/prompt-library/folders
+func (h *PromptLibraryHandler) ListFolders(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	res, err := h.service.ListFolders(c.Request.Context(), userID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, res)
+}
+
+type promptFolderRequest struct {
+	Name      string `json:"name"`
+	SortOrder int    `json:"sort_order"`
+}
+
+// CreateFolder POST /api/v1/prompt-library/folders  {name}
+func (h *PromptLibraryHandler) CreateFolder(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	var in promptFolderRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "请求格式不正确（Invalid request）")
+		return
+	}
+	folder, err := h.service.CreateFolder(c.Request.Context(), userID, in.Name)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, folder)
+}
+
+// UpdateFolder PUT /api/v1/prompt-library/folders/:id  {name, sort_order}
+func (h *PromptLibraryHandler) UpdateFolder(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.ErrorFrom(c, service.ErrPromptFolderNotFound)
+		return
+	}
+	var in promptFolderRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "请求格式不正确（Invalid request）")
+		return
+	}
+	folder, err := h.service.UpdateFolder(c.Request.Context(), userID, id, in.Name, in.SortOrder)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, folder)
+}
+
+// DeleteFolder DELETE /api/v1/prompt-library/folders/:id[?with_items=1]
+func (h *PromptLibraryHandler) DeleteFolder(c *gin.Context) {
+	userID, ok := appStateUserID(c)
+	if !ok {
+		return
+	}
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || id <= 0 {
+		response.ErrorFrom(c, service.ErrPromptFolderNotFound)
+		return
+	}
+	if err := h.service.DeleteFolder(c.Request.Context(), userID, id, c.Query("with_items") == "1"); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"deleted": true})
 }
