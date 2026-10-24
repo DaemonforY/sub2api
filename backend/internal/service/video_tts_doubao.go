@@ -59,17 +59,18 @@ func videoVoicePaid(id string) bool {
 
 // DoubaoTTS speaks through 豆包语音 2.0.
 type DoubaoTTS struct {
-	appID, accessKey, url string
-	client                *http.Client
+	apiKey, appID, accessKey, url string
+	client                        *http.Client
 }
 
-// NewDoubaoTTS returns nil when the credentials are missing (paid voices off).
-func NewDoubaoTTS(appID, accessKey string) *DoubaoTTS {
-	appID, accessKey = strings.TrimSpace(appID), strings.TrimSpace(accessKey)
-	if appID == "" || accessKey == "" {
+// NewDoubaoTTS takes the console's API Key (X-Api-Key), or the old console's App ID + Access Token;
+// it returns nil when neither is set (paid voices off).
+func NewDoubaoTTS(apiKey, appID, accessKey string) *DoubaoTTS {
+	apiKey, appID, accessKey = strings.TrimSpace(apiKey), strings.TrimSpace(appID), strings.TrimSpace(accessKey)
+	if apiKey == "" && (appID == "" || accessKey == "") {
 		return nil
 	}
-	return &DoubaoTTS{appID: appID, accessKey: accessKey, url: doubaoTTSURL, client: &http.Client{Timeout: 90 * time.Second}}
+	return &DoubaoTTS{apiKey: apiKey, appID: appID, accessKey: accessKey, url: doubaoTTSURL, client: &http.Client{Timeout: 90 * time.Second}}
 }
 
 func (d *DoubaoTTS) Synthesize(ctx context.Context, text, voice string, rate int, tone string) (*VideoSpeech, error) {
@@ -108,7 +109,7 @@ func (d *DoubaoTTS) synthesizeChunk(ctx context.Context, text, voice string, rat
 			"speaker": voice,
 			"audio_params": map[string]any{
 				"format": "mp3", "sample_rate": 24000, "speech_rate": rate,
-				"enable_subtitle": true, "enable_timestamp": true,
+				"enable_subtitle": true,
 			},
 			"additions": string(addJSON),
 		},
@@ -120,8 +121,12 @@ func (d *DoubaoTTS) synthesizeChunk(ctx context.Context, text, voice string, rat
 	reqID := make([]byte, 16)
 	_, _ = rand.Read(reqID)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Api-App-Id", d.appID)
-	req.Header.Set("X-Api-Access-Key", d.accessKey)
+	if d.apiKey != "" {
+		req.Header.Set("X-Api-Key", d.apiKey)
+	} else {
+		req.Header.Set("X-Api-App-Id", d.appID)
+		req.Header.Set("X-Api-Access-Key", d.accessKey)
+	}
 	req.Header.Set("X-Api-Resource-Id", doubaoTTSResourceID)
 	req.Header.Set("X-Api-Request-Id", hex.EncodeToString(reqID))
 	resp, err := d.client.Do(req)

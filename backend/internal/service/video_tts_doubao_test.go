@@ -48,7 +48,7 @@ func TestDoubaoTTSProtocol(t *testing.T) {
 		_, _ = io.WriteString(w, `{"code":20000000,"message":"OK","data":null}`+"\n")
 	}))
 	defer srv.Close()
-	d := NewDoubaoTTS("app", "token")
+	d := NewDoubaoTTS("", "app", "token")
 	d.url = srv.URL
 	sp, err := d.Synthesize(context.Background(), "你好，世界。", "zh_male_m191_uranus_bigtts", 10, "沉稳地讲解")
 	require.NoError(t, err)
@@ -79,13 +79,27 @@ func TestDoubaoTTSErrors(t *testing.T) {
 			w.WriteHeader(tc.status)
 			_, _ = io.WriteString(w, tc.body)
 		}))
-		d := NewDoubaoTTS("app", "token")
+		d := NewDoubaoTTS("", "app", "token")
 		d.url = srv.URL
 		_, err := d.Synthesize(context.Background(), "你好", "zh_female_vv_uranus_bigtts", 0, "")
 		require.ErrorIs(t, err, errEdgeTTS, tc.body) // shown as 「配音服务暂时不可用」
 		srv.Close()
 	}
-	require.Nil(t, NewDoubaoTTS("", "token"))
+	require.Nil(t, NewDoubaoTTS("", "", "token"))
+
+	// The new console's API Key goes in X-Api-Key.
+	var gotKey, gotApp string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotKey, gotApp = r.Header.Get("X-Api-Key"), r.Header.Get("X-Api-App-Id")
+		_, _ = io.WriteString(w, `{"code":0,"data":"`+base64.StdEncoding.EncodeToString(fakeMP3(5))+`"}`+"\n"+`{"code":20000000}`+"\n")
+	}))
+	defer srv.Close()
+	d := NewDoubaoTTS(" key ", "", "")
+	d.url = srv.URL
+	_, err := d.Synthesize(context.Background(), "你好", "zh_female_vv_uranus_bigtts", 0, "")
+	require.NoError(t, err)
+	require.Equal(t, "key", gotKey)
+	require.Empty(t, gotApp)
 }
 
 type fakePaidTTS struct {

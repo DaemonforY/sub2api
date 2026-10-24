@@ -642,9 +642,9 @@ func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings Sett
 	if store, ok := repo.(VideoKeyStore); ok && keySvc != nil {
 		svc.SetModelBilling(settings, groups, store, apiKeys, users, keySvc.GenerateKey)
 	}
-	// Paid narrators (豆包语音 2.0) when VIDEO_DOUBAO_APP_ID / VIDEO_DOUBAO_ACCESS_KEY are set.
+	// Paid narrators (豆包语音 2.0) when VIDEO_DOUBAO_API_KEY (or the old App ID + Access Token) is set.
 	if cfg != nil {
-		if doubao := NewDoubaoTTS(cfg.Video.DoubaoAppID, cfg.Video.DoubaoAccessKey); doubao != nil {
+		if doubao := NewDoubaoTTS(cfg.Video.DoubaoAPIKey, cfg.Video.DoubaoAppID, cfg.Video.DoubaoAccessKey); doubao != nil {
 			if billing, ok := repo.(VideoTTSBilling); ok {
 				var cache videoBalanceCache
 				if billingCache != nil {

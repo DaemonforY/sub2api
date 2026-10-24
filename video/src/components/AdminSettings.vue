@@ -24,7 +24,7 @@
 
     <section class="card p-5">
       <h2 class="font-semibold">付费配音（豆包语音 2.0）</h2>
-      <p class="mt-1 text-sm text-ink-500">用户选豆包音色时，按旁白字数从余额扣费，每段配好后扣一次，失败不扣；余额不够本次配音时不开始。豆包的成本约 ¥3/万字。服务器配置了 VIDEO_DOUBAO_APP_ID / VIDEO_DOUBAO_ACCESS_KEY 后，创作页才会出现这些音色。</p>
+      <p class="mt-1 text-sm text-ink-500">用户选豆包音色时，按旁白字数从余额扣费，每段配好后扣一次，失败不扣；余额不够本次配音时不开始。豆包的成本约 ¥3/万字。服务器配置了 VIDEO_DOUBAO_API_KEY（豆包语音控制台 → API Key）后，创作页才会出现这些音色。</p>
       <label class="mt-4 flex items-center gap-2 text-sm">每万字 $ <input v-model.number="st.tts_price_per_10k" type="number" min="0.01" max="1000" step="0.5" class="input w-24" /></label>
     </section>
 
