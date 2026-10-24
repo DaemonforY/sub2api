@@ -116,3 +116,30 @@ func TestHandleOpenAITransientError_HardDisableStillBlocksWholeAccount(t *testin
 	require.False(t, svc.isOpenAIAccountRequestRuntimeBlocked(account, "gpt-5.6-sol"))
 	require.False(t, svc.isOpenAIAccountRuntimeBlocked(account))
 }
+
+func TestHandleOpenAITransientError_NoCooldownWhenAccountHasNoAlternative(t *testing.T) {
+	body := []byte(`{"error":{"message":"Upstream request failed","type":"upstream_error"}}`)
+	account := &Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Status: StatusActive, Schedulable: true, GroupIDs: []int64{2}}
+
+	t.Run("only account in its groups", func(t *testing.T) {
+		svc := &OpenAIGatewayService{
+			schedulerSnapshot: &SchedulerSnapshotService{cache: &openAISnapshotCacheStub{snapshotAccounts: []*Account{account}}},
+		}
+		svc.rateLimitService = NewRateLimitService(transientCooldownAccountRepo{}, nil, &config.Config{}, nil, nil)
+		for i := 0; i < 4; i++ {
+			require.False(t, svc.handleOpenAIAccountUpstreamError(context.Background(), account, 524, http.Header{}, body, "gpt-6-astra"))
+		}
+		require.False(t, svc.isOpenAIAccountModelRuntimeBlocked(account, "gpt-6-astra"))
+	})
+
+	t.Run("another account can take the request", func(t *testing.T) {
+		other := &Account{ID: 9, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Status: StatusActive, Schedulable: true, GroupIDs: []int64{2}}
+		svc := &OpenAIGatewayService{
+			schedulerSnapshot: &SchedulerSnapshotService{cache: &openAISnapshotCacheStub{snapshotAccounts: []*Account{account, other}}},
+		}
+		svc.rateLimitService = NewRateLimitService(transientCooldownAccountRepo{}, nil, &config.Config{}, nil, nil)
+		svc.handleOpenAIAccountUpstreamError(context.Background(), account, 524, http.Header{}, body, "gpt-6-astra")
+		svc.handleOpenAIAccountUpstreamError(context.Background(), account, 524, http.Header{}, body, "gpt-6-astra")
+		require.True(t, svc.isOpenAIAccountModelRuntimeBlocked(account, "gpt-6-astra"))
+	})
+}

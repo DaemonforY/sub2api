@@ -193,6 +193,17 @@ func (s *OpenAIGatewayService) handleOpenAIAccountUpstreamError(ctx context.Cont
 		if len(canonicalModel) > 0 {
 			model = canonicalModel[0]
 		}
+		if !s.openAIAccountHasSchedulingAlternative(stateCtx, account) {
+			// The only account in its groups: a cooldown has nowhere to send the next
+			// request, it would only refuse every request for this model with a 503 until it
+			// expires (Codex's 5 quick reconnects all land inside it). Let them try instead.
+			slog.Info("openai_model_transient_skipped_no_alternative",
+				"account_id", account.ID,
+				"model", openAIAccountModelTransientModel(model),
+				"status_code", statusCode,
+			)
+			return shouldDisable
+		}
 		decision := s.recordOpenAIAccountModelTransientFailure(account, model, time.Now())
 		if decision.FailureStreak > 0 {
 			slog.Warn("openai_model_transient_state",
@@ -205,6 +216,29 @@ func (s *OpenAIGatewayService) handleOpenAIAccountUpstreamError(ctx context.Cont
 		}
 	}
 	return shouldDisable
+}
+
+// openAIAccountHasSchedulingAlternative reports whether one of account's groups has another
+// schedulable account of the same platform. The account+model transient cooldown exists to steer
+// requests to such accounts. Unknown groups or a snapshot error count as "has one", which keeps the
+// cooldown as before.
+func (s *OpenAIGatewayService) openAIAccountHasSchedulingAlternative(ctx context.Context, account *Account) bool {
+	if s == nil || account == nil || s.schedulerSnapshot == nil || len(account.GroupIDs) == 0 {
+		return true
+	}
+	for _, gid := range account.GroupIDs {
+		groupID := gid
+		accounts, _, err := s.schedulerSnapshot.ListSchedulableAccounts(ctx, &groupID, account.Platform, false)
+		if err != nil {
+			return true
+		}
+		for i := range accounts {
+			if accounts[i].ID != account.ID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func shouldCooldownOpenAITransientUpstreamError(statusCode int, responseBody []byte) bool {
