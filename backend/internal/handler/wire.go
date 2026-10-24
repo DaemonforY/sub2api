@@ -242,6 +242,7 @@ func ProvideHandlers(
 	conversationArchiveHandler *ConversationArchiveHandler,
 	canvasMembershipHandler *CanvasMembershipHandler,
 	cardGoodsHandler *CardGoodsHandler,
+	promptMarketHandler *PromptMarketHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -297,6 +298,7 @@ func ProvideHandlers(
 		ConversationArchive: conversationArchiveHandler,
 		CanvasMembership:    canvasMembershipHandler,
 		CardGoods:           cardGoodsHandler,
+		PromptMarket:        promptMarketHandler,
 	}
 }
 
@@ -343,6 +345,7 @@ var ProviderSet = wire.NewSet(
 	NewCanvasSessionHandler,
 	NewCanvasMembershipHandler,
 	NewCardGoodsHandler,
+	NewPromptMarketHandler,
 	NewCanvasCloudHandler,
 	NewCommunityHandler,
 	NewCourseHandler,

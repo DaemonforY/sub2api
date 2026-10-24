@@ -107,6 +107,8 @@ type Handlers struct {
 	ConversationArchive *ConversationArchiveHandler
 	CanvasMembership    *CanvasMembershipHandler
 	CardGoods           *CardGoodsHandler
+	// PromptMarket is 提示词交易 (canvas + admin).
+	PromptMarket *PromptMarketHandler
 }
 
 // BuildInfo contains build-time information

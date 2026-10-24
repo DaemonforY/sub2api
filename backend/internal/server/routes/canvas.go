@@ -58,6 +58,37 @@ func RegisterCanvasRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth midd
 		signedIn.POST("/unmarked-saves", h.CanvasSession.UnmarkedSave)
 	}
 
+	// 提示词交易: anyone may browse (a signed-in viewer also sees what they bought); buying and
+	// selling need the canvas session, since they move 余额.
+	if h.PromptMarket != nil {
+		pm := h.PromptMarket
+		browse := canvas.Group("/market")
+		browse.Use(middleware.CanvasSessionOptional(sessions))
+		browse.Use(panelRateLimiter.PublicIP())
+		{
+			browse.GET("/config", pm.Config)
+			browse.GET("/listings", pm.List)
+			browse.GET("/listings/:id", pm.Get)
+		}
+		trade := canvas.Group("/market")
+		trade.Use(middleware.CanvasSessionAuth(sessions))
+		trade.Use(middleware.BackendModeUserGuard(settingService))
+		trade.Use(panelRateLimiter.Global())
+		{
+			trade.POST("/listings/:id/purchase", pm.Purchase)
+			trade.GET("/purchases", pm.Purchases)
+			trade.GET("/selling", pm.Selling)
+			trade.POST("/selling", pm.CreateListing)
+			trade.PUT("/selling/:id", pm.UpdateListing)
+			trade.POST("/selling/:id/withdraw", pm.SetListed(false))
+			trade.POST("/selling/:id/relist", pm.SetListed(true))
+			if h.PromptLibrary != nil {
+				// Cover and sample images (same store as prompt covers, owned by the signed-in user).
+				trade.POST("/covers", h.PromptLibrary.UploadCover)
+			}
+		}
+	}
+
 	// Cloud sync of canvas projects, assets and workbench records (per-user files, quota).
 	if h.CanvasCloud != nil {
 		cloud := canvas.Group("/cloud")

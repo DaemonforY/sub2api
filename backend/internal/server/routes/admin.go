@@ -143,6 +143,7 @@ func RegisterAdminRoutes(
 		registerGeoMonitorRoutes(admin, h)
 		registerContentEngineRoutes(admin, h)
 		registerCanvasMembershipAdminRoutes(admin, h)
+		registerPromptMarketAdminRoutes(admin, h)
 		registerCardGoodsAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
@@ -1242,6 +1243,24 @@ func registerCanvasMembershipAdminRoutes(admin *gin.RouterGroup, h *handler.Hand
 	admin.GET("/canvas-membership", h.CanvasMembership.AdminGet)
 	admin.PUT("/canvas-membership", h.CanvasMembership.AdminSave)
 	admin.POST("/canvas-membership/grant", h.CanvasMembership.AdminGrant)
+}
+
+// registerPromptMarketAdminRoutes 提示词交易：交易设置、上架审核、下架、购买记录与退款。
+func registerPromptMarketAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.PromptMarket == nil {
+		return
+	}
+	pm := h.PromptMarket
+	g := admin.Group("/prompt-market")
+	g.GET("/config", pm.AdminGetConfig)
+	g.PUT("/config", pm.AdminSaveConfig)
+	g.GET("/listings", pm.AdminList)
+	g.POST("/listings/:id/approve", pm.AdminReview("approve"))
+	g.POST("/listings/:id/reject", pm.AdminReview("reject"))
+	g.POST("/listings/:id/hide", pm.AdminReview("hide"))
+	g.POST("/listings/:id/restore", pm.AdminReview("restore"))
+	g.GET("/purchases", pm.AdminPurchases)
+	g.POST("/purchases/:id/refund", pm.AdminRefund)
 }
 
 // registerCardGoodsAdminRoutes 卡密商品：商品设置、导入 / 作废卡密、发货记录。

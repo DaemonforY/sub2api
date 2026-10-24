@@ -814,6 +814,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/prompt-market',
+    name: 'AdminPromptMarket',
+    component: () => import('@/views/admin/PromptMarketView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Prompt market',
+      titleKey: 'promptMarket.admin.title'
+    }
+  },
+  {
     path: '/admin/canvas-membership',
     name: 'AdminCanvasMembership',
     component: () => import('@/views/admin/CanvasMembershipView.vue'),

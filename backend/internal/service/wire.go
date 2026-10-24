@@ -1230,6 +1230,7 @@ var ProviderSet = wire.NewSet(
 	ProvideCanvasSessionService,
 	ProvideCanvasMembershipService,
 	NewCardGoodsService,
+	NewPromptMarketService,
 	ProvideChatService,
 	ProvideCanvasCloudService,
 	ProvideCommunityService,

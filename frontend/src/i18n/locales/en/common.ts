@@ -225,6 +225,7 @@ export default {
     assistantAdmin: 'Support assistant',
     opsAgentAdmin: 'Ops assistant',
     canvasMembershipAdmin: 'Creator membership',
+    promptMarketAdmin: 'Prompt market',
     goodsAdmin: 'Card-key goods',
     analyticsAdmin: 'Analytics',
     userInsightsAdmin: 'User insights',
