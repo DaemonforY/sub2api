@@ -10,7 +10,8 @@
       class="pointer-events-none absolute inset-0 h-full w-full border-0"
       tabindex="-1"
     ></iframe>
-    <div class="absolute inset-0" :class="card ? '' : 'cursor-pointer'" @click="!card && toggle()"></div>
+    <!-- A tap on the picture only shows the controls (touch screens have no hover); pausing is the button's job. -->
+    <div class="absolute inset-0" @click="!card && reveal()"></div>
 
     <div v-if="!ready" class="absolute inset-0 flex items-center justify-center bg-ink-950/70 text-sm text-white/70">
       <span class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
@@ -24,7 +25,7 @@
       <Play class="ml-1 h-7 w-7" fill="currentColor" />
     </button>
 
-    <div v-if="!card" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8 text-white opacity-0 transition group-hover:opacity-100" :class="{ 'opacity-100': !playing }">
+    <div v-if="!card" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8 text-white opacity-0 transition group-hover:opacity-100" :class="{ 'opacity-100': !playing || shown }">
       <input
         type="range"
         min="0"
@@ -261,6 +262,13 @@ function pause() {
 function toggle() {
   playing.value ? pause() : play()
 }
+const shown = ref(false)
+let hideTimer = 0
+function reveal() {
+  shown.value = true
+  clearTimeout(hideTimer)
+  hideTimer = setTimeout(() => (shown.value = false), 3000)
+}
 function seek(to) {
   t.value = Math.max(0, Math.min(duration.value, to))
   post({ type: 'seek', t: t.value })
@@ -305,6 +313,7 @@ onMounted(() => {
   if (box.value) resize.observe(box.value)
 })
 onBeforeUnmount(() => {
+  clearTimeout(hideTimer)
   window.removeEventListener('message', onMessage)
   pause()
   resize?.disconnect()
