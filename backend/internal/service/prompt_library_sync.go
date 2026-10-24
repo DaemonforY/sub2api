@@ -228,6 +228,8 @@ func (s *PromptLibrarySyncService) fetch(ctx context.Context, src *PromptSource)
 		return s.fetchYouMind(ctx, src)
 	case "handraw":
 		return s.fetchHandraw(ctx, src)
+	case "handraw-layouts":
+		return s.fetchHandrawLayouts(ctx, src)
 	default:
 		return s.fetchRegistry(ctx, src)
 	}
