@@ -37,7 +37,7 @@
               {{ detail.account_name || (detail.account_id != null ? String(detail.account_id) : '—') }}
             </template>
             <template v-else>
-              {{ detail.user_email || (detail.user_id != null ? String(detail.user_id) : '—') }}
+              {{ (detail.user_email && displayEmail(detail.user_email, t)) || (detail.user_id != null ? String(detail.user_id) : '—') }}
             </template>
           </div>
         </div>
@@ -226,6 +226,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'

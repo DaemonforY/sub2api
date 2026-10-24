@@ -161,7 +161,7 @@
                     <td class="py-2 pr-3 text-gray-500">{{ it.id }}</td>
                     <td class="py-2 pr-3 font-mono text-xs text-gray-700 dark:text-gray-300">{{ it.preview }}</td>
                     <td class="py-2 pr-3"><span :class="['badge', itemBadge(it.status)]">{{ t(`goods.admin.itemStatus.${it.status}`) }}</span></td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ it.user_id ? `${it.username || it.user_email} (#${it.user_id})` : '—' }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-300">{{ it.user_id ? `${it.username || displayEmail(it.user_email, t)} (#${it.user_id})` : '—' }}</td>
                     <td class="py-2 pr-3 text-gray-500">{{ it.order_id ? `#${it.order_id}` : '—' }}</td>
                     <td class="py-2 pr-3 text-gray-500">{{ it.batch_note || '—' }}</td>
                     <td class="py-2 pr-3 text-xs text-gray-500">{{ dateText(it.delivered_at || it.created_at) }}</td>
@@ -195,6 +195,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'

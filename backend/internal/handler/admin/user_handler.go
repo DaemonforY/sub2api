@@ -230,6 +230,25 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 	response.Success(c, dto.UserFromServiceAdmin(user))
 }
 
+// LookupNames maps placeholder emails (wechat-…@wechat-connect.invalid) to usernames, for admin
+// pages whose rows only carry an email.
+// POST /api/v1/admin/users/lookup-names
+func (h *UserHandler) LookupNames(c *gin.Context) {
+	var req struct {
+		Emails []string `json:"emails"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	names, err := h.userService.UsernamesByPlaceholderEmails(c.Request.Context(), req.Emails)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"names": names})
+}
+
 // BindAuthIdentity manually binds a canonical auth identity to a user.
 // POST /api/v1/admin/users/:id/auth-identities
 func (h *UserHandler) BindAuthIdentity(c *gin.Context) {

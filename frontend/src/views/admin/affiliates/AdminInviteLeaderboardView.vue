@@ -47,7 +47,7 @@
               <tr v-for="e in entries" :key="e.user_id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
                 <td class="px-3 py-2.5 font-semibold text-gray-900 dark:text-white">{{ e.rank }}</td>
                 <td class="px-3 py-2.5">
-                  <div class="text-gray-900 dark:text-white">{{ e.email }}</div>
+                  <div class="text-gray-900 dark:text-white">{{ displayEmail(e.email, t, e.username) }}</div>
                   <div class="text-xs text-gray-400">#{{ e.user_id }} {{ e.username }}</div>
                 </td>
                 <td class="px-3 py-2.5 text-right font-medium text-gray-900 dark:text-white">{{ e.paying_invitees }}</td>
@@ -68,6 +68,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { adminGrowthAPI, type InviteLeaderboardEntry } from '@/api/growth'

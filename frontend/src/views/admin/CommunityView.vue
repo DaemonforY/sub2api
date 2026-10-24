@@ -64,7 +64,7 @@
                 <span class="font-medium text-gray-900 dark:text-white">{{ a.display_name || a.handle }}</span>
                 <span class="ml-1 text-xs text-gray-500">@{{ a.handle }}</span>
               </td>
-              <td class="px-4 py-2 text-gray-600 dark:text-dark-300">{{ a.email }}</td>
+              <td class="px-4 py-2 text-gray-600 dark:text-dark-300">{{ displayEmail(a.email, t) }}</td>
               <td class="px-4 py-2">{{ a.works_count }}</td>
               <td class="px-4 py-2 text-gray-500">{{ formatDateTime(a.updated_at) }}</td>
               <td class="px-4 py-2 text-right">
@@ -221,6 +221,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'

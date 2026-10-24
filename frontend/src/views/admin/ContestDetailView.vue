@@ -54,7 +54,7 @@
               </a>
               <div class="min-w-0 max-w-xs">
                 <div class="truncate font-medium text-gray-900 dark:text-white" :title="row.title">{{ row.title }}</div>
-                <div class="truncate text-xs text-gray-500">{{ row.user_email }} · #{{ row.user_id }}</div>
+                <div class="truncate text-xs text-gray-500">{{ displayEmail(row.user_email, t) }} · #{{ row.user_id }}</div>
                 <div v-if="row.review_note" class="truncate text-xs text-red-500">{{ row.review_note }}</div>
               </div>
             </div>
@@ -102,7 +102,7 @@
             <template #cell-place="{ value }"><span class="font-bold text-amber-600">#{{ value }}</span></template>
             <template #cell-winner="{ row }">
               <div class="text-sm">
-                <div class="font-medium text-gray-900 dark:text-white">{{ row.user_email }}</div>
+                <div class="font-medium text-gray-900 dark:text-white">{{ displayEmail(row.user_email, t) }}</div>
                 <div class="text-xs text-gray-500">{{ row.entry_title }}</div>
               </div>
             </template>
@@ -143,7 +143,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
           <tr v-for="v in votes" :key="v.id">
-            <td class="py-2">{{ v.user_email || `#${v.user_id}` }}</td>
+            <td class="py-2">{{ v.user_email ? displayEmail(v.user_email, t) : `#${v.user_id}` }}</td>
             <td class="text-xs text-gray-500">{{ formatDateTime(v.user_created_at) }}</td>
             <td class="font-mono text-xs">{{ v.client_ip || '—' }}</td>
             <td class="text-xs text-gray-500">{{ formatDateTime(v.created_at) }}</td>
@@ -185,6 +185,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -327,7 +328,7 @@ const grantMessage = computed(() => {
   const s = noteState.value
   if (!s || s.kind !== 'grant') return ''
   return t('admin.contests.detail.grantConfirm', {
-    winner: s.award.user_email || `#${s.award.user_id}`,
+    winner: s.award.user_email ? displayEmail(s.award.user_email, t) : `#${s.award.user_id}`,
     prize: formatPrizeReward({ type: s.award.prize_type, amount: s.award.amount, label: s.award.label }, t)
   })
 })

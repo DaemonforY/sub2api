@@ -49,7 +49,7 @@
             <tbody>
               <tr v-for="w in items" :key="w.id" class="border-b border-gray-100 align-top last:border-b-0 dark:border-dark-800">
                 <td class="px-3 py-2.5">
-                  <div class="text-gray-900 dark:text-white">{{ w.user_email }}</div>
+                  <div class="text-gray-900 dark:text-white">{{ displayEmail(w.user_email, t, w.username) }}</div>
                   <div class="text-xs text-gray-400">#{{ w.user_id }} {{ w.username }}</div>
                   <span
                     v-if="w.user_status === 'disabled'"
@@ -118,6 +118,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'

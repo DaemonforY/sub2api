@@ -131,7 +131,7 @@
           <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
             <tr v-for="c in certs" :key="c.code" :class="{ 'opacity-50': c.revoked_at }">
               <td class="px-4 py-2"><a :href="`/learn/cert.html?c=${c.code}`" target="_blank" class="font-mono text-primary-600 hover:underline">{{ c.code }}</a></td>
-              <td class="px-4 py-2">{{ c.display_name }}<div class="text-xs text-gray-400">{{ c.user_email }}</div></td>
+              <td class="px-4 py-2">{{ c.display_name }}<div class="text-xs text-gray-400">{{ displayEmail(c.user_email, t) }}</div></td>
               <td class="px-4 py-2">{{ c.track_title || c.track }}</td>
               <td class="px-4 py-2">{{ c.quiz_score ? `${c.quiz_score}%` : '—' }}</td>
               <td class="max-w-[16rem] truncate px-4 py-2"><a v-if="c.project_url" :href="c.project_url" target="_blank" rel="noopener noreferrer nofollow" class="text-primary-600 hover:underline">{{ c.project_url }}</a></td>
@@ -161,6 +161,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { adminAPI } from '@/api/admin'

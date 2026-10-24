@@ -174,7 +174,7 @@
         </thead>
         <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
           <tr v-for="s in students" :key="s.user_id">
-            <td class="py-2">{{ s.user_email || '***' }}<span v-if="s.refunded" class="badge badge-gray ml-2">{{ t('creator.refunded') }}</span></td>
+            <td class="py-2">{{ s.user_email ? displayEmail(s.user_email, t) : '***' }}<span v-if="s.refunded" class="badge badge-gray ml-2">{{ t('creator.refunded') }}</span></td>
             <td class="py-2 text-xs text-gray-500">{{ formatDateTime(s.created_at) }}</td>
             <td class="py-2 text-xs text-gray-500">{{ s.view_count }}</td>
           </tr>
@@ -186,6 +186,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import creatorAPI, { type CreatorCourseInput } from '@/api/creator'
 import DeliveryFields from './DeliveryFields.vue'

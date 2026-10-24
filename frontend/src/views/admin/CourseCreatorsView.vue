@@ -37,7 +37,7 @@
         <div v-for="c in creators" :key="c.user_id" class="card space-y-3 p-4" data-testid="creator-row">
           <div class="flex flex-wrap items-center gap-3">
             <div class="min-w-0 flex-1">
-              <div class="font-medium text-gray-900 dark:text-white">{{ c.display_name }} <span class="text-xs font-normal text-gray-400">#{{ c.user_id }} {{ c.user_email }}</span></div>
+              <div class="font-medium text-gray-900 dark:text-white">{{ c.display_name }} <span class="text-xs font-normal text-gray-400">#{{ c.user_id }} {{ displayEmail(c.user_email, t) }}</span></div>
               <div class="text-xs text-gray-500">
                 {{ t('admin.creators.appliedAt', { time: formatDateTime(c.created_at) }) }} ·
                 {{ t('admin.creators.courseCount', { onSale: c.on_sale_count, total: c.course_count }) }}
@@ -137,7 +137,7 @@
           <div class="flex flex-wrap items-center gap-3">
             <span class="text-lg font-semibold">¥{{ w.cny_amount.toFixed(2) }}</span>
             <span :class="['badge', w.status === 'paid' ? 'badge-success' : w.status === 'pending' ? 'badge-warning' : 'badge-gray']">{{ t(`admin.creators.withdrawStatus.${w.status}`) }}</span>
-            <span>{{ w.display_name }} <span class="text-xs text-gray-400">#{{ w.user_id }} {{ w.user_email }}</span></span>
+            <span>{{ w.display_name }} <span class="text-xs text-gray-400">#{{ w.user_id }} {{ displayEmail(w.user_email, t) }}</span></span>
             <span class="ml-auto text-xs text-gray-400">{{ formatDateTime(w.created_at) }}</span>
           </div>
           <div class="font-mono text-xs">{{ t(`creator.withdraw.${w.method}`) }} · {{ w.account }} · {{ w.real_name }}</div>
@@ -160,6 +160,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { adminAPI } from '@/api/admin'

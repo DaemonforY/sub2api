@@ -72,9 +72,9 @@
               :title="t('admin.usage.clickToViewBalance')"
               @click.stop="emit('userClick', row.user_id, row.user_email)"
             >
-              {{ row.user_email }}
+              {{ displayEmail(row.user_email, t) }}
             </button>
-            <span v-else class="font-medium text-gray-900 dark:text-white">{{ row.user_email || '-' }}</span>
+            <span v-else class="font-medium text-gray-900 dark:text-white">{{ row.user_email ? displayEmail(row.user_email, t) : '-' }}</span>
             <span class="ml-1 text-gray-500 dark:text-gray-400">#{{ row.user_id }}</span>
           </div>
           <span v-else class="text-sm text-gray-400 dark:text-gray-500">-</span>
@@ -180,6 +180,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import DataTable from '@/components/common/DataTable.vue'
 import EmptyState from '@/components/common/EmptyState.vue'

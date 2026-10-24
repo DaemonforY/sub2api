@@ -34,7 +34,7 @@
                   <div class="font-medium text-gray-900 dark:text-white">{{ site.title || site.name }}</div>
                   <a :href="site.url" target="_blank" rel="noopener noreferrer" class="text-xs text-primary-600 hover:underline">{{ site.url }}</a>
                 </td>
-                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ site.user_email || site.user_id }}</td>
+                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ site.user_email ? displayEmail(site.user_email, t) : site.user_id }}</td>
                 <td class="px-4 py-3">
                   <span :class="['badge', site.status === 'active' ? 'badge-success' : site.status === 'disabled' ? 'badge-danger' : 'badge-warning']">{{ t(`admin.sites.status.${site.status}`) }}</span>
                   <div v-if="site.status_reason" class="mt-1 max-w-xs text-xs text-gray-500">{{ site.status_reason }}</div>
@@ -199,6 +199,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'

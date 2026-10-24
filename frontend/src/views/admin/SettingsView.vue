@@ -7815,7 +7815,7 @@
                             @change="toggleAffiliateSelect(entry.user_id)"
                           />
                         </td>
-                        <td class="px-3 py-2 text-sm text-gray-900 dark:text-white">{{ entry.email }}</td>
+                        <td class="px-3 py-2 text-sm text-gray-900 dark:text-white">{{ displayEmail(entry.email, t, entry.username) }}</td>
                         <td class="px-3 py-2 text-sm text-gray-600 dark:text-gray-300">{{ entry.username }}</td>
                         <td class="px-3 py-2 text-sm font-mono">
                           {{ entry.aff_code }}
@@ -7900,7 +7900,7 @@
                   class="flex items-center justify-between rounded-md border border-primary-200 bg-primary-50 px-3 py-2 dark:border-primary-700/50 dark:bg-primary-900/20"
                 >
                   <div class="text-sm">
-                    <span class="font-medium text-gray-900 dark:text-white">{{ affiliateModal.selectedUser.email }}</span>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ displayEmail(affiliateModal.selectedUser.email, t, affiliateModal.selectedUser.username) }}</span>
                     <span class="ml-1 text-xs text-gray-500">({{ affiliateModal.selectedUser.username }})</span>
                   </div>
                   <button
@@ -7932,7 +7932,7 @@
                       class="w-full px-3 py-1.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-dark-800"
                       @click="selectAffiliateUser(u)"
                     >
-                      {{ u.email }} <span class="text-xs text-gray-500">({{ u.username }})</span>
+                      {{ displayEmail(u.email, t, u.username) }} <span class="text-xs text-gray-500">({{ u.username }})</span>
                     </button>
                   </div>
                 </template>
@@ -9155,6 +9155,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from "vue";
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api";
 import {
@@ -13520,7 +13521,7 @@ function askResetAffiliateUser(entry: AffiliateAdminEntry) {
   openAffiliateConfirm(
     t("admin.settings.features.affiliate.customUsers.resetTitle"),
     t("admin.settings.features.affiliate.customUsers.resetMessage", {
-      email: entry.email || `#${entry.user_id}`,
+      email: entry.email ? displayEmail(entry.email, t, entry.username) : `#${entry.user_id}`,
     }),
     t("common.delete"),
     () => affiliatesAPI.clearUserSettings(entry.user_id),

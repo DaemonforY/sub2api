@@ -91,7 +91,7 @@
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm text-gray-900 dark:text-white">{{ run.question }}</span>
                 <span class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-dark-400">
-                  <span>{{ run.user_email || t('admin.assistant.guest') }}</span>
+                  <span>{{ run.user_email ? displayEmail(run.user_email, t) : t('admin.assistant.guest') }}</span>
                   <span
                     v-for="(s, i) in run.steps"
                     :key="i"
@@ -121,6 +121,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAppStore, useAuthStore } from '@/stores'

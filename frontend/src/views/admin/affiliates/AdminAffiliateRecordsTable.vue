@@ -129,7 +129,7 @@
       <div v-else-if="selectedOverview" class="space-y-4">
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800">
           <div class="font-mono text-sm text-gray-900 dark:text-white">#{{ selectedOverview.user_id }}</div>
-          <div class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ selectedOverview.email || '-' }}</div>
+          <div class="mt-1 text-sm font-medium text-gray-900 dark:text-white">{{ selectedOverview.email ? displayEmail(selectedOverview.email, t, selectedOverview.username) : '-' }}</div>
           <div class="mt-0.5 text-sm text-gray-500 dark:text-dark-400">{{ selectedOverview.username || '-' }}</div>
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
@@ -144,7 +144,7 @@
           <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.affiliates.inviter.title') }}</div>
           <div class="mt-1 text-sm text-gray-600 dark:text-dark-300">
             <template v-if="selectedOverview.inviter_id">
-              #{{ selectedOverview.inviter_id }} {{ selectedOverview.inviter_email || selectedOverview.inviter_username }}
+              #{{ selectedOverview.inviter_id }} {{ selectedOverview.inviter_email ? displayEmail(selectedOverview.inviter_email, t, selectedOverview.inviter_username) : selectedOverview.inviter_username }}
               <span class="ml-1 font-mono text-xs text-gray-500">{{ selectedOverview.inviter_aff_code }}</span>
             </template>
             <template v-else>{{ t('admin.affiliates.inviter.none') }}</template>
@@ -173,7 +173,7 @@
           data-testid="affiliate-lookup-result"
           @click="pickLookup(u.id)"
         >
-          <span><span class="font-mono text-gray-500">#{{ u.id }}</span> {{ u.email }}</span>
+          <span><span class="font-mono text-gray-500">#{{ u.id }}</span> {{ displayEmail(u.email, t, u.username) }}</span>
           <span class="text-gray-500">{{ u.username }}</span>
         </button>
         <p v-if="lookupQuery.trim() && !lookupResults.length && !lookupLoading" class="py-4 text-center text-sm text-gray-500">{{ t('admin.affiliates.inviter.noUsers') }}</p>
@@ -184,6 +184,7 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, reactive, ref, type PropType } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -438,7 +439,7 @@ const UserCell = defineComponent({
           : 'max-w-56 truncate text-sm text-gray-700 dark:text-gray-300',
         type: cellProps.clickable ? 'button' : undefined,
         onClick: cellProps.clickable ? () => emit('open', cellProps.id) : undefined,
-      }, cellProps.email || '-'),
+      }, cellProps.email ? displayEmail(cellProps.email, t, cellProps.username) : '-'),
       h('div', { class: 'max-w-56 truncate text-sm text-gray-500 dark:text-dark-400' }, cellProps.username || '-'),
     ])
   },

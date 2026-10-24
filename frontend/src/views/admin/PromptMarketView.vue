@@ -56,7 +56,7 @@
                 <span v-for="flag in l.flags || []" :key="flag" class="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-900/40 dark:text-red-300">{{ flag }}</span>
               </div>
               <p class="mt-1 text-xs text-gray-500">
-                #{{ l.id }} · {{ l.seller_email || l.seller_name }} · ${{ l.price.toFixed(2) }} · {{ t('promptMarket.admin.items', { count: l.item_count }) }} ·
+                #{{ l.id }} · {{ l.seller_email ? displayEmail(l.seller_email, t, l.seller_name) : l.seller_name }} · ${{ l.price.toFixed(2) }} · {{ t('promptMarket.admin.items', { count: l.item_count }) }} ·
                 {{ t('promptMarket.admin.sales', { count: l.sales_count }) }} · {{ dateText(l.updated_at) }}
               </p>
               <p v-if="l.description" class="mt-1 whitespace-pre-wrap text-sm text-gray-600 dark:text-dark-300">{{ l.description }}</p>
@@ -120,8 +120,8 @@
             <tr v-for="p in purchases" :key="p.id" class="border-t border-gray-100 dark:border-dark-700">
               <td class="py-2 pr-3 text-gray-500">{{ dateText(p.created_at) }}</td>
               <td class="py-2 pr-3 text-gray-900 dark:text-white">#{{ p.listing_id }} {{ p.listing_title }}</td>
-              <td class="py-2 pr-3">{{ p.buyer_email || p.buyer_user_id }}</td>
-              <td class="py-2 pr-3">{{ p.seller_email || p.seller_user_id }}</td>
+              <td class="py-2 pr-3">{{ p.buyer_email ? displayEmail(p.buyer_email, t) : p.buyer_user_id }}</td>
+              <td class="py-2 pr-3">{{ p.seller_email ? displayEmail(p.seller_email, t) : p.seller_user_id }}</td>
               <td class="py-2 pr-3">${{ p.price.toFixed(2) }}</td>
               <td class="py-2 pr-3">${{ p.seller_amount.toFixed(4) }}</td>
               <td class="py-2 pr-3 text-right">
@@ -141,6 +141,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import {

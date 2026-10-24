@@ -64,7 +64,7 @@
               >
                 <td class="whitespace-nowrap py-1.5 text-xs">{{ formatDateTimeToMinute(s.last_at) }}</td>
                 <td>
-                  <div class="max-w-[14rem] truncate text-gray-900 dark:text-white">{{ s.email || `#${s.user_id}` }}</div>
+                  <div class="max-w-[14rem] truncate text-gray-900 dark:text-white">{{ s.email ? displayEmail(s.email, t) : `#${s.user_id}` }}</div>
                   <div class="text-xs text-gray-500 dark:text-dark-400">#{{ s.user_id }}</div>
                 </td>
                 <td class="font-mono text-xs" :title="s.user_agent">{{ shortUA(s.user_agent) }}</td>
@@ -90,7 +90,7 @@
       <div v-if="current" class="card space-y-3 p-4" data-testid="ca-transcript">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="min-w-0">
-            <div class="font-semibold text-gray-900 dark:text-white">{{ current.email || `#${current.user_id}` }} <span class="text-xs font-normal text-gray-500">#{{ current.user_id }}</span></div>
+            <div class="font-semibold text-gray-900 dark:text-white">{{ current.email ? displayEmail(current.email, t) : `#${current.user_id}` }} <span class="text-xs font-normal text-gray-500">#{{ current.user_id }}</span></div>
             <div class="truncate font-mono text-xs text-gray-500 dark:text-dark-400" :title="current.session_key">{{ current.session_key }}</div>
           </div>
           <div class="flex items-center gap-2">
@@ -155,6 +155,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ArchiveSettingsCard from '@/components/admin/archive/ArchiveSettingsCard.vue'

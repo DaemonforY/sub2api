@@ -67,7 +67,7 @@
           @click="selectUser(user)"
         >
           <span class="min-w-0 truncate font-medium text-gray-900 dark:text-white">
-            {{ user.email }}
+            {{ displayEmail(user.email, t) }}
             <span v-if="user.deleted" class="ml-1 text-xs font-normal text-gray-400">
               {{ t("admin.settings.openaiFastPolicy.userDeleted") }}
             </span>
@@ -81,6 +81,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from "vue-i18n";
 import { adminAPI } from "@/api/admin";
 import type { SimpleUser } from "@/api/admin/usage";
@@ -116,7 +117,8 @@ const availableResults = computed(() => {
 });
 
 function selectedUserLabel(userId: number): string {
-  return selectedUsers.value[userId]?.email ||
+  const email = selectedUsers.value[userId]?.email
+  return (email && displayEmail(email, t)) ||
     t("admin.settings.openaiFastPolicy.userIdFallback", { id: userId });
 }
 

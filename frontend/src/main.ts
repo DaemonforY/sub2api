@@ -9,6 +9,9 @@ import { serverDocumentTitle } from '@/router/title'
 import { isIOSDevice } from '@/utils/device'
 import './style.css'
 import { initAnalytics } from '@/utils/analytics'
+import { useAuthStore } from '@/stores/auth'
+import { setPlaceholderNameResolver } from '@/utils/userDisplay'
+import { lookupNames } from '@/api/admin/users'
 
 function initIOSViewportZoomFix() {
   // iOS Safari 在输入框字号小于 16px 时聚焦会自动放大页面，且失焦后不会恢复。
@@ -52,6 +55,10 @@ async function bootstrap() {
     document.title = `${appStore.siteName} - AI API Gateway`
   }
   updateFavicon(appStore.siteLogo)
+
+  // Admin tables that only carry a WeChat placeholder email show the user's nickname instead.
+  const authStore = useAuthStore()
+  setPlaceholderNameResolver((emails) => (authStore.isAdmin ? lookupNames(emails) : Promise.resolve({})))
 
   await initI18n()
 

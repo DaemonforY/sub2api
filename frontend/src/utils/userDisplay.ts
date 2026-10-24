@@ -7,6 +7,8 @@
  * stored value; only the rendering changes.
  */
 
+import { reactive } from 'vue'
+
 export type PlaceholderEmailProvider = 'wechat' | 'linuxdo' | 'oidc' | 'dingtalk' | 'github' | 'google' | 'other'
 
 type Translate = (key: string, params?: Record<string, unknown>) => string
@@ -39,6 +41,69 @@ export function placeholderEmailProvider(email: string | null | undefined): Plac
   return known || 'other'
 }
 
+// ---------------------------------------------------------------------------
+// Username lookup for rows that only carry a placeholder email
+// ---------------------------------------------------------------------------
+
+type NameResolver = (emails: string[]) => Promise<Record<string, string>>
+
+/** Lower-cased placeholder email -> username, filled by the resolver. Reactive so templates re-render. */
+const resolvedNames = reactive(new Map<string, string>())
+const requestedNames = new Set<string>()
+let pendingNames: string[] = []
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+let nameResolver: NameResolver | null = null
+
+const NAME_LOOKUP_BATCH = 100
+const NAME_LOOKUP_DELAY_MS = 30
+
+/**
+ * Lets displayEmail / displayIdentity look up usernames for placeholder emails shown without one
+ * (admin tables that only carry user_email). Lookups are batched; each email is asked for once.
+ * Pass null to turn it off.
+ */
+export function setPlaceholderNameResolver(resolver: NameResolver | null): void {
+  nameResolver = resolver
+}
+
+/** Test helper: forget every looked-up name. */
+export function resetPlaceholderNames(): void {
+  resolvedNames.clear()
+  requestedNames.clear()
+  pendingNames = []
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = null
+}
+
+function lookedUpName(email: string): string {
+  const key = email.trim().toLowerCase()
+  const name = resolvedNames.get(key)
+  if (name !== undefined) return name
+  if (nameResolver && !requestedNames.has(key)) {
+    // Only plain bookkeeping here: this runs during render, the reactive write happens after the request.
+    requestedNames.add(key)
+    pendingNames.push(email.trim())
+    if (!flushTimer) flushTimer = setTimeout(flushNameLookups, NAME_LOOKUP_DELAY_MS)
+  }
+  return ''
+}
+
+async function flushNameLookups(): Promise<void> {
+  flushTimer = null
+  const resolver = nameResolver
+  const batch = pendingNames.splice(0, NAME_LOOKUP_BATCH)
+  if (pendingNames.length > 0) flushTimer = setTimeout(flushNameLookups, NAME_LOOKUP_DELAY_MS)
+  if (!resolver || batch.length === 0) return
+  try {
+    const names = await resolver(batch)
+    for (const [email, name] of Object.entries(names || {})) {
+      if (name) resolvedNames.set(email.trim().toLowerCase(), name)
+    }
+  } catch {
+    // Keep the generic label; a failed lookup is not retried on every render.
+  }
+}
+
 export interface UserLike {
   email?: string | null
   username?: string | null
@@ -60,7 +125,7 @@ export function displayIdentity(user: UserLike | null | undefined, t: Translate)
   const username = (user?.username || '').trim()
   const provider = placeholderEmailProvider(email)
   if (provider) {
-    const primary = username || t(`userDisplay.unnamed.${provider}`)
+    const primary = username || lookedUpName(email) || t(`userDisplay.unnamed.${provider}`)
     return {
       primary,
       secondary: t('userDisplay.placeholderSecondary', { provider: t(`userDisplay.login.${provider}`) }),
@@ -81,12 +146,13 @@ export function displayIdentity(user: UserLike | null | undefined, t: Translate)
 
 /**
  * One-line label for places that only have an email (tables showing user_email): placeholder
- * addresses become "微信用户（未绑定邮箱）", or the username when it is known.
+ * addresses become "<昵称>（未绑定邮箱）" — the username when passed, else the one the resolver looks
+ * up (admin pages), else "微信用户（未绑定邮箱）".
  */
 export function displayEmail(email: string | null | undefined, t: Translate, username?: string | null): string {
   const provider = placeholderEmailProvider(email)
   if (!provider) return (email || '').trim()
-  const name = (username || '').trim() || t(`userDisplay.unnamed.${provider}`)
+  const name = (username || '').trim() || lookedUpName(email || '') || t(`userDisplay.unnamed.${provider}`)
   return t('userDisplay.compact', { name })
 }
 

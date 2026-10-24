@@ -292,8 +292,8 @@
               <tbody class="divide-y divide-gray-100 dark:divide-dark-700">
                 <tr v-for="s in students" :key="s.user_id">
                   <td class="px-4 py-2">
-                    <div>{{ s.username || s.user_email }}</div>
-                    <div class="text-xs text-gray-400">#{{ s.user_id }} {{ s.user_email }}</div>
+                    <div>{{ s.username || displayEmail(s.user_email, t) }}</div>
+                    <div class="text-xs text-gray-400">#{{ s.user_id }} {{ isPlaceholderEmail(s.user_email) ? '' : s.user_email }}</div>
                   </td>
                   <td class="px-4 py-2">
                     {{ t(`admin.courses.sources.${s.source}`) }}<span v-if="s.order_id" class="text-xs text-gray-400"> #{{ s.order_id }}</span>
@@ -337,6 +337,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail, isPlaceholderEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'

@@ -88,7 +88,7 @@
             <tr v-for="row in items" :key="row.id">
               <td class="whitespace-nowrap px-4 py-3 text-gray-700 dark:text-gray-300">{{ formatDateTime(row.created_at) }}</td>
               <td class="px-4 py-3">
-                <button class="text-primary-600 hover:underline" :title="String(row.user_id)" @click="filterUser(row.user_email || '')">{{ row.user_email || row.user_id }}</button>
+                <button class="text-primary-600 hover:underline" :title="String(row.user_id)" @click="filterUser(row.user_email || '')">{{ row.user_email ? displayEmail(row.user_email, t) : row.user_id }}</button>
               </td>
               <td class="px-4 py-3 text-gray-900 dark:text-white">{{ t(`admin.imageTools.tools.${row.tool}`) }}</td>
               <td class="px-4 py-3">
@@ -113,6 +113,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Pagination from '@/components/common/Pagination.vue'

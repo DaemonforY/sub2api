@@ -90,7 +90,7 @@
             <tbody>
               <tr v-for="m in members" :key="m.user_id" class="border-t border-gray-100 dark:border-dark-700">
                 <td class="py-2 pr-3 text-gray-500">{{ m.user_id }}</td>
-                <td class="py-2 pr-3 text-gray-900 dark:text-white">{{ m.email || m.username }}</td>
+                <td class="py-2 pr-3 text-gray-900 dark:text-white">{{ m.email ? displayEmail(m.email, t, m.username) : m.username }}</td>
                 <td class="py-2 pr-3" :class="ended(m.member_until) ? 'text-gray-400' : 'text-emerald-600 dark:text-emerald-400'">{{ dateText(m.member_until) }}</td>
                 <td class="py-2 pr-3 text-gray-600 dark:text-gray-300">{{ m.terms_accepted_at ? dateText(m.terms_accepted_at) : '—' }}</td>
                 <td class="py-2 pr-3 text-gray-600 dark:text-gray-300">{{ m.unmarked_saves }}</td>
@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { adminGetCanvasMembership, adminGrantCanvasMembership, adminSaveCanvasMembership, type CanvasMember, type CanvasMembershipConfig } from '@/api/canvasMembership'

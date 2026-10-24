@@ -640,7 +640,7 @@
                 <tr v-for="e in events" :key="e.id" class="border-t border-gray-100 dark:border-dark-700">
                   <td class="whitespace-nowrap py-1 text-xs">{{ formatDateTimeToMinute(e.created_at) }}</td>
                   <td class="whitespace-nowrap">
-                    <router-link :to="profileLink(e.user_id)" class="text-primary-600 hover:underline dark:text-primary-400">{{ e.user_email || e.username || `#${e.user_id}` }}</router-link>
+                    <router-link :to="profileLink(e.user_id)" class="text-primary-600 hover:underline dark:text-primary-400">{{ e.user_email ? displayEmail(e.user_email, t, e.username) : e.username || `#${e.user_id}` }}</router-link>
                   </td>
                   <td class="whitespace-nowrap">{{ ruleLabel(e.rule) }}</td>
                   <td class="text-gray-700 dark:text-dark-200">{{ e.detail }}</td>
@@ -795,7 +795,7 @@ function barWidth(n: number, top: number): string {
   return `${Math.max(2, (n / Math.max(1, top)) * 100)}%`
 }
 function userName(u: Pick<InsightsUserRef, 'id' | 'email' | 'username'>): string {
-  return u.email || u.username || `#${u.id}`
+  return u.email ? displayEmail(u.email, t, u.username) : u.username || `#${u.id}`
 }
 function labelOr(key: string, fallback: string): string {
   return te(key) ? t(key) : fallback

@@ -124,7 +124,7 @@
                   <td class="py-1.5">
                     <div class="font-medium text-gray-900 dark:text-white">
                       <span class="mr-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs" :class="statusClass(s.status)">{{ t(`admin.margin.status.${s.status}`) }}</span>
-                      {{ s.email }} <span class="text-xs text-gray-400">#{{ s.user_id }}</span>
+                      {{ displayEmail(s.email, t) }} <span class="text-xs text-gray-400">#{{ s.user_id }}</span>
                     </div>
                     <div class="text-xs text-gray-500">{{ s.group_name }}</div>
                   </td>
@@ -197,7 +197,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="u in data.users" :key="u.user_id" class="border-t border-gray-100 dark:border-dark-700">
-                    <td class="py-1.5">{{ u.email }} <span class="text-xs text-gray-400">#{{ u.user_id }}</span></td>
+                    <td class="py-1.5">{{ displayEmail(u.email, t) }} <span class="text-xs text-gray-400">#{{ u.user_id }}</span></td>
                     <td class="px-2 text-right tabular-nums">${{ money(u.usage_usd) }}</td>
                     <td class="px-2 text-right tabular-nums">¥{{ money(u.paid) }}</td>
                     <td class="px-2 text-right tabular-nums">¥{{ money(u.cost) }}</td>
@@ -219,6 +219,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { getMargin, setMarginCost, type MarginReport, type MarginSubscription } from '@/api/admin/analytics'

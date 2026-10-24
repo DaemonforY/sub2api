@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   displayEmail,
   displayIdentity,
   isPlaceholderEmail,
   placeholderEmailHint,
   placeholderEmailProvider,
+  resetPlaceholderNames,
+  setPlaceholderNameResolver,
 } from '@/utils/userDisplay'
 
 const zh: Record<string, string> = {
@@ -82,5 +84,44 @@ describe('userDisplay', () => {
     expect(displayEmail('alice@example.com', t, 'alice')).toBe('alice@example.com')
     expect(placeholderEmailHint(WECHAT, t)).toBe('未绑定邮箱（微信登录）')
     expect(placeholderEmailHint('alice@example.com', t)).toBe('')
+  })
+
+  describe('name lookup for email-only rows', () => {
+    afterEach(() => {
+      setPlaceholderNameResolver(null)
+      resetPlaceholderNames()
+      vi.useRealTimers()
+    })
+
+    it('batches placeholder emails once and shows the looked-up nickname', async () => {
+      vi.useFakeTimers()
+      const other = 'wechat-zzz@wechat-connect.invalid'
+      const resolver = vi.fn(async (emails: string[]) => ({ [emails[0]]: '波西米亚格' }))
+      setPlaceholderNameResolver(resolver)
+
+      expect(displayEmail(WECHAT, t)).toBe('微信用户（未绑定邮箱）')
+      expect(displayEmail(WECHAT, t)).toBe('微信用户（未绑定邮箱）')
+      expect(displayIdentity({ email: other }, t).primary).toBe('微信用户')
+      expect(displayEmail('alice@example.com', t)).toBe('alice@example.com')
+      expect(displayEmail(WECHAT, t, '小蜂')).toBe('小蜂（未绑定邮箱）')
+
+      await vi.runAllTimersAsync()
+      expect(resolver).toHaveBeenCalledTimes(1)
+      expect(resolver).toHaveBeenCalledWith([WECHAT, other])
+      expect(displayEmail(WECHAT, t)).toBe('波西米亚格（未绑定邮箱）')
+      expect(displayEmail(WECHAT.toUpperCase(), t)).toBe('波西米亚格（未绑定邮箱）')
+      // Not found: keeps the generic label and is not asked again.
+      expect(displayEmail(other, t)).toBe('微信用户（未绑定邮箱）')
+      await vi.runAllTimersAsync()
+      expect(resolver).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps the generic label when the lookup fails', async () => {
+      vi.useFakeTimers()
+      setPlaceholderNameResolver(async () => { throw new Error('403') })
+      expect(displayEmail(WECHAT, t)).toBe('微信用户（未绑定邮箱）')
+      await vi.runAllTimersAsync()
+      expect(displayEmail(WECHAT, t)).toBe('微信用户（未绑定邮箱）')
+    })
   })
 })

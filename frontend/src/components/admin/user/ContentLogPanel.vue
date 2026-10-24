@@ -44,7 +44,7 @@
               :data-testid="`ui-cl-target-${tg.user_id}`"
             >
               <td class="py-1.5">
-                <div class="text-gray-900 dark:text-white">{{ tg.email || tg.username || `#${tg.user_id}` }}</div>
+                <div class="text-gray-900 dark:text-white">{{ tg.email ? displayEmail(tg.email, t, tg.username) : tg.username || `#${tg.user_id}` }}</div>
                 <div class="text-xs text-gray-500 dark:text-dark-400">#{{ tg.user_id }}<template v-if="tg.username && tg.email"> · {{ tg.username }}</template></div>
               </td>
               <td class="max-w-xs break-words text-gray-700 dark:text-dark-200">{{ tg.note || '–' }}</td>
@@ -262,6 +262,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import {
@@ -385,7 +386,7 @@ async function loadTargets(): Promise<void> {
 const selectedTarget = computed(() => targets.value.find((x) => x.user_id === props.userId) || null)
 const selectedName = computed(() => {
   const tg = selectedTarget.value
-  if (tg) return `${tg.email || tg.username || ''} #${tg.user_id}`.trim()
+  if (tg) return `${tg.email ? displayEmail(tg.email, t, tg.username) : tg.username || ''} #${tg.user_id}`.trim()
   return `#${props.userId}`
 })
 const logEnabled = ref<boolean | null>(null)
@@ -401,7 +402,7 @@ const acting = ref(false)
 
 function targetLabel(id: number): string {
   const tg = targets.value.find((x) => x.user_id === id)
-  return tg ? `${tg.email || tg.username || ''} #${id}`.trim() : `#${id}`
+  return tg ? `${tg.email ? displayEmail(tg.email, t, tg.username) : tg.username || ''} #${id}`.trim() : `#${id}`
 }
 
 const pendingMessage = computed(() => {

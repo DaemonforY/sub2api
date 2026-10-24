@@ -399,8 +399,18 @@ export async function resetPlatformQuotaWindow(
   return data
 }
 
+/**
+ * Usernames for placeholder sign-up emails (wechat-…@wechat-connect.invalid), keyed by the email
+ * as sent. Unknown emails and users without a username are left out.
+ */
+export async function lookupNames(emails: string[]): Promise<Record<string, string>> {
+  const { data } = await apiClient.post<{ names: Record<string, string> }>('/admin/users/lookup-names', { emails })
+  return data?.names || {}
+}
+
 export const usersAPI = {
   list,
+  lookupNames,
   getById,
   create,
   update,

@@ -277,7 +277,7 @@
             <tbody>
               <tr v-for="v in verifications" :key="v.user_id" class="border-b border-gray-100 last:border-b-0 dark:border-dark-800">
                 <td class="px-3 py-2.5">
-                  <div class="text-gray-900 dark:text-white">{{ v.user_email }}</div>
+                  <div class="text-gray-900 dark:text-white">{{ displayEmail(v.user_email, t, v.username) }}</div>
                   <div class="text-xs text-gray-400">#{{ v.user_id }} {{ v.username }}</div>
                 </td>
                 <td class="px-3 py-2.5">
@@ -316,6 +316,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Toggle from '@/components/common/Toggle.vue'

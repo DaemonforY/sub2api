@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
@@ -1065,6 +1066,43 @@ func (s *UserService) GetByID(ctx context.Context, id int64) (*User, error) {
 		return nil, fmt.Errorf("get user avatar: %w", err)
 	}
 	return user, nil
+}
+
+// maxUsernameLookupEmails caps one UsernamesByPlaceholderEmails call (one admin page of rows).
+const maxUsernameLookupEmails = 100
+
+// UsernamesByPlaceholderEmails maps placeholder sign-up emails (wechat-…@wechat-connect.invalid and
+// other addresses under the reserved .invalid TLD) to the users' current usernames, so admin pages
+// that only carry an email can show the nickname. Real addresses are ignored: the UI shows them as is.
+// Unknown emails and users without a username are left out.
+func (s *UserService) UsernamesByPlaceholderEmails(ctx context.Context, emails []string) (map[string]string, error) {
+	out := make(map[string]string)
+	seen := make(map[string]struct{})
+	for _, raw := range emails {
+		email := strings.TrimSpace(raw)
+		lower := strings.ToLower(email)
+		if !strings.HasSuffix(lower, ".invalid") || !strings.Contains(lower, "@") {
+			continue
+		}
+		if _, ok := seen[lower]; ok {
+			continue
+		}
+		if len(seen) >= maxUsernameLookupEmails {
+			break
+		}
+		seen[lower] = struct{}{}
+		user, err := s.userRepo.GetByEmail(ctx, email)
+		if errors.Is(err, ErrUserNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("lookup username: %w", err)
+		}
+		if name := strings.TrimSpace(user.Username); name != "" {
+			out[email] = name
+		}
+	}
+	return out, nil
 }
 
 func normalizeLoadedUserTokenVersion(user *User) {

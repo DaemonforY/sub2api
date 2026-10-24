@@ -182,7 +182,7 @@
                 <span class="block truncate text-sm text-gray-900 dark:text-white">{{ run.question }}</span>
                 <span class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 dark:text-dark-400">
                   <span v-if="run.user_id === null" class="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">{{ t('admin.opsAgent.auto') }}</span>
-                  <span v-else>{{ run.user_email }}</span>
+                  <span v-else>{{ displayEmail(run.user_email, t) }}</span>
                   <span
                     v-for="(s, i) in run.steps"
                     :key="i"
@@ -215,6 +215,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { displayEmail } from '@/utils/userDisplay'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { useAppStore, useAuthStore } from '@/stores'

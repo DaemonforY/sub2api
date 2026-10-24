@@ -281,7 +281,7 @@ const detailFields = computed(() => {
     { label: t('admin.requestLogs.detail.url'), value: `${d.method} ${d.url}`, mono: true, copyable: true },
     { label: t('admin.requestLogs.detail.apiKey'), value: d.api_key, mono: true, copyable: true },
     { label: t('admin.requestLogs.detail.keyName'), value: d.api_key_name },
-    { label: t('admin.requestLogs.detail.user'), value: d.user_email ? `${d.user_email} (#${d.user_id})` : '' },
+    { label: t('admin.requestLogs.detail.user'), value: d.user_email ? `${displayEmail(d.user_email, t)} (#${d.user_id})` : '' },
     { label: t('admin.requestLogs.detail.status'), value: String(d.status_code) },
     { label: t('admin.requestLogs.detail.errorCode'), value: d.error_code, mono: true },
     { label: t('admin.requestLogs.detail.model'), value: d.model, mono: true },
