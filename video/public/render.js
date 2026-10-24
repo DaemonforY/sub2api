@@ -9,11 +9,15 @@
   // Subtitles: a copy of src/lib/subtitles.js (keep the two in sync).
   var BREAK = /[，。！？；：、,.!?;:\n]/
   var MAX = 22
+  var CJK = /[\u3400-\u9fff\uf900-\ufaff]/
   function clauses(text) {
     var out = [], cur = ''
-    Array.from(text).forEach(function (ch) {
+    var chars = Array.from(text)
+    chars.forEach(function (ch, i) {
       cur += ch
-      if (BREAK.test(ch) || cur.length >= MAX) {
+      var next = chars[i + 1] || ''
+      var canCut = !next || CJK.test(next) || (cur.length >= MAX * 2 && next === ' ')
+      if (BREAK.test(ch) || (cur.length >= MAX && canCut)) {
         if (cur.trim()) out.push(cur)
         cur = ''
       }

@@ -4,16 +4,23 @@
 const BREAK = /[，。！？；：、,.!?;:\n]/
 const MAX = 22
 
+const CJK = /[\u3400-\u9fff\uf900-\ufaff]/
+
 function clauses(text) {
   const out = []
   let cur = ''
-  for (const ch of Array.from(text)) {
+  const chars = Array.from(text)
+  chars.forEach((ch, i) => {
     cur += ch
-    if (BREAK.test(ch) || cur.length >= MAX) {
+    // A long clause is cut once it reaches MAX characters, but only before a Chinese character, so
+    // English words, numbers and bracketed terms stay whole (at a space if one runs very long).
+    const next = chars[i + 1] || ''
+    const canCut = !next || CJK.test(next) || (cur.length >= MAX * 2 && next === ' ')
+    if (BREAK.test(ch) || (cur.length >= MAX && canCut)) {
       if (cur.trim()) out.push(cur)
       cur = ''
     }
-  }
+  })
   if (cur.trim()) out.push(cur)
   return out
 }
