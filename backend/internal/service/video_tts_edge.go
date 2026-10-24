@@ -47,6 +47,7 @@ type VideoVoice struct {
 	Gender string `json:"gender"`
 	Style  string `json:"style"`
 	Lang   string `json:"lang"`
+	Paid   bool   `json:"paid,omitempty"` // 豆包语音 2.0, charged per character
 }
 
 // VideoVoices are the narrators offered in the UI (Edge neural voices).
@@ -74,7 +75,7 @@ func videoVoiceKnown(id string) bool {
 			return true
 		}
 	}
-	return false
+	return videoVoicePaid(id)
 }
 
 const (

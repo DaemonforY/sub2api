@@ -35,15 +35,16 @@ const (
 )
 
 var (
-	ErrVideoNotFound   = infraerrors.NotFound("VIDEO_NOT_FOUND", "找不到这个作品，可能已被删除（Video not found）")
-	ErrVideoInvalid    = infraerrors.BadRequest("VIDEO_INVALID", "请求格式不正确，请刷新页面后重试（Invalid request）")
-	ErrVideoPrompt     = infraerrors.BadRequest("VIDEO_PROMPT", "请先写下想做的视频或动画（最多 5000 字）（Describe your video, up to 5000 characters）")
-	ErrVideoBusy       = infraerrors.Conflict("VIDEO_BUSY", "AI 正在处理这个作品，请等它完成或先停止（The agent is still working）")
-	ErrVideoTooMany    = infraerrors.TooManyRequests("VIDEO_TOO_MANY", "同时进行的生成已达 2 个，请等其中一个完成后再试（Two generations are already running）")
-	ErrVideoKey        = infraerrors.Unauthorized("VIDEO_KEY", "请先用 HiveGPT 账号登录（Sign in with your HiveGPT account）")
-	ErrVideoNotReady   = infraerrors.BadRequest("VIDEO_NOT_READY", "作品还没生成完成，完成后才能发布（Finish the video before publishing）")
-	ErrVideoForbidden  = infraerrors.Forbidden("VIDEO_FORBIDDEN", "只有管理员可以审核作品（Admins only）")
-	ErrVideoNoQuestion = infraerrors.BadRequest("VIDEO_NO_QUESTION", "这个作品现在没有需要回答的问题（Nothing to answer）")
+	ErrVideoNotFound     = infraerrors.NotFound("VIDEO_NOT_FOUND", "找不到这个作品，可能已被删除（Video not found）")
+	ErrVideoInvalid      = infraerrors.BadRequest("VIDEO_INVALID", "请求格式不正确，请刷新页面后重试（Invalid request）")
+	ErrVideoPrompt       = infraerrors.BadRequest("VIDEO_PROMPT", "请先写下想做的视频或动画（最多 5000 字）（Describe your video, up to 5000 characters）")
+	ErrVideoBusy         = infraerrors.Conflict("VIDEO_BUSY", "AI 正在处理这个作品，请等它完成或先停止（The agent is still working）")
+	ErrVideoTooMany      = infraerrors.TooManyRequests("VIDEO_TOO_MANY", "同时进行的生成已达 2 个，请等其中一个完成后再试（Two generations are already running）")
+	ErrVideoKey          = infraerrors.Unauthorized("VIDEO_KEY", "请先用 HiveGPT 账号登录（Sign in with your HiveGPT account）")
+	ErrVideoPaidVoiceOff = infraerrors.BadRequest("VIDEO_PAID_VOICE_OFF", "付费配音（豆包语音）暂未开通，请换一个免费音色后点「继续生成」（Paid voices are not available）")
+	ErrVideoNotReady     = infraerrors.BadRequest("VIDEO_NOT_READY", "作品还没生成完成，完成后才能发布（Finish the video before publishing）")
+	ErrVideoForbidden    = infraerrors.Forbidden("VIDEO_FORBIDDEN", "只有管理员可以审核作品（Admins only）")
+	ErrVideoNoQuestion   = infraerrors.BadRequest("VIDEO_NO_QUESTION", "这个作品现在没有需要回答的问题（Nothing to answer）")
 )
 
 // VideoOptions are the create-page choices, kept with the project.
@@ -81,6 +82,7 @@ type VideoScene struct {
 	ID        string            `json:"id"`
 	Title     string            `json:"title"`
 	Narration string            `json:"narration,omitempty"`
+	Tone      string            `json:"tone,omitempty"` // delivery hint for paid voices, e.g. 「好奇地提问」
 	Visual    string            `json:"visual"`
 	Duration  float64           `json:"duration"`
 	Audio     *VideoSceneAudio  `json:"audio,omitempty"`
@@ -104,10 +106,11 @@ func (s *VideoSpec) TotalDuration() float64 {
 }
 
 type VideoUsage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	Calls            int `json:"calls"`
-	TTSChars         int `json:"tts_chars"`
+	PromptTokens     int     `json:"prompt_tokens"`
+	CompletionTokens int     `json:"completion_tokens"`
+	Calls            int     `json:"calls"`
+	TTSChars         int     `json:"tts_chars"`
+	TTSCost          float64 `json:"tts_cost,omitempty"` // paid narration charged to the balance
 }
 
 type VideoProject struct {

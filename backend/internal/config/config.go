@@ -788,6 +788,10 @@ type VideoConfig struct {
 	Dir string `mapstructure:"dir"`
 	// GatewayURL overrides where the agent sends model calls (default: this server on loopback).
 	GatewayURL string `mapstructure:"gateway_url"`
+	// DoubaoAppID / DoubaoAccessKey (火山引擎豆包语音 console: App ID + Access Token) enable the paid
+	// 豆包语音 2.0 narrators; without them only the free Edge voices are offered.
+	DoubaoAppID     string `mapstructure:"doubao_app_id"`
+	DoubaoAccessKey string `mapstructure:"doubao_access_key"`
 }
 
 // ChatConfig is AI 对话 (/chat).
@@ -2154,6 +2158,8 @@ func setDefaults() {
 	viper.SetDefault("video.domain", "")
 	viper.SetDefault("video.dir", "./data/video")
 	viper.SetDefault("video.gateway_url", "")
+	viper.SetDefault("video.doubao_app_id", "")
+	viper.SetDefault("video.doubao_access_key", "")
 	viper.SetDefault("chat.gateway_url", "")
 	viper.SetDefault("community.dir", "./data/community")
 	viper.SetDefault("canvas_cloud.dir", "./data/canvas-cloud")

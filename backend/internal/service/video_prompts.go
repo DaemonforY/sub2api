@@ -105,12 +105,13 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	schema := map[string]any{
 		"title": "狭义相对论：当光速重塑时空", "summary": "一句话说明这个视频讲什么", "audience": "大学生", "goal": "看完能说清楚时间膨胀从哪来",
 		"language": "zh-CN",
-		"scenes":   []map[string]any{{"id": "s1", "title": "开场：一个看似矛盾的公设", "narration": "旁白原文，口语化，一句一句……", "visual": "画面设计：要出现什么、怎么动、关键字幕、图表数据"}},
+		"scenes":   []map[string]any{{"id": "s1", "title": "开场：一个看似矛盾的公设", "narration": "旁白原文，口语化，一句一句……", "tone": "好奇地抛出问题，语速稍快", "visual": "画面设计：要出现什么、怎么动、关键字幕、图表数据"}},
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are the director and scriptwriter of short narrated explainer videos rendered as HTML animation.\n")
 	fmt.Fprintf(&b, "Write the script for the user's request: %d–%d scenes, about %d seconds in total.\n", minScenes, maxScenes, seconds)
 	_, _ = b.WriteString("- narration: what the narrator says in this scene, spoken language, in the user's language. No stage directions inside narration.\n")
+	_, _ = b.WriteString("- tone: how the narrator should sound in this scene, one short phrase in Chinese (e.g. 「好奇地抛出问题」「沉稳地讲解」「兴奋地揭晓答案」「放慢语速，娓娓道来」). It guides the voice, it is not read aloud.\n")
 	fmt.Fprintf(&b, "- Length budget: the narration of all scenes together is at most %d Chinese characters (about %d English words) — the narrator reads ~4.5 characters per second, so a longer script makes a longer video than the user asked for. Count before answering.\n", seconds*9/2, seconds*5/2)
 	_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — layout, the elements and diagrams, what moves when (tied to phrases of the narration), exact numbers / labels / data shown on screen. Visuals must be makeable with HTML, SVG and canvas (diagrams, charts, icons, typography, simple vector characters); no photos or video footage.\n")
 	_, _ = b.WriteString("- The first scene hooks the viewer with a question or surprising fact; the last scene sums up in one memorable line.\n")

@@ -183,7 +183,14 @@ const modelOptions = computed(() => {
 watch(siteModels, (list) => {
   if (list.length && !list.some((m) => m.id === model.value)) model.value = (list.find((m) => m.default) || list[0]).id
 })
-const voiceOptions = computed(() => cat.value.voices.map((v) => ({ value: v.id, label: `${v.name}（${v.gender}）`, hint: v.style })))
+// Paid voices (豆包语音 2.0) are charged per character from the balance; the price is per 10,000 characters.
+const voiceOptions = computed(() =>
+  cat.value.voices.map((v) =>
+    v.paid
+      ? { value: v.id, label: `${v.name}（${v.gender}）· 付费`, hint: `${v.style} · 豆包语音 $${cat.value.voice_price_per_10k}/万字` }
+      : { value: v.id, label: `${v.name}（${v.gender}）`, hint: `${v.style} · 免费` }
+  )
+)
 const lengthOptions = [
   { value: 'short', label: '约 30 秒', hint: '3–4 个分镜' },
   { value: 'standard', label: '约 1 分钟', hint: '5–7 个分镜' },

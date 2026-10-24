@@ -77,6 +77,7 @@
               :events="events"
               :busy="busy"
               :voices="voices"
+              :voice-price="voicePrice"
               :focus-scene="p?.spec?.scenes?.[currentScene]?.id || ''"
               @send="send"
               @answer="answer"
@@ -134,6 +135,7 @@
       :events="events"
       :busy="busy"
       :voices="voices"
+      :voice-price="voicePrice"
       :focus-scene="p?.spec?.scenes?.[currentScene]?.id || ''"
       @send="send"
       @answer="answer"
@@ -185,6 +187,7 @@ const publishOpen = ref(false)
 const versionsOpen = ref(false)
 const exporting = ref(false)
 const voices = ref([])
+const voicePrice = ref(0)
 const categories = ref([])
 const sceneErrors = reactive({})
 const repaired = new Set()
@@ -383,7 +386,7 @@ onMounted(async () => {
     router.replace('/')
     return
   }
-  catalog().then((c) => ((voices.value = c.voices), (categories.value = c.categories)))
+  catalog().then((c) => ((voices.value = c.voices), (voicePrice.value = c.voice_price_per_10k || 0), (categories.value = c.categories)))
   await refresh()
   schedule()
 })

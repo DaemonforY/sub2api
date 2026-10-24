@@ -624,7 +624,7 @@ func ProvideAnimationJobService(repo AnimationJobRepository, cfg *config.Config)
 
 // ProvideVideoService wires HiveGPT 视频: the agent calls this server's own gateway on loopback and
 // narrates with Edge TTS. Projects a previous process left running are marked interrupted.
-func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings SettingRepository, groups GroupRepository, apiKeys APIKeyRepository, users UserRepository, keySvc *APIKeyService) *VideoService {
+func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings SettingRepository, groups GroupRepository, apiKeys APIKeyRepository, users UserRepository, keySvc *APIKeyService, billingCache *BillingCacheService) *VideoService {
 	port, dir := 8080, "./data/video"
 	if cfg != nil {
 		if cfg.Server.Port > 0 {
@@ -641,6 +641,18 @@ func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings Sett
 	svc := NewVideoService(repo, NewEdgeTTS(), gateway, dir)
 	if store, ok := repo.(VideoKeyStore); ok && keySvc != nil {
 		svc.SetModelBilling(settings, groups, store, apiKeys, users, keySvc.GenerateKey)
+	}
+	// Paid narrators (豆包语音 2.0) when VIDEO_DOUBAO_APP_ID / VIDEO_DOUBAO_ACCESS_KEY are set.
+	if cfg != nil {
+		if doubao := NewDoubaoTTS(cfg.Video.DoubaoAppID, cfg.Video.DoubaoAccessKey); doubao != nil {
+			if billing, ok := repo.(VideoTTSBilling); ok {
+				var cache videoBalanceCache
+				if billingCache != nil {
+					cache = billingCache
+				}
+				svc.SetPaidTTS(doubao, billing, cache)
+			}
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

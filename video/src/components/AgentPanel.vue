@@ -5,6 +5,7 @@
       <p v-if="project" class="mt-1 flex items-center gap-1 text-xs text-ink-500" :title="usageTip">
         <Coins class="h-3.5 w-3.5" />用量 · 输入 {{ fmtK(project.usage.prompt_tokens) }} / 输出 {{ fmtK(project.usage.completion_tokens) }} tokens
         <template v-if="project.usage.tts_chars"> · 配音 {{ project.usage.tts_chars }} 字</template>
+        <template v-if="project.usage.tts_cost"> · 配音费 ${{ project.usage.tts_cost.toFixed(4) }}</template>
       </p>
     </div>
 
@@ -71,10 +72,15 @@
     </div>
 
     <div class="border-t border-ink-200 p-3 dark:border-ink-800">
-      <div v-if="project?.mode === 'film' && project?.status === 'ready'" class="mb-2 flex items-center gap-2 text-xs text-ink-500">
+      <div v-if="project?.mode === 'film' && project?.spec && ['ready', 'failed', 'stopped'].includes(project?.status)" class="mb-2 flex items-center gap-2 text-xs text-ink-500">
         <Mic class="h-3.5 w-3.5" />配音
         <select class="rounded-lg border border-ink-200 bg-white px-2 py-1 text-xs dark:border-ink-700 dark:bg-ink-900" :value="project.options.voice" @change="$emit('voice', $event.target.value)">
-          <option v-for="v in voices" :key="v.id" :value="v.id">{{ v.name }}（{{ v.gender }}）· {{ v.style }}</option>
+          <optgroup label="免费音色">
+            <option v-for="v in voices.filter((x) => !x.paid)" :key="v.id" :value="v.id">{{ v.name }}（{{ v.gender }}）· {{ v.style }}</option>
+          </optgroup>
+          <optgroup v-if="voices.some((x) => x.paid)" :label="`豆包语音 2.0（付费，$${voicePrice}/万字，从余额扣）`">
+            <option v-for="v in voices.filter((x) => x.paid)" :key="v.id" :value="v.id">{{ v.name }}（{{ v.gender }}）· {{ v.style }}</option>
+          </optgroup>
         </select>
       </div>
       <div class="rounded-2xl border border-ink-200 bg-white focus-within:border-brand-400 dark:border-ink-700 dark:bg-ink-950">
@@ -107,6 +113,7 @@ const props = defineProps({
   events: { type: Array, default: () => [] },
   busy: Boolean,
   voices: { type: Array, default: () => [] },
+  voicePrice: { type: Number, default: 0 },
   focusScene: { type: String, default: '' }
 })
 const emit = defineEmits(['send', 'answer', 'stop', 'resume', 'voice'])

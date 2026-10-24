@@ -357,3 +357,35 @@ INSERT INTO video_user_keys (user_id, group_id, api_key_id) VALUES ($1, $2, $3)
 ON CONFLICT (user_id, group_id) DO UPDATE SET api_key_id = EXCLUDED.api_key_id, created_at = NOW()`, userID, groupID, apiKeyID)
 	return err
 }
+
+func (r *videoRepository) Balance(ctx context.Context, userID int64) (float64, error) {
+	var balance float64
+	err := r.db.QueryRowContext(ctx, `SELECT balance FROM users WHERE id = $1 AND deleted_at IS NULL`, userID).Scan(&balance)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, service.ErrUserNotFound
+	}
+	return balance, err
+}
+
+// ChargeTTS takes a recorded scene's price from the balance and records it, in one transaction. The
+// balance was checked before recording, so the deduction is unconditional (the audio is already made).
+func (r *videoRepository) ChargeTTS(ctx context.Context, c service.VideoTTSCharge) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `UPDATE users SET balance = balance - $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, c.Cost, c.UserID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return service.ErrUserNotFound
+	}
+	if _, err := tx.ExecContext(ctx, `
+INSERT INTO video_tts_charges (user_id, project_id, scene_id, voice, chars, cost) VALUES ($1, $2, $3, $4, $5, $6)`,
+		c.UserID, c.ProjectID, c.SceneID, c.Voice, c.Chars, c.Cost); err != nil {
+		return err
+	}
+	return tx.Commit()
+}

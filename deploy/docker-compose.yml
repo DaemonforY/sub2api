@@ -144,6 +144,10 @@ services:
       # Narration audio and users' uploaded videos / SVG animations. Keep it under /app/data (the
       # sub2api_data volume) so files survive container updates.
       - VIDEO_DIR=${VIDEO_DIR:-/app/data/video}
+      # Paid narration (豆包语音 2.0): App ID + Access Token from the 火山引擎豆包语音 console.
+      # Empty = only the free Edge voices.
+      - VIDEO_DOUBAO_APP_ID=${VIDEO_DOUBAO_APP_ID:-}
+      - VIDEO_DOUBAO_ACCESS_KEY=${VIDEO_DOUBAO_ACCESS_KEY:-}
       # Claude Code version the gateway presents when it forwards non-Claude-Code requests (chat
       # completions, the video site) on Claude OAuth accounts. Anthropic refuses new models for old
       # versions ("version 2.1.280 or newer is required"); raise it to a recent CLI release.

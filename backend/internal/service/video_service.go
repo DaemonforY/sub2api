@@ -60,6 +60,11 @@ type VideoService struct {
 	newKey        func() (string, error)
 	keyMu         sync.Mutex
 	settingsCache videoSettingsCache
+
+	// paid narrators (SetPaidTTS)
+	paidTTS      VideoPaidTTS
+	ttsBilling   VideoTTSBilling
+	balanceCache videoBalanceCache
 }
 
 // SetModelBilling enables the admin-configured model list: each model runs through its own group
@@ -155,6 +160,9 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 		return nil, ErrVideoPrompt
 	}
 	normalizeVideoOptions(in.Mode, &in.Options)
+	if videoVoicePaid(in.Options.Voice) && s.paidTTS == nil {
+		return nil, ErrVideoPaidVoiceOff
+	}
 	if m, ok := s.videoModel(ctx, in.Options.Model); ok {
 		in.Options.Model = m.ID
 	}
@@ -459,7 +467,11 @@ func (s *VideoService) motionSpec(r *videoRun) {
 }
 
 func videoAudioName(projectID string, sc VideoScene, voice string, rate int) string {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%s", voice, rate, sc.Narration)))
+	key := fmt.Sprintf("%s|%d|%s", voice, rate, sc.Narration)
+	if videoVoicePaid(voice) {
+		key += "|" + sc.Tone // only the paid voices follow the tone hint
+	}
+	sum := sha256.Sum256([]byte(key))
 	return fmt.Sprintf("%s-%s.mp3", sc.ID, hex.EncodeToString(sum[:6]))
 }
 
@@ -480,11 +492,32 @@ func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 	if len(todo) == 0 {
 		return nil
 	}
+	synthesize, err := s.videoTTSFor(p.Options.Voice)
+	if err != nil {
+		return err
+	}
+	paid := videoVoicePaid(p.Options.Voice)
+	price := s.Settings(ctx).ttsPrice()
+	if paid {
+		chars := 0
+		for _, i := range todo {
+			chars += len([]rune(p.Spec.Scenes[i].Narration))
+		}
+		need := videoTTSCost(chars, price)
+		balance, err := s.ttsBilling.Balance(ctx, p.UserID)
+		if err != nil {
+			return err
+		}
+		if balance < need {
+			return infraerrors.Forbidden("VIDEO_TTS_BALANCE", fmt.Sprintf("余额不足：这次付费配音 %d 字约需 $%.2f，当前余额 $%.2f。请到 hivegpt.cn 充值，或换成免费音色后点「继续生成」（Insufficient balance for paid voice）", chars, need, balance))
+		}
+	}
 	s.step(ctx, r, "voice", fmt.Sprintf("正在配音（%d 段）…", len(todo)))
 	dir := filepath.Join(s.audioDir, p.ID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
+	charged := 0.0 // guarded by r.mu
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(videoSceneParallelism)
 	for _, i := range todo {
@@ -492,9 +525,19 @@ func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 			r.mu.Lock()
 			sc := p.Spec.Scenes[i]
 			r.mu.Unlock()
-			speech, err := s.tts.Synthesize(gctx, sc.Narration, p.Options.Voice, p.Options.Rate)
+			speech, err := synthesize(gctx, sc.Narration, p.Options.Voice, p.Options.Rate, sc.Tone)
 			if err != nil {
 				return err
+			}
+			chars := len([]rune(sc.Narration))
+			cost := 0.0
+			if paid {
+				// Charged once the audio exists, so a failed recording costs nothing.
+				cost = videoTTSCost(chars, price)
+				if err := s.ttsBilling.ChargeTTS(context.WithoutCancel(ctx), VideoTTSCharge{UserID: p.UserID, ProjectID: p.ID, SceneID: sc.ID, Voice: p.Options.Voice, Chars: chars, Cost: cost}); err != nil {
+					slog.Warn("video: charging paid narration", "id", p.ID, "scene", sc.ID, "err", err)
+					cost = 0
+				}
 			}
 			name := videoAudioName(p.ID, sc, p.Options.Voice, p.Options.Rate)
 			if err := os.WriteFile(filepath.Join(dir, name), speech.Audio, 0o644); err != nil {
@@ -504,16 +547,26 @@ func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 			cur := &p.Spec.Scenes[i]
 			cur.Audio = &VideoSceneAudio{File: name, Duration: speech.Duration, Words: speech.Words}
 			cur.Duration = math.Max(videoMinSceneSeconds, speech.Duration+videoSceneTailPause)
-			p.Usage.TTSChars += len([]rune(sc.Narration))
+			p.Usage.TTSChars += chars
+			p.Usage.TTSCost += cost
+			charged += cost
 			r.mu.Unlock()
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
+	err = g.Wait()
+	if charged > 0 {
+		s.afterTTSCharge(p.UserID)
+	}
+	if err != nil {
 		return err
 	}
 	s.save(ctx, r)
-	s.done(ctx, r, fmt.Sprintf("配音完成，全片 %.0f 秒", p.Spec.TotalDuration()))
+	if charged > 0 {
+		s.done(ctx, r, fmt.Sprintf("配音完成，全片 %.0f 秒（豆包配音，本次从余额扣 $%.4f）", p.Spec.TotalDuration(), charged))
+	} else {
+		s.done(ctx, r, fmt.Sprintf("配音完成，全片 %.0f 秒", p.Spec.TotalDuration()))
+	}
 	return nil
 }
 
@@ -898,6 +951,9 @@ func (s *VideoService) EditScript(ctx context.Context, key *APIKey, id string, e
 func (s *VideoService) SetVoice(ctx context.Context, key *APIKey, id, voice string, rate int) (*VideoProject, error) {
 	if !videoVoiceKnown(voice) {
 		return nil, ErrVideoInvalid
+	}
+	if videoVoicePaid(voice) && s.paidTTS == nil {
+		return nil, ErrVideoPaidVoiceOff
 	}
 	return s.startOn(ctx, key, id, func(p *VideoProject) error {
 		if p.Spec == nil || p.Mode != VideoModeFilm {

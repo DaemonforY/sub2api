@@ -47,7 +47,8 @@ func bindVideo(c *gin.Context, v any) bool {
 // Catalog GET /api/v1/video/catalog — styles, genres, categories, ratios and voices.
 func (h *VideoHandler) Catalog(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=300")
-	response.Success(c, gin.H{"styles": service.VideoStyles, "genres": service.VideoGenres, "categories": service.VideoCategories, "ratios": service.VideoRatios, "voices": service.VideoVoices})
+	response.Success(c, gin.H{"styles": service.VideoStyles, "genres": service.VideoGenres, "categories": service.VideoCategories, "ratios": service.VideoRatios,
+		"voices": h.service.Voices(), "voice_price_per_10k": h.service.TTSPrice(c.Request.Context())})
 }
 
 // Me GET /api/v1/video/me — who is signed in, for the header.

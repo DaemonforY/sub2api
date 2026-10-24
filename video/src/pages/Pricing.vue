@@ -2,7 +2,7 @@
   <div class="mx-auto max-w-5xl px-4 py-12 sm:px-6">
     <section class="text-center">
       <h1 class="text-3xl font-bold sm:text-4xl">不卖积分，按用量计费</h1>
-      <p class="mx-auto mt-4 max-w-2xl leading-7 text-ink-600 dark:text-ink-300">HiveGPT 视频用你的 HiveGPT 账号登录。写脚本和做动画调用的模型按实际用量从账户余额扣费，每一笔都记在主站「用量明细」里。配音、预览、导出 HTML 和发布到案例库都不另收费。</p>
+      <p class="mx-auto mt-4 max-w-2xl leading-7 text-ink-600 dark:text-ink-300">HiveGPT 视频用你的 HiveGPT 账号登录。写脚本和做动画调用的模型按实际用量从账户余额扣费，每一笔都记在主站「用量明细」里。免费音色配音、预览、导出 HTML 和发布到案例库都不另收费；选用付费的豆包语音音色时，配音按旁白字数从余额扣费{{ paidPrice }}。</p>
     </section>
     <div class="mt-10 grid gap-4 md:grid-cols-3">
       <div v-for="c in cards" :key="c.title" class="card p-6">
@@ -32,18 +32,24 @@
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from 'vue'
 import { Coins, Gift, ShieldCheck } from 'lucide-vue-next'
-import { MAIN_SITE_URL } from '../lib/api'
+import { MAIN_SITE_URL, catalog } from '../lib/api'
+
+const cat = ref(null)
+onMounted(() => catalog().then((c) => (cat.value = c)).catch(() => {}))
+const paidPrice = computed(() => (cat.value?.voices?.some((v) => v.paid) ? `（每万字 $${cat.value.voice_price_per_10k}）` : ''))
 
 const cards = [
   { icon: Coins, title: '用多少付多少', text: '没有月费门槛，也没有会过期的积分。按模型实际用量从余额扣费。' },
-  { icon: Gift, title: '配音和导出免费', text: '12 种中文音色配音、在线预览、导出 HTML、发布案例都不额外收费。' },
+  { icon: Gift, title: '免费配音和导出', text: '12 种免费音色配音、在线预览、导出 HTML、发布案例都不额外收费；更自然的豆包语音音色按字数付费。' },
   { icon: ShieldCheck, title: '额度在你手里', text: '生成用的是你账号下的 Key，可以在主站随时停用或删除；作品默认只有自己能看。' }
 ]
 const faq = [
   { q: '需要单独注册吗？', a: '不需要。点右上角「登录」，用 HiveGPT 账号授权一个 Key 就能用；还没有账号可以在登录页注册。' },
   { q: '用哪个模型最好？', a: '在创作页的「模型」里选择。不同模型的画面效果、速度和价格不同，写动画代码对模型要求高，建议先用默认推荐的模型。' },
   { q: '生成要多久？可以关掉页面吗？', a: '一个 1 分钟的视频通常 2–5 分钟。生成在服务器上进行，可以关掉页面，回来在「历史创作」里打开。' },
+  { q: '付费配音怎么收费？', a: '创作页和作品页的音色列表里标「付费」的是豆包语音 2.0 音色，声音更自然，会按每个分镜的语气来读。按旁白字数从余额扣费，每段配好后扣一次，配音失败不扣；余额不够这次配音时不会开始。扣费金额显示在作品的对话和用量里（不在主站「用量明细」里）。' },
   { q: '能导出 MP4 吗？', a: '目前可以导出单个 HTML 文件（带配音和字幕，浏览器直接播放）。MP4 视频导出即将上线。' },
   { q: '作品版权归谁？', a: '你生成的作品归你所有。发布到案例库后，其他人可以观看并「制作同款」（基于你的描述重新生成），不会拿到你的作品文件以外的信息。' }
 ]

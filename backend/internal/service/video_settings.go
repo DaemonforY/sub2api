@@ -42,7 +42,24 @@ type VideoSettings struct {
 	Models  []VideoModelOption `json:"models"`
 	Ads     []VideoAd          `json:"ads"`
 	AdEvery int                `json:"ad_every"` // one ad after every N works in the gallery
+	// TTSPricePer10k is what paid narration (豆包语音 2.0) costs users, in balance dollars per
+	// 10,000 characters; 0 = videoDefaultTTSPrice.
+	TTSPricePer10k float64 `json:"tts_price_per_10k"`
 }
+
+// videoDefaultTTSPrice: 豆包语音 2.0 costs ¥3 per 10,000 characters; balance dollars are sold at ¥1,
+// so $6 is twice the cost (the video site's usual 2×).
+const videoDefaultTTSPrice = 6.0
+
+func (v VideoSettings) ttsPrice() float64 {
+	if v.TTSPricePer10k > 0 {
+		return v.TTSPricePer10k
+	}
+	return videoDefaultTTSPrice
+}
+
+// TTSPrice is the paid narration price shown on the site (balance dollars per 10,000 characters).
+func (s *VideoService) TTSPrice(ctx context.Context) float64 { return s.Settings(ctx).ttsPrice() }
 
 type VideoPublicModel struct {
 	ID      string `json:"id"`
@@ -131,6 +148,9 @@ func (s *VideoService) SaveSettings(ctx context.Context, admin *User, in VideoSe
 		}
 	}
 	in.AdEvery = max(3, min(in.AdEvery, 30))
+	if in.TTSPricePer10k < 0 || in.TTSPricePer10k > 1000 {
+		return VideoSettings{}, ErrVideoSettings
+	}
 	raw, err := json.Marshal(in)
 	if err != nil {
 		return VideoSettings{}, err

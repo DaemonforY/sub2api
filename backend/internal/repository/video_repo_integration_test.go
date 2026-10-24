@@ -139,3 +139,27 @@ func containsCard(cards []service.VideoCard, id string) bool {
 	}
 	return false
 }
+
+func TestVideoRepositoryChargeTTS(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "video-tts-" + suffix + "@video.test", Username: "vtts" + suffix[len(suffix)-4:], Balance: 1})
+	repo := NewVideoRepository(integrationDB).(service.VideoTTSBilling)
+
+	balance, err := repo.Balance(ctx, user.ID)
+	require.NoError(t, err)
+	require.InDelta(t, 1, balance, 1e-9)
+	charge := service.VideoTTSCharge{UserID: user.ID, ProjectID: "p-" + suffix, SceneID: "s1", Voice: "zh_male_m191_uranus_bigtts", Chars: 300, Cost: 0.18}
+	require.NoError(t, repo.ChargeTTS(ctx, charge))
+	charge.SceneID, charge.Cost = "s2", 1 // the balance was checked before recording, so it may go below zero
+	require.NoError(t, repo.ChargeTTS(ctx, charge))
+	balance, err = repo.Balance(ctx, user.ID)
+	require.NoError(t, err)
+	require.InDelta(t, -0.18, balance, 1e-9)
+	var rows int
+	var total float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT COUNT(*), SUM(cost) FROM video_tts_charges WHERE user_id = $1`, user.ID).Scan(&rows, &total))
+	require.Equal(t, 2, rows)
+	require.InDelta(t, 1.18, total, 1e-9)
+	require.ErrorIs(t, repo.ChargeTTS(ctx, service.VideoTTSCharge{UserID: -1, ProjectID: "x", SceneID: "s1", Voice: "v", Chars: 1, Cost: 0.1}), service.ErrUserNotFound)
+}
