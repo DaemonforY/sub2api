@@ -291,8 +291,11 @@ func isOpenAICompatibleModelNotFoundBody(respBody []byte) bool {
 }
 
 // OpenAIRequestBodyTooLargeClientMessage is the fixed downstream message used
-// after all account-specific request body limit failovers are exhausted.
-const OpenAIRequestBodyTooLargeClientMessage = "Request payload is too large"
+// after all account-specific request body limit failovers are exhausted. Nearly all of these are
+// Codex sending a long conversation full of screenshots, which the upstream gateway (gorustai, 20MB
+// body limit) refuses; the client shows the message as is, so it tells the user what to do. The
+// original English stays at the end for clients and ops classifiers.
+const OpenAIRequestBodyTooLargeClientMessage = "这次请求内容太大，超过了上游单次请求约 20MB 的上限，多半是对话太长或贴了很多截图、大文件。请新开一个对话继续（可以先让 Codex 总结当前进度，再把总结贴到新对话里），截图尽量少贴；本次请求未扣费（Request payload is too large）"
 
 const openAIRequestBodyTooLargeReason = GatewayFailureReason("openai_request_body_too_large")
 
