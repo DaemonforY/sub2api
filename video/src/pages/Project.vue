@@ -242,7 +242,10 @@ const audioUrl = (sc) => (sc.audio?.file ? `/api/v1/video/projects/${p.value.id}
 
 let lastEvent = 0
 let timer = 0
+// Polling stops once the page is left; route.params.id is gone then and id reads "undefined".
+let alive = true
 async function refresh() {
+  if (!alive || !route.params.id) return
   try {
     const [proj, ev] = await Promise.all([api(`/projects/${id.value}`), api(`/projects/${id.value}/events?after=${lastEvent}`)])
     p.value = proj
@@ -261,6 +264,7 @@ async function refresh() {
 }
 function schedule() {
   clearTimeout(timer)
+  if (!alive) return
   const delay = busy.value ? 2000 : 15000
   timer = setTimeout(async () => {
     if (document.visibilityState === 'visible') await refresh()
@@ -368,6 +372,7 @@ async function doExport() {
 }
 
 watch(id, () => {
+  if (!route.params.id) return
   p.value = null
   events.value = []
   lastEvent = 0
@@ -382,5 +387,8 @@ onMounted(async () => {
   await refresh()
   schedule()
 })
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => {
+  alive = false
+  clearTimeout(timer)
+})
 </script>
