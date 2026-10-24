@@ -642,6 +642,10 @@ func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings Sett
 	if store, ok := repo.(VideoKeyStore); ok && keySvc != nil {
 		svc.SetModelBilling(settings, groups, store, apiKeys, users, keySvc.GenerateKey)
 	}
+	// MP4 export through the videorender container (VIDEO_RENDER_URL), which opens the public video site.
+	if exports, ok := repo.(VideoExportRepository); ok && cfg != nil {
+		svc.SetRenderer(exports, cfg.Video.RenderURL, videoSiteOrigin(cfg.Video.Domain))
+	}
 	// Paid narrators (豆包语音 2.0) when VIDEO_DOUBAO_API_KEY (or the old App ID + Access Token) is set.
 	if cfg != nil {
 		if doubao := NewDoubaoTTS(cfg.Video.DoubaoAPIKey, cfg.Video.DoubaoAppID, cfg.Video.DoubaoAccessKey); doubao != nil {

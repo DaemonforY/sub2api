@@ -20,7 +20,7 @@
           <template v-if="!isUpload">
             <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
             <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
-            <button class="btn-ghost btn-sm" disabled title="视频导出（MP4）即将上线"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
+            <button class="btn-ghost btn-sm" :disabled="!isReady || !exportEnabled" :title="exportEnabled ? '导出 MP4（1080p 60 帧），发布到抖音、视频号、小红书、B站' : '视频导出（MP4）即将上线'" @click="exportOpen = true"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
           </template>
           <button v-if="p.visibility === 'private' || p.visibility === 'rejected'" class="btn-primary btn-sm" :disabled="!isReady" @click="publishOpen = true"><Send class="h-3.5 w-3.5" />发布</button>
           <button v-else class="btn-ghost btn-sm" @click="unpublish">撤回</button>
@@ -144,6 +144,7 @@
       @voice="setVoice"
     />
 
+    <ExportDialog v-if="exportOpen && p" :project="p" @close="exportOpen = false" />
     <PublishDialog v-if="publishOpen && p" :project="p" :categories="categories" @close="publishOpen = false" @published="(x) => ((p = x), (publishOpen = false))" />
     <Modal v-if="posterOpen && p?.media" title="更换封面" @close="posterOpen = false">
       <PosterPicker :src="p.media.url" @poster="(x) => (newPoster = x.blob)" @error="toastError" />
@@ -164,6 +165,7 @@ import AgentPanel from '../components/AgentPanel.vue'
 import FilmPlayer from '../components/FilmPlayer.vue'
 import HistorySidebar from '../components/HistorySidebar.vue'
 import PublishDialog from '../components/PublishDialog.vue'
+import ExportDialog from '../components/ExportDialog.vue'
 import ScriptTab from '../components/ScriptTab.vue'
 import VersionsDialog from '../components/VersionsDialog.vue'
 import Modal from '../components/Modal.vue'
@@ -188,6 +190,8 @@ const versionsOpen = ref(false)
 const exporting = ref(false)
 const voices = ref([])
 const voicePrice = ref(0)
+const exportOpen = ref(false)
+const exportEnabled = ref(false)
 const categories = ref([])
 const sceneErrors = reactive({})
 const repaired = new Set()
@@ -386,7 +390,7 @@ onMounted(async () => {
     router.replace('/')
     return
   }
-  catalog().then((c) => ((voices.value = c.voices), (voicePrice.value = c.voice_price_per_10k || 0), (categories.value = c.categories)))
+  catalog().then((c) => ((voices.value = c.voices), (voicePrice.value = c.voice_price_per_10k || 0), (exportEnabled.value = !!c.export), (categories.value = c.categories)))
   await refresh()
   schedule()
 })

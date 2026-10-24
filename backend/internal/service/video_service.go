@@ -65,6 +65,10 @@ type VideoService struct {
 	paidTTS      VideoPaidTTS
 	ttsBilling   VideoTTSBilling
 	balanceCache videoBalanceCache
+
+	// MP4 export and the publishing kit (SetRenderer)
+	exports  VideoExportRepository
+	renderer *videoRenderer
 }
 
 // SetModelBilling enables the admin-configured model list: each model runs through its own group

@@ -149,6 +149,8 @@ services:
       - VIDEO_DOUBAO_API_KEY=${VIDEO_DOUBAO_API_KEY:-}
       - VIDEO_DOUBAO_APP_ID=${VIDEO_DOUBAO_APP_ID:-}
       - VIDEO_DOUBAO_ACCESS_KEY=${VIDEO_DOUBAO_ACCESS_KEY:-}
+      # MP4 export (see the videorender service below). Empty = export off.
+      - VIDEO_RENDER_URL=${VIDEO_RENDER_URL:-http://videorender:7100}
       # Claude Code version the gateway presents when it forwards non-Claude-Code requests (chat
       # completions, the video site) on Claude OAuth accounts. Anthropic refuses new models for old
       # versions ("version 2.1.280 or newer is required"); raise it to a recent CLI release.
@@ -274,6 +276,27 @@ services:
     # Leave a core for the gateway; peak memory is about 1.7GB.
     cpus: 3
     mem_limit: 3g
+    networks:
+      - sub2api-network
+
+  # ===========================================================================
+  # HiveGPT 视频 MP4 export: headless Chromium + ffmpeg render the films frame by frame
+  # (1080p 60fps) into the shared data volume. Built locally: docker compose up -d --build videorender
+  # ===========================================================================
+  videorender:
+    build: ./videorender
+    image: sub2api-videorender:local
+    pull_policy: never
+    container_name: sub2api-videorender
+    restart: unless-stopped
+    environment:
+      - RENDER_ORIGIN=https://${VIDEO_DOMAIN:-video.hivegpt.cn}
+      - FFMPEG_THREADS=2
+    volumes:
+      - sub2api_data:/app/data
+    # Leave a core for the gateway; Chromium + x264 at 1080p peak around 1.5GB.
+    cpus: 2.5
+    mem_limit: 2500m
     networks:
       - sub2api-network
 

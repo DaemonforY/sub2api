@@ -794,6 +794,9 @@ type VideoConfig struct {
 	DoubaoAPIKey    string `mapstructure:"doubao_api_key"`
 	DoubaoAppID     string `mapstructure:"doubao_app_id"`
 	DoubaoAccessKey string `mapstructure:"doubao_access_key"`
+	// RenderURL is the videorender container (deploy/videorender) that turns films into MP4 for
+	// download and the publishing kit; empty = export off.
+	RenderURL string `mapstructure:"render_url"`
 }
 
 // ChatConfig is AI 对话 (/chat).
@@ -2161,6 +2164,7 @@ func setDefaults() {
 	viper.SetDefault("video.dir", "./data/video")
 	viper.SetDefault("video.gateway_url", "")
 	viper.SetDefault("video.doubao_api_key", "")
+	viper.SetDefault("video.render_url", "")
 	viper.SetDefault("video.doubao_app_id", "")
 	viper.SetDefault("video.doubao_access_key", "")
 	viper.SetDefault("chat.gateway_url", "")

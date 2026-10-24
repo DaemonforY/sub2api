@@ -1,6 +1,6 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @mousedown.self="$emit('close')">
-    <div class="card w-full max-w-lg p-6 shadow-2xl" role="dialog" aria-modal="true">
+    <div class="card thin-scroll max-h-[92vh] w-full overflow-y-auto p-6 shadow-2xl" :class="wide ? 'max-w-3xl' : 'max-w-lg'" role="dialog" aria-modal="true">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold">{{ title }}</h2>
         <button class="rounded-lg p-1 text-ink-400 hover:bg-ink-100 dark:hover:bg-ink-800" aria-label="关闭" @click="$emit('close')"><X class="h-5 w-5" /></button>
@@ -12,6 +12,6 @@
 
 <script setup>
 import { X } from 'lucide-vue-next'
-defineProps({ title: { type: String, default: '' } })
+defineProps({ title: { type: String, default: '' }, wide: Boolean })
 defineEmits(['close'])
 </script>

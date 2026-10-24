@@ -389,3 +389,104 @@ INSERT INTO video_tts_charges (user_id, project_id, scene_id, voice, chars, cost
 	}
 	return tx.Commit()
 }
+
+// --- MP4 exports and the publishing kit -----------------------------------------------------------
+
+const videoExportColumns = `id, project_id, user_id, layout, status, signature, file, cover, size, duration, error, created_at, updated_at`
+
+func scanVideoExport(row videoScanner) (*service.VideoExport, error) {
+	var e service.VideoExport
+	err := row.Scan(&e.ID, &e.ProjectID, &e.UserID, &e.Layout, &e.Status, &e.Signature, &e.File, &e.Cover, &e.Size, &e.Duration, &e.Error, &e.CreatedAt, &e.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &e, nil
+}
+
+func (r *videoRepository) CreateExport(ctx context.Context, e *service.VideoExport) error {
+	return r.db.QueryRowContext(ctx, `
+INSERT INTO video_exports (id, project_id, user_id, layout, status, signature) VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING created_at, updated_at`, e.ID, e.ProjectID, e.UserID, e.Layout, e.Status, e.Signature).Scan(&e.CreatedAt, &e.UpdatedAt)
+}
+
+func (r *videoRepository) UpdateExport(ctx context.Context, e *service.VideoExport) error {
+	_, err := r.db.ExecContext(ctx, `
+UPDATE video_exports SET status = $2, signature = $3, file = $4, cover = $5, size = $6, duration = $7, error = $8, updated_at = NOW()
+WHERE id = $1`, e.ID, e.Status, e.Signature, e.File, e.Cover, e.Size, e.Duration, e.Error)
+	return err
+}
+
+func (r *videoRepository) GetExport(ctx context.Context, id string) (*service.VideoExport, error) {
+	e, err := scanVideoExport(r.db.QueryRowContext(ctx, `SELECT `+videoExportColumns+` FROM video_exports WHERE id = $1`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return e, err
+}
+
+func (r *videoRepository) ListExports(ctx context.Context, projectID string) ([]service.VideoExport, error) {
+	if !videoLooksLikeUUID(projectID) {
+		return nil, nil
+	}
+	rows, err := r.db.QueryContext(ctx, `SELECT `+videoExportColumns+` FROM video_exports WHERE project_id = $1 ORDER BY created_at DESC LIMIT 50`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var out []service.VideoExport
+	for rows.Next() {
+		e, err := scanVideoExport(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *e)
+	}
+	return out, rows.Err()
+}
+
+func (r *videoRepository) DeleteExport(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM video_exports WHERE id = $1`, id)
+	return err
+}
+
+func (r *videoRepository) UnfinishedExports(ctx context.Context) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT id FROM video_exports WHERE status IN ('queued', 'running') ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (r *videoRepository) CountExportsSince(ctx context.Context, userID int64, since time.Time) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM video_exports WHERE user_id = $1 AND created_at >= $2`, userID, since).Scan(&n)
+	return n, err
+}
+
+func (r *videoRepository) GetPublishCopy(ctx context.Context, projectID string) (json.RawMessage, error) {
+	if !videoLooksLikeUUID(projectID) {
+		return nil, nil
+	}
+	var raw []byte
+	err := r.db.QueryRowContext(ctx, `SELECT copy FROM video_publish_copy WHERE project_id = $1`, projectID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return raw, err
+}
+
+func (r *videoRepository) SetPublishCopy(ctx context.Context, projectID string, raw json.RawMessage) error {
+	_, err := r.db.ExecContext(ctx, `
+INSERT INTO video_publish_copy (project_id, copy) VALUES ($1, $2)
+ON CONFLICT (project_id) DO UPDATE SET copy = EXCLUDED.copy, updated_at = NOW()`, projectID, []byte(raw))
+	return err
+}

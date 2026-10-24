@@ -163,3 +163,52 @@ func TestVideoRepositoryChargeTTS(t *testing.T) {
 	require.InDelta(t, 1.18, total, 1e-9)
 	require.ErrorIs(t, repo.ChargeTTS(ctx, service.VideoTTSCharge{UserID: -1, ProjectID: "x", SceneID: "s1", Voice: "v", Chars: 1, Cost: 0.1}), service.ErrUserNotFound)
 }
+
+func TestVideoRepositoryExports(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	user := mustCreateUser(t, integrationEntClient, &service.User{Email: "video-export-" + suffix + "@video.test", Username: "vexp" + suffix[len(suffix)-4:]})
+	repo := NewVideoRepository(integrationDB)
+	exports := repo.(service.VideoExportRepository)
+	p := &service.VideoProject{UserID: user.ID, APIKeyID: 5, Mode: service.VideoModeFilm, Title: "导出测试", Prompt: "p " + suffix,
+		Options: service.VideoOptions{Ratio: "16:9"}, Status: service.VideoStatusReady, Width: 1920, Height: 1080, Visibility: service.VideoVisibilityPrivate}
+	require.NoError(t, repo.Create(ctx, p))
+
+	e := &service.VideoExport{ID: "e" + suffix, ProjectID: p.ID, UserID: user.ID, Layout: service.VideoLayoutPortrait, Status: service.VideoExportQueued, Signature: "sig1"}
+	require.NoError(t, exports.CreateExport(ctx, e))
+	require.False(t, e.CreatedAt.IsZero())
+	ids, err := exports.UnfinishedExports(ctx)
+	require.NoError(t, err)
+	require.Contains(t, ids, e.ID)
+
+	e.Status, e.File, e.Cover, e.Size, e.Duration = service.VideoExportReady, p.ID+"/exports/x.mp4", p.ID+"/exports/x.jpg", 1234, 61.5
+	require.NoError(t, exports.UpdateExport(ctx, e))
+	got, err := exports.GetExport(ctx, e.ID)
+	require.NoError(t, err)
+	require.Equal(t, service.VideoExportReady, got.Status)
+	require.Equal(t, int64(1234), got.Size)
+	require.Equal(t, 61.5, got.Duration)
+	list, err := exports.ListExports(ctx, p.ID)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	n, err := exports.CountExportsSince(ctx, user.ID, time.Now().Add(-time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+
+	raw, err := exports.GetPublishCopy(ctx, p.ID)
+	require.NoError(t, err)
+	require.Nil(t, raw)
+	require.NoError(t, exports.SetPublishCopy(ctx, p.ID, []byte(`{"douyin":{"title":"一"}}`)))
+	require.NoError(t, exports.SetPublishCopy(ctx, p.ID, []byte(`{"douyin":{"title":"二"}}`)))
+	raw, err = exports.GetPublishCopy(ctx, p.ID)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"douyin":{"title":"二"}}`, string(raw))
+
+	// Deleting the project removes its exports and copy.
+	ok, err := repo.Delete(ctx, user.ID, p.ID)
+	require.NoError(t, err)
+	require.True(t, ok)
+	got, err = exports.GetExport(ctx, e.ID)
+	require.NoError(t, err)
+	require.Nil(t, got)
+}

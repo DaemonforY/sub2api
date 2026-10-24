@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -48,7 +49,7 @@ func bindVideo(c *gin.Context, v any) bool {
 func (h *VideoHandler) Catalog(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age=300")
 	response.Success(c, gin.H{"styles": service.VideoStyles, "genres": service.VideoGenres, "categories": service.VideoCategories, "ratios": service.VideoRatios,
-		"voices": h.service.Voices(), "voice_price_per_10k": h.service.TTSPrice(c.Request.Context())})
+		"voices": h.service.Voices(), "voice_price_per_10k": h.service.TTSPrice(c.Request.Context()), "export": h.service.ExportEnabled()})
 }
 
 // Me GET /api/v1/video/me — who is signed in, for the header.
@@ -666,3 +667,84 @@ func (h *VideoHandler) reply(c *gin.Context, p *service.VideoProject, err error)
 
 // Service is the video service (the server reads public works for page titles and the sitemap).
 func (h *VideoHandler) Service() *service.VideoService { return h.service }
+
+// Exports GET /api/v1/video/projects/:id/exports — the project's MP4 renders with progress and links.
+func (h *VideoHandler) Exports(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	list, err := h.service.Exports(c.Request.Context(), key.UserID, c.Param("id"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"exports": list})
+}
+
+// StartExport POST /api/v1/video/projects/:id/exports {layout: landscape|portrait}
+func (h *VideoHandler) StartExport(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	var in struct {
+		Layout string `json:"layout"`
+	}
+	if !bindVideo(c, &in) {
+		return
+	}
+	e, err := h.service.StartExport(c.Request.Context(), key.UserID, c.Param("id"), in.Layout)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, e)
+}
+
+// PublishCopy GET /api/v1/video/projects/:id/publish-copy — saved per-platform copy (or null).
+func (h *VideoHandler) PublishCopy(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	pc, err := h.service.PublishCopy(c.Request.Context(), key.UserID, c.Param("id"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"copy": pc})
+}
+
+// WritePublishCopy POST /api/v1/video/projects/:id/publish-copy — (re)write the copy with the model.
+func (h *VideoHandler) WritePublishCopy(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	pc, err := h.service.WritePublishCopy(c.Request.Context(), key, c.Param("id"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"copy": pc})
+}
+
+// ExportFile GET /api/v1/video/exports/:id/:kind (mp4 | jpg) — signed link, so a plain <a download>
+// works without the API key.
+func (h *VideoHandler) ExportFile(c *gin.Context) {
+	f, err := h.service.ExportFile(c.Request.Context(), c.Param("id"), c.Param("kind"), c.Query("exp"), c.Query("sig"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	disposition := "attachment"
+	if c.Query("inline") == "1" {
+		disposition = "inline"
+	}
+	c.Header("Content-Disposition", disposition+"; filename=\"export."+c.Param("kind")+"\"; filename*=UTF-8''"+url.PathEscape(f.Name))
+	c.Header("Content-Type", f.Mime)
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Cache-Control", "private, max-age=3600")
+	c.File(f.Path)
+}
