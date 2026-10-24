@@ -14,7 +14,7 @@ const ORIGIN = (process.env.RENDER_ORIGIN || 'https://video.hivegpt.cn').replace
 const CHROME = process.env.CHROME_PATH || '/usr/bin/chromium'
 const THREADS = String(process.env.FFMPEG_THREADS || 2)
 
-let busy = false
+let current = null // { out, promise } of the job being rendered
 
 function inside(p) {
   const abs = path.resolve(ROOT, p)
@@ -141,22 +141,32 @@ http.createServer(async (req, res) => {
     res.writeHead(code, { 'content-type': 'application/json' })
     res.end(JSON.stringify(body))
   }
-  if (req.method === 'GET' && req.url === '/health') return send(200, { ok: true, busy })
+  if (req.method === 'GET' && req.url === '/health') return send(200, { ok: true, busy: !!current })
   if (req.method !== 'POST' || req.url !== '/render') return send(404, { error: 'not found' })
-  if (busy) return send(409, { error: 'busy' })
   let raw = ''
   for await (const chunk of req) {
     raw += chunk
     if (raw.length > 20 << 20) return send(413, { error: 'job too large' })
   }
-  busy = true
+  let job
   try {
-    const result = await render(JSON.parse(raw))
-    send(200, result)
+    job = JSON.parse(raw)
+  } catch {
+    return send(400, { error: 'bad json' })
+  }
+  // sub2api re-sends a job after it restarts; wait for the render already running instead of refusing.
+  const mine = !current
+  if (current && current.out !== job.out) return send(409, { error: 'busy' })
+  if (mine) {
+    const promise = render(job)
+    current = { out: job.out, promise }
+    promise.catch(() => {}).finally(() => { if (current && current.promise === promise) current = null })
+  }
+  const pending = current.promise
+  try {
+    send(200, await pending)
   } catch (err) {
-    console.error('render failed:', err)
+    if (mine) console.error('render failed:', err)
     send(500, { error: String(err.message || err).slice(0, 1000) })
-  } finally {
-    busy = false
   }
 }).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN))

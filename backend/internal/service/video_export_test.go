@@ -282,3 +282,16 @@ func TestVideoWritePublishCopy(t *testing.T) {
 	_, err = svc.PublishCopy(ctx, 8, p.ID)
 	require.Error(t, err)
 }
+
+func TestVideoRendererQueuePosition(t *testing.T) {
+	r := &videoRenderer{queue: make(chan string, 2)}
+	require.True(t, r.enqueue("a"))
+	require.True(t, r.enqueue("b"))
+	require.False(t, r.enqueue("c")) // full
+	require.Equal(t, 1, r.position("a"))
+	require.Equal(t, 2, r.position("b"))
+	require.Zero(t, r.position("c"))
+	r.taken(<-r.queue)
+	require.Zero(t, r.position("a"))
+	require.Equal(t, 1, r.position("b"))
+}

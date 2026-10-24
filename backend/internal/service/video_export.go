@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -128,6 +129,44 @@ type videoRenderer struct {
 	origin string // the video site, whose /render.html the renderer opens
 	client *http.Client
 	queue  chan string
+
+	mu      sync.Mutex
+	pending []string // queued export ids in order, for the queue position
+}
+
+func (r *videoRenderer) enqueue(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	select {
+	case r.queue <- id:
+		r.pending = append(r.pending, id)
+		return true
+	default:
+		return false
+	}
+}
+
+func (r *videoRenderer) taken(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, p := range r.pending {
+		if p == id {
+			r.pending = append(r.pending[:i], r.pending[i+1:]...)
+			return
+		}
+	}
+}
+
+// position is 1 for the next export to render, 0 when the id is not waiting.
+func (r *videoRenderer) position(id string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, p := range r.pending {
+		if p == id {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 // SetRenderer enables MP4 export. renderURL is the videorender container, siteOrigin the public
@@ -147,10 +186,7 @@ func (s *VideoService) SetRenderer(exports VideoExportRepository, renderURL, sit
 		slog.Warn("video: listing unfinished exports", "err", err)
 	}
 	for _, id := range ids {
-		select {
-		case s.renderer.queue <- id:
-		default:
-		}
+		s.renderer.enqueue(id)
 	}
 }
 
@@ -238,9 +274,7 @@ func (s *VideoService) StartExport(ctx context.Context, userID int64, projectID,
 	if err := s.exports.CreateExport(ctx, e); err != nil {
 		return nil, err
 	}
-	select {
-	case s.renderer.queue <- e.ID:
-	default:
+	if !s.renderer.enqueue(e.ID) {
 		e.Status, e.Error = VideoExportFailed, "导出排队已满（Queue full）"
 		_ = s.exports.UpdateExport(ctx, e)
 		return nil, ErrVideoExportQueue
@@ -299,12 +333,11 @@ func (s *VideoService) describeExport(p *VideoProject, e *VideoExport) *VideoExp
 	return &out
 }
 
-// exportPosition is a rough place in the queue (the channel can't be inspected without draining).
-func (s *VideoService) exportPosition(_ string) int {
+func (s *VideoService) exportPosition(id string) int {
 	if s.renderer == nil {
 		return 0
 	}
-	return len(s.renderer.queue) + 1
+	return s.renderer.position(id)
 }
 
 func (s *VideoService) exportURL(exportID, kind string) string {
@@ -370,6 +403,7 @@ func videoSafeFileName(title string) string {
 
 func (s *VideoService) exportWorker() {
 	for id := range s.renderer.queue {
+		s.renderer.taken(id)
 		s.renderExport(id)
 	}
 }
