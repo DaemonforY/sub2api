@@ -17,7 +17,7 @@ export default {
       drawSelected: 'Draw selected',
       candidates: 'Pictures per work',
       selected: '{n} selected',
-      empty: 'No works yet. Import a JSON file (promo/textbook-poems/pilot-8a.json).',
+      empty: 'No works yet. Import a JSON file (one per textbook volume, built into promo/textbook-poems/import/, e.g. 统编八上.json).',
       columns: { title: 'Work', grade: 'Grade', chars: 'Chars (poster/full)', text: 'Text check', theme: 'Scene', images: 'Drawings', picked: 'Picked', renders: 'Posters', actions: 'Actions' },
       verify1: 'Check 1 passed',
       verify2: 'Check 2 passed',

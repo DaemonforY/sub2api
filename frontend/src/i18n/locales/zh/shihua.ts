@@ -17,7 +17,7 @@ export default {
       drawSelected: '所选出图',
       candidates: '每篇张数',
       selected: '已选 {n} 篇',
-      empty: '还没有篇目，可导入 JSON 文件（promo/textbook-poems/pilot-8a.json）',
+      empty: '还没有篇目，可导入 JSON 文件（按册生成在 promo/textbook-poems/import/，例如 统编八上.json）',
       columns: { title: '篇目', grade: '年级', chars: '字数（上图/全文）', text: '正文校对', theme: '画面描述', images: '出图', picked: '选定', renders: '成品', actions: '操作' },
       verify1: '一校通过',
       verify2: '二校通过',
