@@ -46,6 +46,12 @@
             <div class="text-xs text-gray-500">{{ image?.upscaled_url ? t('shihua.layout.useUpscaled') : t('shihua.layout.noUpscaled') }}</div>
             <div v-if="current.text_status !== 'verified_2'" class="text-xs text-amber-600">{{ t('shihua.layout.notVerified') }}</div>
           </div>
+          <label class="text-xs text-gray-500"
+            >{{ t('shihua.layout.font') }}
+            <select v-model="font" class="input mt-1 w-32" data-testid="shihua-font" @change="changeFont">
+              <option v-for="f in SHIHUA_FONTS" :key="f.id" :value="f.id">{{ t(`shihua.layout.fonts.${f.id}`) }}</option>
+            </select>
+          </label>
           <label class="text-xs text-gray-500">{{ t('shihua.layout.seal') }}<input v-model="seal" class="input mt-1 w-28" maxlength="4" /></label>
           <label class="text-xs text-gray-500">{{ t('shihua.layout.label') }}<input v-model="label" class="input mt-1 w-32" /></label>
           <button class="btn btn-secondary" :disabled="!art" @click="redetect">{{ t('shihua.layout.redetect') }}</button>
@@ -95,6 +101,8 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import * as api from '@/api/admin/shihua'
 import {
   SHIHUA_ASPECTS,
+  SHIHUA_DEFAULT_FONT,
+  SHIHUA_FONTS,
   canvasToBlob,
   loadShihuaArt,
   loadShihuaFont,
@@ -102,6 +110,7 @@ import {
   textForAspect,
   type ShihuaAspect,
   type ShihuaBox,
+  type ShihuaFontId,
   type ShihuaLayoutResult
 } from '@/utils/shihuaLayout'
 
@@ -126,6 +135,7 @@ function toggleAll() {
 
 const seal = ref('课本诗画')
 const label = ref('AI 生成')
+const font = ref<ShihuaFontId>(SHIHUA_DEFAULT_FONT)
 const fontMissing = ref(false)
 const current = ref<api.ShihuaWork | null>(null)
 const image = ref<api.ShihuaImage | null>(null)
@@ -153,7 +163,7 @@ async function pickedImage(w: api.ShihuaWork): Promise<api.ShihuaImage | null> {
 async function render(w: api.ShihuaWork, source: HTMLCanvasElement, aspect: ShihuaAspect, opt: AspectOptions) {
   return renderShihuaPoster(
     { art: source, aspect, text: textForAspect(aspect, posterText(w), w.famous_lines), title: w.title, author: w.author },
-    { box: opt.box, scale: opt.scale, color: opt.color, seal: seal.value, label: label.value }
+    { box: opt.box, scale: opt.scale, color: opt.color, seal: seal.value, label: label.value, font: font.value }
   )
 }
 
@@ -171,6 +181,11 @@ async function renderAll() {
   for (const a of SHIHUA_ASPECTS) await renderOne(a.id)
 }
 
+async function changeFont() {
+  fontMissing.value = !(await loadShihuaFont(font.value))
+  if (art.value) await renderAll()
+}
+
 /** Forgets dragged text areas and looks for the blank area again. */
 function redetect() {
   for (const a of SHIHUA_ASPECTS) options[a.id].box = undefined
@@ -183,11 +198,15 @@ async function open(w: api.ShihuaWork) {
   Object.assign(options, freshOptions())
   dragBox.value = null
   try {
-    fontMissing.value = !(await loadShihuaFont())
     image.value = await pickedImage(w)
     if (!image.value?.url) return
     const [source, renders] = await Promise.all([loadShihuaArt(image.value.url, image.value.upscaled_url), api.listRenders([w.id])])
-    savedAspects.value = new Set(renders.filter((r) => r.image_id === w.picked_image_id).map((r) => r.aspect))
+    const mine = renders.filter((r) => r.image_id === w.picked_image_id)
+    savedAspects.value = new Set(mine.map((r) => r.aspect))
+    // Reopening a work keeps the font it was saved with.
+    const savedFont = mine.map((r) => r.layout?.font).find((f): f is ShihuaFontId => SHIHUA_FONTS.some((x) => x.id === f))
+    if (savedFont) font.value = savedFont
+    fontMissing.value = !(await loadShihuaFont(font.value))
     if (current.value?.id !== w.id) return
     art.value = source
     await renderAll()
@@ -227,7 +246,7 @@ async function batch() {
   Object.assign(batchProgress, { done: 0, total: todo.length * SHIHUA_ASPECTS.length })
   let saved = 0
   try {
-    fontMissing.value = !(await loadShihuaFont())
+    fontMissing.value = !(await loadShihuaFont(font.value))
     for (const w of todo) {
       const img = await pickedImage(w)
       if (!img?.url) continue

@@ -204,3 +204,13 @@ func TestImageToolsAdminSettingsOverrideTheConfig(t *testing.T) {
 	q, _ = svc.Quota(ctx, 7)
 	require.False(t, q.Enabled)
 }
+
+func TestImageToolsUpscaleInternalAsksForFullSizeAndBlend(t *testing.T) {
+	repo := &imageToolsRepoStub{}
+	svc, _, paths := newImageToolsTest(t, repo, false, okImage)
+	out, err := svc.UpscaleInternal(context.Background(), []byte("art"), 2)
+	require.NoError(t, err)
+	require.Equal(t, []byte("png"), out)
+	require.Equal(t, []string{"/upscale?scale=2&full=1&blend=0.35"}, *paths)
+	require.Empty(t, repo.charges, "the site's own pipelines are not billed")
+}

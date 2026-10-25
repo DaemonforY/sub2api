@@ -7,6 +7,8 @@ Models (all permissive licenses, CPU via onnxruntime):
 
 POST /remove-bg?model=isnet|u2net   body: image bytes -> PNG with transparency
 POST /upscale?scale=2|4             body: image bytes -> JPEG (PNG when the input has transparency)
+     [&full=1]                          run the model on up to 1536 px instead of 1024 (slower, keeps detail)
+     [&blend=0..0.6]                    mix in the plainly resized original, then a light unsharp mask
 GET  /health
 One job runs at a time; the gateway limits how many wait.
 """
@@ -21,13 +23,14 @@ from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 import onnxruntime as ort
-from PIL import Image, ImageOps
+from PIL import Image, ImageFilter, ImageOps
 
 MODELS = os.environ.get("MODEL_DIR", "/models")
 THREADS = int(os.environ.get("THREADS", "3"))
 MAX_BODY = 25 * 1024 * 1024
 MAX_EDGE = 4096  # longest edge of any output
 UPSCALE_INPUT_EDGE = 1024  # the model runs on at most this; ~10s on 3 cores
+FULL_INPUT_EDGE = 1536  # with full=1 (课本诗画: a 1024x1536 picture is not shrunk first)
 TILE, PAD = 256, 10
 Image.MAX_IMAGE_PIXELS = 50_000_000
 
@@ -99,7 +102,7 @@ def esrgan_x4(rgb):
     return Image.fromarray((np.clip(out.transpose(1, 2, 0), 0, 1) * 255).round().astype(np.uint8))
 
 
-def upscale(img, scale):
+def upscale(img, scale, full=False, blend=0.0):
     edge = max(img.size)
     target = min(edge * scale, MAX_EDGE)
     if target <= edge:
@@ -107,9 +110,13 @@ def upscale(img, scale):
     ratio = target / edge
     size = (max(1, round(img.width * ratio)), max(1, round(img.height * ratio)))
     alpha = img.getchannel("A") if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info) else None
-    big = esrgan_x4(fit(img.convert("RGB"), UPSCALE_INPUT_EDGE))
+    big = esrgan_x4(fit(img.convert("RGB"), FULL_INPUT_EDGE if full else UPSCALE_INPUT_EDGE))
     if big.size != size:
         big = big.resize(size, Image.LANCZOS)
+    if blend > 0:
+        # The model smooths away paper grain and fine hatching; part of the original brings it back.
+        base = img.convert("RGB").resize(size, Image.LANCZOS)
+        big = Image.blend(big, base, blend).filter(ImageFilter.UnsharpMask(radius=1.2, percent=60, threshold=2))
     buf = io.BytesIO()
     if alpha is not None:
         big.putalpha(alpha.resize(size, Image.LANCZOS))
@@ -156,7 +163,14 @@ class Handler(BaseHTTPRequestHandler):
                 scale = int(query.get("scale", "4"))
                 if scale not in (2, 4):
                     return self.error(400, "scale must be 2 or 4")
-                job = lambda img: upscale(img, scale)
+                full = query.get("full") == "1"
+                try:
+                    blend = float(query.get("blend", "0"))
+                except ValueError:
+                    return self.error(400, "blend must be a number")
+                if not 0 <= blend <= 0.6:
+                    return self.error(400, "blend must be between 0 and 0.6")
+                job = lambda img: upscale(img, scale, full, blend)
             else:
                 return self.error(404, "not found")
             img = load(data)

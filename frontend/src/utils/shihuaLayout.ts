@@ -9,10 +9,12 @@
 
 export type ShihuaAspect = '2x3' | '3x4' | '9x16' | '1x1' | '16x9' | '235x100'
 
-export const SHIHUA_ASPECTS: { id: ShihuaAspect; ratio: number; landscape: boolean }[] = [
+export const SHIHUA_ASPECTS: { id: ShihuaAspect; ratio: number; landscape: boolean; extend?: boolean }[] = [
   { id: '2x3', ratio: 2 / 3, landscape: false },
   { id: '3x4', ratio: 3 / 4, landscape: false },
-  { id: '9x16', ratio: 9 / 16, landscape: false },
+  // Narrower than the 2:3 picture: the canvas is extended upward (sky fading into paper) rather than
+  // cropping the picture's sides.
+  { id: '9x16', ratio: 9 / 16, landscape: false, extend: true },
   { id: '1x1', ratio: 1, landscape: false },
   { id: '16x9', ratio: 16 / 9, landscape: true },
   { id: '235x100', ratio: 2.35, landscape: true }
@@ -37,6 +39,8 @@ export interface ShihuaLayoutOptions {
   /** Explicit AI label (GB 45438: text height ≥ 5% of the short side). Empty = none. */
   label?: string
   labelScale?: number
+  /** Body text, title (landscape) and seal font. */
+  font?: ShihuaFontId
 }
 
 /** What was drawn, saved with the render so it can be reproduced. */
@@ -49,9 +53,33 @@ export interface ShihuaLayoutResult {
   columns: string[]
   color: 'ink' | 'light'
   text: string
+  font: ShihuaFontId
 }
 
-export const SHIHUA_FONT = "'LXGW WenKai', 'Kaiti SC', 'STKaiti', 'KaiTi', serif"
+/**
+ * Body fonts (all SIL OFL). 马善政 and 志莽行书 are served from /shihua-fonts/, 霞鹜文楷 from the video
+ * app; 霞鹜文楷 is always loaded too, as the fallback for rare characters the brush fonts lack.
+ */
+export type ShihuaFontId = 'mashanzheng' | 'zhimangxing' | 'wenkai'
+export const SHIHUA_FONTS: { id: ShihuaFontId; family: string }[] = [
+  { id: 'mashanzheng', family: 'Ma Shan Zheng' },
+  { id: 'zhimangxing', family: 'Zhi Mang Xing' },
+  { id: 'wenkai', family: 'LXGW WenKai' }
+]
+export const SHIHUA_DEFAULT_FONT: ShihuaFontId = 'mashanzheng'
+const FALLBACK_STACK = "'LXGW WenKai', 'Kaiti SC', 'STKaiti', 'KaiTi', serif"
+/** The AI label stays in a plain sans-serif whatever the body font, so it reads as a notice. */
+export const SHIHUA_LABEL_FONT = "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif"
+
+function fontOf(id?: ShihuaFontId) {
+  return SHIHUA_FONTS.find((f) => f.id === id) ?? SHIHUA_FONTS.find((f) => f.id === SHIHUA_DEFAULT_FONT)!
+}
+
+/** The CSS font stack for a body font, falling back to 霞鹜文楷 and the system 楷体. */
+export function shihuaFontStack(id?: ShihuaFontId): string {
+  const f = fontOf(id)
+  return f.id === 'wenkai' ? FALLBACK_STACK : `'${f.family}', ${FALLBACK_STACK}`
+}
 export const SHIHUA_DEFAULT_HINT: ShihuaBox = { x0: 0.45, y0: 0, x1: 1, y1: 0.6 }
 export const SHIHUA_PITCH = 1.4
 const PUNCT = '，。、；：！？'
@@ -195,7 +223,7 @@ function boxBlur(src: Float32Array, w: number, h: number): Float32Array {
 export function posterSize(aspect: ShihuaAspect, artW: number, artH: number): { width: number; height: number } {
   const a = SHIHUA_ASPECTS.find((x) => x.id === aspect)!
   if (a.landscape) return { width: Math.round(artH * a.ratio * 0.75), height: Math.round(artH * 0.75) }
-  if (artW / artH > a.ratio) return { width: Math.round(artH * a.ratio), height: artH }
+  if (artW / artH > a.ratio) return a.extend ? { width: artW, height: Math.round(artW / a.ratio) } : { width: Math.round(artH * a.ratio), height: artH }
   return { width: artW, height: Math.round(artW / a.ratio) }
 }
 
@@ -208,35 +236,46 @@ export function textForAspect(aspect: ShihuaAspect, posterText: string, famousLi
 
 // ---------------------------------------------------------------- canvas
 
-let fontsLoaded: Promise<boolean> | null = null
+const cssLoads = new Map<string, Promise<boolean>>()
 
-/**
- * Loads LXGW WenKai (OFL), which the video app ships split by unicode range; same origin, so the
- * site's CSP allows it. False when it can't be loaded (a fallback 楷体 is used then).
- */
-export function loadShihuaFont(): Promise<boolean> {
-  if (fontsLoaded) return fontsLoaded
-  fontsLoaded = (async () => {
-    try {
-      const res = await fetch('/video/fonts/fonts.css')
-      if (!res.ok) return false
-      const css = (await res.text()).split('/fonts/wenkai/').join('/video/fonts/wenkai/')
-      const style = document.createElement('style')
-      style.dataset.shihua = 'fonts'
-      style.textContent = css
-      document.head.appendChild(style)
-      return true
-    } catch {
-      return false
-    }
-  })()
-  return fontsLoaded
+/** Adds a same-origin font stylesheet once (the site's CSP allows only same-origin fonts). */
+function loadFontCss(url: string, rewrite: (css: string) => string = (css) => css): Promise<boolean> {
+  let p = cssLoads.get(url)
+  if (!p) {
+    p = (async () => {
+      try {
+        const res = await fetch(url)
+        // A missing file comes back as the SPA's index.html with status 200.
+        if (!res.ok || !(res.headers.get('content-type') ?? '').includes('css')) return false
+        const style = document.createElement('style')
+        style.dataset.shihua = 'fonts'
+        style.textContent = rewrite(await res.text())
+        document.head.appendChild(style)
+        return true
+      } catch {
+        return false
+      }
+    })()
+    cssLoads.set(url, p)
+  }
+  return p
 }
 
-async function ensureGlyphs(text: string, px: number) {
-  if (!(await loadShihuaFont())) return
+/**
+ * Loads a body font plus 霞鹜文楷 (the fallback). The fonts are split by unicode range, so only the
+ * pieces a text needs are downloaded. False when the body font can't be loaded (the system 楷体 is used).
+ */
+export async function loadShihuaFont(id: ShihuaFontId = SHIHUA_DEFAULT_FONT): Promise<boolean> {
+  const wenkai = loadFontCss('/video/fonts/fonts.css', (css) => css.split('/fonts/wenkai/').join('/video/fonts/wenkai/'))
+  if (fontOf(id).id === 'wenkai') return wenkai
+  const [, own] = await Promise.all([wenkai, loadFontCss(`/shihua-fonts/${fontOf(id).id}/fonts.css`)])
+  return own
+}
+
+async function ensureGlyphs(text: string, px: number, id?: ShihuaFontId) {
+  await loadShihuaFont(id)
   try {
-    await document.fonts.load(`${px}px 'LXGW WenKai'`, text)
+    await Promise.all([document.fonts.load(`${px}px '${fontOf(id).family}'`, text), document.fonts.load(`${px}px 'LXGW WenKai'`, text)])
   } catch {
     /* fall back to the system 楷体 */
   }
@@ -264,11 +303,11 @@ function grayOf(canvas: HTMLCanvasElement, box: { x: number; y: number; w: numbe
   return gray
 }
 
-function drawVerticalColumns(ctx: CanvasRenderingContext2D, columns: string[], right: number, top: number, cell: number, color: string, rule: string) {
+function drawVerticalColumns(ctx: CanvasRenderingContext2D, columns: string[], right: number, top: number, cell: number, color: string, rule: string, font: string) {
   const pitch = cell * SHIHUA_PITCH
   ctx.textBaseline = 'top'
   ctx.textAlign = 'left'
-  ctx.font = `${Math.round(cell * 0.86)}px ${SHIHUA_FONT}`
+  ctx.font = `${Math.round(cell * 0.86)}px ${font}`
   const longest = Math.max(...columns.map((c) => Array.from(c).length))
   columns.forEach((col, ci) => {
     const cx = right - ci * pitch - pitch / 2
@@ -290,7 +329,7 @@ function drawVerticalColumns(ctx: CanvasRenderingContext2D, columns: string[], r
   })
 }
 
-function drawSeal(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number) {
+function drawSeal(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, font: string) {
   ctx.save()
   ctx.fillStyle = 'rgba(178, 34, 34, 0.92)'
   const r = size / 14
@@ -298,7 +337,7 @@ function drawSeal(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   ctx.roundRect(x, y, size, size, r)
   ctx.fill()
   ctx.fillStyle = 'rgba(250, 240, 225, 1)'
-  ctx.font = `${Math.round(size * 0.4)}px ${SHIHUA_FONT}`
+  ctx.font = `${Math.round(size * 0.4)}px ${font}`
   ctx.textBaseline = 'top'
   Array.from(text).slice(0, 4).forEach((ch, i) => {
     const cx = x + size * (i < 2 ? 0.52 : 0.08)
@@ -312,7 +351,7 @@ function drawLabel(ctx: CanvasRenderingContext2D, label: string, W: number, H: n
   if (!label) return
   const px = Math.round(Math.min(W, H) * 0.05 * Math.max(1, scale))
   ctx.save()
-  ctx.font = `${px}px ${SHIHUA_FONT}`
+  ctx.font = `${px}px ${SHIHUA_LABEL_FONT}`
   ctx.textBaseline = 'middle'
   const tw = ctx.measureText(label).width
   const pad = px * 0.35
@@ -349,6 +388,44 @@ function soften(ctx: CanvasRenderingContext2D, src: HTMLCanvasElement, box: { x:
   ctx.drawImage(soft, 0, 0)
 }
 
+/**
+ * Fills the band above the picture for the taller aspects: the picture's top rows stretched upward and
+ * blurred (so the sky continues), fading into paper towards the top edge, and feathered into the picture.
+ */
+function extendTop(ctx: CanvasRenderingContext2D, art: HTMLImageElement | HTMLCanvasElement, W: number, band: number) {
+  const feather = Math.round(Math.min(band * 0.12, art.height * 0.025))
+  const c = document.createElement('canvas')
+  c.width = W
+  c.height = band + feather
+  const e = c.getContext('2d')!
+  e.fillStyle = '#efe6d2'
+  e.fillRect(0, 0, W, c.height)
+  const rows = Math.max(2, Math.round(art.height * 0.01))
+  e.filter = `blur(${Math.round(W / 40)}px)`
+  e.drawImage(art, 0, 0, art.width, rows, -W * 0.05, -band * 0.05, W * 1.1, c.height * 1.1)
+  e.filter = 'none'
+  const paper = e.createLinearGradient(0, 0, 0, band)
+  // Mostly paper through the band, giving way to the picture only near its edge, so a dark top edge
+  // (mountains, trees) doesn't smear upward.
+  paper.addColorStop(0, 'rgba(239, 230, 210, 0.96)')
+  paper.addColorStop(0.55, 'rgba(239, 230, 210, 0.8)')
+  paper.addColorStop(0.85, 'rgba(239, 230, 210, 0.3)')
+  paper.addColorStop(1, 'rgba(239, 230, 210, 0)')
+  e.fillStyle = paper
+  e.fillRect(0, 0, W, band)
+  // destination-in clears whatever the mask doesn't cover, so it spans the whole band: opaque down to
+  // the picture's top edge, then fading out over the feather.
+  const mask = e.createLinearGradient(0, 0, 0, band + feather)
+  mask.addColorStop(0, 'rgba(0, 0, 0, 1)')
+  mask.addColorStop(band / (band + feather), 'rgba(0, 0, 0, 1)')
+  mask.addColorStop(1, 'rgba(0, 0, 0, 0)')
+  e.globalCompositeOperation = 'destination-in'
+  e.fillStyle = mask
+  e.fillRect(0, 0, W, band + feather)
+  e.globalCompositeOperation = 'source-over'
+  ctx.drawImage(c, 0, 0)
+}
+
 export interface ShihuaPosterInput {
   art: HTMLImageElement | HTMLCanvasElement
   aspect: ShihuaAspect
@@ -359,8 +436,9 @@ export interface ShihuaPosterInput {
 
 /**
  * Draws one poster. Portrait and square aspects crop the picture (keeping the top-left, where the
- * model put the title) and set the text in the calm area; landscape ones put the picture on the right
- * of a paper ground with the title and text on the left.
+ * model put the title) and set the text in the calm area; 9:16 extends the canvas upward instead of
+ * cropping. Landscape ones put the picture (with the model's title) on the right of a paper ground and
+ * the text on the left.
  */
 export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaLayoutOptions = {}): Promise<{ canvas: HTMLCanvasElement; layout: ShihuaLayoutResult }> {
   const { art, aspect } = input
@@ -373,7 +451,9 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
   ctx.imageSmoothingQuality = 'high'
   const landscape = SHIHUA_ASPECTS.find((a) => a.id === aspect)!.landscape
   const sealText = opts.seal ?? '课本诗画'
-  await ensureGlyphs(input.text + input.title + input.author + sealText + (opts.label ?? ''), 64)
+  const fontId = fontOf(opts.font).id
+  const font = shihuaFontStack(fontId)
+  await ensureGlyphs(input.text + sealText, 64, fontId)
 
   let box: { x: number; y: number; w: number; h: number }
   let light = true
@@ -385,19 +465,17 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
     const scale = pw / artW
     const sh = Math.min(artH, H / scale)
     ctx.drawImage(art, 0, 0, artW, sh, W - pw, 0, pw, sh * scale)
-    const pad = H * 0.08
-    // Title, then author, horizontally at the top left.
-    ctx.fillStyle = '#2b2622'
-    const titlePx = Math.round(H * 0.13)
-    ctx.font = `${titlePx}px ${SHIHUA_FONT}`
-    ctx.textBaseline = 'top'
-    ctx.fillText(input.title, pad, pad)
-    ctx.font = `${Math.round(titlePx * 0.32)}px ${SHIHUA_FONT}`
-    ctx.fillStyle = '#5a4f45'
-    ctx.fillText(input.author, pad, pad + titlePx * 1.2)
-    box = { x: pad, y: pad + titlePx * 1.75, w: W - pw - pad * 2, h: H - pad * 2.3 - titlePx * 1.75 }
+    // The picture already carries the title and author the model drew, so only the text goes left.
+    const pad = H * 0.1
+    box = { x: pad, y: pad, w: W - pw - pad * 2, h: H - pad * 2.2 }
   } else {
-    ctx.drawImage(art, 0, 0, W, H, 0, 0, W, H)
+    const band = H > artH ? H - artH : 0
+    if (band > 0) {
+      ctx.drawImage(art, 0, 0, W, artH, 0, band, W, artH)
+      extendTop(ctx, art, W, band)
+    } else {
+      ctx.drawImage(art, 0, 0, W, H, 0, 0, W, H)
+    }
     const auto = (() => {
       const gw = 160, gh = Math.round((160 * H) / W)
       const found = calmBox(grayOf(canvas, { x: 0, y: 0, w: W, h: H }, gw, gh), gw, gh, opts.hint ?? SHIHUA_DEFAULT_HINT)
@@ -422,11 +500,11 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
   const right = landscape ? box.x + blockW + (box.w - blockW) / 2 : box.x + box.w - (box.w - blockW) / 2
   const ink = light ? '#2b2622' : '#f6ecd6'
   const rule = light ? 'rgba(43, 38, 34, 0.28)' : 'rgba(246, 236, 214, 0.3)'
-  drawVerticalColumns(ctx, columns, right, box.y, cell, ink, rule)
+  drawVerticalColumns(ctx, columns, right, box.y, cell, ink, rule, font)
   if (sealText) {
     const size = Math.round(cell * 1.5)
     const lastLen = Array.from(columns[columns.length - 1] ?? '').length
-    drawSeal(ctx, sealText, right - blockW - size * 1.1, box.y + lastLen * cell + cell * 0.3, size)
+    drawSeal(ctx, sealText, right - blockW - size * 1.1, box.y + lastLen * cell + cell * 0.3, size, font)
   }
   drawLabel(ctx, opts.label ?? 'AI 生成', W, H, opts.labelScale ?? 1)
 
@@ -440,7 +518,8 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
       cell,
       columns,
       color: light ? 'ink' : 'light',
-      text: input.text
+      text: input.text,
+      font: fontId
     }
   }
 }

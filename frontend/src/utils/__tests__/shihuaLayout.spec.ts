@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calmBox, fitText, layoutColumns, posterSize, splitColumns, textForAspect } from '../shihuaLayout'
+import { calmBox, fitText, layoutColumns, posterSize, shihuaFontStack, splitColumns, textForAspect } from '../shihuaLayout'
 
 const xiaoshitan =
   '从小丘西行百二十步，隔篁竹，闻水声，如鸣珮环，心乐之。伐竹取道，下见小潭，水尤清冽。全石以为底，近岸，卷石底以出，为坻，为屿，为嵁，为岩。青树翠蔓，蒙络摇缀，参差披拂。\n潭中鱼可百许头，皆若空游无所依。日光下澈，影布石上，佁然不动；俶尔远逝，往来翕忽。似与游者相乐。'
@@ -51,7 +51,8 @@ describe('shihua layout', () => {
   it('crops portrait aspects from the 2:3 picture and sizes landscape ones', () => {
     expect(posterSize('2x3', 2048, 3072)).toEqual({ width: 2048, height: 3072 })
     expect(posterSize('3x4', 2048, 3072)).toEqual({ width: 2048, height: 2731 })
-    expect(posterSize('9x16', 2048, 3072)).toEqual({ width: 1728, height: 3072 })
+    // 9:16 is extended upward instead of cropping the picture's sides
+    expect(posterSize('9x16', 2048, 3072)).toEqual({ width: 2048, height: 3641 })
     expect(posterSize('1x1', 2048, 3072)).toEqual({ width: 2048, height: 2048 })
     expect(posterSize('16x9', 2048, 3072)).toEqual({ width: 4096, height: 2304 })
   })
@@ -61,5 +62,14 @@ describe('shihua layout', () => {
     expect(textForAspect('2x3', xiaoshitan, '潭中鱼可百许头')).toBe(xiaoshitan)
     expect(textForAspect('9x16', '床前明月光，疑是地上霜。', '床前明月光')).toBe('床前明月光，疑是地上霜。')
     expect(textForAspect('9x16', xiaoshitan, '')).toBe(xiaoshitan)
+  })
+})
+
+describe('shihuaFontStack', () => {
+  it('puts the chosen font first and always falls back to LXGW WenKai', () => {
+    expect(shihuaFontStack('mashanzheng').startsWith("'Ma Shan Zheng', 'LXGW WenKai'")).toBe(true)
+    expect(shihuaFontStack('zhimangxing').startsWith("'Zhi Mang Xing', 'LXGW WenKai'")).toBe(true)
+    expect(shihuaFontStack('wenkai').startsWith("'LXGW WenKai', 'Kaiti SC'")).toBe(true)
+    expect(shihuaFontStack()).toBe(shihuaFontStack('mashanzheng'))
   })
 })

@@ -312,13 +312,15 @@ func imageToolPath(tool string, opts ImageToolOptions) (string, error) {
 func (s *ImageToolsService) Available() bool { return s != nil && s.cfg.BaseURL != "" }
 
 // UpscaleInternal runs super-resolution for the site's own pipelines (课本诗画): nobody is billed and
-// no usage record is written.
+// no usage record is written. Unlike users' runs, the model sees the full picture (a 1024x1536
+// drawing is not shrunk to 1024 first) and 35% of the plainly resized original is mixed back in, which
+// keeps the paper grain and fine lines the model would smooth away.
 func (s *ImageToolsService) UpscaleInternal(ctx context.Context, image []byte, scale int) ([]byte, error) {
 	path, err := imageToolPath(ImageToolUpscale, ImageToolOptions{Scale: scale})
 	if err != nil {
 		return nil, err
 	}
-	out, _, err := s.process(ctx, path, image)
+	out, _, err := s.process(ctx, path+"&full=1&blend=0.35", image)
 	return out, err
 }
 
