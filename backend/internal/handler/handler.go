@@ -109,6 +109,8 @@ type Handlers struct {
 	CardGoods           *CardGoodsHandler
 	// PromptMarket is 提示词交易 (canvas + admin).
 	PromptMarket *PromptMarketHandler
+	// Shihua is 课本诗画 (admin).
+	Shihua *ShihuaHandler
 }
 
 // BuildInfo contains build-time information

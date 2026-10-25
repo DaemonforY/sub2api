@@ -1,0 +1,308 @@
+<template>
+  <div class="grid gap-4 lg:grid-cols-[18rem_1fr]">
+    <div class="card h-fit p-3">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('shihua.layout.works') }}</h3>
+        <input type="checkbox" :checked="allChecked" @change="toggleAll" />
+      </div>
+      <p v-if="!picked.length" class="py-6 text-center text-sm text-gray-400">{{ t('shihua.layout.noPicked') }}</p>
+      <div class="max-h-[70vh] space-y-1 overflow-y-auto">
+        <div
+          v-for="w in picked"
+          :key="w.id"
+          class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+          :class="current?.id === w.id ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-gray-50 dark:hover:bg-dark-700'"
+          :data-testid="`shihua-layout-${w.slug}`"
+          @click="open(w)"
+        >
+          <input type="checkbox" :checked="checked.has(w.id)" @click.stop @change="toggle(w.id)" />
+          <span class="flex-1 truncate">{{ w.title }}</span>
+          <span v-if="w.text_status !== 'verified_2'" class="text-xs text-amber-500" :title="t('shihua.layout.notVerified')">!</span>
+          <span v-else-if="w.renders" class="text-xs text-emerald-600">{{ w.renders }}</span>
+        </div>
+      </div>
+      <div class="mt-3 space-y-2 border-t border-gray-100 pt-3 dark:border-dark-700">
+        <button class="btn btn-secondary btn-sm w-full" :disabled="!checked.size || batchBusy" data-testid="shihua-batch-layout" @click="batch">
+          {{ batchBusy ? t('shihua.layout.rendering', batchProgress) : t('shihua.layout.saveBatch') }}
+        </button>
+        <div class="text-xs text-gray-500">{{ t('shihua.layout.exportAspects') }}</div>
+        <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <label v-for="a in SHIHUA_ASPECTS" :key="a.id" class="flex items-center gap-1">
+            <input v-model="exportAspects" type="checkbox" :value="a.id" /> {{ a.id.replace('x', ':') }}
+          </label>
+        </div>
+        <button class="btn btn-primary btn-sm w-full" :disabled="!checked.size || exporting" data-testid="shihua-export" @click="exportZip">
+          {{ exporting ? t('shihua.layout.exporting') : t('shihua.layout.export') }}
+        </button>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <p v-if="fontMissing" class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">{{ t('shihua.layout.fontMissing') }}</p>
+      <div v-if="current" class="card p-4">
+        <div class="flex flex-wrap items-end gap-3">
+          <div class="mr-auto">
+            <div class="font-semibold text-gray-900 dark:text-white">{{ current.title }} <span class="text-sm font-normal text-gray-500">{{ current.author }}</span></div>
+            <div class="text-xs text-gray-500">{{ image?.upscaled_url ? t('shihua.layout.useUpscaled') : t('shihua.layout.noUpscaled') }}</div>
+            <div v-if="current.text_status !== 'verified_2'" class="text-xs text-amber-600">{{ t('shihua.layout.notVerified') }}</div>
+          </div>
+          <label class="text-xs text-gray-500">{{ t('shihua.layout.seal') }}<input v-model="seal" class="input mt-1 w-28" maxlength="4" /></label>
+          <label class="text-xs text-gray-500">{{ t('shihua.layout.label') }}<input v-model="label" class="input mt-1 w-32" /></label>
+          <button class="btn btn-secondary" :disabled="!art" @click="redetect">{{ t('shihua.layout.redetect') }}</button>
+          <button class="btn btn-primary" :disabled="!art || saving || current.text_status !== 'verified_2'" data-testid="shihua-save-all" @click="saveAll">{{ t('shihua.layout.saveAll') }}</button>
+        </div>
+        <p class="mt-2 text-xs text-gray-400">{{ t('shihua.layout.dragHint') }}</p>
+        <p v-if="!art" class="py-10 text-center text-sm text-gray-400">{{ t('shihua.layout.loadingArt') }}</p>
+        <div v-else class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div v-for="a in SHIHUA_ASPECTS" :key="a.id" class="space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-gray-700 dark:text-gray-200">{{ t(`shihua.layout.aspects.${a.id}`) }}</span>
+              <span v-if="savedAspects.has(a.id)" class="text-emerald-600">✓</span>
+            </div>
+            <div
+              class="relative select-none overflow-hidden rounded-lg bg-gray-100 dark:bg-dark-800"
+              @mousedown="a.id === '2x3' && startDrag($event)"
+              @mousemove="a.id === '2x3' && moveDrag($event)"
+              @mouseup="a.id === '2x3' && endDrag()"
+              @mouseleave="a.id === '2x3' && endDrag()"
+            >
+              <img v-if="previews[a.id]" :src="previews[a.id]!.url" class="block w-full" draggable="false" :data-testid="`shihua-preview-${a.id}`" />
+              <div
+                v-if="a.id === '2x3' && dragBox"
+                class="pointer-events-none absolute border-2 border-dashed border-primary-500 bg-primary-500/10"
+                :style="{ left: `${dragBox.x0 * 100}%`, top: `${dragBox.y0 * 100}%`, width: `${(dragBox.x1 - dragBox.x0) * 100}%`, height: `${(dragBox.y1 - dragBox.y0) * 100}%` }"
+              />
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+              {{ t('shihua.layout.scale') }}
+              <input v-model.number="options[a.id].scale" type="range" min="0.6" max="1.2" step="0.05" class="flex-1" @change="renderOne(a.id)" />
+              <select v-model="options[a.id].color" class="input w-20 py-0.5 text-xs" @change="renderOne(a.id)">
+                <option v-for="c in colors" :key="c" :value="c">{{ t(`shihua.layout.colors.${c}`) }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useAppStore } from '@/stores'
+import { extractApiErrorMessage } from '@/utils/apiError'
+import * as api from '@/api/admin/shihua'
+import {
+  SHIHUA_ASPECTS,
+  canvasToBlob,
+  loadShihuaArt,
+  loadShihuaFont,
+  renderShihuaPoster,
+  textForAspect,
+  type ShihuaAspect,
+  type ShihuaBox,
+  type ShihuaLayoutResult
+} from '@/utils/shihuaLayout'
+
+const props = defineProps<{ works: api.ShihuaWork[] }>()
+const emit = defineEmits<{ (e: 'reload'): void }>()
+const { t } = useI18n()
+const appStore = useAppStore()
+const colors = ['auto', 'ink', 'light'] as const
+
+const picked = computed(() => props.works.filter((w) => w.picked_image_id))
+const checked = ref(new Set<number>())
+const allChecked = computed(() => picked.value.length > 0 && picked.value.every((w) => checked.value.has(w.id)))
+function toggle(id: number) {
+  const s = new Set(checked.value)
+  if (s.has(id)) s.delete(id)
+  else s.add(id)
+  checked.value = s
+}
+function toggleAll() {
+  checked.value = allChecked.value ? new Set() : new Set(picked.value.map((w) => w.id))
+}
+
+const seal = ref('课本诗画')
+const label = ref('AI 生成')
+const fontMissing = ref(false)
+const current = ref<api.ShihuaWork | null>(null)
+const image = ref<api.ShihuaImage | null>(null)
+const art = ref<HTMLCanvasElement | null>(null)
+const saving = ref(false)
+const savedAspects = ref(new Set<string>())
+type AspectOptions = { box?: ShihuaBox; scale: number; color: 'auto' | 'ink' | 'light' }
+const freshOptions = () => Object.fromEntries(SHIHUA_ASPECTS.map((a) => [a.id, { scale: 1, color: 'auto' }])) as Record<ShihuaAspect, AspectOptions>
+const options = reactive(freshOptions())
+const previews = reactive<Partial<Record<ShihuaAspect, { url: string; canvas: HTMLCanvasElement; layout: ShihuaLayoutResult }>>>({})
+
+function fail(e: unknown) {
+  appStore.showError(extractApiErrorMessage(e, t('common.error')))
+}
+
+function posterText(w: api.ShihuaWork) {
+  return w.display_text.trim() || w.full_text
+}
+
+async function pickedImage(w: api.ShihuaWork): Promise<api.ShihuaImage | null> {
+  const list = await api.listImages({ work_ids: String(w.id) })
+  return list.find((i) => i.id === w.picked_image_id) ?? null
+}
+
+async function render(w: api.ShihuaWork, source: HTMLCanvasElement, aspect: ShihuaAspect, opt: AspectOptions) {
+  return renderShihuaPoster(
+    { art: source, aspect, text: textForAspect(aspect, posterText(w), w.famous_lines), title: w.title, author: w.author },
+    { box: opt.box, scale: opt.scale, color: opt.color, seal: seal.value, label: label.value }
+  )
+}
+
+async function renderOne(aspect: ShihuaAspect) {
+  const w = current.value
+  if (!w || !art.value) return
+  const result = await render(w, art.value, aspect, options[aspect])
+  const blob = await canvasToBlob(result.canvas, 0.8)
+  const old = previews[aspect]
+  if (old) URL.revokeObjectURL(old.url)
+  previews[aspect] = { url: URL.createObjectURL(blob), canvas: result.canvas, layout: result.layout }
+}
+
+async function renderAll() {
+  for (const a of SHIHUA_ASPECTS) await renderOne(a.id)
+}
+
+/** Forgets dragged text areas and looks for the blank area again. */
+function redetect() {
+  for (const a of SHIHUA_ASPECTS) options[a.id].box = undefined
+  void renderAll()
+}
+
+async function open(w: api.ShihuaWork) {
+  current.value = w
+  art.value = null
+  Object.assign(options, freshOptions())
+  dragBox.value = null
+  try {
+    fontMissing.value = !(await loadShihuaFont())
+    image.value = await pickedImage(w)
+    if (!image.value?.url) return
+    const [source, renders] = await Promise.all([loadShihuaArt(image.value.url, image.value.upscaled_url), api.listRenders([w.id])])
+    savedAspects.value = new Set(renders.filter((r) => r.image_id === w.picked_image_id).map((r) => r.aspect))
+    if (current.value?.id !== w.id) return
+    art.value = source
+    await renderAll()
+  } catch (e) {
+    fail(e)
+  }
+}
+
+async function saveAll() {
+  const w = current.value
+  if (!w || !image.value) return
+  saving.value = true
+  try {
+    let n = 0
+    for (const a of SHIHUA_ASPECTS) {
+      const p = previews[a.id]
+      if (!p) continue
+      await api.saveRender(image.value.id, a.id, await canvasToBlob(p.canvas), { ...p.layout, seal: seal.value, label: label.value })
+      n++
+    }
+    savedAspects.value = new Set(SHIHUA_ASPECTS.map((a) => a.id))
+    appStore.showSuccess(t('shihua.layout.saved', { n }))
+    emit('reload')
+  } catch (e) {
+    fail(e)
+  } finally {
+    saving.value = false
+  }
+}
+
+// ---- batch: every aspect of every checked work, laid out automatically ----
+const batchBusy = ref(false)
+const batchProgress = reactive({ done: 0, total: 0 })
+async function batch() {
+  const todo = picked.value.filter((w) => checked.value.has(w.id) && w.text_status === 'verified_2')
+  batchBusy.value = true
+  Object.assign(batchProgress, { done: 0, total: todo.length * SHIHUA_ASPECTS.length })
+  let saved = 0
+  try {
+    fontMissing.value = !(await loadShihuaFont())
+    for (const w of todo) {
+      const img = await pickedImage(w)
+      if (!img?.url) continue
+      const source = await loadShihuaArt(img.url, img.upscaled_url)
+      for (const a of SHIHUA_ASPECTS) {
+        const result = await render(w, source, a.id, { scale: 1, color: 'auto' })
+        await api.saveRender(img.id, a.id, await canvasToBlob(result.canvas), { ...result.layout, seal: seal.value, label: label.value })
+        batchProgress.done++
+        saved++
+      }
+    }
+    appStore.showSuccess(t('shihua.layout.saved', { n: saved }))
+    emit('reload')
+  } catch (e) {
+    fail(e)
+  } finally {
+    batchBusy.value = false
+  }
+}
+
+// ---- export ----
+const exportAspects = ref<string[]>(['2x3', '3x4', '9x16'])
+const exporting = ref(false)
+async function exportZip() {
+  exporting.value = true
+  try {
+    const blob = await api.exportZip([...checked.value], exportAspects.value)
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `shihua-${new Date().toISOString().slice(0, 10)}.zip`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000)
+  } catch (e) {
+    fail(e)
+  } finally {
+    exporting.value = false
+  }
+}
+
+// ---- drag a text box on the 2:3 preview ----
+const dragBox = ref<ShihuaBox | null>(null)
+let dragStart: { x: number; y: number; rect: DOMRect } | null = null
+function point(ev: MouseEvent, rect: DOMRect) {
+  return { x: Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width)), y: Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height)) }
+}
+function startDrag(ev: MouseEvent) {
+  const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect()
+  const p = point(ev, rect)
+  dragStart = { ...p, rect }
+  dragBox.value = { x0: p.x, y0: p.y, x1: p.x, y1: p.y }
+}
+function moveDrag(ev: MouseEvent) {
+  if (!dragStart) return
+  const p = point(ev, dragStart.rect)
+  dragBox.value = { x0: Math.min(dragStart.x, p.x), y0: Math.min(dragStart.y, p.y), x1: Math.max(dragStart.x, p.x), y1: Math.max(dragStart.y, p.y) }
+}
+function endDrag() {
+  if (!dragStart) return
+  dragStart = null
+  const b = dragBox.value
+  if (b && b.x1 - b.x0 > 0.05 && b.y1 - b.y0 > 0.05) {
+    options['2x3'].box = b
+    void renderOne('2x3')
+  }
+  dragBox.value = null
+}
+
+watch(
+  () => [seal.value, label.value],
+  () => {
+    if (art.value) void renderAll()
+  }
+)
+
+onBeforeUnmount(() => {
+  for (const p of Object.values(previews)) if (p) URL.revokeObjectURL(p.url)
+})
+</script>

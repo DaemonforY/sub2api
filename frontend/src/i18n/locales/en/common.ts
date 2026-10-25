@@ -227,6 +227,7 @@ export default {
     canvasMembershipAdmin: 'Creator membership',
     promptMarketAdmin: 'Prompt market',
     goodsAdmin: 'Card-key goods',
+    shihuaAdmin: 'Textbook poems',
     analyticsAdmin: 'Analytics',
     userInsightsAdmin: 'User insights',
     conversationArchiveAdmin: 'Conversation archive',

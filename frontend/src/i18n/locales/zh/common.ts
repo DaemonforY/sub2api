@@ -227,6 +227,7 @@ export default {
     canvasMembershipAdmin: '创作会员',
     promptMarketAdmin: '提示词交易',
     goodsAdmin: '卡密商品',
+    shihuaAdmin: '课本诗画',
     analyticsAdmin: '数据看板',
     userInsightsAdmin: '用户画像',
     conversationArchiveAdmin: '对话归档',

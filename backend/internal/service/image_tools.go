@@ -307,6 +307,21 @@ func imageToolPath(tool string, opts ImageToolOptions) (string, error) {
 	return "", ErrImageToolsBadTool
 }
 
+// Available reports whether the imagetools service is configured (the admin's on/off switch for
+// users' runs does not apply to the site's own pipelines).
+func (s *ImageToolsService) Available() bool { return s != nil && s.cfg.BaseURL != "" }
+
+// UpscaleInternal runs super-resolution for the site's own pipelines (课本诗画): nobody is billed and
+// no usage record is written.
+func (s *ImageToolsService) UpscaleInternal(ctx context.Context, image []byte, scale int) ([]byte, error) {
+	path, err := imageToolPath(ImageToolUpscale, ImageToolOptions{Scale: scale})
+	if err != nil {
+		return nil, err
+	}
+	out, _, err := s.process(ctx, path, image)
+	return out, err
+}
+
 func (s *ImageToolsService) process(ctx context.Context, path string, image []byte) ([]byte, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.cfg.BaseURL+path, bytes.NewReader(image))
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -619,6 +620,23 @@ func ProvideAnimationJobService(repo AnimationJobRepository, cfg *config.Config)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	svc.RecoverInterrupted(ctx)
+	return svc
+}
+
+// ProvideShihuaService wires 课本诗画: drawings go through this server's own gateway on loopback, the
+// pictures live next to the video files (<data dir>/shihua), and the queue starts right away.
+func ProvideShihuaService(repo ShihuaRepository, settings SettingRepository, keys APIKeyRepository, billing *BillingService, tools *ImageToolsService, cfg *config.Config) *ShihuaService {
+	port, dir := 8080, filepath.Join("data", "shihua")
+	if cfg != nil {
+		if cfg.Server.Port > 0 {
+			port = cfg.Server.Port
+		}
+		if strings.TrimSpace(cfg.Video.Dir) != "" {
+			dir = filepath.Join(filepath.Dir(filepath.Clean(cfg.Video.Dir)), "shihua")
+		}
+	}
+	svc := NewShihuaService(repo, settings, keys, billing, tools, "http://127.0.0.1:"+strconv.Itoa(port), dir)
+	svc.Start()
 	return svc
 }
 
@@ -1241,6 +1259,7 @@ var ProviderSet = wire.NewSet(
 	ProvidePromptLibrarySyncService,
 	ProvideImageToolsService,
 	ProvideAnimationJobService,
+	ProvideShihuaService,
 	ProvideSiteHostingService,
 	ProvideVideoService,
 	ProvideCanvasSessionService,

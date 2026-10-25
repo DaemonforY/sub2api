@@ -971,6 +971,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/contests', label: t('nav.contestAdmin'), icon: TrophyIcon, hideInSimpleMode: true },
     { path: '/admin/prompt-library', label: t('nav.promptLibraryAdmin'), icon: SparklesIcon, hideInSimpleMode: true },
     { path: '/admin/image-tools', label: t('nav.imageToolsAdmin'), icon: PhotoIcon, hideInSimpleMode: true },
+    { path: '/admin/shihua', label: t('nav.shihuaAdmin'), icon: PhotoIcon, hideInSimpleMode: true },
     { path: '/admin/sites', label: t('nav.sitesAdmin'), icon: GlobeIcon, hideInSimpleMode: true },
     { path: '/admin/canvas-membership', label: t('nav.canvasMembershipAdmin'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/prompt-market', label: t('nav.promptMarketAdmin'), icon: SparklesIcon, hideInSimpleMode: true },

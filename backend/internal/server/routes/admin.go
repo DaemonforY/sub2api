@@ -145,6 +145,7 @@ func RegisterAdminRoutes(
 		registerCanvasMembershipAdminRoutes(admin, h)
 		registerPromptMarketAdminRoutes(admin, h)
 		registerCardGoodsAdminRoutes(admin, h)
+		registerShihuaAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
 		registerConversationArchiveRoutes(admin, h, stepUpAuth)
@@ -1262,6 +1263,35 @@ func registerPromptMarketAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers
 	g.POST("/listings/:id/restore", pm.AdminReview("restore"))
 	g.GET("/purchases", pm.AdminPurchases)
 	g.POST("/purchases/:id/refund", pm.AdminRefund)
+}
+
+// registerShihuaAdminRoutes 课本诗画：篇目库、画面描述、批量出图、挑图、排版成品与导出。
+func registerShihuaAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Shihua == nil {
+		return
+	}
+	s := h.Shihua
+	g := admin.Group("/shihua")
+	g.GET("/settings", s.GetSettings)
+	g.PUT("/settings", s.SaveSettings)
+	g.GET("/works", s.ListWorks)
+	g.POST("/works", s.CreateWork)
+	g.POST("/works/import", s.ImportWorks)
+	g.GET("/works/:id", s.GetWork)
+	g.PUT("/works/:id", s.UpdateWork)
+	g.DELETE("/works/:id", s.DeleteWork)
+	g.POST("/works/:id/verify", s.VerifyWork)
+	g.POST("/works/:id/theme", s.GenerateTheme)
+	g.POST("/works/:id/redraw", s.Redraw)
+	g.GET("/jobs", s.ListJobs)
+	g.POST("/jobs", s.CreateJob)
+	g.POST("/jobs/:id/cancel", s.CancelJob)
+	g.POST("/jobs/:id/retry", s.RetryJob)
+	g.GET("/images", s.ListImages)
+	g.POST("/images/:id/review", s.ReviewImage)
+	g.PUT("/images/:id/renders/:aspect", s.SaveRender)
+	g.GET("/renders", s.ListRenders)
+	g.GET("/export", s.Export)
 }
 
 // registerCardGoodsAdminRoutes 卡密商品：商品设置、导入 / 作废卡密、发货记录。

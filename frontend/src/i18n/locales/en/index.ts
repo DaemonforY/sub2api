@@ -24,6 +24,7 @@ import style from './style'
 import games from './games'
 import goods from './goods'
 import chat from './chat'
+import shihua from './shihua'
 
 export default {
   ...landing,
@@ -52,4 +53,5 @@ export default {
   ...games,
   ...goods,
   ...chat,
+  ...shihua,
 }

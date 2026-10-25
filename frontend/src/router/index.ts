@@ -814,6 +814,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/shihua',
+    name: 'AdminShihua',
+    component: () => import('@/views/admin/ShihuaView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Textbook poems',
+      titleKey: 'shihua.title',
+      descriptionKey: 'shihua.description'
+    }
+  },
+  {
     path: '/admin/prompt-market',
     name: 'AdminPromptMarket',
     component: () => import('@/views/admin/PromptMarketView.vue'),
