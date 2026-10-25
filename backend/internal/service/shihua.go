@@ -308,18 +308,18 @@ func BuildShihuaPrompt(style string, w *ShihuaWork) string {
 		style = DefaultShihuaStylePrompt
 	}
 	var b strings.Builder
-	b.WriteString(strings.TrimSpace(style))
-	b.WriteString("\n主题： ")
-	b.WriteString(strings.TrimSpace(w.Theme.PromptTheme))
-	b.WriteString("\n【画面文字（必须逐字准确，不得增字、漏字、改字）】 主标题「")
-	b.WriteString(w.Title)
-	b.WriteString("」大字书法竖排")
+	_, _ = b.WriteString(strings.TrimSpace(style))
+	_, _ = b.WriteString("\n主题： ")
+	_, _ = b.WriteString(strings.TrimSpace(w.Theme.PromptTheme))
+	_, _ = b.WriteString("\n【画面文字（必须逐字准确，不得增字、漏字、改字）】 主标题「")
+	_, _ = b.WriteString(w.Title)
+	_, _ = b.WriteString("」大字书法竖排")
 	if author := strings.TrimSpace(w.Author); author != "" {
-		b.WriteString("；作者名「")
-		b.WriteString(author)
-		b.WriteString("」小字")
+		_, _ = b.WriteString("；作者名「")
+		_, _ = b.WriteString(author)
+		_, _ = b.WriteString("」小字")
 	}
-	b.WriteString("。 出图")
+	_, _ = b.WriteString("。 出图")
 	return b.String()
 }
 
@@ -571,7 +571,6 @@ func applyShihuaInput(w *ShihuaWork, in ShihuaWorkInput) {
 	}
 }
 
-
 func (s *ShihuaService) UpdateWork(ctx context.Context, id int64, in ShihuaWorkInput) (*ShihuaWork, error) {
 	if err := validateShihuaWork(&in); err != nil {
 		return nil, err
@@ -748,7 +747,6 @@ func (s *ShihuaService) CreateJob(ctx context.Context, adminID int64, in ShihuaJ
 	s.kick()
 	return job, nil
 }
-
 
 func (s *ShihuaService) ListJobs(ctx context.Context) ([]ShihuaJob, error) {
 	return s.repo.ListJobs(ctx, 50)

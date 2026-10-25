@@ -408,7 +408,7 @@ func pasteShihuaBand(dst *image.RGBA, band image.Image, offset, blend int, verti
 			if !(image.Point{X: dx, Y: dy}.In(dst.Rect)) {
 				continue
 			}
-			c := color.RGBAModel.Convert(band.At(bb.Min.X+x, bb.Min.Y+y)).(color.RGBA)
+			c, _ := color.RGBAModel.Convert(band.At(bb.Min.X+x, bb.Min.Y+y)).(color.RGBA)
 			if along < blend {
 				t := float64(along+1) / float64(blend+1)
 				o := dst.RGBAAt(dx, dy)

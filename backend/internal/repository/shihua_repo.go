@@ -52,8 +52,6 @@ func scanShihuaWork(row shihuaScanner, extra ...any) (*service.ShihuaWork, error
 	return &w, nil
 }
 
-
-
 func (r *shihuaRepository) ListWorks(ctx context.Context, q service.ShihuaWorkQuery) ([]service.ShihuaWork, error) {
 	var where []string
 	var args []any

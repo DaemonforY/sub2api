@@ -249,6 +249,6 @@ func shihuaTextFile(w *ShihuaWork) string {
 	if w.VariantNote != "" {
 		fmt.Fprintf(&b, "\n版本说明：%s\n", w.VariantNote)
 	}
-	b.WriteString("\n图片由 AI 生成（gpt-image-2），正文为程序排版并经人工校对。\n")
+	_, _ = b.WriteString("\n图片由 AI 生成（gpt-image-2），正文为程序排版并经人工校对。\n")
 	return b.String()
 }
