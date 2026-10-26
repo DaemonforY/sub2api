@@ -8,6 +8,8 @@ node_modules/
 # 忽略构建输出
 dist/
 ../backend/internal/web/dist/
+# 课本诗画互动版：esbuild 打包的产物（源码在 promo/textbook-poems/demo）
+public/shihua-play/
 
 # 忽略缓存
 .cache/
