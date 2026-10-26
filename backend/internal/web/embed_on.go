@@ -216,6 +216,15 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			return
 		}
 
+		// A public folder with its own index.html (e.g. /shihua-play/<poem>/) is a static page. Only
+		// folders that have one: the file server would list any other folder.
+		if strings.HasSuffix(cleanPath, "/") && s.isFile(cleanPath+"index.html") {
+			c.Header("Cache-Control", "no-cache")
+			s.fileServer.ServeHTTP(c.Writer, c.Request)
+			c.Abort()
+			return
+		}
+
 		// For index.html or SPA routes, serve with injected settings
 		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
 			s.serveIndexHTML(c)

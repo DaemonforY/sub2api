@@ -989,6 +989,42 @@ func TestFrontendServer_ServesEditor(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "<svg/>")
 }
 
+func TestFrontendServer_ServesStaticFolderIndex(t *testing.T) {
+	distFS := fstest.MapFS{
+		"index.html":                  {Data: []byte("<html>spa</html>")},
+		"shihua-play/poem/index.html": {Data: []byte("<html>poem page</html>")},
+		"shihua-play/poem/app.js":     {Data: []byte("console.log(1)")},
+		"home-media/hero.webp":        {Data: []byte("img")},
+	}
+	server := &FrontendServer{distFS: distFS, fileServer: http.FileServer(http.FS(distFS)), baseHTML: []byte("<html>spa</html>"), cache: NewHTMLCache(), settings: &mockSettingsProvider{settings: map[string]string{}}}
+	router := gin.New()
+	router.Use(server.Middleware())
+	get := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		return w
+	}
+
+	w := get("/shihua-play/poem/")
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "poem page")
+	assert.Equal(t, "no-cache", w.Header().Get("Cache-Control"))
+
+	w = get("/shihua-play/poem")
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+	assert.Equal(t, "poem/", w.Header().Get("Location"))
+
+	assert.Contains(t, get("/shihua-play/poem/app.js").Body.String(), "console.log(1)")
+
+	// A folder without index.html is not listed: it falls through to the SPA.
+	for _, p := range []string{"/home-media/", "/shihua-play/"} {
+		w = get(p)
+		assert.Equal(t, http.StatusOK, w.Code, p)
+		assert.Contains(t, w.Body.String(), "spa", p)
+		assert.NotContains(t, w.Body.String(), "hero.webp", p)
+	}
+}
+
 func TestEmbeddedFrontendBypassesAPIPathsWithoutV1(t *testing.T) {
 	for _, path := range []string{"/v1", "/chat/completions", "/completions", "/embeddings", "/messages", "/messages/count_tokens", "/audio/speech"} {
 		require.True(t, shouldBypassEmbeddedFrontend(path), "path=%s", path)
