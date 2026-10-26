@@ -272,7 +272,9 @@ export default {
       guide_view: '看到上手引导',
       guide_first_call: '引导中完成首次调用',
       guide_dismiss: '关闭上手引导',
-      guide_config_open: '打开 Codex 配置引导'
+      guide_config_open: '打开 Codex 配置引导',
+      poem_play_action: '诗画互动版：点词 / 开声音',
+      poem_play_qr: '诗画互动版：二维码面板（展开 / 收起 / 点链接）'
     },
     reminder: {
       title: '新用户上手提醒',

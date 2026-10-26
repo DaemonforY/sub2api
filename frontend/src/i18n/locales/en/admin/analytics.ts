@@ -272,7 +272,9 @@ export default {
       guide_view: 'Saw the get-started card',
       guide_first_call: 'First call from the card',
       guide_dismiss: 'Closed the get-started card',
-      guide_config_open: 'Opened the Codex setup'
+      guide_config_open: 'Opened the Codex setup',
+      poem_play_action: 'Interactive poem: clicked a term / turned sound on',
+      poem_play_qr: 'Interactive poem: QR panel (open / close / link)'
     },
     reminder: {
       title: 'Get-started reminder',

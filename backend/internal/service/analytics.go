@@ -68,6 +68,8 @@ var AnalyticsEventNames = map[string]bool{
 	"guide_first_call":   true, // … and saw the first API call arrive
 	"guide_dismiss":      true,
 	"guide_config_open":  true, // opened the no-terminal Codex setup
+	"poem_play_action":   true, // 课本诗画互动版: clicked a term (props.poem, props.term, props.from) or sound (props.action)
+	"poem_play_qr":       true, // … HiveGPT QR panel: props.action = open / close / link
 }
 
 var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true}

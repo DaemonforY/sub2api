@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>使至塞上 · 课本诗画 互动版 | HiveGPT</title>
+<meta name="description" content="王维《使至塞上》互动诗画：倾斜手机看景深，点「孤烟」「长河」「落日」看诗句里的画面。画面由 AI 绘制。">
+<meta property="og:title" content="使至塞上 · 课本诗画 互动版">
+<meta property="og:description" content="大漠孤烟直，长河落日圆。点一点诗里的词，看画面动起来。">
+<meta property="og:image" content="https://hivegpt.cn/shihua-play/shi-zhi-saishang/assets/share.jpg">
+<meta property="og:url" content="https://hivegpt.cn/shihua-play/shi-zhi-saishang/">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="/shihua-fonts/mashanzheng/fonts.css">
+<style>
+  :root {
+    --ink: #2e2219;
+    --cinnabar: #b9322a;
+    --paper: #f3e8d6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 50% 40%, #2b2119 0%, #15100c 70%);
+    color: var(--paper);
+    font-family: 'Songti SC', 'STSong', 'Noto Serif SC', serif;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #wrap { position: relative; --u: 0.5px; }
+  .scene { perspective: 1400px; }
+  #stage {
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 230, 200, 0.06);
+    transform-style: preserve-3d;
+    will-change: transform;
+    background: #d9c6a5;
+  }
+  #stage { touch-action: none; }
+  /* Phones: the stage fills the screen; the picture keeps its width and the sky/ground are extended. */
+  body.fill #stage { border-radius: 0; box-shadow: none; }
+  body.fill #card { bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+  body.fill #hint { bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* Poem body, typeset over the blank sky. Coordinates are in the 1024x1536 drawing frame. */
+  #poem {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 100%;
+    pointer-events: none;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+  .ch {
+    position: absolute;
+    width: calc(var(--u) * 36);
+    height: calc(var(--u) * 36);
+    line-height: calc(var(--u) * 36);
+    text-align: center;
+    font-family: 'Ma Shan Zheng', 'Kaiti SC', 'STKaiti', serif;
+    font-size: calc(var(--u) * 33);
+    color: var(--ink);
+    opacity: 0;
+    filter: blur(calc(var(--u) * 8));
+    transform: scale(1.18);
+    transition: opacity 0.9s ease, filter 0.9s ease, transform 0.9s ease, color 0.3s ease, text-shadow 0.3s ease;
+  }
+  .ch.in { opacity: 0.92; filter: blur(0); transform: scale(1); }
+  .ch.punct span { display: inline-block; transform: translate(0.42em, -0.42em); }
+  .ch.hot {
+    color: var(--cinnabar);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  /* Vertical text marks a term with a line on its left, like 专名号. */
+  .ch.hot::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--u) * -3);
+    top: 6%;
+    bottom: 6%;
+    width: calc(var(--u) * 2.5);
+    background: var(--cinnabar);
+    opacity: 0.55;
+    border-radius: 2px;
+    transition: opacity 0.3s ease;
+  }
+  .ch.hot.lit { text-shadow: 0 0 calc(var(--u) * 14) rgba(255, 140, 60, 0.85); }
+  .ch.hot.lit::before { opacity: 1; }
+  .ch.hot.hover { text-shadow: 0 0 calc(var(--u) * 10) rgba(255, 160, 80, 0.6); }
+
+  /* Annotation card. */
+  #card {
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    bottom: 3%;
+    padding: calc(var(--u) * 22) calc(var(--u) * 30);
+    background: rgba(246, 237, 222, 0.93);
+    color: var(--ink);
+    border-radius: calc(var(--u) * 10);
+    box-shadow: 0 10px 30px rgba(40, 20, 0, 0.35);
+    backdrop-filter: blur(4px);
+    font-size: calc(var(--u) * 27);
+    line-height: 1.75;
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 20));
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    pointer-events: none;
+  }
+  #card.show { opacity: 1; transform: none; pointer-events: auto; }
+  /* Wide screens: the card sits beside the poster so it never covers the scene. */
+  #card.side {
+    left: calc(100% + 28px);
+    right: auto;
+    bottom: auto;
+    top: 30%;
+    width: var(--side-w, 300px);
+    --u: 0.62px;
+    transform: translateX(-12px);
+  }
+  #card.side.show { transform: none; }
+  #card .word {
+    font-family: 'Ma Shan Zheng', 'Kaiti SC', serif;
+    font-size: calc(var(--u) * 52);
+    color: var(--cinnabar);
+    line-height: 1.1;
+    margin-right: calc(var(--u) * 16);
+  }
+  #card .line { color: #7a6450; font-size: calc(var(--u) * 24); }
+  #card .line b { color: var(--cinnabar); font-weight: normal; }
+  #card .note { margin-top: calc(var(--u) * 10); }
+  #card .draft { margin-top: calc(var(--u) * 10); font-size: calc(var(--u) * 19); color: #9a8670; }
+  #card .close {
+    position: absolute;
+    right: calc(var(--u) * 14);
+    top: calc(var(--u) * 8);
+    border: 0;
+    background: none;
+    color: #8a7460;
+    font-size: calc(var(--u) * 36);
+    cursor: pointer;
+    padding: calc(var(--u) * 6);
+  }
+
+  #hint {
+    position: absolute;
+    left: 50%;
+    bottom: 3%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    padding: calc(var(--u) * 12) calc(var(--u) * 26);
+    border-radius: 999px;
+    background: rgba(30, 20, 12, 0.55);
+    backdrop-filter: blur(6px);
+    color: #f6ead6;
+    font-size: calc(var(--u) * 23);
+    letter-spacing: 0.04em;
+    transition: opacity 0.4s ease;
+  }
+  #hint b { color: #ffb08a; font-weight: normal; }
+  #hint.gone { opacity: 0; pointer-events: none; }
+  #gyro {
+    margin-left: calc(var(--u) * 12);
+    border: 1px solid rgba(255, 220, 190, 0.5);
+    background: none;
+    color: inherit;
+    border-radius: 999px;
+    padding: 0 calc(var(--u) * 14);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  #sound {
+    position: absolute;
+    right: 3%;
+    bottom: 3%;
+    z-index: 3;
+    width: max(36px, calc(var(--u) * 66));
+    height: max(36px, calc(var(--u) * 66));
+    border-radius: 50%;
+    border: 1px solid rgba(255, 225, 195, 0.45);
+    background: rgba(30, 20, 12, 0.55);
+    backdrop-filter: blur(6px);
+    color: #f6ead6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  #sound svg { width: 52%; height: 52%; }
+  #sound .on { display: none; }
+  #sound[aria-pressed="true"] .on { display: inline; }
+  #sound[aria-pressed="true"] .off { display: none; }
+  #sound[aria-pressed="false"]::after {
+    content: '声音';
+    position: absolute;
+    right: calc(100% + 8px);
+    white-space: nowrap;
+    font-size: 13px;
+    color: #f6ead6;
+    background: rgba(30, 20, 12, 0.55);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+  body.fill #sound { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 14px); }
+
+  /* HiveGPT promo: a small button that opens a QR code. Bottom-left on the poster, top-left on phones. */
+  #promo { position: absolute; left: 3%; bottom: 3%; z-index: 4; }
+  body.fill #promo { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 14px); }
+  #promoBtn {
+    height: max(36px, calc(var(--u) * 66));
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px 0 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 225, 195, 0.45);
+    background: rgba(30, 20, 12, 0.55);
+    backdrop-filter: blur(6px);
+    color: #f6ead6;
+    font: 13px/1 -apple-system, 'PingFang SC', sans-serif;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+  #promoBtn svg { width: 18px; height: 18px; }
+  #promoPanel {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 10px);
+    width: 216px;
+    padding: 16px 16px 14px;
+    border-radius: 14px;
+    background: rgba(250, 243, 231, 0.97);
+    color: var(--ink);
+    box-shadow: 0 14px 40px rgba(20, 10, 0, 0.45);
+    text-align: center;
+    font: 13px/1.6 -apple-system, 'PingFang SC', sans-serif;
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+    transform-origin: 0 100%;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  body.fill #promoPanel { bottom: auto; top: calc(100% + 10px); transform-origin: 0 0; transform: translateY(-8px) scale(0.97); }
+  #promo.open #promoPanel { opacity: 1; transform: none; pointer-events: auto; }
+  #promo.open #promoBtn { background: rgba(185, 50, 42, 0.85); border-color: rgba(255, 200, 180, 0.6); }
+  #promoPanel img { display: block; width: 156px; height: 156px; margin: 4px auto 10px; border-radius: 6px; background: #fff; }
+  #promoPanel .t { font-family: 'Ma Shan Zheng', 'Kaiti SC', serif; font-size: 19px; color: var(--cinnabar); line-height: 1.3; }
+  #promoPanel .t .latin { font: 600 16px -apple-system, 'Helvetica Neue', sans-serif; letter-spacing: 0.04em; }
+  #promoPanel .s { color: #6b5844; margin-top: 2px; }
+  #promoPanel .scan { font-size: 12px; color: #9a8670; margin-top: 2px; }
+  #promoPanel a {
+    display: block;
+    margin-top: 10px;
+    padding: 8px 0;
+    border-radius: 999px;
+    background: var(--cinnabar);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  #promoPanel .close {
+    position: absolute;
+    right: 6px;
+    top: 4px;
+    border: 0;
+    background: none;
+    color: #9a8670;
+    font-size: 22px;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+  /* Keep the hint clear of the two corner buttons. */
+  #hint { bottom: calc(3% + max(36px, calc(var(--u) * 66)) + 10px); }
+  #loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Ma Shan Zheng', 'Kaiti SC', serif;
+    font-size: 22px;
+    letter-spacing: 0.3em;
+    color: #6b5844;
+    transition: opacity 0.6s ease;
+  }
+  #loading.gone { opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="wrap">
+<div class="scene">
+  <div id="stage">
+    <canvas id="gl"></canvas>
+    <div id="poem"></div>
+    <div id="hint">移动鼠标或倾斜手机看景深 · 点<b>朱红色</b>的词<button id="gyro" hidden>开启重力感应</button></div>
+    <div id="promo">
+      <button id="promoBtn" aria-expanded="false" aria-controls="promoPanel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
+        <span>HiveGPT</span>
+      </button>
+      <div id="promoPanel" role="dialog" aria-label="HiveGPT 二维码">
+        <button class="close" aria-label="收起">×</button>
+        <div class="t">这幅画是 <span class="latin">AI</span> 画的</div>
+        <div class="s">HiveGPT · 一句话出图，注册送体验额度</div>
+        <img id="promoQr" src="./assets/qr.png" alt="hivegpt.cn 二维码">
+        <div class="scan">手机扫码，或微信里长按识别</div>
+        <a id="promoLink" target="_blank" rel="noopener">打开 hivegpt.cn</a>
+      </div>
+    </div>
+    <button id="sound" aria-pressed="false" aria-label="开关声音">
+      <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>
+      <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+    </button>
+    <div id="loading">研墨中…</div>
+  </div>
+</div>
+    <div id="card" role="dialog" aria-live="polite">
+      <button class="close" aria-label="关闭">×</button>
+      <div><span class="word"></span><span class="line"></span></div>
+      <div class="note"></div>
+      <div class="draft">注释为演示草稿，上线前需按教材核对。</div>
+    </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
