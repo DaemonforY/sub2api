@@ -325,6 +325,10 @@ type ConversationArchiveRepository interface {
 	GetTurnByRequestID(ctx context.Context, requestID string) (*ArchiveTurn, error)
 	ListTurnImages(ctx context.Context, turnIDs []int64) (map[int64][]ArchiveImage, error)
 	GetImage(ctx context.Context, id int64) (*ArchiveImage, error)
+	// ListImages is the image wall page: images newest first (by id) with their turn and owner.
+	ListImages(ctx context.Context, f ArchiveImageFilter) ([]ArchiveImageItem, error)
+	// ListImageModels returns the models of turns with images since the given time.
+	ListImageModels(ctx context.Context, since time.Time) ([]string, error)
 	DailyStats(ctx context.Context, since time.Time, tz string) ([]ArchiveDayStats, error)
 	ListExpired(ctx context.Context, cutoff time.Time, limit int) ([]ArchiveExpiredTurn, error)
 	DeleteTurns(ctx context.Context, ids []int64) (int64, error)
@@ -1428,12 +1432,13 @@ func (s *ConversationArchiveService) RunRetentionOnce() {
 		if len(turns) == 0 {
 			return
 		}
-		keys := make([]string, 0, len(turns)*2)
+		keys := make([]string, 0, len(turns)*3)
 		ids := make([]int64, 0, len(turns))
 		for _, t := range turns {
 			ids = append(ids, t.ID)
 			keys = append(keys, t.ObjectKey)
 			keys = append(keys, t.ImageKeys...)
+			keys = append(keys, archiveImageThumbKeys(t.ImageKeys)...)
 		}
 		for start := 0; start < len(keys); start += archiveDeleteBatch {
 			end := min(start+archiveDeleteBatch, len(keys))

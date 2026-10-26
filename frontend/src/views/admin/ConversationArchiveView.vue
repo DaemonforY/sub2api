@@ -3,6 +3,7 @@
     <div class="space-y-4" data-testid="conversation-archive-view">
       <ArchiveSettingsCard />
       <ArchiveStatsStrip />
+      <ArchiveImageWall @open-session="openFromWall" />
 
       <!-- Browser. Every call here is audited server-side, so nothing loads until the admin asks. -->
       <div class="card space-y-3 p-4" data-testid="ca-browser">
@@ -87,7 +88,7 @@
       </div>
 
       <!-- Transcript -->
-      <div v-if="current" class="card space-y-3 p-4" data-testid="ca-transcript">
+      <div v-if="current" ref="transcriptCard" class="card space-y-3 p-4" data-testid="ca-transcript">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="min-w-0">
             <div class="font-semibold text-gray-900 dark:text-white">{{ current.email ? displayEmail(current.email, t) : `#${current.user_id}` }} <span class="text-xs font-normal text-gray-500">#{{ current.user_id }}</span></div>
@@ -160,17 +161,19 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ArchiveSettingsCard from '@/components/admin/archive/ArchiveSettingsCard.vue'
 import ArchiveStatsStrip from '@/components/admin/archive/ArchiveStatsStrip.vue'
+import ArchiveImageWall from '@/components/admin/archive/ArchiveImageWall.vue'
 import ArchiveTurn from '@/components/admin/archive/ArchiveTurn.vue'
 import {
   getTurnByRequest,
   listSessions,
   listTurns,
   type ArchiveSession,
-  type ArchiveTurn as ArchiveTurnItem
+  type ArchiveTurn as ArchiveTurnItem,
+  type ArchiveWallImage
 } from '@/api/admin/conversationArchive'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
-import { shortUA } from '@/utils/archiveTranscript'
+import { dayToRFC3339, shortUA } from '@/utils/archiveTranscript'
 import { formatDateLocalInput, formatDateTimeToMinute } from '@/utils/format'
 
 const SESSION_PAGE = 30
@@ -197,14 +200,6 @@ const sessionsError = ref('')
 const searched = ref(false)
 // the filter the current list was loaded with, so 加载更多 continues the same query
 let activeQuery: { q?: string; from?: string; to?: string } = {}
-
-/** 'YYYY-MM-DD' (local) → RFC3339 of that local midnight; `endOfDay` gives the next midnight. */
-function dayToRFC3339(day: string, endOfDay = false): string | undefined {
-  if (!day) return undefined
-  const [y, m, d] = day.split('-').map(Number)
-  if (!y || !m || !d) return undefined
-  return new Date(y, m - 1, endOfDay ? d + 1 : d).toISOString()
-}
 
 async function fetchSessions(before?: string) {
   sessionsLoading.value = true
@@ -348,5 +343,18 @@ async function findByRequest() {
   } finally {
     lookupLoading.value = false
   }
+}
+
+// ---------- From the image wall ----------
+
+const transcriptCard = ref<HTMLElement | null>(null)
+
+// Opens the image's session at its turn (the page that ends there, like 按请求 ID 查找).
+async function openFromWall(it: ArchiveWallImage) {
+  resetTranscript({ user_id: it.user_id, session_key: it.session_key, email: it.email })
+  anchor.value = { id: it.turn_id, request_id: it.request_id || `#${it.turn_id}` }
+  await nextTick()
+  transcriptCard.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  await loadTurns(it.turn_id + 1)
 }
 </script>

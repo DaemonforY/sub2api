@@ -68,6 +68,27 @@ export default {
       empty: 'No data',
       day: '{day}: {turns} turns · {users} users · {bytes} · {images} images'
     },
+    wall: {
+      title: 'Image wall',
+      auditNotice: 'Every archived image, newest first. Each load and page is written to the access trail; the last 7 days by default.',
+      load: 'Load image wall',
+      hint: 'Pick the filters and click "Load image wall"; click an image for the full size, its prompt and its session.',
+      allModels: 'All models',
+      empty: 'No archived images in this range',
+      count: '{n} images shown',
+      model: 'Model',
+      endpoint: 'Endpoint',
+      size: 'Format',
+      requestId: 'Request ID',
+      prompt: 'Prompt',
+      promptNote: 'The first 200 characters of the latest user input of that request; the full text is in the session.',
+      noPrompt: '(no text prompt)',
+      copy: 'Copy',
+      openSession: 'Open its session',
+      download: 'Download original',
+      prev: 'Previous',
+      next: 'Next'
+    },
     browser: {
       title: 'Browse conversations',
       auditNotice: "Every search, opened session and request-ID lookup is written to the access trail (User insights → Content log → Access trail).",

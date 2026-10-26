@@ -292,6 +292,76 @@ FROM conversation_archive_images WHERE id = $1`, id).
 	return &img, nil
 }
 
+// ListImages is the image wall: images newest first (by id, the cursor), joined to their turn
+// for the model, session and prompt preview, filtered on the image's own time and owner.
+func (r *conversationArchiveRepository) ListImages(ctx context.Context, f service.ArchiveImageFilter) ([]service.ArchiveImageItem, error) {
+	conds := []string{"TRUE"}
+	args := []any{}
+	add := func(cond string, v any) {
+		args = append(args, v)
+		conds = append(conds, strings.ReplaceAll(cond, "?", "$"+strconv.Itoa(len(args))))
+	}
+	if f.UserID > 0 {
+		add("i.user_id = ?", f.UserID)
+	}
+	if f.From != nil {
+		add("i.created_at >= ?", *f.From)
+	}
+	if f.To != nil {
+		add("i.created_at < ?", *f.To)
+	}
+	if f.BeforeID > 0 {
+		add("i.id < ?", f.BeforeID)
+	}
+	if f.Model != "" {
+		add("t.model = ?", f.Model)
+	}
+	args = append(args, f.Limit)
+	rows, err := r.db.QueryContext(ctx, `
+SELECT i.id, i.turn_id, i.user_id, COALESCE(u.email, ''), i.mime, i.bytes, i.created_at,
+       t.model, t.inbound_endpoint, t.session_key, t.request_id, t.preview
+FROM conversation_archive_images i
+JOIN conversation_archive_turns t ON t.id = i.turn_id
+LEFT JOIN users u ON u.id = i.user_id
+WHERE `+strings.Join(conds, " AND ")+`
+ORDER BY i.id DESC
+LIMIT $`+strconv.Itoa(len(args)), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.ArchiveImageItem{}
+	for rows.Next() {
+		var v service.ArchiveImageItem
+		if err := rows.Scan(&v.ID, &v.TurnID, &v.UserID, &v.Email, &v.Mime, &v.Bytes, &v.CreatedAt,
+			&v.Model, &v.InboundEndpoint, &v.SessionKey, &v.RequestID, &v.Prompt); err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+func (r *conversationArchiveRepository) ListImageModels(ctx context.Context, since time.Time) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT DISTINCT model FROM conversation_archive_turns
+WHERE image_count > 0 AND model <> '' AND created_at >= $1
+ORDER BY model`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []string{}
+	for rows.Next() {
+		var m string
+		if err := rows.Scan(&m); err != nil {
+			return nil, err
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
 func (r *conversationArchiveRepository) DailyStats(ctx context.Context, since time.Time, tz string) ([]service.ArchiveDayStats, error) {
 	if strings.TrimSpace(tz) == "" {
 		tz = "UTC"

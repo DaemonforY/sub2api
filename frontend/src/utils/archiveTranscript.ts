@@ -345,3 +345,11 @@ export function shortUA(ua: string | null | undefined, max = 28): string {
   const head = (m ? m[0] : s).trim()
   return head.length > max ? `${head.slice(0, max - 1)}…` : head
 }
+
+/** 'YYYY-MM-DD' (local) → RFC3339 of that local midnight; `endOfDay` gives the next midnight. */
+export function dayToRFC3339(day: string, endOfDay = false): string | undefined {
+  if (!day) return undefined
+  const [y, m, d] = day.split('-').map(Number)
+  if (!y || !m || !d) return undefined
+  return new Date(y, m - 1, endOfDay ? d + 1 : d).toISOString()
+}

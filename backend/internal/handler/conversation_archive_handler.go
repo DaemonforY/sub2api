@@ -19,8 +19,8 @@ import (
 
 // ConversationArchiveHandler serves 对话归档 (admin only):
 // /api/v1/admin/conversation-archive/{config,config/test,config/lifecycle,sessions,sessions/turns,
-// turns/by-request,images/:id,stats}. Every browse call except images and stats is audited by the
-// service before any data is read.
+// turns/by-request,images,images/:id,images/:id/thumb,stats}. Every browse call except image
+// bytes and stats is audited by the service before any data is read.
 type ConversationArchiveHandler struct {
 	svc conversationArchiveAPI
 }
@@ -35,6 +35,8 @@ type conversationArchiveAPI interface {
 	ListTurns(ctx context.Context, adminID, userID int64, sessionKey string, beforeID int64, limit int, ip, ua string) (*service.ArchiveTurnPage, error)
 	GetTurnByRequest(ctx context.Context, adminID int64, requestID, ip, ua string) (*service.ArchiveTurnView, error)
 	OpenImage(ctx context.Context, id int64) (io.ReadCloser, *service.ArchiveImage, error)
+	ListImages(ctx context.Context, adminID int64, f service.ArchiveImageFilter, ip, ua string) (*service.ArchiveImagePage, error)
+	OpenImageThumb(ctx context.Context, id int64) ([]byte, string, error)
 	Stats(ctx context.Context) ([]service.ArchiveDayStats, error)
 }
 
@@ -252,6 +254,60 @@ func (h *ConversationArchiveHandler) Image(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 	_, _ = io.Copy(c.Writer, rc)
+}
+
+// Images GET /images?user_id=&q=&model=&from=&to=&before_id=&limit= — the image wall (audited)
+func (h *ConversationArchiveHandler) Images(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	adminID, ok := contentLogAdminID(c)
+	if !ok {
+		response.ErrorFrom(c, errContentLogNoAdmin)
+		return
+	}
+	f := service.ArchiveImageFilter{Q: c.Query("q"), Model: c.Query("model")}
+	f.UserID, _ = strconv.ParseInt(strings.TrimSpace(c.Query("user_id")), 10, 64)
+	f.BeforeID, _ = strconv.ParseInt(strings.TrimSpace(c.Query("before_id")), 10, 64)
+	f.Limit, _ = strconv.Atoi(strings.TrimSpace(c.Query("limit")))
+	var bad bool
+	if f.From, bad = parseArchiveTimeParam(c, "from"); bad {
+		return
+	}
+	if f.To, bad = parseArchiveTimeParam(c, "to"); bad {
+		return
+	}
+	page, err := h.svc.ListImages(c.Request.Context(), adminID, f, ip.GetClientIP(c), c.GetHeader("User-Agent"))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, page)
+}
+
+// ImageThumb GET /images/:id/thumb streams a small JPEG of the image for the wall.
+func (h *ConversationArchiveHandler) ImageThumb(c *gin.Context) {
+	if !h.ready(c) {
+		return
+	}
+	id, err := strconv.ParseInt(strings.TrimSpace(c.Param("id")), 10, 64)
+	if err != nil || id <= 0 {
+		response.BadRequest(c, "无效的图片 ID（Invalid image id）")
+		return
+	}
+	data, mime, err := h.svc.OpenImageThumb(c.Request.Context(), id)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if !strings.HasPrefix(mime, "image/") {
+		mime = "application/octet-stream"
+	}
+	header := c.Writer.Header()
+	header.Set("Cache-Control", "private, max-age=3600")
+	header.Set("X-Content-Type-Options", "nosniff")
+	header.Set("Content-Disposition", "inline")
+	c.Data(http.StatusOK, mime, data)
 }
 
 // Stats GET /stats (not audited)

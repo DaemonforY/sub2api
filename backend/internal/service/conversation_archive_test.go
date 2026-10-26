@@ -141,6 +141,9 @@ type fakeArchiveRepo struct {
 	insertErr error
 	purges    map[int64]ArchivePurge
 	afterGet  func()
+	wall      []ArchiveImageItem
+	lastIF    ArchiveImageFilter
+	wallCalls int
 }
 
 func (r *fakeArchiveRepo) QueuePurge(_ context.Context, userID int64, prefixes []string) error {
@@ -277,6 +280,18 @@ func (r *fakeArchiveRepo) GetImage(_ context.Context, id int64) (*ArchiveImage, 
 		}
 	}
 	return nil, nil
+}
+
+func (r *fakeArchiveRepo) ListImages(_ context.Context, f ArchiveImageFilter) ([]ArchiveImageItem, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.lastIF = f
+	r.wallCalls++
+	return r.wall, nil
+}
+
+func (r *fakeArchiveRepo) ListImageModels(context.Context, time.Time) ([]string, error) {
+	return []string{"gpt-image-2"}, nil
 }
 
 func (r *fakeArchiveRepo) DailyStats(context.Context, time.Time, string) ([]ArchiveDayStats, error) {
@@ -987,7 +1002,8 @@ func TestConversationArchive_RetentionAndPurge(t *testing.T) {
 	h.svc.RunRetentionOnce()
 	require.ElementsMatch(t, []int64{1, 2, 3}, h.repo.deleted)
 	require.Len(t, h.store.deleted, 1)
-	require.Len(t, h.store.deleted[0], 6)
+	require.Len(t, h.store.deleted[0], 9, "turn object, image and its thumbnail")
+	require.Contains(t, h.store.deleted[0], "archive/img/1/y1"+archiveThumbSuffix)
 
 	// Purge: the prefix in use and every previous one are recorded before the account goes;
 	// queued jobs of the user are skipped; the sweep waits for the account to be deleted.

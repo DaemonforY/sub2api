@@ -92,6 +92,21 @@ const session = (key: string, extra: Record<string, unknown> = {}) => ({
   ...extra
 })
 
+const wallImage = (id: number) => ({
+  id,
+  turn_id: id * 10,
+  user_id: 45,
+  email: 'u45@x.com',
+  mime: 'image/png',
+  bytes: 2048,
+  created_at: '2026-10-16T01:00:00Z',
+  model: 'gpt-image-2',
+  inbound_endpoint: '/v1/images/generations',
+  session_key: 'sess-a',
+  request_id: `req-img-${id}`,
+  prompt: `a cat ${id}`
+})
+
 let cfg = config()
 let turnPages: Record<string, { items: unknown[]; next_before_id: number | null }> = {}
 const createObjectURL = vi.fn((_b: Blob) => `blob:img-${createObjectURL.mock.calls.length}`)
@@ -107,6 +122,10 @@ function setupRoutes() {
       return { data: turnPages[`${p.session_key}:${p.before_id ?? ''}`] || { items: [], next_before_id: null } }
     }
     if (url === `${BASE}/turns/by-request`) return { data: { ...turn(7), user_id: 45, session_key: 'sess-a', email: 'u45@x.com' } }
+    if (url === `${BASE}/images`) {
+      const p = c?.params || {}
+      return { data: p.before_id ? { items: [wallImage(3)], next_before_id: null } : { items: [wallImage(9), wallImage(8)], next_before_id: 8, models: ['gpt-image-2', 'gpt-5.6-sol'] } }
+    }
     if (url.startsWith(`${BASE}/images/`)) return { data: new Blob(['x'], { type: 'image/png' }) }
     throw new Error(`unexpected GET ${url}`)
   })
@@ -426,6 +445,111 @@ describe('ConversationArchiveView — browser', () => {
     await w.find('[data-testid="ca-by-request-form"]').trigger('submit')
     await flushPromises()
     expect(get).toHaveBeenCalledWith(`${BASE}/turns/by-request`, { params: { request_id: 'req-7' } })
+    expect(turnOrder(w)).toEqual(['ca-turn-6', 'ca-turn-7'])
+    expect(w.find('[data-testid="ca-show-latest"]').exists()).toBe(true)
+  })
+})
+
+describe('ConversationArchiveView — image wall', () => {
+  // tiles load their thumbnail when they scroll into view: here every tile is "visible" at once
+  const SetupObserver = globalThis.IntersectionObserver
+  beforeEach(() => {
+    globalThis.IntersectionObserver = class {
+      constructor(private cb: IntersectionObserverCallback) {}
+      observe() {
+        this.cb([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver)
+      }
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof IntersectionObserver
+  })
+  afterEach(() => {
+    globalThis.IntersectionObserver = SetupObserver
+  })
+
+  const wallCalls = () => get.mock.calls.filter(([url]) => url === `${BASE}/images`)
+
+  it('lists nothing until loaded, then shows thumbnails and the model filter', async () => {
+    const w = mountView()
+    await flushPromises()
+    expect(wallCalls()).toHaveLength(0)
+    expect(w.find('[data-testid="ca-wall-grid"]').exists()).toBe(false)
+
+    await w.find('[data-testid="ca-wall-q"]').setValue('u45@x.com')
+    await w.find('[data-testid="ca-wall-form"]').trigger('submit')
+    await flushPromises()
+    expect(wallCalls()).toHaveLength(1)
+    const params = wallCalls()[0][1]?.params || {}
+    expect(params).toMatchObject({ limit: 60, q: 'u45@x.com' })
+    expect(params.from).toMatch(/Z$/)
+    expect(params.to).toMatch(/Z$/)
+    expect(params).not.toHaveProperty('model')
+    expect(params).not.toHaveProperty('before_id')
+
+    // thumbnails, not the originals
+    expect(get).toHaveBeenCalledWith(`${BASE}/images/9/thumb`, { responseType: 'blob' })
+    expect(get).toHaveBeenCalledWith(`${BASE}/images/8/thumb`, { responseType: 'blob' })
+    expect(get).not.toHaveBeenCalledWith(`${BASE}/images/9`, expect.anything())
+    expect(w.find('[data-testid="ca-wall-tile-9"] img').attributes('src')).toMatch(/^blob:/)
+    const options = w.findAll('[data-testid="ca-wall-model"] option').map((o) => o.attributes('value'))
+    expect(options).toEqual(['', 'gpt-image-2', 'gpt-5.6-sol'])
+
+    // 加载更多 continues the same filter below the last id and keeps the model list
+    await w.find('[data-testid="ca-wall-model"]').setValue('gpt-image-2')
+    await w.find('[data-testid="ca-wall-more"]').trigger('click')
+    await flushPromises()
+    expect(wallCalls()[1][1]?.params).toMatchObject({ before_id: 8, q: 'u45@x.com' })
+    expect(wallCalls()[1][1]?.params).not.toHaveProperty('model')
+    expect(w.findAll('[data-testid^="ca-wall-tile-"]')).toHaveLength(3)
+    expect(w.find('[data-testid="ca-wall-more"]').exists()).toBe(false)
+    expect(w.findAll('[data-testid="ca-wall-model"] option')).toHaveLength(3)
+
+    // a new search applies the model
+    await w.find('[data-testid="ca-wall-form"]').trigger('submit')
+    await flushPromises()
+    expect(wallCalls()[2][1]?.params).toMatchObject({ model: 'gpt-image-2' })
+  })
+
+  it('opens the original with its prompt, steps through, and revokes on close', async () => {
+    const w = mountView()
+    await flushPromises()
+    await w.find('[data-testid="ca-wall-form"]').trigger('submit')
+    await flushPromises()
+
+    await w.find('[data-testid="ca-wall-tile-9"]').trigger('click')
+    await flushPromises()
+    expect(get).toHaveBeenCalledWith(`${BASE}/images/9`, { responseType: 'blob' })
+    const detail = w.find('[data-testid="ca-wall-detail"]')
+    expect(detail.find('[data-testid="ca-wall-prompt"]').text()).toBe('a cat 9')
+    expect(detail.text()).toContain('gpt-image-2')
+    expect(detail.text()).toContain('req-img-9')
+    const original = w.find('[data-testid="ca-wall-detail-img"]').attributes('src') as string
+    expect(w.find('[data-testid="ca-wall-prev"]').exists()).toBe(false)
+
+    await w.find('[data-testid="ca-wall-next"]').trigger('click')
+    await flushPromises()
+    expect(revokeObjectURL).toHaveBeenCalledWith(original)
+    expect(w.find('[data-testid="ca-wall-prompt"]').text()).toBe('a cat 8')
+    const second = w.find('[data-testid="ca-wall-detail-img"]').attributes('src') as string
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await flushPromises()
+    expect(w.find('[data-testid="ca-wall-detail"]').exists()).toBe(false)
+    expect(revokeObjectURL).toHaveBeenCalledWith(second)
+  })
+
+  it('opens the image session ending at its turn', async () => {
+    turnPages['sess-a:91'] = { items: [turn(7), turn(6)], next_before_id: 6 }
+    const w = mountView()
+    await flushPromises()
+    await w.find('[data-testid="ca-wall-form"]').trigger('submit')
+    await flushPromises()
+    await w.find('[data-testid="ca-wall-tile-9"]').trigger('click')
+    await flushPromises()
+    await w.find('[data-testid="ca-wall-open-session"]').trigger('click')
+    await flushPromises()
+    expect(w.find('[data-testid="ca-wall-detail"]').exists()).toBe(false)
+    expect(get).toHaveBeenCalledWith(`${BASE}/sessions/turns`, { params: { user_id: 45, session_key: 'sess-a', limit: 20, before_id: 91 } })
     expect(turnOrder(w)).toEqual(['ca-turn-6', 'ca-turn-7'])
     expect(w.find('[data-testid="ca-show-latest"]').exists()).toBe(true)
   })

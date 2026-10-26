@@ -3,8 +3,9 @@
  *
  * Every browse call (sessions, sessions/turns, turns/by-request) writes an
  * `archive_view` row to the access trail server-side, so callers must only fetch
- * them on an explicit admin action — no polling, no prefetch. `/images/:id` and
- * `/stats` are not audited. PUT /config, POST /config/test and POST /config/lifecycle need step-up
+ * them on an explicit admin action — no polling, no prefetch. The image wall
+ * list (`/images`) is audited too; the image bytes (`/images/:id`, `/images/:id/thumb`)
+ * and `/stats` are not. PUT /config, POST /config/test and POST /config/lifecycle need step-up
  * auth, and so does POST /config/test: wrap them in useStepUp().run().
  */
 import { apiClient } from '../client'
@@ -166,6 +167,43 @@ export interface ArchiveTurnLookup extends ArchiveTurn {
   email?: string
 }
 
+/** One tile of the image wall (图片墙), with the turn it came from. */
+export interface ArchiveWallImage {
+  id: number
+  turn_id: number
+  user_id: number
+  email: string
+  mime: string
+  bytes: number
+  created_at: string
+  model: string
+  inbound_endpoint: string
+  session_key: string
+  request_id: string
+  /** head of the turn's latest user prompt (200 characters) */
+  prompt: string
+}
+
+export interface ArchiveWallPage {
+  /** newest first */
+  items: ArchiveWallImage[]
+  next_before_id: number | null
+  /** models that drew images lately; first page only */
+  models?: string[] | null
+}
+
+export interface ArchiveWallQuery {
+  /** a user id, email or username */
+  q?: string
+  model?: string
+  /** RFC3339 */
+  from?: string
+  /** RFC3339 */
+  to?: string
+  before_id?: number
+  limit?: number
+}
+
 export interface ArchiveStatsDay {
   day: string
   turns: number
@@ -242,6 +280,24 @@ export async function getImage(id: number): Promise<Blob> {
   return data
 }
 
+/** Audited (archive_view). The image wall, newest first. */
+export async function listImages(q: ArchiveWallQuery): Promise<ArchiveWallPage> {
+  const params: Record<string, string | number> = { limit: q.limit ?? 60 }
+  if (q.q) params.q = q.q
+  if (q.model) params.model = q.model
+  if (q.from) params.from = q.from
+  if (q.to) params.to = q.to
+  if (q.before_id) params.before_id = q.before_id
+  const { data } = await apiClient.get(`${BASE}/images`, { params })
+  return data
+}
+
+/** A small JPEG of the image for the wall (made once server-side, kept in the bucket). Not audited. */
+export async function getImageThumb(id: number): Promise<Blob> {
+  const { data } = await apiClient.get(`${BASE}/images/${id}/thumb`, { responseType: 'blob' })
+  return data
+}
+
 /** Last 30 days from the index. Not audited. */
 export async function getStats(): Promise<{ days: ArchiveStatsDay[] }> {
   const { data } = await apiClient.get(`${BASE}/stats`)
@@ -257,6 +313,8 @@ export const conversationArchiveAPI = {
   listTurns,
   getTurnByRequest,
   getImage,
+  listImages,
+  getImageThumb,
   getStats
 }
 export default conversationArchiveAPI

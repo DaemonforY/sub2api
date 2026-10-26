@@ -154,7 +154,7 @@ func RegisterAdminRoutes(
 }
 
 // registerConversationArchiveRoutes 对话归档: settings writes need step-up auth; every browse
-// call except images and stats is written to the access trail.
+// call except image bytes (originals, thumbnails) and stats is written to the access trail.
 func registerConversationArchiveRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpAuth middleware.StepUpAuthMiddleware) {
 	if h.ConversationArchive == nil {
 		return
@@ -168,7 +168,9 @@ func registerConversationArchiveRoutes(admin *gin.RouterGroup, h *handler.Handle
 	g.GET("/sessions", h.ConversationArchive.Sessions)
 	g.GET("/sessions/turns", h.ConversationArchive.Turns)
 	g.GET("/turns/by-request", h.ConversationArchive.TurnByRequest)
+	g.GET("/images", h.ConversationArchive.Images)
 	g.GET("/images/:id", h.ConversationArchive.Image)
+	g.GET("/images/:id/thumb", h.ConversationArchive.ImageThumb)
 	g.GET("/stats", h.ConversationArchive.Stats)
 }
 

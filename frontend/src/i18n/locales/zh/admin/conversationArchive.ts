@@ -68,6 +68,27 @@ export default {
       empty: '暂无数据',
       day: '{day}：{turns} 轮 · {users} 人 · {bytes} · {images} 张图'
     },
+    wall: {
+      title: '图片墙',
+      auditNotice: '所有归档图片按时间倒序排列。每次加载和翻页都会记入查看留痕；默认只看最近 7 天。',
+      load: '加载图片墙',
+      hint: '选好条件后点「加载图片墙」，点一张图看大图、提示词和所属会话。',
+      allModels: '全部模型',
+      empty: '这个范围内没有归档图片',
+      count: '已显示 {n} 张',
+      model: '模型',
+      endpoint: '接口',
+      size: '格式',
+      requestId: '请求 ID',
+      prompt: '提示词',
+      promptNote: '只显示该轮请求最后一条用户输入的前 200 字，完整内容在所属会话里。',
+      noPrompt: '（没有文字提示词）',
+      copy: '复制',
+      openSession: '打开所属会话',
+      download: '下载原图',
+      prev: '上一张',
+      next: '下一张'
+    },
     browser: {
       title: '浏览对话',
       auditNotice: '每次搜索、打开会话和按请求 ID 查找都会记入查看留痕（用户画像 → 内容日志 → 查看留痕）。',
