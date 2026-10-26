@@ -577,6 +577,9 @@ export default {
         flattenNamespaces: 'Flatten Codex namespace tools (compatibility)',
         flattenNamespacesDesc:
           'Disabled by default: Codex namespace tool declarations are forwarded as-is on /responses, which is what the ChatGPT Codex backend expects. Enable only when this OAuth account is routed to a relay that rejects namespace tools — flattening renames them to namespace__tool, which breaks models that address collaboration tools as functions.<namespace>.<tool>. Compaction requests always flatten regardless of this switch.',
+        requestZstd: 'Compress upstream request bodies (zstd)',
+        requestZstdDesc:
+          'Disabled by default. When enabled, request bodies over 32KB sent to this account\'s upstream are zstd-compressed, roughly halving large Codex requests with screenshots — useful when the upstream has little inbound bandwidth. Enable only if the upstream decodes compressed request bodies (for example another sub2api); the official OpenAI API is not guaranteed to.',
         longContextBilling: 'API long-context pricing',
         longContextBillingDesc:
           'Disabled by default. Enable only when this account\'s upstream charges OpenAI API long-context rates above the model threshold.',

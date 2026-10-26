@@ -2042,6 +2042,17 @@ func (a *Account) IsOpenAIPassthroughEnabled() bool {
 	return false
 }
 
+// IsOpenAIRequestZstdEnabled 返回 OpenAI API Key 账号是否用 zstd 压缩发往上游的请求体
+// （accounts.extra.openai_request_zstd）。只应对能解压请求体的上游开启，例如另一个 sub2api。
+// 字段缺失或类型不正确时，按 false（关闭）处理。
+func (a *Account) IsOpenAIRequestZstdEnabled() bool {
+	if a == nil || !a.IsOpenAI() || a.Type != AccountTypeAPIKey || a.Extra == nil {
+		return false
+	}
+	enabled, _ := a.Extra["openai_request_zstd"].(bool)
+	return enabled
+}
+
 // IsOpenAIResponsesWebSocketV2Enabled 返回 OpenAI 账号是否开启 Responses WebSocket v2。
 //
 // 分类型新字段：
