@@ -78,13 +78,25 @@
           </div>
         </section>
         <p v-if="lowBalanceTip" class="mx-auto mt-3 max-w-5xl rounded-xl bg-amber-50 px-4 py-2.5 text-sm leading-6 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200" data-testid="low-balance-tip">
-          <template v-if="balance <= 0">余额不足，Claude 暂时用不了。<a :href="`${MAIN_SITE_URL}/purchase`" target="_blank" class="font-medium underline">去充值</a>，或者换成 GPT-5.5 试试。</template>
+          <template v-if="balance <= 0">余额不足，Claude 暂时用不了。</template>
           <template v-else>
-            你的余额还有 ${{ balance.toFixed(2) }}。Claude 按 3 倍计费，做一个 1 分钟的视频大约要 $1–3，余额用完会停在半路。建议先做短动画试试效果：
-            <button v-if="mode === 'film' && length !== 'short'" class="font-medium underline" @click="length = 'short'">改成约 30 秒</button>
-            <button v-if="mode === 'film'" class="ml-2 font-medium underline" @click="mode = 'motion'">改做 AI 动画</button>
+            这个{{ mode === 'film' ? '视频' : '动画' }}用 Claude 预计要 {{ costText(cost) }}，你的余额是 ${{ balance.toFixed(2) }}，{{ balance < cost.lo ? '做到一半就会停' : '可能不够做完' }}。
           </template>
+          <button v-if="cheapModel" class="ml-1 font-medium underline" data-testid="low-balance-cheap" @click="model = cheapModel.id">换成 {{ cheapModel.name }}（约 {{ costText(cheapCost) }}）</button>
+          <a :href="`${MAIN_SITE_URL}/purchase`" target="_blank" class="ml-2 font-medium underline">去充值</a>
         </p>
+        <Modal v-if="costConfirm" title="余额可能不够做完" @close="costConfirm = false">
+          <div data-testid="cost-confirm">
+            <p class="text-sm leading-6 text-ink-600 dark:text-ink-300">
+              用 Claude 做这个{{ mode === 'film' ? '视频' : '动画' }}预计要 <b>{{ costText(cost) }}</b>（Claude 按 3 倍计费），你的余额是 <b>${{ balance.toFixed(2) }}</b>。<template v-if="balance > 0">余额用完时会停在半路，已经花掉的不会退回；充值后可以点「继续生成」接着做。</template><template v-else>余额不足时 Claude 不能开始。</template>
+            </p>
+            <div class="mt-5 flex flex-wrap justify-end gap-2">
+              <a :href="`${MAIN_SITE_URL}/purchase`" target="_blank" class="btn-ghost btn-sm">去充值</a>
+              <button v-if="balance > 0" class="btn-ghost btn-sm" data-testid="cost-confirm-claude" @click="createWith('')">仍用 Claude</button>
+              <button v-if="cheapModel" class="btn-primary btn-sm" data-testid="cost-confirm-cheap" @click="createWith(cheapModel.id)">换成 {{ cheapModel.name }} 生成（约 {{ costText(cheapCost) }}）</button>
+            </div>
+          </div>
+        </Modal>
         <p class="mx-auto mt-2 max-w-5xl text-center text-xs text-ink-400">用 HiveGPT 账号登录，按实际用量从账户余额扣费。一个 1 分钟的视频通常需要 2–5 分钟生成，期间可以关掉页面。</p>
         <p class="mx-auto mt-1 max-w-5xl text-center text-xs text-ink-500">已经有做好的视频或 SVG 动画？<RouterLink to="/upload" class="font-medium text-brand-600 hover:underline" data-testid="home-upload">上传作品 →</RouterLink></p>
 
@@ -135,6 +147,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Clapperboard, HelpCircle, Loader2, Monitor, Palette, Smartphone, Sparkles, Square, Wand2 } from 'lucide-vue-next'
 import HistorySidebar from '../components/HistorySidebar.vue'
 import ImageAttach from '../components/ImageAttach.vue'
+import Modal from '../components/Modal.vue'
 import Picker from '../components/Picker.vue'
 import StyleCard from '../components/StyleCard.vue'
 import WorkCard from '../components/WorkCard.vue'
@@ -181,7 +194,10 @@ const ratioChoices = computed(() => {
 // The site's own model list (admin settings); without one, the models of the signed-in key's group.
 const siteModels = ref([])
 const modelOptions = computed(() => {
-  if (siteModels.value.length) return siteModels.value.map((m) => ({ value: m.id, label: m.name, hint: m.note }))
+  if (siteModels.value.length) {
+    const what = mode.value === 'motion' ? '一个动画' : (lengthOptions.find((o) => o.value === length.value)?.label || '一个视频').replace(/^约\s*/, '')
+    return siteModels.value.map((m) => ({ value: m.id, label: m.name, hint: [m.note, `${what}约 ${costText(runCost(m.id))}`].filter(Boolean).join(' · ') }))
+  }
   const list = models.value.length ? [...models.value] : ['gpt-5.5']
   if (!list.includes(model.value)) list.unshift(model.value)
   return list.map((m) => ({ value: m, label: m }))
@@ -203,11 +219,27 @@ const lengthOptions = [
   { value: 'standard', label: '约 1 分钟', hint: '5–7 个分镜' },
   { value: 'long', label: '2–3 分钟', hint: '8–10 个分镜' }
 ]
-// Claude runs cost several times GPT (group rate 3×); with a small balance a full film can stop
-// halfway, so suggest a short one first.
-const LOW_BALANCE_USD = 5
+// What a run usually costs from the balance, in dollars, from prod usage (first run up to the last
+// scene, 2026-10-14..28): Claude is billed at 3× and writes ~3× the code, so a 1-minute film is
+// $4–7 against GPT-5.5's ~$0.8, and the $2 sign-up credit stops a Claude film halfway.
+const RUN_COST = {
+  claude: { short: [3, 5], standard: [4, 7], long: [8, 11], motion: [0.5, 1.5] },
+  other: { short: [0.5, 1], standard: [0.7, 1], long: [1, 2], motion: [0.1, 0.3] }
+}
+function runCost(id, m = mode.value, len = length.value) {
+  const [lo, hi] = RUN_COST[id.startsWith('claude') ? 'claude' : 'other'][m === 'motion' ? 'motion' : len] || RUN_COST.other.standard
+  return { lo, hi }
+}
+const costText = (c) => `$${c.lo}–${c.hi}`
 const balance = computed(() => Number(session.me?.balance ?? 0))
-const lowBalanceTip = computed(() => !!session.me && model.value.startsWith('claude') && balance.value < LOW_BALANCE_USD && (mode.value === 'film' || balance.value <= 0))
+const cost = computed(() => runCost(model.value))
+// The cheaper model to offer instead: the first non-Claude one on the site.
+const cheapModel = computed(() => {
+  const list = siteModels.value.length ? siteModels.value : [{ id: 'gpt-5.5', name: 'GPT-5.5' }]
+  return list.find((m) => !m.id.startsWith('claude')) || null
+})
+const cheapCost = computed(() => runCost(cheapModel.value?.id || 'gpt-5.5'))
+const lowBalanceTip = computed(() => !!session.me && model.value.startsWith('claude') && balance.value < cost.value.hi)
 // Pictures as material (uploaded while the user writes; the create request sends their tokens).
 const images = ref([])
 const attach = ref(null)
@@ -251,6 +283,16 @@ function scrollToStyles() {
   stylesEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
+// A Claude run the balance can't pay for asks first (the tip above the button is easy to miss).
+const costConfirm = ref(false)
+let costAccepted = false
+function createWith(id) {
+  costConfirm.value = false
+  if (id) model.value = id
+  else costAccepted = true
+  create()
+}
+
 async function create() {
   if (creating.value || !prompt.value.trim()) return
   if (!session.key) {
@@ -261,6 +303,11 @@ async function create() {
       return
     }
   }
+  if (!costAccepted && session.me && model.value.startsWith('claude') && balance.value < cost.value.lo) {
+    costConfirm.value = true
+    return
+  }
+  costAccepted = false
   creating.value = true
   try {
     const p = await api('/projects', {
