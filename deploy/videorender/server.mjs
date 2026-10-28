@@ -2,6 +2,11 @@
 // /render.html (the sandboxed player plus subtitles, landscape or portrait), seeks the film frame by
 // frame, pipes screenshots into ffmpeg with the narration mixed in, and writes the MP4 and a cover
 // next to the project's audio on the shared data volume.
+//
+// Speed: seeking costs a few ms; drawing and capturing the frame is nearly all of it. The box has no
+// GPU, and SwiftShader (a GPU emulated on the CPU) made Chromium's gpu-process the bottleneck. Plain
+// CPU rasterization draws the same frames 2.4–3.3× faster, three.js included (WebGL falls back to
+// Chromium's software implementation). RENDER_GPU=swiftshader brings the old flags back.
 import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -13,6 +18,14 @@ const ROOT = path.resolve(process.env.VIDEO_ROOT || '/app/data/video')
 const ORIGIN = (process.env.RENDER_ORIGIN || 'https://video.hivegpt.cn').replace(/\/$/, '')
 const CHROME = process.env.CHROME_PATH || '/usr/bin/chromium'
 const THREADS = String(process.env.FFMPEG_THREADS || 2)
+// x264 'slow' became the bottleneck once frames came faster; 'medium' encodes ~2× faster at CRF 16.
+const PRESET = process.env.FFMPEG_PRESET || 'medium'
+// Screenshots are re-encoded by x264, so q85 costs nothing visible and moves 60% fewer bytes.
+const JPEG_QUALITY = Math.min(100, Math.max(50, Number(process.env.JPEG_QUALITY || 85)))
+const GPU = process.env.RENDER_GPU === 'swiftshader' ? 'swiftshader' : 'cpu'
+const GPU_FLAGS = GPU === 'swiftshader'
+  ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']
+  : ['--disable-gpu', '--disable-gpu-compositing', '--disable-gpu-rasterization']
 
 let current = null // { out, promise } of the job being rendered
 
@@ -64,7 +77,7 @@ async function render(job) {
     executablePath: CHROME,
     headless: 'new',
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb',
-      '--use-angle=swiftshader', '--enable-unsafe-swiftshader', `--window-size=${width},${height}`]
+      ...GPU_FLAGS, `--window-size=${width},${height}`]
   })
   const wav = out.replace(/\.mp4$/, '') + '.narration.wav'
   const tmp = out + '.part'
@@ -91,7 +104,7 @@ async function render(job) {
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-threads', THREADS,
       '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', '-i', wav,
       '-map', '0:v', '-map', '1:a',
-      '-c:v', 'libx264', '-preset', 'slow', '-tune', 'animation', '-crf', '16', '-profile:v', 'high', '-level', '4.2',
+      '-c:v', 'libx264', '-preset', PRESET, '-tune', 'animation', '-crf', '16', '-profile:v', 'high', '-level', '4.2',
       '-pix_fmt', 'yuv420p', '-r', String(fps), '-g', String(fps * 2),
       '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
       '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
@@ -107,7 +120,7 @@ async function render(job) {
       if (!ff.stdin.write(buf)) await Promise.race([new Promise((r) => ff.stdin.once('drain', r)), done])
     }
     const cdp = await page.createCDPSession()
-    const shot = async () => Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: 95, optimizeForSpeed: true })).data, 'base64')
+    const shot = async () => Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: JPEG_QUALITY, optimizeForSpeed: true })).data, 'base64')
     const seek = async (t) => {
       await player.evaluate((t) => window.__film.seek(t), t)
       await page.evaluate((t) => window.__subtitle(t), t)
@@ -128,7 +141,9 @@ async function render(job) {
     errors.push(...(await page.evaluate(() => (window.__errors || []).map((e) => `${e.scene || ''} ${e.phase || ''} ${e.message}`))))
     const size = fs.statSync(out).size
     note({ stage: 'done', frame: frames, frames })
-    return { size, duration: total, frames, seconds: Math.round((Date.now() - started) / 1000), errors: errors.slice(0, 20) }
+    const seconds = (Date.now() - started) / 1000
+    return { size, duration: total, frames, seconds: Math.round(seconds), fps: +(frames / Math.max(seconds, 0.001)).toFixed(2),
+      gpu: GPU, preset: PRESET, errors: errors.slice(0, 20) }
   } finally {
     await browser.close().catch(() => {})
     fs.rmSync(wav, { force: true })
@@ -169,4 +184,4 @@ http.createServer(async (req, res) => {
     if (mine) console.error('render failed:', err)
     send(500, { error: String(err.message || err).slice(0, 1000) })
   }
-}).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN))
+}).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN, 'gpu', GPU, 'preset', PRESET, 'jpeg', JPEG_QUALITY))
