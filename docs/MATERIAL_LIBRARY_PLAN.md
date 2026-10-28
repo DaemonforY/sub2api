@@ -279,9 +279,9 @@ mat_recipes    从高分 mat_artworks 沉淀，可上架提示词市场
 
 | 做 | 内容 |
 |---|---|
-| 作者库 + 文字素材库 + 片段库 | 只收古诗文（`kind` 为 shi / ci / qu / wen），全部 `public_domain`；先导入课本诗画里两次校对过的诗文，再从维基文库补 |
-| 意象库 | 种子 150 个常见古诗意象，AI 起草、人工审 |
-| 画风库 | 种子 9 个（来自 `lyric2art.py`），每个配 2–3 张样图 |
+| 作者库 + 文字素材库 + 片段库 | 只收古诗文（`kind` 为 shi / ci / qu / wen），全部 `public_domain`；先导入课本诗画里两次校对过的诗文，再从 chinese-poetry、open-chinese 补（见第 5 节），仍须两次校对 |
+| 意象库 | 种子 150 个：按 chinese-poetry 语料里的出现频率排出候选，对照 KBCP 意象词表补漏，AI 起草画面描述、人工审 |
+| 画风库 | 种子 9 个（来自 `lyric2art.py`），每个配 2–3 张样图；MK-Styles 只作参考 |
 | 作品库 + 作品意象关联 | 出图、审核、评分、重画 |
 | 禁忌库（最小版） | 先放「让模型写字」的说法和一批画家、工作室名 |
 | 版权字段与校验 | `license_status`、CHECK 约束、`text_overlay_allowed` 后端计算 |
@@ -306,7 +306,54 @@ mat_recipes    从高分 mat_artworks 沉淀，可上架提示词市场
 
 ---
 
-## 5. 待确认
+## 5. 开源调研（2026-10-28）
+
+GitHub 上没有现成的「诗 → 意象 → 画风 → 出图」素材库，开源项目各只解决一段，方案结构不变。可复用的是诗文正文、意象分类、传统色、风格模板四块数据。许可与 star 数为调研当天 GitHub API 返回的值。
+
+### 5.1 可用的数据源
+
+| 用途 | 项目 | 许可 | 规模与情况 | 怎么用 |
+|---|---|---|---|---|
+| 诗文正文 | [chinese-poetry/chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) | MIT | 约 5.4 万 star；唐诗约 5.5 万、宋诗约 26 万、宋词约 2.1 万；唐诗为繁体，无注释 | 主要补充来源，导入时转简体 |
+| 诗文正文 | [open-chinese/poetry-collection](https://github.com/open-chinese/poetry-collection) | MIT | 约 37 万条，统一数据格式，持续更新；另有约 1.9 万条 AI 鉴赏；README 自述未系统校勘 | 补充来源；AI 鉴赏不直接用，赏析仍自写 |
+| 诗文正文 | [CanvaChen/llm-dataset-chinese-poetry](https://github.com/CanvaChen/llm-dataset-chinese-poetry) | Apache-2.0 | 先秦到近代，清洗过错字、缺字 | 校对时作对照本 |
+| 诗文正文 | [Werneror/Poetry](https://github.com/Werneror/Poetry) | MIT | 约 85 万首，**含现当代诗人** | 只取古代部分；导入时按作者卒年过滤，现当代作品一律不收 |
+| 意象分类 | [liang1057/Knowledge-Base-of-Chinese-Poetry](https://github.com/liang1057/Knowledge-Base-of-Chinese-Poetry)（KBCP） | MIT | 约 6.2 万首，12 类受控词表（主题、风格、情感、意象等） | 参考它的意象、情感、主题分类，补意象库的 category 和 emotions 取值；它没有「意象 → 怎么画」这一层 |
+| 传统色 | [esyion/china-color-palette](https://github.com/esyion/china-color-palette) | MIT | 中国色 zhongguose.com 的 526 色整理成 JSON，含色值、拼音 | 第二期配色库参考色名和色值；源站未声明许可，配色方案自己组，不整表导入 |
+| 风格模板 | [K3nt3L/MK-Styles](https://github.com/K3nt3L/MK-Styles) | CC0-1.0 | SDXL 风格模板，多种格式 | 画风库参考；可直接改写使用 |
+| 构图 / 光线分类 | [wolfden/ComfyUi_PromptStylers](https://github.com/wolfden/ComfyUi_PromptStylers) | MIT | 按构图、镜头、光线、景深等分类的风格模板 | 第二期构图库、情绪光线库建表时当清单查漏 |
+
+使用约定：
+
+- MIT / Apache 数据：在 `NOTICE` 或数据目录保留原版权声明；每条导入记录的 `sources` 写明项目名和 commit，便于追溯和回报错字。
+- 开源诗文都未逐字校勘，导入后状态为 `draft`，两次校对通过才能上画，和课本诗画规则一致。
+- 风格模板里常有画家、工作室名，导入或参考时一律过 `mat_blocklist`。
+
+### 5.2 要避开的
+
+| 项目 | 原因 |
+|---|---|
+| [SQwQ/poems-db](https://github.com/SQwQ/poems-db) | 无许可证；抓取自古诗文网，所带注释、赏析有版权 |
+| [meetqy/aspoem](https://github.com/meetqy/aspoem) | 无许可证 |
+| [liuwave/xunshi](https://github.com/liuwave/xunshi) | 许可证不明（NOASSERTION） |
+| [nevertoday/zhongguo-traditional-colors](https://github.com/nevertoday/zhongguo-traditional-colors) | GPL-3.0，代码和数据不并入本仓库 |
+| [Fooocus 风格文件](https://github.com/lllyasviel/Fooocus/tree/main/sdxl_styles) | GPL-3.0，且自称非商用 |
+
+### 5.3 可借鉴的思路
+
+- **意象按频率选种子**：毕业设计 poet-kgqa（[项目页](https://liuzhiqiang23.github.io/poet-kgqa/)，仓库已 404）把全唐诗导入图数据库后统计各诗人的意象，如写月亮的诗白居易最多。我们用同样办法在 chinese-poetry 语料上统计意象频率，取前 150 作为意象库种子。
+- **难点在诗意，不在画面**：[Paint4Poem](https://github.com/paint4poem/paint4poem)、[poemtopainting](https://github.com/Mnster00/poemtopainting)、[Poe2CLP](https://github.com/LPDLG/Poe2CLP)（[论文](https://www.nature.com/articles/s40494-025-02238-0)）都是自训生成模型，我们用不上；但它们的结论都是「画出诗的意思」最难，印证了先拆意象这一步。Poe2CLP 按短语与画面对齐，与「意象挂在片段上」是同一思路。
+
+### 5.4 对第一期的调整
+
+1. **诗文来源**：课本诗画已校对诗文为主，chinese-poetry、open-chinese 补充；记来源和许可，仍须两次校对。
+2. **意象种子**：先按语料频率排出候选，对照 KBCP 意象词表补漏，再让 AI 起草画面描述，人工审核。统计脚本是 `tools/material_imagery_freq.py`，结果 `backend/internal/service/material_imagery_candidates.json` 只用来决定起草顺序，随程序打包，不写入数据库。单字别名（如「将军」的「将」）不计数，否则会匹配到大量无关字。2026-10-28 用的是 open-chinese 前 207 卷（20.7 万首，唐、宋为主）；当时 GitHub 网络不稳，没下完，网络好时可用全量语料重跑。
+3. **配色、构图**：传统色名和 wolfden 的分类只作参考，第一期不导入，仍按第 4 节做成画风上的可选字段。
+4. **画风**：仍以 9 个自有画风为种子，MK-Styles 只作参考。
+
+---
+
+## 6. 待确认
 
 - 第一期只给运营后台用，还是直接做成用户可用的产品？这决定第一期要不要做前台和计费。
 - 图片存哪里：沿用课本诗画的本地文件，还是放 COS（对话归档已在用）？
