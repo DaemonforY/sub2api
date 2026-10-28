@@ -239,3 +239,41 @@ export async function exportZip(workIds: number[], aspects: string[]): Promise<B
   })
   return data
 }
+
+// ---- AI 添加篇目 ----
+
+export type ShihuaDraftStatus = 'match' | 'diff' | 'ai_only' | 'exists' | 'rejected'
+
+export interface ShihuaDraftRequest {
+  topic?: string
+  titles?: string
+  stage?: string
+  count?: number
+}
+
+export interface ShihuaTextDiff {
+  source: string
+  ai: string
+}
+
+export interface ShihuaDraftItem {
+  work: ShihuaWorkInput
+  status: ShihuaDraftStatus
+  diffs: ShihuaTextDiff[]
+  ai_text: string
+  page: string
+  page_url: string
+  reason: string
+  problem: string
+}
+
+export interface ShihuaDraftResult {
+  items: ShihuaDraftItem[]
+  model: string
+}
+
+/** Lists works for a theme (or titles) with texts from 维基文库; nothing is saved. Takes a few minutes. */
+export async function draftWorks(input: ShihuaDraftRequest): Promise<ShihuaDraftResult> {
+  const { data } = await apiClient.post(`${BASE}/works/ai-draft`, input, { timeout: 420000 })
+  return data
+}

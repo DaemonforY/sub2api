@@ -1268,7 +1268,7 @@ func registerPromptMarketAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers
 	g.POST("/purchases/:id/refund", pm.AdminRefund)
 }
 
-// registerShihuaAdminRoutes 课本诗画：篇目库、画面描述、批量出图、挑图、排版成品与导出。
+// registerShihuaAdminRoutes 课本诗画：篇目库（含 AI 添加篇目）、画面描述、批量出图、挑图、排版成品与导出。
 func registerShihuaAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	if h.Shihua == nil {
 		return
@@ -1280,6 +1280,7 @@ func registerShihuaAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	g.GET("/works", s.ListWorks)
 	g.POST("/works", s.CreateWork)
 	g.POST("/works/import", s.ImportWorks)
+	g.POST("/works/ai-draft", s.DraftWorks)
 	g.GET("/works/:id", s.GetWork)
 	g.PUT("/works/:id", s.UpdateWork)
 	g.DELETE("/works/:id", s.DeleteWork)

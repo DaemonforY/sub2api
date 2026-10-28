@@ -149,6 +149,18 @@ func (h *ShihuaHandler) ImportWorks(c *gin.Context) {
 	h.respond(c, res, err)
 }
 
+// DraftWorks POST /admin/shihua/works/ai-draft {topic | titles, stage, count} — the text model lists
+// works and their texts come from 维基文库; nothing is saved (the page imports what the admin keeps).
+func (h *ShihuaHandler) DraftWorks(c *gin.Context) {
+	var in service.ShihuaDraftRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrShihuaInvalid)
+		return
+	}
+	res, err := h.svc.DraftWorks(c.Request.Context(), in)
+	h.respond(c, res, err)
+}
+
 // VerifyWork POST /admin/shihua/works/:id/verify {level: 0|1|2}
 func (h *ShihuaHandler) VerifyWork(c *gin.Context) {
 	id, ok := shihuaPathID(c, service.ErrShihuaWorkNotFound)

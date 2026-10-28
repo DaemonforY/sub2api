@@ -343,9 +343,11 @@ type ShihuaService struct {
 	files    *shihuaFiles
 	now      func() time.Time
 
-	draw    shihuaDrawFunc
-	chat    shihuaChatFunc
-	upscale shihuaUpscaleFunc
+	draw shihuaDrawFunc
+	chat shihuaChatFunc
+	// wikisource is where 「AI 添加篇目」 fetches texts (tests point it at a fake).
+	wikisource *shihuaWikisource
+	upscale    shihuaUpscaleFunc
 
 	mu      sync.Mutex
 	running int

@@ -13,6 +13,7 @@
           <option v-for="s in statuses" :key="s" :value="s">{{ t(`shihua.textStatus.${s}`) }}</option>
         </select>
         <div class="ml-auto flex flex-wrap gap-2">
+          <button class="btn btn-primary" data-testid="shihua-ai-open" @click="aiOpen = true">{{ t('shihua.ai.button') }}</button>
           <button class="btn btn-secondary" data-testid="shihua-import" @click="openImport">{{ t('shihua.works.import') }}</button>
           <button class="btn btn-secondary" @click="openEdit(null)">{{ t('shihua.works.add') }}</button>
         </div>
@@ -125,6 +126,8 @@
       </template>
     </BaseDialog>
 
+    <ShihuaAiDraftDialog :show="aiOpen" @close="aiOpen = false" @imported="onAiImported" />
+
     <BaseDialog :show="importing" :title="t('shihua.import.title')" width="wide" @close="importing = false">
       <p class="text-sm text-gray-500">{{ t('shihua.import.hint') }}</p>
       <input ref="fileInput" type="file" accept=".json,application/json" class="mt-3 text-sm" data-testid="shihua-import-file" @change="readImport" />
@@ -145,12 +148,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import * as api from '@/api/admin/shihua'
+import ShihuaAiDraftDialog from './ShihuaAiDraftDialog.vue'
 
 const props = defineProps<{ works: api.ShihuaWork[]; loading: boolean }>()
 const emit = defineEmits<{ (e: 'reload'): void; (e: 'refresh-queue'): void }>()
@@ -332,6 +336,25 @@ async function save() {
     saving.value = false
   }
 }
+
+// ---- AI 添加篇目: after an import, select the new works so 「为所选生成画面描述」 is one click ----
+const aiOpen = ref(false)
+const pendingSelect = ref<string[]>([])
+function onAiImported(slugs: string[]) {
+  pendingSelect.value = slugs
+  emit('reload')
+}
+watch(
+  () => props.works,
+  (works) => {
+    if (!pendingSelect.value.length) return
+    const ids = works.filter((w) => pendingSelect.value.includes(w.slug)).map((w) => w.id)
+    if (ids.length) {
+      selected.value = new Set(ids)
+      pendingSelect.value = []
+    }
+  }
+)
 
 // ---- import ----
 const importing = ref(false)

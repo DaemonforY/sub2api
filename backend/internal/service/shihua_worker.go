@@ -59,7 +59,7 @@ const (
 func NewShihuaService(repo ShihuaRepository, settings SettingRepository, keys shihuaKeyReader, billing *BillingService, tools *ImageToolsService, gatewayURL, dir string) *ShihuaService {
 	gatewayURL = strings.TrimRight(gatewayURL, "/")
 	client := &http.Client{Timeout: shihuaDrawTimeout}
-	s := &ShihuaService{repo: repo, settings: settings, keys: keys, billing: billing, tools: tools, files: newShihuaFiles(dir), now: time.Now,
+	s := &ShihuaService{repo: repo, settings: settings, keys: keys, billing: billing, tools: tools, files: newShihuaFiles(dir), wikisource: newShihuaWikisource(shihuaWikisourceBase), now: time.Now,
 		wake: make(chan struct{}, 1), stop: make(chan struct{})}
 	s.draw = func(ctx context.Context, key, prompt, size, quality string) (*shihuaDrawn, error) {
 		return shihuaGatewayDraw(ctx, client, gatewayURL, key, prompt, size, quality)
