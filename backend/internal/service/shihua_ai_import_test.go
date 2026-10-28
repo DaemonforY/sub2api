@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -240,4 +241,26 @@ func TestShihuaDraftWorksWikisourceDown(t *testing.T) {
 	require.Equal(t, ShihuaDraftAIOnly, it.Status)
 	require.Contains(t, it.Problem, "访问维基文库失败", "unreachable is not reported as not found")
 	require.Contains(t, it.Problem, "403")
+}
+
+func TestShihuaWikisourceRetriesBusySearch(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		require.Contains(t, r.Header.Get("User-Agent"), "https://hivegpt.cn")
+		if calls == 1 {
+			_ = json.NewEncoder(w).Encode(map[string]any{"error": map[string]any{"code": "cirrussearch-too-busy-error"}})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"query": map[string]any{"search": []map[string]any{{"title": "村居 (高鼎)"}}}})
+	}))
+	defer srv.Close()
+	ws := newShihuaWikisource(srv.URL)
+	ws.gap = 0
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	hits, err := ws.search(ctx, "村居")
+	require.NoError(t, err)
+	require.Equal(t, []string{"村居 (高鼎)"}, hits)
+	require.Equal(t, 2, calls)
 }

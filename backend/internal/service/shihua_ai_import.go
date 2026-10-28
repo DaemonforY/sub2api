@@ -166,7 +166,8 @@ func (w *shihuaWikisource) api(ctx context.Context, params url.Values) (map[stri
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("User-Agent", "hivegpt-shihua/1 (textbook poem import; low volume)")
+		// Wikimedia asks automated clients to name themselves with a contact address.
+		req.Header.Set("User-Agent", "HiveGPT-shihua/1.0 (https://hivegpt.cn; textbook poem import, low volume)")
 		resp, err := w.client.Do(req)
 		if err != nil {
 			if attempt < 1 && ctx.Err() == nil {
@@ -193,6 +194,18 @@ func (w *shihuaWikisource) api(ctx context.Context, params url.Values) (map[stri
 		var out map[string]any
 		if err := json.Unmarshal(raw, &out); err != nil {
 			return nil, err
+		}
+		// Busy / rate-limit errors come back as 200 with an error object; wait and try again.
+		if e, ok := out["error"].(map[string]any); ok {
+			code, _ := e["code"].(string)
+			if (strings.Contains(code, "too-busy") || code == "ratelimited" || code == "maxlag") && attempt < 3 {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(time.Duration(3+attempt*5) * time.Second):
+				}
+				continue
+			}
 		}
 		return out, nil
 	}
