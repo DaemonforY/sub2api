@@ -281,7 +281,7 @@ services:
 
   # ===========================================================================
   # HiveGPT 视频 MP4 export: headless Chromium + ffmpeg render the films frame by frame
-  # (1080p 60fps) into the shared data volume. Built locally: docker compose up -d --build videorender
+  # (1080p or 720p, 30fps) into the shared data volume. Built locally: docker compose up -d --build videorender
   # ===========================================================================
   videorender:
     build: ./videorender

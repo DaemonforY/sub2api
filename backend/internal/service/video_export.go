@@ -34,6 +34,9 @@ import (
 const (
 	VideoLayoutLandscape = "landscape"
 	VideoLayoutPortrait  = "portrait"
+	// 720p 快速: the same layout captured at 2/3 scale — about twice as fast to render.
+	VideoLayoutLandscape720 = "landscape-720"
+	VideoLayoutPortrait720  = "portrait-720"
 
 	VideoExportQueued  = "queued"
 	VideoExportRunning = "running"
@@ -50,7 +53,7 @@ const (
 
 var (
 	ErrVideoExportOff    = infraerrors.BadRequest("VIDEO_EXPORT_OFF", "视频导出暂未开通，请稍后再试（MP4 export is not available）")
-	ErrVideoExportLayout = infraerrors.BadRequest("VIDEO_EXPORT_LAYOUT", "导出格式只能是横屏或竖屏（Unknown layout）")
+	ErrVideoExportLayout = infraerrors.BadRequest("VIDEO_EXPORT_LAYOUT", "导出格式只能是横屏或竖屏（1080p / 720p）（Unknown layout）")
 	ErrVideoExportLimit  = infraerrors.TooManyRequests("VIDEO_EXPORT_LIMIT", fmt.Sprintf("今天的导出次数已用完（每天 %d 次），请明天再试（Daily export limit reached）", videoExportsPerDay))
 	ErrVideoExportQueue  = infraerrors.TooManyRequests("VIDEO_EXPORT_QUEUE", "导出排队的作品太多了，请过一会儿再试（The export queue is full）")
 	ErrVideoExportFilm   = infraerrors.BadRequest("VIDEO_EXPORT_FILM", "只有生成完成的 HTML 视频可以导出 MP4（Only finished films can be exported）")
@@ -101,6 +104,7 @@ type videoRenderJob struct {
 	FPS      int               `json:"fps"`
 	Width    int               `json:"width"`
 	Height   int               `json:"height"`
+	Scale    float64           `json:"scale,omitempty"` // capture scale (720p of a 1080p layout)
 	Setup    map[string]any    `json:"setup"`
 	Audio    []videoRenderClip `json:"audio"`
 	Out      string            `json:"out"`
@@ -193,14 +197,31 @@ func (s *VideoService) SetRenderer(exports VideoExportRepository, renderURL, sit
 // ExportEnabled reports whether MP4 export is configured.
 func (s *VideoService) ExportEnabled() bool { return s.renderer != nil }
 
+// videoLayoutSize is the size of the exported file.
 func videoLayoutSize(layout string) (int, int, bool) {
 	switch layout {
 	case VideoLayoutLandscape:
 		return 1920, 1080, true
 	case VideoLayoutPortrait:
 		return 1080, 1920, true
+	case VideoLayoutLandscape720:
+		return 1280, 720, true
+	case VideoLayoutPortrait720:
+		return 720, 1280, true
 	}
 	return 0, 0, false
+}
+
+// videoLayoutBase is the page layout an export renders (render.html knows landscape and portrait)
+// and the scale it is captured at.
+func videoLayoutBase(layout string) (string, float64) {
+	switch layout {
+	case VideoLayoutLandscape720:
+		return VideoLayoutLandscape, 2.0 / 3
+	case VideoLayoutPortrait720:
+		return VideoLayoutPortrait, 2.0 / 3
+	}
+	return layout, 1
 }
 
 // videoExportSignature identifies what a render shows: the scenes (code, timing, audio), the title
@@ -375,11 +396,14 @@ func (s *VideoService) ExportFile(ctx context.Context, exportID, kind, exp, sig 
 	if p == nil {
 		return nil, ErrVideoNotFound
 	}
-	label := map[string]string{VideoLayoutLandscape: "横屏", VideoLayoutPortrait: "竖屏"}[e.Layout]
+	base, _ := videoLayoutBase(e.Layout)
+	label := map[string]string{VideoLayoutLandscape: "横屏", VideoLayoutPortrait: "竖屏"}[base]
+	w, h, _ := videoLayoutSize(e.Layout)
+	quality := min(w, h) // 1080p / 720p, whichever way up
 	name := videoSafeFileName(p.Title)
 	out := &VideoExportFile{}
 	if kind == "mp4" {
-		out.Path, out.Name, out.Mime = filepath.Join(s.audioDir, e.File), fmt.Sprintf("%s-%s-1080p60.mp4", name, label), "video/mp4"
+		out.Path, out.Name, out.Mime = filepath.Join(s.audioDir, e.File), fmt.Sprintf("%s-%s-%dp%d.mp4", name, label, quality, videoExportFPS), "video/mp4"
 	} else {
 		out.Path, out.Name, out.Mime = filepath.Join(s.audioDir, e.Cover), fmt.Sprintf("%s-%s-封面.jpg", name, label), "image/jpeg"
 	}
@@ -464,7 +488,8 @@ func (s *VideoService) pruneExports(ctx context.Context, projectID string, keep 
 
 func (s *VideoService) renderJob(p *VideoProject, e *VideoExport) videoRenderJob {
 	s.fillImageURLs(p) // fresh links: signed ones expire
-	w, h, _ := videoLayoutSize(e.Layout)
+	base, scale := videoLayoutBase(e.Layout)
+	w, h, _ := videoLayoutSize(base)
 	mp4, cover, progress := s.exportPaths(p.ID, e.ID, e.Layout)
 	scenes := make([]map[string]any, 0, len(p.Spec.Scenes))
 	sceneData := make([]map[string]any, 0, len(p.Spec.Scenes))
@@ -485,9 +510,9 @@ func (s *VideoService) renderJob(p *VideoProject, e *VideoExport) videoRenderJob
 		coverAt = math.Min(p.Spec.Poster, at)
 	}
 	return videoRenderJob{
-		URL: s.renderer.origin + "/render.html", FPS: videoExportFPS, Width: w, Height: h,
+		URL: s.renderer.origin + "/render.html", FPS: videoExportFPS, Width: w, Height: h, Scale: scale,
 		Setup: map[string]any{
-			"layout": e.Layout, "width": w, "height": h, "title": p.Title, "brand": "HiveGPT 视频",
+			"layout": base, "width": w, "height": h, "title": p.Title, "brand": "HiveGPT 视频",
 			"payload": map[string]any{"width": p.Spec.Width, "height": p.Spec.Height, "theme": p.Spec.Theme, "loop": false, "poster": p.Spec.Poster, "scenes": scenes, "images": PlayerImages(p.Spec)},
 			"scenes":  sceneData,
 		},

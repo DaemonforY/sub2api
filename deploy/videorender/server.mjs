@@ -18,8 +18,10 @@ const ROOT = path.resolve(process.env.VIDEO_ROOT || '/app/data/video')
 const ORIGIN = (process.env.RENDER_ORIGIN || 'https://video.hivegpt.cn').replace(/\/$/, '')
 const CHROME = process.env.CHROME_PATH || '/usr/bin/chromium'
 const THREADS = String(process.env.FFMPEG_THREADS || 2)
-// x264 'slow' became the bottleneck once frames came faster; 'medium' encodes ~2× faster at CRF 16.
-const PRESET = process.env.FFMPEG_PRESET || 'medium'
+// x264 'slow' became the bottleneck once frames came faster; 'medium' encodes ~2× faster at CRF 16,
+// 'veryfast' again much faster — at CRF 16 the difference is file size, not visible quality.
+const PRESET = process.env.FFMPEG_PRESET || 'veryfast'
+const PRESETS = ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow']
 // Screenshots are re-encoded by x264, so q85 costs nothing visible and moves 60% fewer bytes.
 const JPEG_QUALITY = Math.min(100, Math.max(50, Number(process.env.JPEG_QUALITY || 85)))
 const GPU = process.env.RENDER_GPU === 'swiftshader' ? 'swiftshader' : 'cpu'
@@ -64,6 +66,11 @@ async function mixNarration(audio, total, out) {
 
 async function render(job) {
   const { setup, fps = 60, width, height } = job
+  // scale < 1 captures the same page (laid out at width × height) with fewer pixels, e.g. 2/3 for a
+  // 720p file of a 1080p layout: subtitles and titles keep their places, drawing costs less.
+  const scale = job.scale > 0 && job.scale <= 1 ? job.scale : 1
+  const outW = Math.round((width * scale) / 2) * 2, outH = Math.round((height * scale) / 2) * 2
+  const preset = PRESETS.includes(job.preset) ? job.preset : PRESET
   const out = inside(job.out)
   const cover = job.cover ? inside(job.cover) : ''
   const progress = job.progress ? inside(job.progress) : ''
@@ -84,7 +91,7 @@ async function render(job) {
   const errors = []
   try {
     const page = await browser.newPage()
-    await page.setViewport({ width, height, deviceScaleFactor: 1 })
+    await page.setViewport({ width, height, deviceScaleFactor: scale })
     page.on('pageerror', (e) => errors.push('page: ' + e.message))
     await page.goto(job.url, { waitUntil: 'networkidle0', timeout: 60000 })
     await page.evaluate((s) => window.__setup(s), setup)
@@ -104,7 +111,8 @@ async function render(job) {
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-threads', THREADS,
       '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', '-i', wav,
       '-map', '0:v', '-map', '1:a',
-      '-c:v', 'libx264', '-preset', PRESET, '-tune', 'animation', '-crf', '16', '-profile:v', 'high', '-level', '4.2',
+      ...(scale < 1 ? ['-vf', `scale=${outW}:${outH}`] : []), // fractional scales may round a pixel off
+      '-c:v', 'libx264', '-preset', preset, '-tune', 'animation', '-crf', '16', '-profile:v', 'high', '-level', '4.2',
       '-pix_fmt', 'yuv420p', '-r', String(fps), '-g', String(fps * 2),
       '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
       '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
@@ -143,7 +151,7 @@ async function render(job) {
     note({ stage: 'done', frame: frames, frames })
     const seconds = (Date.now() - started) / 1000
     return { size, duration: total, frames, seconds: Math.round(seconds), fps: +(frames / Math.max(seconds, 0.001)).toFixed(2),
-      gpu: GPU, preset: PRESET, errors: errors.slice(0, 20) }
+      gpu: GPU, preset, scale, width: outW, height: outH, errors: errors.slice(0, 20) }
   } finally {
     await browser.close().catch(() => {})
     fs.rmSync(wav, { force: true })

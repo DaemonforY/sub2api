@@ -165,6 +165,7 @@ func TestVideoExportRendersOncePerFilmAndLayout(t *testing.T) {
 	require.Equal(t, "https://video.example.com/render.html", job.URL)
 	require.Equal(t, 1080, job.Width)
 	require.Equal(t, "portrait", job.Setup["layout"])
+	require.Equal(t, 1.0, job.Scale, "1080p renders at full size")
 	require.Len(t, job.Audio, 2) // one clip per narrated scene, the second at the first one's end
 	require.Zero(t, job.Audio[0].Start)
 	require.Greater(t, job.Audio[1].Start, 0.0)
@@ -189,7 +190,7 @@ func TestVideoExportRendersOncePerFilmAndLayout(t *testing.T) {
 	f, err := svc.ExportFile(ctx, parts[5], parts[6], u.Query().Get("exp"), u.Query().Get("sig"))
 	require.NoError(t, err)
 	require.Equal(t, "video/mp4", f.Mime)
-	require.True(t, strings.HasSuffix(f.Name, "-竖屏-1080p60.mp4"), f.Name)
+	require.True(t, strings.HasSuffix(f.Name, "-竖屏-1080p30.mp4"), f.Name)
 	_, err = svc.ExportFile(ctx, parts[5], parts[6], u.Query().Get("exp"), strings.Repeat("0", 32))
 	require.ErrorIs(t, err, ErrVideoNotFound)
 	_, err = svc.ExportFile(ctx, parts[5], "jpg", u.Query().Get("exp"), u.Query().Get("sig")) // signed for mp4 only
@@ -294,4 +295,23 @@ func TestVideoRendererQueuePosition(t *testing.T) {
 	r.taken(<-r.queue)
 	require.Zero(t, r.position("a"))
 	require.Equal(t, 1, r.position("b"))
+}
+
+func TestVideoExport720(t *testing.T) {
+	for layout, want := range map[string][3]any{
+		VideoLayoutLandscape720: {1280, 720, VideoLayoutLandscape},
+		VideoLayoutPortrait720:  {720, 1280, VideoLayoutPortrait},
+		VideoLayoutPortrait:     {1080, 1920, VideoLayoutPortrait},
+	} {
+		w, h, ok := videoLayoutSize(layout)
+		require.True(t, ok, layout)
+		require.Equal(t, want[0], w, layout)
+		require.Equal(t, want[1], h, layout)
+		base, scale := videoLayoutBase(layout)
+		require.Equal(t, want[2], base, layout)
+		bw, _, _ := videoLayoutSize(base)
+		require.InDelta(t, float64(w), float64(bw)*scale, 0.5, "the base layout captured at scale gives the file size")
+	}
+	require.Len(t, VideoLayoutPortrait720, 12, "fits video_exports.layout varchar(16)")
+	require.LessOrEqual(t, len(VideoLayoutLandscape720), 16)
 }

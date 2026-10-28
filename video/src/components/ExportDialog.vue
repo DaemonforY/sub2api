@@ -3,11 +3,11 @@
     <!-- 1. the MP4 files -->
     <section>
       <h3 class="text-sm font-semibold">视频文件</h3>
-      <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：1080p 30 帧、高码率 H.264 + AAC，带配音和字幕。一部 2 分钟的作品大约需要 10–20 分钟，可以关掉窗口，回来再下载。</p>
+      <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：30 帧、高码率 H.264 + AAC，带配音和字幕。1080p 最清晰；720p 快速版渲染时间约减半，适合手机观看。全站按顺序排队，可以关掉窗口，回来再下载。</p>
       <div class="mt-3 grid gap-3 sm:grid-cols-2">
         <div v-for="l in layouts" :key="l.id" class="rounded-xl border border-ink-200 p-3 dark:border-ink-700">
           <div class="flex items-start gap-3">
-            <div class="flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-ink-100 dark:bg-ink-800" :class="l.id === 'portrait' ? 'h-24 w-[54px]' : 'h-[54px] w-24'">
+            <div class="flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-ink-100 dark:bg-ink-800" :class="l.id.startsWith('portrait') ? 'h-24 w-[54px]' : 'h-[54px] w-24'">
               <img v-if="exp(l.id)?.cover" :src="exp(l.id).cover + '&inline=1'" class="h-full w-full object-cover" alt="封面" />
               <component :is="l.icon" v-else class="h-5 w-5 text-ink-400" />
             </div>
@@ -91,8 +91,10 @@ const props = defineProps({ project: { type: Object, required: true } })
 defineEmits(['close'])
 
 const layouts = [
-  { id: 'portrait', name: '竖屏', size: '1080×1920', for: '抖音、视频号、小红书', icon: Smartphone },
-  { id: 'landscape', name: '横屏', size: '1920×1080', for: 'B站、YouTube、西瓜视频', icon: Monitor }
+  { id: 'portrait', name: '竖屏 1080p', size: '1080×1920', for: '抖音、视频号、小红书', icon: Smartphone },
+  { id: 'portrait-720', name: '竖屏 720p 快速', size: '720×1280', for: '手机观看、朋友圈，约快一倍', icon: Smartphone },
+  { id: 'landscape', name: '横屏 1080p', size: '1920×1080', for: 'B站、YouTube、西瓜视频', icon: Monitor },
+  { id: 'landscape-720', name: '横屏 720p 快速', size: '1280×720', for: '电脑或手机横屏观看，约快一倍', icon: Monitor }
 ]
 const platforms = [
   { id: 'douyin', name: '抖音', titleLabel: '标题', titleMax: 30, tagMax: 5, layout: 'portrait', upload: 'https://creator.douyin.com/creator-micro/content/upload', tip: '在抖音创作者中心上传，作品描述里粘贴文案。' },
@@ -179,7 +181,9 @@ const mobile = () => /Android|iPhone|iPad|iPod|HarmonyOS/i.test(navigator.userAg
 // the platform's upload page opens. Nothing is posted on the user's behalf — no platform allows it.
 async function oneClick() {
   const pf = current.value
-  const e = exp(pf.layout)
+  // A finished 1080p version of the platform's orientation, else a finished 720p one.
+  const ready = (id) => (exp(id)?.status === 'ready' ? exp(id) : null)
+  const e = ready(pf.layout) || ready(pf.layout + '-720') || exp(pf.layout)
   if (!e || e.status !== 'ready') {
     if (!e || canStart(pf.layout)) await start(pf.layout)
     toast(`${pf.layout === 'portrait' ? '竖屏' : '横屏'}版还在导出，完成后再点「一键发布」`)
