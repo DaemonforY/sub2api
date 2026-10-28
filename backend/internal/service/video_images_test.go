@@ -195,3 +195,80 @@ func TestVideoWithoutNarration(t *testing.T) {
 	_, err = svc.SetVoice(ctx, videoKeyA, p.ID, DefaultVideoVoice, 0)
 	require.ErrorIs(t, err, ErrVideoSilentVoice)
 }
+
+func TestVideoSceneCutOffAndPendingChange(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	var mu sync.Mutex
+	cutS2 := 1        // first s2 answer hits the output limit
+	failS2Change := 3 // the change to s2 keeps failing (cut off twice → scene fails), then works
+	var compact bool
+	var planUser string
+	var s2Changes []string
+	stream := func(ctx context.Context, key, m string, msgs []LearnMessage, n int, onDelta func(string) error) (*LearnTutorResult, error) {
+		sys, user, last := msgs[0].Content, "", msgs[len(msgs)-1].Content
+		if len(msgs) > 1 {
+			user = msgs[1].Content
+		}
+		mu.Lock()
+		if strings.Contains(sys, "The user asks for changes") {
+			planUser = user
+		}
+		if strings.Contains(sys, "motion designer") && strings.Contains(user, "Scene s2") {
+			if strings.HasPrefix(last, "Change this scene") {
+				s2Changes = append(s2Changes, last)
+				if failS2Change > 0 {
+					failS2Change--
+					mu.Unlock()
+					_ = onDelta("```js\nconst a = [")
+					return &LearnTutorResult{CompletionTokens: n, FinishReason: "length"}, nil
+				}
+			} else if cutS2 > 0 {
+				cutS2--
+				mu.Unlock()
+				_ = onDelta("```js\nconst a = [")
+				return &LearnTutorResult{CompletionTokens: n, FinishReason: "length"}, nil
+			} else if strings.Contains(user, "cut off at the output limit") {
+				compact = true
+			}
+		}
+		mu.Unlock()
+		return model.stream(ctx, key, m, msgs, n, onDelta)
+	}
+	svc := newVideoService(newFakeVideoRepo(), &fakeTTS{}, stream, t.TempDir())
+	ctx := context.Background()
+	p, err := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.True(t, compact, "a cut-off scene is asked again for a compact version")
+	firstS2 := got.Spec.Scenes[1].Code
+
+	// A change to s2 is cut off twice: the scene fails, keeps its code and remembers the change.
+	_, err = svc.Message(ctx, videoKeyA, p.ID, "第二个分镜人物动作多一点", "")
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ = svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusFailed, got.Status)
+	require.Contains(t, got.Error, "分镜 2 没有做出来（")
+	require.Contains(t, got.Error, "太长")
+	require.Equal(t, firstS2, got.Spec.Scenes[1].Code, "the old scene stays playable")
+	require.NotEmpty(t, got.Spec.Scenes[1].Meta[videoPendingChange])
+
+	// 继续生成 applies the remembered change instead of rebuilding from the old plan.
+	before := len(s2Changes)
+	_, err = svc.Resume(ctx, videoKeyA, p.ID)
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ = svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Greater(t, len(s2Changes), before)
+	require.Empty(t, got.Spec.Scenes[1].Meta[videoPendingChange])
+
+	// The planner sees the earlier requests when the user says nothing changed.
+	_, err = svc.Message(ctx, videoKeyA, p.ID, "这还是第一版啊", "")
+	require.NoError(t, err)
+	svc.Wait()
+	require.Contains(t, planUser, "第二个分镜人物动作多一点")
+	require.NotContains(t, planUser, "- 这还是第一版啊")
+}

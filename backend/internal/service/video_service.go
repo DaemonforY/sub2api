@@ -442,8 +442,46 @@ func (s *VideoService) chatOnce(ctx context.Context, r *videoRun, msgs []LearnMe
 	if err != nil {
 		return "", err
 	}
+	if res != nil && (res.FinishReason == "length" || (maxTokens > 0 && res.CompletionTokens >= maxTokens)) {
+		return out.String(), errVideoTruncated
+	}
 	return out.String(), nil
 }
+
+// earlierRequests returns the user's last few messages before this one (oldest first), so the
+// planner can redo a change the user says did not happen.
+func (s *VideoService) earlierRequests(ctx context.Context, id, current string) []string {
+	events, err := s.repo.ListEvents(ctx, id, 0, 500)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range events {
+		if e.Kind == "user" {
+			out = append(out, clipRunes(e.Text, 300))
+		}
+	}
+	if n := len(out); n > 0 && out[n-1] == clipRunes(current, 300) {
+		out = out[:n-1] // the current message was already added as an event
+	}
+	if len(out) > 4 {
+		out = out[len(out)-4:]
+	}
+	return out
+}
+
+// errVideoTruncated: the answer stopped at the output limit (cut off mid-code / mid-JSON).
+// videoPendingChange (scene meta): a requested change that failed, applied by 继续生成.
+const videoPendingChange = "pending_change"
+
+var errVideoSceneTooLong = errLearnRunFailed("这个分镜的动画代码太长，超过了单次输出上限。可以把这个分镜的要求说得简单些（比如少几个部件或动作）再试")
+
+var errVideoTruncated = errLearnRunFailed("回答超过了单次输出上限被截断")
+
+const (
+	videoSceneMaxTokens = 32000
+	videoCompactNote    = "\n\nIMPORTANT: a previous answer for this scene was cut off at the output limit. Write a much more compact version: well under 500 lines, build repeated parts with loops and small helper functions, keep SVG paths short, no comments. A complete shorter scene is better than a long unfinished one."
+)
 
 // build is the full pipeline. Every step skips work already done, so it also resumes a project.
 func (s *VideoService) build(ctx context.Context, r *videoRun) error {
@@ -467,7 +505,11 @@ func (s *VideoService) build(ctx context.Context, r *videoRun) error {
 	}
 	s.done(ctx, r, fmt.Sprintf("完成：%d 个分镜，共 %.0f 秒。可以在右边继续让 AI 修改。", len(p.Spec.Scenes), p.Spec.TotalDuration()))
 	s.save(ctx, r)
-	_ = s.repo.AddVersion(ctx, p.ID, "初版", p.Spec)
+	note := "初版"
+	if earlier, _ := s.repo.ListVersions(ctx, p.ID, 1); len(earlier) > 0 {
+		note = "继续生成后"
+	}
+	_ = s.repo.AddVersion(ctx, p.ID, note, p.Spec)
 	return nil
 }
 
@@ -696,6 +738,18 @@ func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 // their instruction (or failure, prefixed "!error:").
 func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[string]string) error {
 	p := r.p
+	// A change the user asked for that did not get done last time (the scene failed) is still owed:
+	// 继续生成 applies it to the scene's current code instead of rebuilding from the old plan.
+	for _, sc := range p.Spec.Scenes {
+		if pending := sc.Meta[videoPendingChange]; pending != "" {
+			if _, set := redo[sc.ID]; !set {
+				if redo == nil {
+					redo = map[string]string{}
+				}
+				redo[sc.ID] = pending
+			}
+		}
+	}
 	var todo []int
 	for i, sc := range p.Spec.Scenes {
 		if _, again := redo[sc.ID]; again || strings.TrimSpace(sc.Code) == "" {
@@ -722,6 +776,7 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(videoSceneParallelism)
 	var failed []string
+	var reason string // the first failure's cause, shown with the list
 	var failedMu sync.Mutex
 	for _, i := range todo {
 		g.Go(func() error {
@@ -755,16 +810,28 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 				if errors.Is(err, ErrVideoBalance) {
 					return err // stops the other scenes too: each would go further below zero
 				}
+				slog.Warn("video: scene failed", "id", p.ID, "scene", sc.ID, "err", err)
 				failedMu.Lock()
 				failed = append(failed, fmt.Sprintf("分镜 %d", i+1))
+				if reason == "" {
+					reason = strings.TrimSuffix(strings.TrimPrefix(videoErrorText(err), "运行失败："), "，请稍后再试（Run failed）")
+				}
 				failedMu.Unlock()
 				r.mu.Lock()
 				p.Spec.Scenes[i].Error = videoErrorText(err)
+				if instruction != "" && sc.Code != "" {
+					// Keep the scene as it was (still playable) and remember the change for 继续生成.
+					if p.Spec.Scenes[i].Meta == nil {
+						p.Spec.Scenes[i].Meta = map[string]string{}
+					}
+					p.Spec.Scenes[i].Meta[videoPendingChange] = instruction
+				}
 				r.mu.Unlock()
 				return nil
 			}
 			r.mu.Lock()
 			p.Spec.Scenes[i].Code, p.Spec.Scenes[i].Error = code, ""
+			delete(p.Spec.Scenes[i].Meta, videoPendingChange)
 			r.mu.Unlock()
 			s.save(gctx, r)
 			s.done(gctx, r, fmt.Sprintf("分镜 %d「%s」完成", i+1, sc.Title))
@@ -775,20 +842,37 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 		return err
 	}
 	if len(failed) > 0 {
-		return errLearnRunFailed(strings.Join(failed, "、") + " 没有做出来，可以点「继续生成」重试")
+		msg := strings.Join(failed, "、") + " 没有做出来"
+		if reason != "" {
+			msg += "（" + clipRunes(reason, 120) + "）"
+		}
+		return errLearnRunFailed(msg + "，可以点「继续生成」重试")
 	}
 	return nil
 }
 
 // writeSceneCode asks for the scene's code, checks its syntax and lets the model fix a syntax error once.
 func (s *VideoService) writeSceneCode(ctx context.Context, r *videoRun, brief videoSceneBrief, previous, instruction, failure string) (string, error) {
-	answer, err := s.chat(ctx, r, videoScenePrompt(brief, previous, instruction, failure), 24000)
+	msgs := videoScenePrompt(brief, previous, instruction, failure)
+	answer, err := s.chat(ctx, r, msgs, videoSceneMaxTokens)
+	if errors.Is(err, errVideoTruncated) {
+		// Too long to finish: ask again for a compact version (the cut-off code is not sent back,
+		// and is not "repaired" — that only finishes the same oversized scene).
+		msgs[len(msgs)-1].Content += videoCompactNote
+		answer, err = s.chat(ctx, r, msgs, videoSceneMaxTokens)
+		if errors.Is(err, errVideoTruncated) {
+			return "", errVideoSceneTooLong
+		}
+	}
 	if err != nil {
 		return "", err
 	}
 	code := extractCodeBlock(answer)
 	if problem := checkSceneCode(code); problem != "" {
-		answer, err = s.chat(ctx, r, videoScenePrompt(brief, code, "", problem), 24000)
+		answer, err = s.chat(ctx, r, videoScenePrompt(brief, code, "", problem), videoSceneMaxTokens)
+		if errors.Is(err, errVideoTruncated) {
+			return "", errVideoSceneTooLong
+		}
 		if err != nil {
 			return "", err
 		}
@@ -928,7 +1012,10 @@ func (s *VideoService) Resume(ctx context.Context, key *APIKey, id string) (*Vid
 		if p.Spec != nil {
 			for i := range p.Spec.Scenes {
 				if p.Spec.Scenes[i].Error != "" {
-					p.Spec.Scenes[i].Code, p.Spec.Scenes[i].Error = "", ""
+					if p.Spec.Scenes[i].Meta[videoPendingChange] == "" {
+						p.Spec.Scenes[i].Code = "" // rebuilt from the plan; a pending change keeps the code
+					}
+					p.Spec.Scenes[i].Error = ""
 				}
 			}
 		}
@@ -959,7 +1046,7 @@ func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus stri
 		_ = s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "assistant", Text: "好的，我来按你的要求修改。"})
 	} else {
 		s.step(ctx, r, "plan", "正在理解修改意见…")
-		answer, err := s.chat(ctx, r, videoRevisionPrompt(p, text, focus), 4000)
+		answer, err := s.chat(ctx, r, videoRevisionPrompt(p, text, focus, s.earlierRequests(ctx, p.ID, text)), 4000)
 		if err != nil {
 			return err
 		}

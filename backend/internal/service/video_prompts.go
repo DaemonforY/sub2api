@@ -62,6 +62,10 @@ when the video has narration — keep text out of it. Body text ≥ 34px, headin
 (scale proportionally for other sizes). Never let text overflow its box: set widths and line-heights, and keep
 lines short. Use S.theme.font for text and S.theme.display for big titles.
 
+Code size: keep the function body compact — aim for under 400 lines. Build repeated parts (characters' limbs,
+rows of items, particles) with loops and small helper functions instead of copying them; keep SVG paths short.
+When changing an existing scene, keep it about as long as it was.
+
 Motion: enter elements in order, keep everything readable for most of the scene, add one or two layers of
 subtle secondary motion (drift, pulse, shimmer) so it never looks frozen, and settle the scene before it ends
 (the player cross-fades 0.5 s into the next scene).`
@@ -286,7 +290,7 @@ type videoRevisionPlan struct {
 	Title string `json:"title,omitempty"`
 }
 
-func videoRevisionPrompt(p *VideoProject, message, focusScene string) []LearnMessage {
+func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []string) []LearnMessage {
 	var outline strings.Builder
 	for _, sc := range p.Spec.Scenes {
 		fmt.Fprintf(&outline, "- %s 「%s」 (%.1fs)\n  narration: %s\n  visual: %s\n", sc.ID, sc.Title, sc.Duration, sc.Narration, sc.Visual)
@@ -302,7 +306,11 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string) []LearnMes
 	if videoSilent(p) {
 		sys += "\nThis video has no narration (on-screen text only): never fill narration; put text changes in the instruction."
 	}
+	sys += "\nIf the user says an earlier change did not take effect, or that the video still looks like the first version, do that earlier change again: list the scenes it concerns with a precise instruction. You cannot see the video, so never claim what the user is seeing and never answer with an empty scene list in that case."
 	user := "Video: " + p.Spec.Title + "\nScenes:\n" + outline.String()
+	if len(earlier) > 0 {
+		user += "\nThe user's earlier messages in this conversation (oldest first):\n- " + strings.Join(earlier, "\n- ") + "\n"
+	}
 	if focusScene != "" {
 		user += "\nThe user is looking at scene " + focusScene + ".\n"
 	}

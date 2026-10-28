@@ -42,6 +42,7 @@ type LearnTutorResult struct {
 	CompletionTokens int    `json:"completion_tokens"`
 	TutorLeft        int    `json:"tutor_left"`
 	OwnKey           bool   `json:"own_key,omitempty"`
+	FinishReason     string `json:"-"` // "length" when the answer hit max tokens
 }
 
 // learnArticleRe: 大数据 articles the tutor can answer on (their page path).
@@ -192,6 +193,7 @@ func streamChatCompletion(ctx context.Context, client *http.Client, gatewayURL, 
 				Delta struct {
 					Content string `json:"content"`
 				} `json:"delta"`
+				FinishReason string `json:"finish_reason"`
 			} `json:"choices"`
 			Usage *struct {
 				PromptTokens     int `json:"prompt_tokens"`
@@ -214,6 +216,9 @@ func streamChatCompletion(ctx context.Context, client *http.Client, gatewayURL, 
 			out.PromptTokens, out.CompletionTokens = chunk.Usage.PromptTokens, chunk.Usage.CompletionTokens
 		}
 		for _, c := range chunk.Choices {
+			if c.FinishReason != "" {
+				out.FinishReason = c.FinishReason
+			}
 			if c.Delta.Content == "" {
 				continue
 			}
