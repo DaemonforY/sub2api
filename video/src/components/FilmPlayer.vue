@@ -123,7 +123,8 @@ function payload() {
     height: s.height,
     theme: s.theme,
     loop: !!s.loop,
-    scenes: s.scenes.map((sc) => ({ id: sc.id, duration: sc.duration, code: sc.code || '', words: sc.audio?.words || [] }))
+    scenes: s.scenes.map((sc) => ({ id: sc.id, duration: sc.duration, code: sc.code || '', words: sc.audio?.words || [] })),
+    images: (s.images || []).map((img) => ({ id: img.id, url: img.url, width: img.width, height: img.height }))
   }
 }
 let booted = false

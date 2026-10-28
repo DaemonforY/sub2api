@@ -82,7 +82,19 @@ export async function exportHtml(project, audioUrl, withKey) {
     return s
   })
   const cues = buildSubtitles(spec.scenes, starts)
-  const data = { width: spec.width, height: spec.height, theme: spec.theme, loop: !!spec.loop, scenes }
+  // The user's pictures go in as data URLs, like the narration.
+  const images = await Promise.all(
+    (spec.images || []).map(async (img) => {
+      let url = ''
+      try {
+        url = `data:${img.mime || 'image/jpeg'};base64,${toBase64(await audioBlob(img.url, false))}`
+      } catch {
+        url = ''
+      }
+      return { id: img.id, url, width: img.width, height: img.height }
+    })
+  )
+  const data = { width: spec.width, height: spec.height, theme: spec.theme, loop: !!spec.loop, scenes, images }
   const origin = location.origin
   const html = `<!doctype html>
 <html lang="zh-CN">

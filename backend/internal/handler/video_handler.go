@@ -529,12 +529,12 @@ func videoFormFile(form *multipart.Form, field string) (*service.VideoUploadFile
 }
 
 // parseVideoUpload reads a multipart upload; it answers the request itself when that fails.
-func parseVideoUpload(c *gin.Context, maxVideo int64) (*multipart.Form, bool) {
+func parseVideoUpload(c *gin.Context, maxVideo int64, tooBig error) (*multipart.Form, bool) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxVideo+videoUploadBodyExtra)
 	if err := c.Request.ParseMultipartForm(videoUploadMemory); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
-			response.ErrorFrom(c, service.ErrVideoUploadVideoBig)
+			response.ErrorFrom(c, tooBig)
 		} else {
 			response.ErrorFrom(c, service.ErrVideoInvalid)
 		}
@@ -550,7 +550,7 @@ func (h *VideoHandler) Upload(c *gin.Context) {
 	if !ok {
 		return
 	}
-	form, ok := parseVideoUpload(c, service.VideoUploadMaxBytesFor(key))
+	form, ok := parseVideoUpload(c, service.VideoUploadMaxBytesFor(key), service.ErrVideoUploadVideoBig)
 	if !ok {
 		return
 	}
@@ -579,13 +579,39 @@ func (h *VideoHandler) Upload(c *gin.Context) {
 	h.reply(c, p, err)
 }
 
+// StageImage POST /api/v1/video/images — multipart: file. A picture for the project the user is
+// about to create; the create request lists the returned tokens in images.
+func (h *VideoHandler) StageImage(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	form, ok := parseVideoUpload(c, service.VideoImageMaxBytes, service.ErrVideoImageBig)
+	if !ok {
+		return
+	}
+	defer func() { _ = form.RemoveAll() }()
+	file, closeFile, err := videoFormFile(form, "file")
+	defer closeFile()
+	if err != nil || file == nil {
+		response.ErrorFrom(c, service.ErrVideoImageType)
+		return
+	}
+	img, err := h.service.StageImage(c.Request.Context(), key, *file)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, img)
+}
+
 // SetPoster POST /api/v1/video/projects/:id/poster — multipart: poster.
 func (h *VideoHandler) SetPoster(c *gin.Context) {
 	key, ok := videoKey(c)
 	if !ok {
 		return
 	}
-	form, ok := parseVideoUpload(c, 0)
+	form, ok := parseVideoUpload(c, 0, service.ErrVideoUploadPoster)
 	if !ok {
 		return
 	}
@@ -606,7 +632,7 @@ func (h *VideoHandler) AdminSetPoster(c *gin.Context) {
 	if !ok {
 		return
 	}
-	form, ok := parseVideoUpload(c, 0)
+	form, ok := parseVideoUpload(c, 0, service.ErrVideoUploadPoster)
 	if !ok {
 		return
 	}

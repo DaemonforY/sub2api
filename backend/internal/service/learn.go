@@ -164,6 +164,25 @@ type LearnMessage struct {
 	Content    string          `json:"content"`
 	ToolCalls  json.RawMessage `json:"tool_calls,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"`
+	// Images (data: URLs) go with Content as chat-completions content parts. Only sent to models,
+	// never read from clients.
+	Images []string `json:"-"`
+}
+
+// MarshalJSON sends a message with images as content parts (text first, then image_url parts).
+func (m LearnMessage) MarshalJSON() ([]byte, error) {
+	type plain LearnMessage
+	if len(m.Images) == 0 {
+		return json.Marshal(plain(m))
+	}
+	parts := []map[string]any{{"type": "text", "text": m.Content}}
+	for _, u := range m.Images {
+		parts = append(parts, map[string]any{"type": "image_url", "image_url": map[string]any{"url": u}})
+	}
+	return json.Marshal(struct {
+		Role    string           `json:"role"`
+		Content []map[string]any `json:"content"`
+	}{m.Role, parts})
 }
 
 // LearnRunInput is what a lesson's example may send.

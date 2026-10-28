@@ -213,6 +213,18 @@
       random: mulberry32(1000 + index * 7919),
       word: words.word, at: words.at,
       three: window.THREE,
+      images: imageSizes,
+      image: function (id, props) {
+        var src = pictures[id];
+        var el = document.createElement('img');
+        el.alt = '';
+        el.draggable = false;
+        el.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;display:block;';
+        if (src && !src.failed) el.src = src.url;
+        else el.style.background = 'rgba(127,127,127,.25)';
+        applyProps(el, props);
+        return el;
+      },
       css: function (text) { var st = document.createElement('style'); st.setAttribute('data-scene', id); st.textContent = String(text); styleHost.appendChild(st); },
       canvas: function () {
         var el = document.createElement('canvas');
@@ -249,7 +261,37 @@
   function needsThree(project) {
     return !window.THREE && (project.scenes || []).some(function (sc) { return /\bS\.three\b/.test(sc.code || ''); });
   }
+  // The user's pictures (S.image) are loaded and decoded before the film reports ready, so the first
+  // frame and every exported frame already show them. A picture that fails stays a grey box.
+  var pictures = {}, imageSizes = {};
+  function preloadImages(project) {
+    var list = Array.isArray(project.images) ? project.images : [];
+    var want = list.filter(function (img) { return img && img.id && img.url && !(pictures[img.id] && pictures[img.id].url === img.url); });
+    if (!want.length) return null;
+    return Promise.all(want.map(function (img) {
+      return new Promise(function (resolve) {
+        var el = new Image();
+        var done = function () { resolve(); };
+        el.onload = function () {
+          pictures[img.id] = { url: img.url, el: el };
+          imageSizes[img.id] = { width: el.naturalWidth || img.width, height: el.naturalHeight || img.height };
+          (el.decode ? el.decode() : Promise.resolve()).then(done, done);
+        };
+        el.onerror = function () {
+          pictures[img.id] = { url: img.url, failed: true };
+          post({ type: 'error', scene: '', phase: 'image', message: 'picture ' + img.id + ' failed to load' });
+          done();
+        };
+        el.src = img.url;
+      });
+    }));
+  }
   function load(project) {
+    var waiting = preloadImages(project);
+    if (waiting) {
+      waiting.then(function () { load(project); });
+      return;
+    }
     if (needsThree(project)) {
       if (!threeLoading) {
         threeLoading = new Promise(function (resolve) {

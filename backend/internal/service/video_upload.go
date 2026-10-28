@@ -477,6 +477,7 @@ func (s *VideoService) withMedia(p *VideoProject) *VideoProject {
 	if p != nil && p.Mode == VideoModeUpload && p.Spec != nil {
 		p.Media = s.mediaLinks(p.ID, p.Visibility, p.Spec.Upload)
 	}
+	s.fillImageURLs(p)
 	return p
 }
 
@@ -504,10 +505,13 @@ func (s *VideoService) MediaFile(ctx context.Context, id, file, exp, sig string)
 	if err != nil {
 		return nil, err
 	}
-	if p == nil || p.Mode != VideoModeUpload || p.Spec == nil || p.Spec.Upload == nil || file == "" {
+	if p == nil || file == "" {
 		return nil, ErrVideoNotFound
 	}
-	up := p.Spec.Upload
+	img := videoImageFile(p, file)
+	if img == nil && (p.Mode != VideoModeUpload || p.Spec == nil || p.Spec.Upload == nil) {
+		return nil, ErrVideoNotFound
+	}
 	public := p.Visibility == VideoVisibilityPublic
 	if !public {
 		e, err := strconv.ParseInt(exp, 10, 64)
@@ -516,11 +520,13 @@ func (s *VideoService) MediaFile(ctx context.Context, id, file, exp, sig string)
 		}
 	}
 	out := &VideoMediaFile{Public: public}
-	switch file {
-	case up.File:
-		out.Mime, out.SVG = up.Mime, up.Kind == VideoUploadKindSVG
-	case up.Poster:
-		out.Mime = up.PosterMime
+	switch {
+	case img != nil:
+		out.Mime = img.Mime
+	case file == p.Spec.Upload.File:
+		out.Mime, out.SVG = p.Spec.Upload.Mime, p.Spec.Upload.Kind == VideoUploadKindSVG
+	case file == p.Spec.Upload.Poster:
+		out.Mime = p.Spec.Upload.PosterMime
 	default:
 		return nil, ErrVideoNotFound
 	}

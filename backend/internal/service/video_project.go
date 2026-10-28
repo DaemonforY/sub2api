@@ -61,6 +61,8 @@ type VideoOptions struct {
 	Ask      bool              `json:"ask,omitempty"`    // ask clarifying questions first
 	Answers  map[string]string `json:"answers,omitempty"`
 	Seconds  int               `json:"seconds,omitempty"` // motion: loop length
+	// Images: the user's pictures for this project, set by the server from staged uploads.
+	Images []VideoImage `json:"images,omitempty"`
 }
 
 // VideoSpec is the script and everything the player needs.
@@ -76,6 +78,7 @@ type VideoSpec struct {
 	Loop     bool         `json:"loop,omitempty"`
 	Poster   float64      `json:"poster,omitempty"` // seconds: the frame cards and the player show before playing
 	Scenes   []VideoScene `json:"scenes"`
+	Images   []VideoImage `json:"images,omitempty"` // the user's pictures, with the model's descriptions
 	Upload   *VideoUpload `json:"upload,omitempty"` // mode "upload": the user's own file instead of scenes
 }
 
@@ -85,6 +88,7 @@ type VideoScene struct {
 	Narration string            `json:"narration,omitempty"`
 	Tone      string            `json:"tone,omitempty"` // delivery hint for paid voices, e.g. 「好奇地提问」
 	Visual    string            `json:"visual"`
+	Images    []string          `json:"images,omitempty"` // ids of the user's pictures this scene shows
 	Duration  float64           `json:"duration"`
 	Audio     *VideoSceneAudio  `json:"audio,omitempty"`
 	Code      string            `json:"code,omitempty"`

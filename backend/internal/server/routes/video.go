@@ -38,6 +38,7 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 		g.GET("/projects", h.Video.List)
 		g.POST("/projects", h.Video.Create)
 		g.POST("/uploads", h.Video.Upload)
+		g.POST("/images", h.Video.StageImage)
 		g.POST("/projects/:id/poster", h.Video.SetPoster)
 		g.GET("/projects/:id", h.Video.Get)
 		g.DELETE("/projects/:id", h.Video.Delete)

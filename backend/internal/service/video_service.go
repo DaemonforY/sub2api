@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -49,6 +50,7 @@ type VideoService struct {
 	mu      sync.Mutex
 	runs    map[string]*videoRun
 	uploads map[int64][]time.Time // upload times per user, so deleting does not reset the daily limit
+	images  map[int64][]time.Time // staged picture uploads per user (daily limit)
 	wg      sync.WaitGroup
 
 	// models offered on the site and the per-user keys of their groups (SetModelBilling)
@@ -119,6 +121,8 @@ type VideoCreateInput struct {
 	Prompt  string       `json:"prompt"`
 	Options VideoOptions `json:"options"`
 	RemixOf string       `json:"remix_of,omitempty"`
+	// Images: tokens of pictures staged with POST /video/images, in the order the user added them.
+	Images []string `json:"images,omitempty"`
 }
 
 func normalizeVideoOptions(mode string, o *VideoOptions) {
@@ -164,6 +168,10 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 		return nil, ErrVideoPrompt
 	}
 	normalizeVideoOptions(in.Mode, &in.Options)
+	in.Options.Images = nil // only from staged uploads, below
+	if len(in.Images) > VideoImagesMax {
+		return nil, ErrVideoImageCount
+	}
 	if videoVoicePaid(in.Options.Voice) && s.paidTTS == nil {
 		return nil, ErrVideoPaidVoiceOff
 	}
@@ -188,10 +196,26 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 	if err := s.repo.Create(ctx, p); err != nil {
 		return nil, err
 	}
+	if len(in.Images) > 0 {
+		images, err := s.attachImages(p, in.Images)
+		if err == nil {
+			p.Options.Images = images
+			err = s.repo.Save(ctx, p)
+		}
+		if err != nil {
+			_, _ = s.repo.Delete(ctx, p.UserID, p.ID)
+			_ = os.RemoveAll(s.projectDir(p.ID))
+			return nil, err
+		}
+	}
 	if p.RemixOf != "" {
 		_ = s.repo.AddRemix(ctx, p.RemixOf)
 	}
-	_ = s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "user", Text: p.Prompt})
+	text := p.Prompt
+	if n := len(p.Options.Images); n > 0 {
+		text += fmt.Sprintf("\n（附 %d 张图片）", n)
+	}
+	_ = s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "user", Text: text})
 	s.start(p, key.Key, s.build)
 	return p, nil
 }
@@ -476,12 +500,25 @@ func (s *VideoService) askQuestions(ctx context.Context, r *videoRun) error {
 
 func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 	s.step(ctx, r, "script", "正在写脚本和分镜…")
-	answer, err := s.chat(ctx, r, videoScriptPrompt(r.p), 12000)
+	msgs := videoScriptPrompt(r.p)
+	if len(r.p.Options.Images) > 0 {
+		msgs[len(msgs)-1].Images = orderedImages(r.p, s.imagesForModel(r.p))
+	}
+	answer, err := s.chat(ctx, r, msgs, 12000)
 	if err != nil {
 		return err
 	}
 	var spec VideoSpec
+	var notes struct {
+		ImageNotes []struct {
+			ID   string `json:"id"`
+			Desc string `json:"desc"`
+		} `json:"image_notes"`
+	}
 	raw := extractJSONObject(answer)
+	if raw != "" {
+		_ = json.Unmarshal([]byte(raw), &notes)
+	}
 	if raw == "" || json.Unmarshal([]byte(raw), &spec) != nil || len(spec.Scenes) == 0 {
 		return errLearnRunFailed("模型没有写出可用的脚本，请重试或换一个更强的模型")
 	}
@@ -491,9 +528,25 @@ func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 	style := findVideoStyle(r.p.Options.Style)
 	spec.Theme = style.Theme
 	spec.Width, spec.Height = r.p.Width, r.p.Height
+	descs := map[string]string{}
+	for _, n := range notes.ImageNotes {
+		descs[n.ID] = n.Desc
+	}
+	spec.Images = specImages(r.p, descs)
+	known := map[string]bool{}
+	for _, img := range spec.Images {
+		known[img.ID] = true
+	}
 	for i := range spec.Scenes {
 		sc := &spec.Scenes[i]
 		sc.ID = fmt.Sprintf("s%d", i+1)
+		var ids []string
+		for _, id := range sc.Images {
+			if known[id] {
+				ids = append(ids, id)
+			}
+		}
+		sc.Images = ids
 		sc.Code, sc.Audio, sc.Error = "", nil, ""
 		sc.Duration = math.Max(videoMinSceneSeconds, float64(len([]rune(sc.Narration)))/4.5+videoSceneTailPause)
 	}
@@ -514,8 +567,11 @@ func (s *VideoService) motionSpec(r *videoRun) {
 	style := findVideoStyle(p.Options.Style)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	p.Spec = &VideoSpec{Title: p.Title, Theme: style.Theme, Width: p.Width, Height: p.Height, Loop: true,
+	p.Spec = &VideoSpec{Title: p.Title, Theme: style.Theme, Width: p.Width, Height: p.Height, Loop: true, Images: specImages(p, nil),
 		Scenes: []VideoScene{{ID: "s1", Title: p.Title, Visual: p.Prompt, Duration: float64(p.Options.Seconds)}}}
+	for _, img := range p.Spec.Images {
+		p.Spec.Scenes[0].Images = append(p.Spec.Scenes[0].Images, img.ID)
+	}
 }
 
 func videoAudioName(projectID string, sc VideoScene, voice string, rate int) string {
@@ -644,6 +700,11 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 	for i, sc := range p.Spec.Scenes {
 		outline[i] = fmt.Sprintf("%d.%s", i+1, sc.Title)
 	}
+	// The designer of a scene sees the pictures it shows (all of them for a single animation).
+	pictures := map[string]string{}
+	if len(p.Options.Images) > 0 {
+		pictures = s.imagesForModel(p)
+	}
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(videoSceneParallelism)
 	var failed []string
@@ -657,7 +718,13 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 			if len(todo) == 1 {
 				s.step(gctx, r, "code", fmt.Sprintf("正在制作分镜 %d「%s」…", i+1, sc.Title))
 			}
-			brief := videoSceneBrief{Index: i, Scene: sc, Outline: outline, Spec: &spec, StyleBrief: style.Brief, Category: category.Brief, Motion: p.Mode == VideoModeMotion, Prompt: p.Prompt}
+			var imageData []string
+			for _, img := range spec.Images {
+				if d := pictures[img.ID]; d != "" && (p.Mode == VideoModeMotion || slices.Contains(sc.Images, img.ID)) {
+					imageData = append(imageData, d)
+				}
+			}
+			brief := videoSceneBrief{Index: i, Scene: sc, Outline: outline, Spec: &spec, StyleBrief: style.Brief, Category: category.Brief, Motion: p.Mode == VideoModeMotion, Prompt: p.Prompt, ImageData: imageData}
 			instruction, failure := redo[sc.ID], ""
 			if strings.HasPrefix(instruction, "!error:") {
 				failure, instruction = strings.TrimPrefix(instruction, "!error:"), ""

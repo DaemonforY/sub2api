@@ -26,7 +26,7 @@
         </section>
 
         <!-- prompt box -->
-        <section class="card mx-auto mt-6 max-w-5xl overflow-visible shadow-soft">
+        <section class="card mx-auto mt-6 max-w-5xl overflow-visible shadow-soft" :class="{ 'ring-2 ring-brand-400': dropping }" @dragover.prevent="dropping = true" @dragleave.self="dropping = false" @drop.prevent="onDrop">
           <div class="flex items-center gap-2 px-5 pt-4 text-xs font-medium tracking-wide text-ink-500">
             <Clapperboard v-if="mode === 'film'" class="h-4 w-4 text-brand-500" />
             <Wand2 v-else class="h-4 w-4 text-brand-500" />
@@ -43,7 +43,12 @@
             data-testid="create-prompt"
             @keydown.meta.enter="create"
             @keydown.ctrl.enter="create"
+            @paste="onPaste"
           ></textarea>
+          <div class="px-5 pb-2">
+            <ImageAttach ref="attach" :items="images" :max="9" />
+            <p v-if="images.length" class="mt-1.5 text-xs text-ink-400">AI 会先看图再写脚本，把这些图做成视频的主要画面（推拉、标注、分屏）。写清楚想讲什么、给谁看，效果更好。</p>
+          </div>
           <div class="flex items-center justify-between px-5 pb-1 text-xs text-ink-400">
             <div class="flex flex-wrap gap-1.5">
               <button v-for="ex in examples" :key="ex" class="max-w-[22rem] truncate rounded-lg bg-ink-100 px-2 py-1 text-ink-600 hover:bg-brand-50 hover:text-brand-700 dark:bg-ink-800 dark:text-ink-300" :title="ex" @click="prompt = ex">{{ ex }}</button>
@@ -65,7 +70,7 @@
               <input v-model="ask" type="checkbox" class="h-3.5 w-3.5 accent-brand-500" />先确认方向
             </label>
             <span class="flex-1"></span>
-            <button class="btn-primary px-5 py-2.5" :disabled="creating || !prompt.trim()" data-testid="create-submit" @click="create">
+            <button class="btn-primary px-5 py-2.5" :disabled="creating || !prompt.trim() || imagesBusy" :title="imagesBusy ? '图片还在上传' : ''" data-testid="create-submit" @click="create">
               <Loader2 v-if="creating" class="h-4 w-4 animate-spin" />
               <Sparkles v-else class="h-4 w-4" />
               {{ mode === 'film' ? '一键生成视频' : '生成动画' }}
@@ -129,6 +134,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Clapperboard, HelpCircle, Loader2, Monitor, Palette, Smartphone, Sparkles, Square, Wand2 } from 'lucide-vue-next'
 import HistorySidebar from '../components/HistorySidebar.vue'
+import ImageAttach from '../components/ImageAttach.vue'
 import Picker from '../components/Picker.vue'
 import StyleCard from '../components/StyleCard.vue'
 import WorkCard from '../components/WorkCard.vue'
@@ -201,6 +207,22 @@ const lengthOptions = [
 const LOW_BALANCE_USD = 5
 const balance = computed(() => Number(session.me?.balance ?? 0))
 const lowBalanceTip = computed(() => !!session.me && model.value.startsWith('claude') && balance.value < LOW_BALANCE_USD && (mode.value === 'film' || balance.value <= 0))
+// Pictures as material (uploaded while the user writes; the create request sends their tokens).
+const images = ref([])
+const attach = ref(null)
+const dropping = ref(false)
+const imagesBusy = computed(() => images.value.some((x) => x.status === 'uploading'))
+function onDrop(e) {
+  dropping.value = false
+  attach.value?.add(Array.from(e.dataTransfer?.files || []))
+}
+function onPaste(e) {
+  const files = Array.from(e.clipboardData?.files || [])
+  if (files.some((f) => f.type.startsWith('image/'))) {
+    e.preventDefault()
+    attach.value?.add(files)
+  }
+}
 const secondOptions = [6, 8, 12, 16].map((s) => ({ value: s, label: `${s} 秒` }))
 const motionCategories = computed(() => cat.value.categories.filter((c) => c.mode === 'motion'))
 const filteredStyles = computed(() => cat.value.styles.filter((s) => !genre.value || s.id === 'auto' || s.genre === genre.value))
@@ -246,12 +268,14 @@ async function create() {
         mode: mode.value,
         prompt: prompt.value.trim(),
         remix_of: remixOf.value || undefined,
+        images: images.value.filter((x) => x.status === 'done').map((x) => x.token),
         options: {
           ratio: ratio.value, style: style.value, genre: genre.value || undefined, category: mode.value === 'motion' ? category.value : 'film',
           voice: voice.value, model: model.value, length: length.value, ask: mode.value === 'film' && ask.value, seconds: seconds.value
         }
       }
     })
+    images.value.splice(0)
     router.push(`/p/${p.id}`)
   } catch (err) {
     toastError(err)

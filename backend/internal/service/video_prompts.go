@@ -66,6 +66,16 @@ Motion: enter elements in order, keep everything readable for most of the scene,
 subtle secondary motion (drift, pulse, shimmer) so it never looks frozen, and settle the scene before it ends
 (the player cross-fades 0.5 s into the next scene).`
 
+// videoImagesDoc documents S.image, only for videos with the user's pictures.
+const videoImagesDoc = `
+S.image(id, props?) → a new <img> of the user's picture id (img1, img2 …), already loaded. props like S.h
+            (class, style …). It is position:absolute with object-fit:cover by default — set left/top/width/height
+            (px) or style to place it. Call it once per use while building; animate it with S.set / S.tween
+            (pan & zoom: scale 1 → 1.08 over the scene, x/y drift), reveal with opacity / clip-path, frame it
+            (rounded corners, shadow, device mockup), point at details with labels / arrows / circles drawn on top.
+S.images    { img1: { width, height }, … } natural sizes, to keep the aspect ratio (object-fit:contain shows all of it).
+Never redraw a picture by hand or describe it with shapes: show the real image.`
+
 func videoJSONSchemaHint(v any) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return string(b)
@@ -113,7 +123,19 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	_, _ = b.WriteString("- narration: what the narrator says in this scene, spoken language, in the user's language. No stage directions inside narration.\n")
 	_, _ = b.WriteString("- tone: how the narrator should sound in this scene, one short phrase in Chinese (e.g. 「好奇地抛出问题」「沉稳地讲解」「兴奋地揭晓答案」「放慢语速，娓娓道来」). It guides the voice, it is not read aloud.\n")
 	fmt.Fprintf(&b, "- Length budget: the narration of all scenes together is at most %d Chinese characters (about %d English words) — the narrator reads ~4.5 characters per second, so a longer script makes a longer video than the user asked for. Count before answering.\n", seconds*9/2, seconds*5/2)
-	_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — layout, the elements and diagrams, what moves when (tied to phrases of the narration), exact numbers / labels / data shown on screen. Visuals must be makeable with HTML, SVG and canvas (diagrams, charts, icons, typography, simple vector characters); no photos or video footage.\n")
+	images := p.Options.Images
+	if len(images) == 0 {
+		_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — layout, the elements and diagrams, what moves when (tied to phrases of the narration), exact numbers / labels / data shown on screen. Visuals must be makeable with HTML, SVG and canvas (diagrams, charts, icons, typography, simple vector characters); no photos or video footage.\n")
+	} else {
+		ids := make([]string, len(images))
+		for i, img := range images {
+			ids[i] = fmt.Sprintf("%s (%d×%d)", img.ID, img.Width, img.Height)
+		}
+		fmt.Fprintf(&b, "- The user attached %d pictures, in this order: %s. They are the main material of the video: look at each one carefully, build the script around what they show (the product, the place, the people, the screenshot's content) and show every picture in at least one scene. Do not invent details the pictures and the request do not support.\n", len(images), strings.Join(ids, ", "))
+		_, _ = b.WriteString("- images: the ids of the pictures a scene shows (usually one or two; [] when none).\n")
+		_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — which picture goes where and how it moves (slow pan / zoom, reveal, split screen, before / after), labels or arrows pointing at details in it (say where in the picture), plus text, icons and simple diagrams around it, tied to phrases of the narration. Besides the user's pictures, only HTML, SVG and canvas graphics; no other photos or footage.\n")
+		_, _ = b.WriteString("- image_notes: one line per picture saying what is in it and where (e.g. 「白色保温杯居中，杯身左侧有 logo，背景浅灰」) — the designer uses it to place labels.\n")
+	}
 	_, _ = b.WriteString("- The first scene hooks the viewer with a question or surprising fact; the last scene sums up in one memorable line.\n")
 	_, _ = b.WriteString("- Be factually accurate. If the user gave a full script, keep their wording and only split it into scenes.\n")
 	if genre.Brief != "" {
@@ -125,8 +147,16 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	if len(answers) > 0 {
 		_, _ = b.WriteString("The user's choices: " + strings.Join(answers, "; ") + "\n")
 	}
+	if len(images) > 0 {
+		schema["scenes"] = []map[string]any{{"id": "s1", "title": "开场：这只杯子为什么能保温 12 小时", "narration": "旁白原文……", "tone": "好奇地抛出问题", "images": []string{"img1"}, "visual": "img1 居中缓慢放大，杯盖处出现标注……"}}
+		schema["image_notes"] = []map[string]any{{"id": "img1", "desc": "白色保温杯居中，杯身左侧有 logo，背景浅灰"}}
+	}
 	_, _ = b.WriteString("Answer with JSON only, shaped like:\n" + videoJSONSchemaHint(schema))
-	return []LearnMessage{{Role: "system", Content: b.String()}, {Role: "user", Content: p.Prompt}}
+	user := p.Prompt
+	if len(images) > 0 {
+		user += fmt.Sprintf("\n\n（附 %d 张图片，按顺序是 %s）", len(images), videoImageIDs(images))
+	}
+	return []LearnMessage{{Role: "system", Content: b.String()}, {Role: "user", Content: user}}
 }
 
 // --- scene code ------------------------------------------------------------------------------
@@ -140,12 +170,24 @@ type videoSceneBrief struct {
 	Category   string
 	Motion     bool
 	Prompt     string
+	ImageData  []string // data URLs of the pictures this scene shows, for the model to look at
+}
+
+func videoImageIDs(images []VideoImage) string {
+	ids := make([]string, len(images))
+	for i, img := range images {
+		ids[i] = img.ID
+	}
+	return strings.Join(ids, "、")
 }
 
 func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string) []LearnMessage {
 	var b strings.Builder
 	_, _ = b.WriteString("You are a senior motion designer who writes hand-crafted HTML/SVG/canvas animation code for a video player.\n\n")
 	_, _ = b.WriteString(videoRuntimeDoc)
+	if len(in.Spec.Images) > 0 {
+		_, _ = b.WriteString("\n" + videoImagesDoc)
+	}
 	_, _ = b.WriteString("\n\n## This video\n")
 	fmt.Fprintf(&b, "Stage: %d × %d px. Theme: %s\n", in.Spec.Width, in.Spec.Height, videoJSONSchemaHint(in.Spec.Theme))
 	if in.StyleBrief != "" {
@@ -159,6 +201,23 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 	} else {
 		fmt.Fprintf(&b, "Video: %q — %s\nScenes: %s\n", in.Spec.Title, in.Spec.Summary, strings.Join(in.Outline, " / "))
 		fmt.Fprintf(&b, "This is scene %d of %d. Keep the look consistent with the other scenes (same theme, same title position and sizes).\n", in.Index+1, len(in.Outline))
+	}
+	if len(in.Spec.Images) > 0 {
+		_, _ = b.WriteString("The user's pictures:\n")
+		for _, img := range in.Spec.Images {
+			fmt.Fprintf(&b, "- %s: %d×%d", img.ID, img.Width, img.Height)
+			if img.Desc != "" {
+				_, _ = b.WriteString(" — " + img.Desc)
+			}
+			_, _ = b.WriteString("\n")
+		}
+		if in.Motion {
+			_, _ = b.WriteString("Build the animation around these pictures (they are attached).\n")
+		} else if len(in.Scene.Images) > 0 {
+			fmt.Fprintf(&b, "This scene shows %s (attached): use S.image('%s') etc., not drawings of them.\n", strings.Join(in.Scene.Images, ", "), in.Scene.Images[0])
+		} else {
+			_, _ = b.WriteString("This scene does not need a picture, but may show one if the visual plan asks for it.\n")
+		}
 	}
 	_, _ = b.WriteString("\nAnswer with the function body only, inside one ```js code block. No explanations.")
 
@@ -178,7 +237,7 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 			_, _ = u.WriteString("\nTime the visuals to these words (use S.at('…') or the numbers above).\n")
 		}
 	}
-	msgs := []LearnMessage{{Role: "system", Content: b.String()}, {Role: "user", Content: u.String()}}
+	msgs := []LearnMessage{{Role: "system", Content: b.String()}, {Role: "user", Content: u.String(), Images: in.ImageData}}
 	if previous != "" {
 		msgs = append(msgs, LearnMessage{Role: "assistant", Content: "```js\n" + previous + "\n```"})
 		switch {
@@ -208,6 +267,12 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string) []LearnMes
 	var outline strings.Builder
 	for _, sc := range p.Spec.Scenes {
 		fmt.Fprintf(&outline, "- %s 「%s」 (%.1fs)\n  narration: %s\n  visual: %s\n", sc.ID, sc.Title, sc.Duration, sc.Narration, sc.Visual)
+		if len(sc.Images) > 0 {
+			fmt.Fprintf(&outline, "  pictures: %s\n", strings.Join(sc.Images, ", "))
+		}
+	}
+	for _, img := range p.Spec.Images {
+		fmt.Fprintf(&outline, "Picture %s: %s\n", img.ID, img.Desc)
 	}
 	schema := map[string]any{"reply": "好的，我把第 2 个分镜的背景改成深蓝色，并放慢了图表的动画。", "scenes": []map[string]any{{"id": "s2", "instruction": "背景改为深蓝色 #0b1f3a；柱状图上升放慢到 1.5 秒", "narration": "（只有要改旁白时才填，填完整的新旁白）"}}, "title": "（只有要改标题时才填）"}
 	sys := "You are the director of an HTML video. The user asks for changes. Decide which scenes must change and write a precise instruction for the motion designer for each (what to change, keep the rest). Only include narration when the spoken words must change (it will be re-recorded). For changes that affect the whole video (colours, fonts, style) list every scene. Reply to the user in one or two sentences in their language. Answer with JSON only, shaped like:\n" + videoJSONSchemaHint(schema)
