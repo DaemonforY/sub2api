@@ -82,19 +82,29 @@ async function render(job) {
   const note = (data) => progress && fs.writeFileSync(progress, JSON.stringify({ ...data, at: Date.now() }))
   note({ stage: 'loading', frame: 0, frames: 0 })
 
-  const browser = await puppeteer.launch({
-    executablePath: CHROME,
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb',
-      ...GPU_FLAGS, `--window-size=${width},${height}`]
-  })
+  // One browser per page: inside a single browser only the foreground tab keeps producing frames on
+  // Linux, so background tabs' screenshots hung until the protocol timeout.
+  const browsers = []
+  const launch = async () => {
+    const b = await puppeteer.launch({
+      executablePath: CHROME,
+      headless: 'new',
+      protocolTimeout: 120000,
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb',
+        '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
+        ...GPU_FLAGS, `--window-size=${width},${height}`]
+    })
+    browsers.push(b)
+    return b
+  }
   const wav = out.replace(/\.mp4$/, '') + '.narration.wav'
   const tmp = out + '.part'
   const segFiles = []
   const errors = []
   // A loaded render page: the frame is drawn by seeking the player and setting the subtitle.
   const openPage = async () => {
-    const page = await browser.newPage()
+    const browser = await launch()
+    const page = (await browser.pages())[0] || (await browser.newPage())
     await page.setViewport({ width, height, deviceScaleFactor: scale })
     page.on('pageerror', (e) => errors.push('page: ' + e.message))
     await page.goto(job.url, { waitUntil: 'networkidle0', timeout: 60000 })
@@ -147,7 +157,7 @@ async function render(job) {
     await mixNarration(job.audio || [], total, wav)
 
     // Capturing a frame mostly waits for Chromium's next compositor frame (~40 ms on any page, even
-    // an unchanged one), not for the CPU, so pages capturing side by side multiply the throughput
+    // an unchanged one), not for the CPU, so browsers capturing side by side multiply the throughput
     // (1 → 3 pages: 28 → 72 frames/s on a laptop). The film is cut into WORKERS runs of frames, each
     // encoded on its own, then joined without re-encoding and muxed with the narration.
     const workers = Math.max(1, Math.min(WORKERS, Math.floor(frames / (fps * 2)) || 1))
@@ -187,7 +197,7 @@ async function render(job) {
     return { size, duration: total, frames, seconds: Math.round(seconds), fps: +(frames / Math.max(seconds, 0.001)).toFixed(2),
       gpu: GPU, preset, scale, workers, width: outW, height: outH, errors: [...new Set(errors)].slice(0, 20) }
   } finally {
-    await browser.close().catch(() => {})
+    await Promise.all(browsers.map((b) => b.close().catch(() => {})))
     fs.rmSync(wav, { force: true })
     fs.rmSync(tmp, { force: true })
     for (const f of segFiles) if (f) fs.rmSync(f, { force: true })
