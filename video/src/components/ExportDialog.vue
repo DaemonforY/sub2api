@@ -3,7 +3,7 @@
     <!-- 1. the MP4 files -->
     <section>
       <h3 class="text-sm font-semibold">视频文件</h3>
-      <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：1080p 60 帧、高码率 H.264 + AAC，带配音和字幕。一部 2 分钟的作品大约需要 20–40 分钟，可以关掉窗口，回来再下载。</p>
+      <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：1080p 30 帧、高码率 H.264 + AAC，带配音和字幕。一部 2 分钟的作品大约需要 10–20 分钟，可以关掉窗口，回来再下载。</p>
       <div class="mt-3 grid gap-3 sm:grid-cols-2">
         <div v-for="l in layouts" :key="l.id" class="rounded-xl border border-ink-200 p-3 dark:border-ink-700">
           <div class="flex items-start gap-3">
@@ -12,7 +12,7 @@
               <component :is="l.icon" v-else class="h-5 w-5 text-ink-400" />
             </div>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium">{{ l.name }} <span class="font-normal text-ink-400">{{ l.size }} · 60fps</span></p>
+              <p class="text-sm font-medium">{{ l.name }} <span class="font-normal text-ink-400">{{ l.size }} · 30fps</span></p>
               <p class="mt-0.5 text-xs text-ink-500">适合 {{ l.for }}</p>
               <template v-if="exp(l.id)">
                 <p v-if="exp(l.id).status === 'queued'" class="mt-2 text-xs text-ink-500">排队中，前面还有 {{ Math.max(0, exp(l.id).position - 1) }} 个</p>

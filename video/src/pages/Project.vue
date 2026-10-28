@@ -20,7 +20,7 @@
           <template v-if="!isUpload">
             <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
             <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
-            <button class="btn-ghost btn-sm" :disabled="!isReady || !exportEnabled" :title="exportEnabled ? '导出 MP4（1080p 60 帧），发布到抖音、视频号、小红书、B站' : '视频导出（MP4）即将上线'" @click="exportOpen = true"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
+            <button class="btn-ghost btn-sm" :disabled="!isReady || !exportEnabled" :title="exportEnabled ? '导出 MP4（1080p 30 帧），发布到抖音、视频号、小红书、B站' : '视频导出（MP4）即将上线'" @click="exportOpen = true"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
           </template>
           <button v-if="p.visibility === 'private' || p.visibility === 'rejected'" class="btn-primary btn-sm" :disabled="!isReady" @click="publishOpen = true"><Send class="h-3.5 w-3.5" />发布</button>
           <button v-else class="btn-ghost btn-sm" @click="unpublish">撤回</button>

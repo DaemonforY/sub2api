@@ -160,7 +160,7 @@ func TestVideoExportRendersOncePerFilmAndLayout(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1080, e.Width)
 	require.Equal(t, 1920, e.Height)
-	require.Equal(t, 60, e.FPS)
+	require.Equal(t, 30, e.FPS)
 	job := <-jobs
 	require.Equal(t, "https://video.example.com/render.html", job.URL)
 	require.Equal(t, 1080, job.Width)

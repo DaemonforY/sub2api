@@ -25,7 +25,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 )
 
-// MP4 export for the publishing kit: a film is rendered frame by frame at 1080p 60 fps by the
+// MP4 export for the publishing kit: a film is rendered frame by frame at 1080p 30 fps by the
 // videorender container (deploy/videorender), which opens the video site's /render.html, mixes the
 // narration and writes the MP4 and a cover next to the project's audio. Landscape is the film as on
 // the site (1920×1080); portrait (1080×1920, for 抖音 / 视频号 / 小红书) puts the title above the
@@ -40,7 +40,7 @@ const (
 	VideoExportReady   = "ready"
 	VideoExportFailed  = "failed"
 
-	videoExportFPS       = 60
+	videoExportFPS       = 30
 	videoExportsPerDay   = 40
 	videoExportTimeout   = 3 * time.Hour
 	videoExportQueueSize = 200
