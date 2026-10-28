@@ -452,41 +452,47 @@ function soften(ctx: CanvasRenderingContext2D, src: HTMLCanvasElement, box: { x:
 }
 
 /**
- * Fills the band above the picture for the taller aspects: the picture's top rows stretched upward and
- * blurred (so the sky continues), fading into paper towards the top edge, and feathered into the picture.
+ * The colour of a picture's sky: the mean of the lighter half of its top rows, when that is light
+ * enough to pass for paper; otherwise the default paper.
  */
-function extendTop(ctx: CanvasRenderingContext2D, art: HTMLImageElement | HTMLCanvasElement, W: number, band: number) {
-  const feather = Math.round(Math.min(band * 0.12, art.height * 0.025))
-  const c = document.createElement('canvas')
-  c.width = W
-  c.height = band + feather
-  const e = c.getContext('2d')!
-  e.fillStyle = '#efe6d2'
-  e.fillRect(0, 0, W, c.height)
-  const rows = Math.max(2, Math.round(art.height * 0.01))
-  e.filter = `blur(${Math.round(W / 40)}px)`
-  e.drawImage(art, 0, 0, art.width, rows, -W * 0.05, -band * 0.05, W * 1.1, c.height * 1.1)
-  e.filter = 'none'
-  const paper = e.createLinearGradient(0, 0, 0, band)
-  // Mostly paper through the band, giving way to the picture only near its edge, so a dark top edge
-  // (mountains, trees) doesn't smear upward.
-  paper.addColorStop(0, 'rgba(239, 230, 210, 0.96)')
-  paper.addColorStop(0.55, 'rgba(239, 230, 210, 0.8)')
-  paper.addColorStop(0.85, 'rgba(239, 230, 210, 0.3)')
-  paper.addColorStop(1, 'rgba(239, 230, 210, 0)')
-  e.fillStyle = paper
-  e.fillRect(0, 0, W, band)
-  // destination-in clears whatever the mask doesn't cover, so it spans the whole band: opaque down to
-  // the picture's top edge, then fading out over the feather.
-  const mask = e.createLinearGradient(0, 0, 0, band + feather)
-  mask.addColorStop(0, 'rgba(0, 0, 0, 1)')
-  mask.addColorStop(band / (band + feather), 'rgba(0, 0, 0, 1)')
-  mask.addColorStop(1, 'rgba(0, 0, 0, 0)')
-  e.globalCompositeOperation = 'destination-in'
-  e.fillStyle = mask
-  e.fillRect(0, 0, W, band + feather)
-  e.globalCompositeOperation = 'source-over'
-  ctx.drawImage(c, 0, 0)
+function skyColor(art: HTMLImageElement | HTMLCanvasElement): [number, number, number] {
+  const paper: [number, number, number] = [239, 230, 210]
+  try {
+    const gw = 64, gh = 4
+    const c = document.createElement('canvas')
+    c.width = gw
+    c.height = gh
+    const x = c.getContext('2d', { willReadFrequently: true })!
+    x.drawImage(art, 0, 0, art.width, Math.max(2, Math.round(art.height * 0.02)), 0, 0, gw, gh)
+    const d = x.getImageData(0, 0, gw, gh).data
+    const px: [number, number, number, number][] = []
+    for (let i = 0; i < gw * gh; i++) px.push([d[i * 4], d[i * 4 + 1], d[i * 4 + 2], 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]])
+    px.sort((a, b) => b[3] - a[3])
+    const light = px.slice(0, Math.max(1, Math.floor(px.length / 2)))
+    const mean = [0, 1, 2].map((k) => light.reduce((n, p) => n + p[k], 0) / light.length) as [number, number, number]
+    return 0.299 * mean[0] + 0.587 * mean[1] + 0.114 * mean[2] > 190 ? mean.map(Math.round) as [number, number, number] : paper
+  } catch {
+    return paper
+  }
+}
+
+/**
+ * Fills the band above the picture for the taller aspects with the picture's own sky colour (plain,
+ * like the paper of a scroll) and fades the picture's top edge into it. Nothing is stretched or
+ * blurred, so trees or mountains touching the top edge thin out into paper instead of smearing.
+ * `top` is where the picture starts (the band's height).
+ */
+function extendTop(ctx: CanvasRenderingContext2D, art: HTMLImageElement | HTMLCanvasElement, W: number, top: number) {
+  const [r, g, b] = skyColor(art)
+  const color = (a: number) => `rgba(${r}, ${g}, ${b}, ${a})`
+  ctx.fillStyle = color(1)
+  ctx.fillRect(0, 0, W, top)
+  // An eased fade, so the edge has no visible line.
+  const feather = Math.round(Math.min(art.height * 0.07, top * 0.6))
+  const fade = ctx.createLinearGradient(0, top, 0, top + feather)
+  for (const [at, a] of [[0, 1], [0.25, 0.78], [0.5, 0.45], [0.75, 0.16], [1, 0]]) fade.addColorStop(at, color(a))
+  ctx.fillStyle = fade
+  ctx.fillRect(0, top, W, feather)
 }
 
 export interface ShihuaPosterInput {
