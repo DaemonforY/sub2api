@@ -32,8 +32,9 @@
           </label>
         </div>
         <button class="btn btn-primary btn-sm w-full" :disabled="!checked.size || exporting" data-testid="shihua-export" @click="exportZip">
-          {{ exporting ? t('shihua.layout.exporting') : t('shihua.layout.export') }}
+          {{ exporting ? (batchProgress.done < batchProgress.total ? t('shihua.layout.rendering', batchProgress) : t('shihua.layout.exporting')) : t('shihua.layout.export') }}
         </button>
+        <p class="text-xs text-gray-400">{{ t('shihua.layout.exportHint') }}</p>
       </div>
     </div>
 
@@ -257,29 +258,53 @@ async function saveAll() {
   }
 }
 
-// ---- batch: every aspect of every checked work, laid out automatically ----
+// ---- batch: lay out checked works automatically and save the posters ----
 const batchBusy = ref(false)
 const batchProgress = reactive({ done: 0, total: 0 })
-async function batch() {
-  const todo = picked.value.filter((w) => checked.value.has(w.id) && w.text_status === 'verified_2')
-  batchBusy.value = true
-  Object.assign(batchProgress, { done: 0, total: todo.length * SHIHUA_ASPECTS.length })
+
+/**
+ * Lays out and saves `aspects` of the checked works (only the ones without a saved poster when
+ * onlyMissing). Works whose text is not checked twice are skipped (the server refuses their
+ * posters); their titles are returned.
+ */
+async function layoutChecked(aspects: ShihuaAspect[], onlyMissing: boolean): Promise<{ saved: number; unverified: string[] }> {
+  const works = picked.value.filter((w) => checked.value.has(w.id))
+  const unverified = works.filter((w) => w.text_status !== 'verified_2').map((w) => w.title)
+  const todo = works.filter((w) => w.text_status === 'verified_2')
+  const have = new Set<string>()
+  if (onlyMissing && todo.length) {
+    for (const r of await api.listRenders(todo.map((w) => w.id))) have.add(`${r.image_id}:${r.aspect}`)
+  }
+  const jobs = todo.map((w) => ({ w, aspects: aspects.filter((a) => !have.has(`${w.picked_image_id}:${a}`)) })).filter((j) => j.aspects.length)
+  Object.assign(batchProgress, { done: 0, total: jobs.reduce((n, j) => n + j.aspects.length, 0) })
   let saved = 0
-  try {
-    fontMissing.value = !(await loadShihuaFont(font.value))
-    if (titleFont.value) await loadShihuaFont(titleFont.value)
-    for (const w of todo) {
-      const img = await pickedImage(w)
-      if (!img?.url) continue
-      const source = await loadShihuaArt(img.url, img.upscaled_url)
-      for (const a of SHIHUA_ASPECTS) {
-        const result = await render(w, img, source, a.id, { scale: 1, color: 'auto' })
-        await api.saveRender(img.id, a.id, await canvasToBlob(result.canvas), { ...result.layout, seal: seal.value, label: label.value })
-        batchProgress.done++
-        saved++
-      }
+  if (!jobs.length) return { saved, unverified }
+  fontMissing.value = !(await loadShihuaFont(font.value))
+  if (titleFont.value) await loadShihuaFont(titleFont.value)
+  for (const { w, aspects: list } of jobs) {
+    const img = await pickedImage(w)
+    if (!img?.url) continue
+    const source = await loadShihuaArt(img.url, img.upscaled_url)
+    for (const a of list) {
+      const result = await render(w, img, source, a, { scale: 1, color: 'auto' })
+      await api.saveRender(img.id, a, await canvasToBlob(result.canvas), { ...result.layout, seal: seal.value, label: label.value })
+      batchProgress.done++
+      saved++
     }
-    appStore.showSuccess(t('shihua.layout.saved', { n: saved }))
+  }
+  return { saved, unverified }
+}
+
+function warnUnverified(titles: string[]) {
+  if (titles.length) appStore.showError(t('shihua.layout.skippedUnverified', { titles: titles.map((x) => `《${x}》`).join('、') }))
+}
+
+async function batch() {
+  batchBusy.value = true
+  try {
+    const { saved, unverified } = await layoutChecked(SHIHUA_ASPECTS.map((a) => a.id), false)
+    if (saved) appStore.showSuccess(t('shihua.layout.saved', { n: saved }))
+    warnUnverified(unverified)
     emit('reload')
   } catch (e) {
     fail(e)
@@ -288,22 +313,27 @@ async function batch() {
   }
 }
 
-// ---- export ----
+// ---- export: posters not saved yet are laid out automatically first ----
 const exportAspects = ref<string[]>(['2x3', '3x4', '9x16'])
 const exporting = ref(false)
 async function exportZip() {
   exporting.value = true
+  batchBusy.value = true
   try {
+    const { saved, unverified } = await layoutChecked(exportAspects.value as ShihuaAspect[], true)
+    if (saved) emit('reload')
     const blob = await api.exportZip([...checked.value], exportAspects.value)
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = `shihua-${new Date().toISOString().slice(0, 10)}.zip`
     a.click()
     setTimeout(() => URL.revokeObjectURL(a.href), 10000)
+    warnUnverified(unverified)
   } catch (e) {
     fail(e)
   } finally {
     exporting.value = false
+    batchBusy.value = false
   }
 }
 

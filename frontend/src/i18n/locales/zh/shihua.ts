@@ -126,7 +126,7 @@ export default {
       open: '看原图',
       view: { art: '原图', poster: '配诗预览' },
       previewFont: '预览字体',
-      previewHint: '配诗预览按自动排版生成，最终效果在「排版导出」里调整'
+      previewHint: '配诗预览只是预览，不会保存；到「排版导出」里调整，或直接导出（会自动排版）'
     },
     layout: {
       works: '已选定图的篇目',
@@ -153,6 +153,8 @@ export default {
       export: '导出 zip',
       exportAspects: '导出尺寸',
       exporting: '打包中…',
+      exportHint: '还没保存成品的篇目，导出时按当前字体自动排版',
+      skippedUnverified: '{titles} 正文还没二校，没有生成海报，只导出了文字说明。请先在「篇目库」完成二校',
       loadingArt: '载入图片…',
       useUpscaled: '使用超分图',
       noUpscaled: '还没有超分图，用原图放大 2 倍排版'

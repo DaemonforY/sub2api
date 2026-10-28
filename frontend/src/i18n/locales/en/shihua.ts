@@ -126,7 +126,7 @@ export default {
       open: 'Open original',
       view: { art: 'Picture', poster: 'With the poem' },
       previewFont: 'Preview font',
-      previewHint: 'The preview is laid out automatically; fine-tune it under Layout & export'
+      previewHint: 'The preview is not saved; adjust it under Layout & export, or just export (laid out automatically)'
     },
     layout: {
       works: 'Works with a picked picture',
@@ -153,6 +153,8 @@ export default {
       export: 'Export zip',
       exportAspects: 'Sizes to export',
       exporting: 'Packing…',
+      exportHint: 'Works without saved posters are laid out automatically (current font) when exporting',
+      skippedUnverified: '{titles}: text not checked twice, so no poster was made and only the text file was exported. Finish check 2 under Works first',
       loadingArt: 'Loading picture…',
       useUpscaled: 'Using the upscaled picture',
       noUpscaled: 'No upscaled picture yet; the original is enlarged 2×'
