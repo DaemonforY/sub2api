@@ -173,6 +173,9 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 	if err := s.checkCapacity(ctx, key.UserID); err != nil {
 		return nil, err
 	}
+	if err := s.checkBalance(ctx, key); err != nil {
+		return nil, err
+	}
 	ratio := findVideoRatio(in.Options.Ratio)
 	p := &VideoProject{
 		UserID: key.UserID, APIKeyID: key.ID, Mode: in.Mode, Title: videoTitleFromPrompt(in.Prompt), Prompt: in.Prompt,
@@ -202,6 +205,18 @@ func (s *VideoService) checkCapacity(ctx context.Context, userID int64) error {
 		return ErrVideoTooMany
 	}
 	return nil
+}
+
+// checkBalance refuses a run up front when the site's models bill the balance and it is used up;
+// otherwise the run would stop at its first model call with a less clear error.
+func (s *VideoService) checkBalance(ctx context.Context, key *APIKey) error {
+	if key.User == nil || key.User.Balance > 0 {
+		return nil
+	}
+	if _, ok := s.videoModel(ctx, ""); !ok {
+		return nil // runs use the user's own key, which may be on a subscription
+	}
+	return ErrVideoBalance
 }
 
 // --- running the agent -----------------------------------------------------------------------
@@ -316,8 +331,23 @@ func (s *VideoService) done(ctx context.Context, r *videoRun, text string) {
 
 // chat runs one model call and adds its usage to the project.
 func (s *VideoService) chat(ctx context.Context, r *videoRun, msgs []LearnMessage, maxTokens int) (string, error) {
+	waited := time.Duration(0)
 	for attempt := 0; ; attempt++ {
 		answer, err := s.chatOnce(ctx, r, msgs, maxTokens)
+		if err != nil && videoBalanceError(err) {
+			return answer, ErrVideoBalance
+		}
+		if err != nil && videoConcurrencyError(err) && waited < videoConcurrencyMaxWait {
+			// The user's own concurrency limit (2 for new accounts) is lower than the scenes
+			// written at once: wait for a slot as long as it takes the other scenes to finish.
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(videoConcurrencyRetry):
+			}
+			waited += videoConcurrencyRetry
+			continue
+		}
 		if err == nil || attempt >= len(videoRetryBackoff) || !videoRetryable(err) {
 			return answer, err
 		}
@@ -332,6 +362,24 @@ func (s *VideoService) chat(ctx context.Context, r *videoRun, msgs []LearnMessag
 }
 
 var videoRetryBackoff = []time.Duration{4 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second}
+
+var (
+	videoConcurrencyRetry   = 10 * time.Second
+	videoConcurrencyMaxWait = 20 * time.Minute
+)
+
+// videoConcurrencyError: the gateway refused the call because the user (or key) already has as
+// many requests running as allowed.
+func videoConcurrencyError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "并发上限") || strings.Contains(msg, "concurrency limit")
+}
+
+// videoBalanceError: the gateway refused the call for lack of balance.
+func videoBalanceError(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "余额不足") || strings.Contains(msg, "insufficient balance") || strings.Contains(msg, "insufficient account balance")
+}
 
 // videoRetryable reports errors that go away by waiting: the per-account concurrency limit, rate
 // limits and an overloaded upstream.
@@ -623,6 +671,9 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 				if gctx.Err() != nil {
 					return gctx.Err()
 				}
+				if errors.Is(err, ErrVideoBalance) {
+					return err // stops the other scenes too: each would go further below zero
+				}
 				failedMu.Lock()
 				failed = append(failed, fmt.Sprintf("分镜 %d", i+1))
 				failedMu.Unlock()
@@ -745,6 +796,9 @@ func (s *VideoService) startOn(ctx context.Context, key *APIKey, id string, prep
 		return nil, ErrVideoBusy
 	}
 	if err := s.checkCapacity(ctx, key.UserID); err != nil {
+		return nil, err
+	}
+	if err := s.checkBalance(ctx, key); err != nil {
 		return nil, err
 	}
 	if prepare != nil {

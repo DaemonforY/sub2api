@@ -29,7 +29,11 @@
             </button>
             <div v-if="menu" class="absolute right-0 top-full w-56 pt-1">
               <div class="card overflow-hidden py-1 text-sm">
-                <p class="truncate px-4 py-2 text-xs text-ink-500">Key：{{ session.me.key_name }}<template v-if="session.me.group"> · {{ session.me.group }}</template></p>
+                <div class="px-4 py-2 text-xs text-ink-500">
+                  <p class="truncate">登录用的 Key：{{ session.me.key_name }}<template v-if="session.me.group"> · {{ session.me.group }}</template></p>
+                  <p class="mt-0.5 leading-5 text-ink-400">做视频按所选模型从余额扣费，换哪个 Key 都一样</p>
+                </div>
+                <button class="block w-full px-4 py-2 text-left hover:bg-ink-50 dark:hover:bg-ink-800" :disabled="signingIn" @click="menu = false; doSignIn()">切换 Key / 账号</button>
                 <a :href="mainSite('/purchase')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">充值</a>
                 <a :href="mainSite('/usage')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">用量明细</a>
                 <RouterLink v-if="session.me.admin" to="/review" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800" @click="menu = false">案例审核</RouterLink>

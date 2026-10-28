@@ -454,11 +454,12 @@ func TestVideoOwnershipPublishReviewAndAudio(t *testing.T) {
 }
 
 func TestVideoConcurrencyLimitIsRetried(t *testing.T) {
-	saved := videoRetryBackoff
+	saved, savedWait := videoRetryBackoff, videoConcurrencyRetry
 	videoRetryBackoff = []time.Duration{time.Millisecond, time.Millisecond}
-	defer func() { videoRetryBackoff = saved }()
+	videoConcurrencyRetry = time.Millisecond
+	defer func() { videoRetryBackoff, videoConcurrencyRetry = saved, savedWait }()
 	model := &fakeModel{broken: map[string]int{}}
-	refusals := 2
+	refusals := 6 // more than the plain retries: concurrency refusals wait for a slot instead
 	var mu sync.Mutex
 	stream := func(ctx context.Context, key, m string, msgs []LearnMessage, n int, onDelta func(string) error) (*LearnTutorResult, error) {
 		mu.Lock()
@@ -481,6 +482,28 @@ func TestVideoConcurrencyLimitIsRetried(t *testing.T) {
 	require.Zero(t, refusals)
 
 	require.False(t, videoRetryable(errLearnRunFailed("余额不足")))
+}
+
+func TestVideoBalanceStopsTheRun(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	stream := func(ctx context.Context, key, m string, msgs []LearnMessage, n int, onDelta func(string) error) (*LearnTutorResult, error) {
+		if strings.Contains(msgs[0].Content, "motion designer") {
+			return nil, errLearnRunFailed("账户余额不足（当前余额 -0.69），请到 https://hivegpt.cn/purchase 充值，或改用订阅分组的 Key（Insufficient account balance）")
+		}
+		return model.stream(ctx, key, m, msgs, n, onDelta)
+	}
+	svc := newVideoService(newFakeVideoRepo(), &fakeTTS{}, stream, t.TempDir())
+	p, err := svc.Create(context.Background(), videoKeyA, VideoCreateInput{Mode: "motion", Prompt: "x"})
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ := svc.Get(context.Background(), 7, p.ID)
+	require.Equal(t, VideoStatusFailed, got.Status)
+	require.True(t, strings.HasPrefix(got.Error, "余额不足"), got.Error)
+	require.Contains(t, got.Error, "继续生成")
+
+	// Without a site model list the user's own key runs (maybe a subscription): no up-front check.
+	broke := &APIKey{ID: 9, UserID: 7, Key: "sk-broke", User: &User{ID: 7, Balance: -1}}
+	require.NoError(t, svc.checkBalance(context.Background(), broke))
 }
 
 func TestVideoRecoverInterrupted(t *testing.T) {

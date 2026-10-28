@@ -122,7 +122,8 @@ const list = ref(null)
 const picked = reactive({})
 const opened = reactive({})
 
-const canChat = computed(() => props.project && (props.project.status === 'ready' || (props.project.status === 'failed' && props.project.spec)))
+// A stopped or failed film can still be revised once it has a script.
+const canChat = computed(() => props.project && (props.project.status === 'ready' || (['failed', 'stopped'].includes(props.project.status) && props.project.spec)))
 const canResume = computed(() => props.project && (props.project.status === 'failed' || props.project.status === 'stopped'))
 const placeholder = computed(() => {
   if (props.busy) return 'Agent 正在工作，完成后可继续输入'
