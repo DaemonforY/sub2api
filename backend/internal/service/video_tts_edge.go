@@ -69,7 +69,16 @@ var VideoVoices = []VideoVoice{
 // DefaultVideoVoice is used when the request names no (or an unknown) voice.
 const DefaultVideoVoice = "zh-CN-XiaoxiaoNeural"
 
+// VideoVoiceNone: a film without narration — pictures and on-screen text only, timed by the
+// script instead of the voice (for people who add their own voice-over or music).
+const VideoVoiceNone = "none"
+
+func videoSilent(p *VideoProject) bool { return p.Mode == VideoModeFilm && p.Options.Voice == VideoVoiceNone }
+
 func videoVoiceKnown(id string) bool {
+	if id == VideoVoiceNone {
+		return true
+	}
 	for _, v := range VideoVoices {
 		if v.ID == id {
 			return true

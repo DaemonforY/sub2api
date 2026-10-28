@@ -72,7 +72,8 @@
     </div>
 
     <div class="border-t border-ink-200 p-3 dark:border-ink-800">
-      <div v-if="project?.mode === 'film' && project?.spec && ['ready', 'failed', 'stopped'].includes(project?.status)" class="mb-2 flex items-center gap-2 text-xs text-ink-500">
+      <p v-if="project?.mode === 'film' && project?.options?.voice === 'none' && project?.spec" class="mb-2 flex items-center gap-2 text-xs text-ink-400"><Mic class="h-3.5 w-3.5" />无配音：只有画面和文字，导出后可以自己配音或加音乐</p>
+      <div v-else-if="project?.mode === 'film' && project?.spec && ['ready', 'failed', 'stopped'].includes(project?.status)" class="mb-2 flex items-center gap-2 text-xs text-ink-500">
         <Mic class="h-3.5 w-3.5" />配音
         <select class="rounded-lg border border-ink-200 bg-white px-2 py-1 text-xs dark:border-ink-700 dark:bg-ink-900" :value="project.options.voice" @change="$emit('voice', $event.target.value)">
           <optgroup label="免费音色">

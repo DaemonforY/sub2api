@@ -48,7 +48,7 @@
                 <span v-else class="font-medium">{{ sc.title }}</span>
                 <span class="ml-auto shrink-0 text-xs text-ink-500">{{ sc.duration.toFixed(1) }}s</span>
               </div>
-              <template v-if="project.mode === 'film'">
+              <template v-if="project.mode === 'film' && project.options?.voice !== 'none'">
                 <p class="mt-3 text-xs font-medium text-ink-500">旁白</p>
                 <textarea v-if="editing" v-model="draft[i].narration" rows="3" class="input mt-1 leading-6"></textarea>
                 <p v-else class="mt-1 leading-7">{{ sc.narration }}</p>

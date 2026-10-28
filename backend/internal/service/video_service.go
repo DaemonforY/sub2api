@@ -385,6 +385,11 @@ func (s *VideoService) chat(ctx context.Context, r *videoRun, msgs []LearnMessag
 	}
 }
 
+const (
+	videoSilentSceneMin float64 = 2.5
+	videoSilentSceneMax float64 = 15
+)
+
 var videoRetryBackoff = []time.Duration{4 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second}
 
 var (
@@ -548,7 +553,16 @@ func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 		}
 		sc.Images = ids
 		sc.Code, sc.Audio, sc.Error = "", nil, ""
-		sc.Duration = math.Max(videoMinSceneSeconds, float64(len([]rune(sc.Narration)))/4.5+videoSceneTailPause)
+		if videoSilent(r.p) {
+			// No voice to follow: the script gives each scene's length.
+			sc.Narration, sc.Tone = "", ""
+			if sc.Duration <= 0 {
+				sc.Duration = 5
+			}
+			sc.Duration = math.Round(math.Min(videoSilentSceneMax, math.Max(videoSilentSceneMin, sc.Duration))*10) / 10
+		} else {
+			sc.Duration = math.Max(videoMinSceneSeconds, float64(len([]rune(sc.Narration)))/4.5+videoSceneTailPause)
+		}
 	}
 	spec.Title = clipRunes(spec.Title, videoTitleMaxChars)
 	r.mu.Lock()
@@ -585,7 +599,7 @@ func videoAudioName(projectID string, sc VideoScene, voice string, rate int) str
 
 func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 	p := r.p
-	if p.Mode != VideoModeFilm || p.Spec == nil {
+	if p.Mode != VideoModeFilm || p.Spec == nil || videoSilent(p) {
 		return nil
 	}
 	var todo []int
@@ -724,7 +738,7 @@ func (s *VideoService) codeScenes(ctx context.Context, r *videoRun, redo map[str
 					imageData = append(imageData, d)
 				}
 			}
-			brief := videoSceneBrief{Index: i, Scene: sc, Outline: outline, Spec: &spec, StyleBrief: style.Brief, Category: category.Brief, Motion: p.Mode == VideoModeMotion, Prompt: p.Prompt, ImageData: imageData}
+			brief := videoSceneBrief{Index: i, Scene: sc, Outline: outline, Spec: &spec, StyleBrief: style.Brief, Category: category.Brief, Motion: p.Mode == VideoModeMotion, Prompt: p.Prompt, ImageData: imageData, Silent: videoSilent(p)}
 			instruction, failure := redo[sc.ID], ""
 			if strings.HasPrefix(instruction, "!error:") {
 				failure, instruction = strings.TrimPrefix(instruction, "!error:"), ""
@@ -960,7 +974,7 @@ func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus stri
 				if sc.ID != change.ID {
 					continue
 				}
-				if n := strings.TrimSpace(change.Narration); n != "" && n != sc.Narration {
+				if n := strings.TrimSpace(change.Narration); n != "" && n != sc.Narration && !videoSilent(p) {
 					sc.Narration = n
 				}
 				if t := strings.TrimSpace(change.Title); t != "" {
@@ -1043,7 +1057,7 @@ func (s *VideoService) EditScript(ctx context.Context, key *APIKey, id string, e
 					sc.Title = t
 					changed = append(changed, "title")
 				}
-				if n := clipRunes(e.Narration, 1500); n != "" && n != sc.Narration {
+				if n := clipRunes(e.Narration, 1500); n != "" && n != sc.Narration && !videoSilent(p) {
 					sc.Narration = n
 					changed = append(changed, "narration")
 				}
@@ -1083,6 +1097,9 @@ func (s *VideoService) SetVoice(ctx context.Context, key *APIKey, id, voice stri
 	return s.startOn(ctx, key, id, func(p *VideoProject) error {
 		if p.Spec == nil || p.Mode != VideoModeFilm {
 			return ErrVideoNotReady
+		}
+		if videoSilent(p) || voice == VideoVoiceNone {
+			return ErrVideoSilentVoice
 		}
 		p.Options.Voice, p.Options.Rate = voice, max(-30, min(rate, 30))
 		return s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "user", Text: "换配音：" + voice})

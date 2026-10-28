@@ -148,3 +148,50 @@ func TestVideoWithPictures(t *testing.T) {
 	_, err = os.Stat(filepath.Join(dir, p.ID))
 	require.True(t, os.IsNotExist(err))
 }
+
+func TestVideoWithoutNarration(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	var mu sync.Mutex
+	var scriptSystem, sceneSystem, sceneUser string
+	stream := func(ctx context.Context, key, m string, msgs []LearnMessage, n int, onDelta func(string) error) (*LearnTutorResult, error) {
+		mu.Lock()
+		switch {
+		case strings.Contains(msgs[0].Content, "scriptwriter"):
+			scriptSystem = msgs[0].Content
+			mu.Unlock()
+			ans := `{"title":"无声","scenes":[{"title":"一","narration":"模型还是写了旁白","duration":1,"visual":"标题「你好」"},{"title":"二","duration":30,"visual":"v2"},{"title":"三","visual":"v3"}]}`
+			_ = onDelta(ans)
+			return &LearnTutorResult{PromptTokens: 10, CompletionTokens: 5}, nil
+		case strings.Contains(msgs[0].Content, "motion designer") && strings.Contains(msgs[1].Content, "Scene s1"):
+			sceneSystem, sceneUser = msgs[0].Content, msgs[1].Content
+		}
+		mu.Unlock()
+		return model.stream(ctx, key, m, msgs, n, onDelta)
+	}
+	tts := &fakeTTS{}
+	svc := newVideoService(newFakeVideoRepo(), tts, stream, t.TempDir())
+	ctx := context.Background()
+	p, err := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "做一个无声的产品片", Options: VideoOptions{Voice: VideoVoiceNone}})
+	require.NoError(t, err)
+	require.Equal(t, VideoVoiceNone, p.Options.Voice)
+	svc.Wait()
+	got, err := svc.Get(ctx, 7, p.ID)
+	require.NoError(t, err)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Zero(t, tts.calls, "nothing is recorded")
+	require.Contains(t, scriptSystem, "NO narrator")
+	require.NotContains(t, scriptSystem, "Length budget")
+	require.Contains(t, sceneSystem, "no narration and no subtitles")
+	require.NotContains(t, sceneUser, "Narration:")
+	var durations []float64
+	for _, sc := range got.Spec.Scenes {
+		require.Empty(t, sc.Narration)
+		require.Nil(t, sc.Audio)
+		durations = append(durations, sc.Duration)
+	}
+	require.Equal(t, []float64{videoSilentSceneMin, videoSilentSceneMax, 5}, durations, "the script's lengths, clamped")
+
+	// There is no voice to change.
+	_, err = svc.SetVoice(ctx, videoKeyA, p.ID, DefaultVideoVoice, 0)
+	require.ErrorIs(t, err, ErrVideoSilentVoice)
+}

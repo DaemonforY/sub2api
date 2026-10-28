@@ -120,9 +120,15 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are the director and scriptwriter of short narrated explainer videos rendered as HTML animation.\n")
 	fmt.Fprintf(&b, "Write the script for the user's request: %d–%d scenes, about %d seconds in total.\n", minScenes, maxScenes, seconds)
-	_, _ = b.WriteString("- narration: what the narrator says in this scene, spoken language, in the user's language. No stage directions inside narration.\n")
-	_, _ = b.WriteString("- tone: how the narrator should sound in this scene, one short phrase in Chinese (e.g. 「好奇地抛出问题」「沉稳地讲解」「兴奋地揭晓答案」「放慢语速，娓娓道来」). It guides the voice, it is not read aloud.\n")
-	fmt.Fprintf(&b, "- Length budget: the narration of all scenes together is at most %d Chinese characters (about %d English words) — the narrator reads ~4.5 characters per second, so a longer script makes a longer video than the user asked for. Count before answering.\n", seconds*9/2, seconds*5/2)
+	silent := videoSilent(p)
+	if silent {
+		_, _ = b.WriteString("- This video has NO narrator and no subtitles (the user will add their own voice-over or music). The message must come across from the picture alone: every scene shows its key text on screen — a short headline and at most two short lines, in the user's language.\n")
+		fmt.Fprintf(&b, "- duration: seconds this scene stays on screen (%.1f–%.0f), long enough to read its text (about 6 Chinese characters per second plus 1.5 s) and to let the animation play. The durations add up to about %d seconds.\n", videoSilentSceneMin, videoSilentSceneMax, seconds)
+	} else {
+		_, _ = b.WriteString("- narration: what the narrator says in this scene, spoken language, in the user's language. No stage directions inside narration.\n")
+		_, _ = b.WriteString("- tone: how the narrator should sound in this scene, one short phrase in Chinese (e.g. 「好奇地抛出问题」「沉稳地讲解」「兴奋地揭晓答案」「放慢语速，娓娓道来」). It guides the voice, it is not read aloud.\n")
+		fmt.Fprintf(&b, "- Length budget: the narration of all scenes together is at most %d Chinese characters (about %d English words) — the narrator reads ~4.5 characters per second, so a longer script makes a longer video than the user asked for. Count before answering.\n", seconds*9/2, seconds*5/2)
+	}
 	images := p.Options.Images
 	if len(images) == 0 {
 		_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — layout, the elements and diagrams, what moves when (tied to phrases of the narration), exact numbers / labels / data shown on screen. Visuals must be makeable with HTML, SVG and canvas (diagrams, charts, icons, typography, simple vector characters); no photos or video footage.\n")
@@ -147,7 +153,16 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	if len(answers) > 0 {
 		_, _ = b.WriteString("The user's choices: " + strings.Join(answers, "; ") + "\n")
 	}
-	if len(images) > 0 {
+	if silent {
+		scene := map[string]any{"id": "s1", "title": "开场：一个看似矛盾的公设", "duration": 5, "visual": "画面设计，含屏幕上的原文文字：标题「……」，副标题「……」；元素怎么动"}
+		if len(images) > 0 {
+			scene["images"] = []string{"img1"}
+		}
+		schema["scenes"] = []map[string]any{scene}
+		if len(images) > 0 {
+			schema["image_notes"] = []map[string]any{{"id": "img1", "desc": "白色保温杯居中，杯身左侧有 logo，背景浅灰"}}
+		}
+	} else if len(images) > 0 {
 		schema["scenes"] = []map[string]any{{"id": "s1", "title": "开场：这只杯子为什么能保温 12 小时", "narration": "旁白原文……", "tone": "好奇地抛出问题", "images": []string{"img1"}, "visual": "img1 居中缓慢放大，杯盖处出现标注……"}}
 		schema["image_notes"] = []map[string]any{{"id": "img1", "desc": "白色保温杯居中，杯身左侧有 logo，背景浅灰"}}
 	}
@@ -171,6 +186,7 @@ type videoSceneBrief struct {
 	Motion     bool
 	Prompt     string
 	ImageData  []string // data URLs of the pictures this scene shows, for the model to look at
+	Silent     bool     // a film without narration or subtitles
 }
 
 func videoImageIDs(images []VideoImage) string {
@@ -201,6 +217,9 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 	} else {
 		fmt.Fprintf(&b, "Video: %q — %s\nScenes: %s\n", in.Spec.Title, in.Spec.Summary, strings.Join(in.Outline, " / "))
 		fmt.Fprintf(&b, "This is scene %d of %d. Keep the look consistent with the other scenes (same theme, same title position and sizes).\n", in.Index+1, len(in.Outline))
+		if in.Silent {
+			_, _ = b.WriteString("This video has no narration and no subtitles: the on-screen text carries the message. Show the exact text from the visual plan, large and readable, each line on screen for at least 2.5 s; the bottom of the stage is free (no subtitle area). Fill the scene's whole duration with motion.\n")
+		}
 	}
 	if len(in.Spec.Images) > 0 {
 		_, _ = b.WriteString("The user's pictures:\n")
@@ -225,7 +244,11 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 	if in.Motion {
 		_, _ = u.WriteString("Request: " + in.Prompt + "\n")
 	} else {
-		fmt.Fprintf(&u, "Scene %s — %s\nDuration: %.2f s\nNarration: %s\nVisual plan: %s\n", in.Scene.ID, in.Scene.Title, in.Scene.Duration, in.Scene.Narration, in.Scene.Visual)
+		if in.Silent {
+			fmt.Fprintf(&u, "Scene %s — %s\nDuration: %.2f s\nVisual plan: %s\n", in.Scene.ID, in.Scene.Title, in.Scene.Duration, in.Scene.Visual)
+		} else {
+			fmt.Fprintf(&u, "Scene %s — %s\nDuration: %.2f s\nNarration: %s\nVisual plan: %s\n", in.Scene.ID, in.Scene.Title, in.Scene.Duration, in.Scene.Narration, in.Scene.Visual)
+		}
 		if in.Scene.Audio != nil && len(in.Scene.Audio.Words) > 0 {
 			_, _ = u.WriteString("Narration timing (word @ seconds): ")
 			for i, w := range in.Scene.Audio.Words {
@@ -276,6 +299,9 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string) []LearnMes
 	}
 	schema := map[string]any{"reply": "好的，我把第 2 个分镜的背景改成深蓝色，并放慢了图表的动画。", "scenes": []map[string]any{{"id": "s2", "instruction": "背景改为深蓝色 #0b1f3a；柱状图上升放慢到 1.5 秒", "narration": "（只有要改旁白时才填，填完整的新旁白）"}}, "title": "（只有要改标题时才填）"}
 	sys := "You are the director of an HTML video. The user asks for changes. Decide which scenes must change and write a precise instruction for the motion designer for each (what to change, keep the rest). Only include narration when the spoken words must change (it will be re-recorded). For changes that affect the whole video (colours, fonts, style) list every scene. Reply to the user in one or two sentences in their language. Answer with JSON only, shaped like:\n" + videoJSONSchemaHint(schema)
+	if videoSilent(p) {
+		sys += "\nThis video has no narration (on-screen text only): never fill narration; put text changes in the instruction."
+	}
 	user := "Video: " + p.Spec.Title + "\nScenes:\n" + outline.String()
 	if focusScene != "" {
 		user += "\nThe user is looking at scene " + focusScene + ".\n"
