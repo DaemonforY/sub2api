@@ -229,6 +229,7 @@ export default {
     goodsAdmin: 'Card-key goods',
     shihuaAdmin: 'Textbook poems',
     materialsAdmin: 'Poem & art library',
+    inspirationAdmin: 'Inspiration',
     analyticsAdmin: 'Analytics',
     userInsightsAdmin: 'User insights',
     conversationArchiveAdmin: 'Conversation archive',

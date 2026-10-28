@@ -377,12 +377,26 @@ type ShihuaService struct {
 	// wikisource is where 「AI 添加篇目」 fetches texts (tests point it at a fake).
 	wikisource *shihuaWikisource
 	upscale    shihuaUpscaleFunc
+	// lyrics refuses texts and prompts that contain lyrics from the 灵感库 (nil = no check).
+	lyrics *LyricsGuard
 
 	mu      sync.Mutex
 	running int
 	wake    chan struct{}
 	stop    chan struct{}
 	wg      sync.WaitGroup
+}
+
+// SetLyricsGuard turns on the lyrics check for work texts, scenes and prompts.
+func (s *ShihuaService) SetLyricsGuard(g *LyricsGuard) { s.lyrics = g }
+
+// workLyrics refuses a work whose texts or scene contain a lyric line.
+func (s *ShihuaService) workLyrics(ctx context.Context, in ShihuaWorkInput) error {
+	texts := []string{in.Title, in.FullText, in.DisplayText, in.FamousLines}
+	if in.Theme != nil {
+		texts = append(texts, in.Theme.PromptTheme)
+	}
+	return s.lyrics.Refuse(ctx, texts...)
 }
 
 func (s *ShihuaService) Settings(ctx context.Context) ShihuaSettings {
@@ -575,6 +589,9 @@ func (s *ShihuaService) CreateWork(ctx context.Context, in ShihuaWorkInput) (*Sh
 	if err := validateShihuaWork(&in); err != nil {
 		return nil, err
 	}
+	if err := s.workLyrics(ctx, in); err != nil {
+		return nil, err
+	}
 	if other, err := s.repo.GetWorkBySlug(ctx, in.Slug); err != nil {
 		return nil, err
 	} else if other != nil {
@@ -604,6 +621,9 @@ func applyShihuaInput(w *ShihuaWork, in ShihuaWorkInput) {
 
 func (s *ShihuaService) UpdateWork(ctx context.Context, id int64, in ShihuaWorkInput) (*ShihuaWork, error) {
 	if err := validateShihuaWork(&in); err != nil {
+		return nil, err
+	}
+	if err := s.workLyrics(ctx, in); err != nil {
 		return nil, err
 	}
 	w, err := s.GetWork(ctx, id)
@@ -657,6 +677,10 @@ func (s *ShihuaService) Import(ctx context.Context, items []ShihuaWorkInput, dry
 		}
 		if seen[in.Slug] {
 			res.Errors = append(res.Errors, fmt.Sprintf("第 %d 条：slug %s 重复", i+1, in.Slug))
+			continue
+		}
+		if err := s.workLyrics(ctx, in); err != nil {
+			res.Errors = append(res.Errors, fmt.Sprintf("第 %d 条（%s）：%s", i+1, in.Slug, infraerrors.Message(err)))
 			continue
 		}
 		seen[in.Slug] = true
@@ -761,6 +785,9 @@ func (s *ShihuaService) CreateJob(ctx context.Context, adminID int64, in ShihuaJ
 			continue
 		}
 		prompt := BuildShihuaPrompt(st.StylePrompt, w, st.TitleByModel)
+		if err := s.lyrics.Refuse(ctx, prompt); err != nil {
+			return nil, err
+		}
 		for n := 0; n < in.Candidates; n++ {
 			images = append(images, ShihuaImage{WorkID: w.ID, Status: ShihuaImageQueued, Prompt: prompt, Size: st.Size, Quality: st.Quality})
 		}
@@ -810,6 +837,9 @@ func (s *ShihuaService) Redraw(ctx context.Context, workID int64, in ShihuaRedra
 		return nil, err
 	}
 	if theme := strings.TrimSpace(in.PromptTheme); theme != "" && theme != w.Theme.PromptTheme {
+		if err := s.lyrics.Refuse(ctx, theme); err != nil {
+			return nil, err
+		}
 		w.Theme.PromptTheme = theme
 		if err := s.repo.UpdateWork(ctx, w); err != nil {
 			return nil, err
@@ -820,6 +850,9 @@ func (s *ShihuaService) Redraw(ctx context.Context, workID int64, in ShihuaRedra
 	}
 	st := s.Settings(ctx)
 	prompt := BuildShihuaPrompt(st.StylePrompt, w, st.TitleByModel)
+	if err := s.lyrics.Refuse(ctx, prompt); err != nil {
+		return nil, err
+	}
 	images := make([]ShihuaImage, in.Count)
 	for i := range images {
 		images[i] = ShihuaImage{WorkID: w.ID, Status: ShihuaImageQueued, Prompt: prompt, Size: st.Size, Quality: st.Quality}

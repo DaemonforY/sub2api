@@ -26,6 +26,7 @@ import goods from './goods'
 import chat from './chat'
 import shihua from './shihua'
 import materials from './materials'
+import inspiration from './inspiration'
 
 export default {
   ...landing,
@@ -56,4 +57,5 @@ export default {
   ...chat,
   ...shihua,
   ...materials,
+  ...inspiration,
 }

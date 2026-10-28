@@ -147,6 +147,7 @@ func RegisterAdminRoutes(
 		registerCardGoodsAdminRoutes(admin, h)
 		registerShihuaAdminRoutes(admin, h)
 		registerMaterialAdminRoutes(admin, h)
+		registerInspirationAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
 		registerConversationArchiveRoutes(admin, h, stepUpAuth)
@@ -1296,6 +1297,30 @@ func registerShihuaAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	g.PUT("/images/:id/renders/:aspect", s.SaveRender)
 	g.GET("/renders", s.ListRenders)
 	g.GET("/export", s.Export)
+}
+
+// registerInspirationAdminRoutes 灵感库：公有领域诗词语料的浏览、检索、按画面找诗，歌曲卡片（歌词仅管理员可见，仅供内部参考）。
+func registerInspirationAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Inspiration == nil {
+		return
+	}
+	in := h.Inspiration
+	g := admin.Group("/inspiration")
+	g.GET("/poems", in.SearchPoems)
+	g.GET("/poems/counts", in.PoemCounts)
+	g.GET("/poems/:id", in.GetPoem)
+	g.POST("/poems/:id/star", in.StarPoem)
+	g.POST("/poems/:id/to-shihua", in.ToShihua)
+	g.POST("/find", in.Find)
+	g.GET("/songs", in.ListSongs)
+	g.GET("/songs/facets", in.SongFacets)
+	g.GET("/songs/:id", in.GetSong)
+	g.POST("/songs", in.CreateSong)
+	g.PUT("/songs/:id", in.UpdateSong)
+	g.DELETE("/songs/:id", in.DeleteSong)
+	g.POST("/songs/:id/star", in.StarSong)
+	g.POST("/songs/:id/analyze", in.AnalyzeSong)
+	g.POST("/lyrics-check", in.CheckLyrics)
 }
 
 // registerMaterialAdminRoutes 诗画素材库：诗文、片段、意象（AI 拆意象、种子起草、审核）、画风推荐与提示词组装、出图队列与审核、排版导出、禁忌词，从课本诗画导入。

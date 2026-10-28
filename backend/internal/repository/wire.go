@@ -98,6 +98,7 @@ var ProviderSet = wire.NewSet(
 	NewAnimationJobRepository,
 	NewShihuaRepository,
 	NewMaterialRepository,
+	NewInspirationRepository,
 	NewArticleProjectRepository,
 	NewTutorRepository,
 	NewAccountDeletionRepository,

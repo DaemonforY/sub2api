@@ -113,6 +113,8 @@ type Handlers struct {
 	Shihua *ShihuaHandler
 	// Material is the 诗画素材库 (admin).
 	Material *MaterialHandler
+	// Inspiration is the 灵感库 (admin).
+	Inspiration *InspirationHandler
 }
 
 // BuildInfo contains build-time information

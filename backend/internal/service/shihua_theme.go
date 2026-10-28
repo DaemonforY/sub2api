@@ -66,6 +66,9 @@ func (s *ShihuaService) GenerateTheme(ctx context.Context, workID int64) (*Shihu
 	if err != nil {
 		return nil, err
 	}
+	if err := s.lyrics.Refuse(ctx, theme.PromptTheme); err != nil {
+		return nil, err
+	}
 	now := s.now()
 	theme.Model, theme.GeneratedAt = st.TextModel, &now
 	w.Theme = *theme

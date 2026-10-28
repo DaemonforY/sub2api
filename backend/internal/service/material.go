@@ -197,7 +197,12 @@ type MaterialService struct {
 	chat   materialChatFunc
 	queue  *materialQueue // nil until EnableDrawing
 	now    func() time.Time
+	// lyrics refuses prompts that contain lyrics from the 灵感库 (nil = no check).
+	lyrics *LyricsGuard
 }
+
+// SetLyricsGuard turns on the lyrics check for drawing prompts.
+func (s *MaterialService) SetLyricsGuard(g *LyricsGuard) { s.lyrics = g }
 
 // NewMaterialService: text-model calls use the key and model of the 课本诗画 settings (shihuaSvc may be
 // nil in tests, then the AI features report that no model is configured).

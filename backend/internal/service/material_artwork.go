@@ -364,6 +364,9 @@ func (s *MaterialService) DrawSegment(ctx context.Context, adminID, segmentID in
 	if p.Blocked {
 		return nil, materialBlockedError(p.Hits)
 	}
+	if err := s.lyrics.Refuse(ctx, p.Prompt); err != nil {
+		return nil, err
+	}
 	options, _ := json.Marshal(in)
 	parts, _ := json.Marshal(p.Parts)
 	seg, style, by := segmentID, p.StyleID, adminID
@@ -404,6 +407,9 @@ func (s *MaterialService) Redraw(ctx context.Context, adminID, artworkID int64) 
 	check := CheckMaterialBlocklist(strings.TrimSuffix(strings.TrimSpace(src.PromptFinal), materialNoText), "prompt", terms)
 	if check.Blocked {
 		return nil, materialBlockedError(check.Hits)
+	}
+	if err := s.lyrics.Refuse(ctx, src.PromptFinal); err != nil {
+		return nil, err
 	}
 	parent, by := src.ID, adminID
 	a := &MaterialArtwork{SegmentID: src.SegmentID, StyleID: src.StyleID, Options: src.Options, PromptFinal: src.PromptFinal,

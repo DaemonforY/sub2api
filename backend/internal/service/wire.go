@@ -1265,6 +1265,7 @@ var ProviderSet = wire.NewSet(
 	ProvideAnimationJobService,
 	ProvideShihuaService,
 	ProvideMaterialService,
+	ProvideInspirationService,
 	ProvideSiteHostingService,
 	ProvideVideoService,
 	ProvideCanvasSessionService,
