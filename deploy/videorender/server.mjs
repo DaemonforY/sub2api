@@ -21,6 +21,10 @@ const THREADS = String(process.env.FFMPEG_THREADS || 2)
 // x264 'slow' became the bottleneck once frames came faster; 'medium' encodes ~2× faster at CRF 16,
 // 'veryfast' again much faster — at CRF 16 the difference is file size, not visible quality.
 const PRESET = process.env.FFMPEG_PRESET || 'veryfast'
+// Bitrate cap (Mbps at 1920×1080, scaled by pixel count): CRF 16 alone sent a busy particle film to
+// 15.9 Mbps (282 MB for 2:22) that users in China, at 5–15 KB/s to this server, could not download.
+// Most films average ~2 Mbps and never reach the cap. 0 = no cap.
+const MAXRATE_1080 = Math.max(0, Number(process.env.FFMPEG_MAXRATE_1080 ?? 6))
 // Pages capturing frames at the same time (see render()).
 const WORKERS = Math.min(6, Math.max(1, Number(process.env.RENDER_WORKERS || 3)))
 const PRESETS = ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow']
@@ -124,12 +128,14 @@ async function render(job) {
       }
     }
   }
+  const maxrate = MAXRATE_1080 > 0 ? Math.round((MAXRATE_1080 * 1000 * outW * outH) / (1920 * 1080)) : 0
+  const rateCap = maxrate ? ['-maxrate', `${maxrate}k`, '-bufsize', `${maxrate * 2}k`] : []
   // Encodes one run of frames (video only) into file.
   const encoder = (file) => {
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-threads', THREADS,
       '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
       ...(scale < 1 ? ['-vf', `scale=${outW}:${outH}`] : []), // fractional scales may round a pixel off
-      '-c:v', 'libx264', '-preset', preset, '-tune', 'animation', '-crf', '16', '-profile:v', 'high', '-level', '4.2',
+      '-c:v', 'libx264', '-preset', preset, '-tune', 'animation', '-crf', '16', ...rateCap, '-profile:v', 'high', '-level', '4.2',
       '-pix_fmt', 'yuv420p', '-r', String(fps), '-g', String(fps * 2),
       '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-an', '-f', 'mp4', file], { stdio: ['pipe', 'ignore', 'pipe'] })
     let ffErr = ''
@@ -195,7 +201,7 @@ async function render(job) {
     note({ stage: 'done', frame: frames, frames })
     const seconds = (Date.now() - started) / 1000
     return { size, duration: total, frames, seconds: Math.round(seconds), fps: +(frames / Math.max(seconds, 0.001)).toFixed(2),
-      gpu: GPU, preset, scale, workers, width: outW, height: outH, errors: [...new Set(errors)].slice(0, 20) }
+      gpu: GPU, preset, maxrate_kbps: maxrate, scale, workers, width: outW, height: outH, errors: [...new Set(errors)].slice(0, 20) }
   } finally {
     await Promise.all(browsers.map((b) => b.close().catch(() => {})))
     fs.rmSync(wav, { force: true })
@@ -237,4 +243,4 @@ http.createServer(async (req, res) => {
     if (mine) console.error('render failed:', err)
     send(500, { error: String(err.message || err).slice(0, 1000) })
   }
-}).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN, 'gpu', GPU, 'preset', PRESET, 'jpeg', JPEG_QUALITY, 'workers', WORKERS))
+}).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN, 'gpu', GPU, 'preset', PRESET, 'maxrate1080', MAXRATE_1080, 'jpeg', JPEG_QUALITY, 'workers', WORKERS))
