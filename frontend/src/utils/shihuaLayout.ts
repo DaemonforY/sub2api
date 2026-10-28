@@ -1,7 +1,8 @@
 /**
- * 课本诗画 poster text layer. The image model draws the picture with the title and the author's name;
- * this sets the body text (vertical, right to left), a seal and the AI label, so every character is
- * exact. Ported from promo/textbook-poems/tools/compose.py.
+ * 课本诗画 poster text layer. The image model draws the picture (older pictures also carry the title and
+ * the author's name the model wrote); this sets the title and author when the picture has none, the
+ * body text (vertical, right to left), a seal and the AI label, so every character is exact. Ported
+ * from promo/textbook-poems/tools/compose.py.
  *
  * Pure layout (columns, fitting, the calm area finder) is separated from the canvas drawing so it can
  * be unit tested.
@@ -39,8 +40,10 @@ export interface ShihuaLayoutOptions {
   /** Explicit AI label (GB 45438: text height ≥ 5% of the short side). Empty = none. */
   label?: string
   labelScale?: number
-  /** Body text, title (landscape) and seal font. */
+  /** Body text, author and seal font. */
   font?: ShihuaFontId
+  /** Title font when the layout sets the title; omitted = `font`. */
+  titleFont?: ShihuaFontId
 }
 
 /** What was drawn, saved with the render so it can be reproduced. */
@@ -56,16 +59,23 @@ export interface ShihuaLayoutResult {
   font: ShihuaFontId
   /** The small credit line beside the text ("" when none). */
   byline?: string
+  /** The title the layout set ("" when the picture carries its own or there is none). */
+  title?: string
+  titleFont?: ShihuaFontId
 }
 
 /**
- * Body fonts (all SIL OFL). 马善政 and 志莽行书 are served from /shihua-fonts/, 霞鹜文楷 from the video
- * app; 霞鹜文楷 is always loaded too, as the fallback for rare characters the brush fonts lack.
+ * Calligraphy fonts (all SIL OFL, from Google Fonts). All but 霞鹜文楷 are served from /shihua-fonts/,
+ * 霞鹜文楷 from the video app; 霞鹜文楷 is always loaded too, as the fallback for rare characters the
+ * brush fonts lack.
  */
-export type ShihuaFontId = 'mashanzheng' | 'zhimangxing' | 'wenkai'
+export type ShihuaFontId = 'mashanzheng' | 'zhimangxing' | 'longcang' | 'liujianmaocao' | 'zcoolxiaowei' | 'wenkai'
 export const SHIHUA_FONTS: { id: ShihuaFontId; family: string }[] = [
   { id: 'mashanzheng', family: 'Ma Shan Zheng' },
   { id: 'zhimangxing', family: 'Zhi Mang Xing' },
+  { id: 'longcang', family: 'Long Cang' },
+  { id: 'liujianmaocao', family: 'Liu Jian Mao Cao' },
+  { id: 'zcoolxiaowei', family: 'ZCOOL XiaoWei' },
   { id: 'wenkai', family: 'LXGW WenKai' }
 ]
 export const SHIHUA_DEFAULT_FONT: ShihuaFontId = 'mashanzheng'
@@ -89,7 +99,7 @@ const SENTENCE_END = '。；！？'
 // Horizontal punctuation that has a vertical presentation form.
 const VERTICAL_FORMS: Record<string, string> = {
   '「': '﹁', '」': '﹂', '『': '﹃', '』': '﹄', '“': '﹁', '”': '﹂', '‘': '﹃', '’': '﹄',
-  '《': '︽', '》': '︾', '（': '︵', '）': '︶', '(': '︵', ')': '︶', '…': '︙', '—': '︱', '〈': '︿', '〉': '﹀'
+  '《': '︽', '》': '︾', '〔': '︹', '〕': '︺', '【': '︻', '】': '︼', '（': '︵', '）': '︶', '(': '︵', ')': '︶', '…': '︙', '—': '︱', '〈': '︿', '〉': '﹀'
 }
 
 /** Splits one paragraph into columns of at most maxCells, breaking after sentence ends, then commas. */
@@ -148,6 +158,57 @@ export function fitText(text: string, w: number, h: number, maxCell: number, pit
     if (columns.length && columns.length * cell * pitch <= w) return { cell, columns }
   }
   return { cell: 12, columns: layoutColumns(text, Math.max(2, Math.floor(h / 12))) }
+}
+
+/** Title, author and body columns of a poster that sets its own title. */
+export interface ShihuaTitledFit {
+  cell: number
+  columns: string[]
+  titleCell: number
+  titleColumns: string[]
+  bylineCell: number
+  bylineColumns: string[]
+  /** How far below the top the author starts. */
+  bylineTop: number
+}
+
+/** The title is set this much larger than the body, the author smaller. */
+export const SHIHUA_TITLE_SCALE = 1.45
+export const SHIHUA_BYLINE_SCALE = 0.62
+
+/** Title, author and body columns at a body cell size, for a box h px tall. */
+export function titledColumns(text: string, title: string, byline: string, h: number, cell: number): Omit<ShihuaTitledFit, 'cell'> {
+  const titleCell = Math.round(cell * SHIHUA_TITLE_SCALE)
+  const bylineCell = Math.max(10, Math.round(cell * SHIHUA_BYLINE_SCALE))
+  const titleColumns = title ? layoutColumns(title, Math.max(1, Math.floor(h / titleCell))) : []
+  const bylineTop = titleColumns.length ? Math.round(titleCell * 0.6) : 0
+  return {
+    columns: layoutColumns(text, Math.floor(h / cell)),
+    titleCell,
+    titleColumns,
+    bylineCell,
+    bylineColumns: byline ? layoutColumns(byline, Math.max(1, Math.floor((h - bylineTop) / bylineCell))) : [],
+    bylineTop
+  }
+}
+
+/** The width (px) the title, author and body columns take. */
+export function titledWidth(f: Omit<ShihuaTitledFit, 'cell'> & { cell: number }, pitch = SHIHUA_PITCH): number {
+  return (f.titleColumns.length * f.titleCell + f.bylineColumns.length * f.bylineCell + f.columns.length * f.cell) * pitch
+}
+
+/** Like fitText, with the title (larger) and the author (smaller) set to the right of the text. */
+export function fitTitled(text: string, title: string, byline: string, w: number, h: number, maxCell: number, pitch = SHIHUA_PITCH): ShihuaTitledFit {
+  for (let cell = Math.floor(Math.min(maxCell, h / 2 / SHIHUA_TITLE_SCALE)); cell >= 12; cell--) {
+    const f = { cell, ...titledColumns(text, title, byline, h, cell) }
+    if (f.columns.length && titledWidth(f, pitch) <= w) return f
+  }
+  return { cell: 12, ...titledColumns(text, title, byline, h, 12) }
+}
+
+/** The title as set on the poster: a trailing note that tells same-named poems apart is dropped. */
+export function posterTitle(title: string): string {
+  return title.replace(/\s*[（(][^（）()]*[）)]\s*$/, '').trim()
 }
 
 /**
@@ -439,6 +500,11 @@ export interface ShihuaPosterInput {
    * the model drew and leave it out; 素材库 pictures have no words at all.
    */
   byline?: string
+  /**
+   * The picture has no title of its own: set the title (larger, rightmost) and `byline` as the author
+   * (smaller, next to it) before the text.
+   */
+  withTitle?: boolean
 }
 
 /**
@@ -461,7 +527,10 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
   const fontId = fontOf(opts.font).id
   const font = shihuaFontStack(fontId)
   const byline = (input.byline ?? '').trim()
+  const title = input.withTitle ? posterTitle(input.title) : ''
+  const titleFontId = fontOf(opts.titleFont ?? fontId).id
   await ensureGlyphs(input.text + byline + sealText, 64, fontId)
+  if (title) await ensureGlyphs(title, 64, titleFontId)
 
   let box: { x: number; y: number; w: number; h: number }
   let light = true
@@ -473,7 +542,7 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
     const scale = pw / artW
     const sh = Math.min(artH, H / scale)
     ctx.drawImage(art, 0, 0, artW, sh, W - pw, 0, pw, sh * scale)
-    // The picture already carries the title and author the model drew, so only the text goes left.
+    // The text (with the title, when the picture has none) goes left.
     const pad = H * 0.1
     box = { x: pad, y: pad, w: W - pw - pad * 2, h: H - pad * 2.2 }
   } else {
@@ -498,28 +567,52 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
   if (opts.color === 'light') light = false
 
   const maxCell = Math.min(W, H) * (landscape ? 0.07 : 0.06)
-  const fitted = fitText(input.text, box.w, box.h * 0.86, maxCell)
-  const cell = Math.max(12, Math.round(fitted.cell * Math.min(1.2, Math.max(0.6, opts.scale ?? 1))))
-  const columns = cell === fitted.cell ? fitted.columns : layoutColumns(input.text, Math.floor((box.h * 0.86) / cell))
-  if (!landscape) soften(ctx, canvas, box, cell, light)
-
-  const pitch = cell * SHIHUA_PITCH
-  const blockW = columns.length * pitch
-  const right = landscape ? box.x + blockW + (box.w - blockW) / 2 : box.x + box.w - (box.w - blockW) / 2
+  const scale = Math.min(1.2, Math.max(0.6, opts.scale ?? 1))
   const ink = light ? '#2b2622' : '#f6ecd6'
   const rule = light ? 'rgba(43, 38, 34, 0.28)' : 'rgba(246, 236, 214, 0.3)'
-  drawVerticalColumns(ctx, columns, right, box.y, cell, ink, rule, font)
-  let left = right - blockW
-  let lastLen = Array.from(columns[columns.length - 1] ?? '').length
+  const none = 'rgba(0, 0, 0, 0)'
+  let cell: number
+  let columns: string[]
+  let left: number
   let top = box.y
-  if (byline) {
-    // Smaller, without column rules, starting a little lower than the text.
-    const bcell = Math.max(10, Math.round(cell * 0.62))
-    const bcols = layoutColumns(byline, Math.max(1, Math.floor((box.h * 0.86 - cell) / bcell)))
-    top = columns.length ? box.y + cell : box.y
-    drawVerticalColumns(ctx, bcols, left - (columns.length ? cell * 0.2 : 0), top, bcell, ink, 'rgba(0, 0, 0, 0)', font)
-    left -= bcols.length * bcell * SHIHUA_PITCH + (columns.length ? cell * 0.2 : 0)
-    lastLen = (Array.from(bcols[bcols.length - 1] ?? '').length * bcell) / cell
+  let lastLen: number
+  if (title) {
+    const h = box.h * 0.86
+    const fitted = fitTitled(input.text, title, byline, box.w, h, maxCell)
+    cell = Math.max(12, Math.round(fitted.cell * scale))
+    const f = cell === fitted.cell ? fitted : { cell, ...titledColumns(input.text, title, byline, h, cell) }
+    columns = f.columns
+    if (!landscape) soften(ctx, canvas, box, cell, light)
+    const blockW = titledWidth(f)
+    let x = landscape ? box.x + blockW + (box.w - blockW) / 2 : box.x + box.w - (box.w - blockW) / 2
+    drawVerticalColumns(ctx, f.titleColumns, x, box.y, f.titleCell, ink, none, shihuaFontStack(titleFontId))
+    x -= f.titleColumns.length * f.titleCell * SHIHUA_PITCH
+    drawVerticalColumns(ctx, f.bylineColumns, x, box.y + f.bylineTop, f.bylineCell, ink, none, font)
+    x -= f.bylineColumns.length * f.bylineCell * SHIHUA_PITCH
+    drawVerticalColumns(ctx, columns, x, box.y, cell, ink, rule, font)
+    left = x - columns.length * cell * SHIHUA_PITCH
+    lastLen = Array.from(columns[columns.length - 1] ?? '').length
+  } else {
+    const fitted = fitText(input.text, box.w, box.h * 0.86, maxCell)
+    cell = Math.max(12, Math.round(fitted.cell * scale))
+    columns = cell === fitted.cell ? fitted.columns : layoutColumns(input.text, Math.floor((box.h * 0.86) / cell))
+    if (!landscape) soften(ctx, canvas, box, cell, light)
+
+    const pitch = cell * SHIHUA_PITCH
+    const blockW = columns.length * pitch
+    const right = landscape ? box.x + blockW + (box.w - blockW) / 2 : box.x + box.w - (box.w - blockW) / 2
+    drawVerticalColumns(ctx, columns, right, box.y, cell, ink, rule, font)
+    left = right - blockW
+    lastLen = Array.from(columns[columns.length - 1] ?? '').length
+    if (byline) {
+      // Smaller, without column rules, starting a little lower than the text.
+      const bcell = Math.max(10, Math.round(cell * 0.62))
+      const bcols = layoutColumns(byline, Math.max(1, Math.floor((box.h * 0.86 - cell) / bcell)))
+      top = columns.length ? box.y + cell : box.y
+      drawVerticalColumns(ctx, bcols, left - (columns.length ? cell * 0.2 : 0), top, bcell, ink, none, font)
+      left -= bcols.length * bcell * SHIHUA_PITCH + (columns.length ? cell * 0.2 : 0)
+      lastLen = (Array.from(bcols[bcols.length - 1] ?? '').length * bcell) / cell
+    }
   }
   if (sealText) {
     const size = Math.round(cell * 1.5)
@@ -539,7 +632,9 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
       color: light ? 'ink' : 'light',
       text: input.text,
       font: fontId,
-      byline
+      byline,
+      title,
+      titleFont: title ? titleFontId : undefined
     }
   }
 }

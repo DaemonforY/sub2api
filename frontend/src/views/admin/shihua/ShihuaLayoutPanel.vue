@@ -52,12 +52,19 @@
               <option v-for="f in SHIHUA_FONTS" :key="f.id" :value="f.id">{{ t(`shihua.layout.fonts.${f.id}`) }}</option>
             </select>
           </label>
+          <label v-if="image && !image.title_drawn" class="text-xs text-gray-500"
+            >{{ t('shihua.layout.titleFont') }}
+            <select v-model="titleFont" class="input mt-1 w-32" data-testid="shihua-title-font" @change="changeFont">
+              <option value="">{{ t('shihua.layout.sameFont') }}</option>
+              <option v-for="f in SHIHUA_FONTS" :key="f.id" :value="f.id">{{ t(`shihua.layout.fonts.${f.id}`) }}</option>
+            </select>
+          </label>
           <label class="text-xs text-gray-500">{{ t('shihua.layout.seal') }}<input v-model="seal" class="input mt-1 w-28" maxlength="4" /></label>
           <label class="text-xs text-gray-500">{{ t('shihua.layout.label') }}<input v-model="label" class="input mt-1 w-32" /></label>
           <button class="btn btn-secondary" :disabled="!art" @click="redetect">{{ t('shihua.layout.redetect') }}</button>
           <button class="btn btn-primary" :disabled="!art || saving || current.text_status !== 'verified_2'" data-testid="shihua-save-all" @click="saveAll">{{ t('shihua.layout.saveAll') }}</button>
         </div>
-        <p class="mt-2 text-xs text-gray-400">{{ t('shihua.layout.dragHint') }}</p>
+        <p class="mt-2 text-xs text-gray-400">{{ t('shihua.layout.dragHint') }}<template v-if="image?.title_drawn"> · {{ t('shihua.layout.titleDrawn') }}</template></p>
         <p v-if="!art" class="py-10 text-center text-sm text-gray-400">{{ t('shihua.layout.loadingArt') }}</p>
         <div v-else class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div v-for="a in SHIHUA_ASPECTS" :key="a.id" class="space-y-2">
@@ -136,6 +143,7 @@ function toggleAll() {
 const seal = ref('课本诗画')
 const label = ref('AI 生成')
 const font = ref<ShihuaFontId>(SHIHUA_DEFAULT_FONT)
+const titleFont = ref<ShihuaFontId | ''>('')
 const fontMissing = ref(false)
 const current = ref<api.ShihuaWork | null>(null)
 const image = ref<api.ShihuaImage | null>(null)
@@ -155,22 +163,29 @@ function posterText(w: api.ShihuaWork) {
   return w.display_text.trim() || w.full_text
 }
 
+/** The author as set beside the title: 〔清〕高鼎. */
+function authorLine(w: api.ShihuaWork) {
+  return w.author ? `${w.dynasty ? `〔${w.dynasty}〕` : ''}${w.author}` : ''
+}
+
 async function pickedImage(w: api.ShihuaWork): Promise<api.ShihuaImage | null> {
   const list = await api.listImages({ work_ids: String(w.id) })
   return list.find((i) => i.id === w.picked_image_id) ?? null
 }
 
-async function render(w: api.ShihuaWork, source: HTMLCanvasElement, aspect: ShihuaAspect, opt: AspectOptions) {
+async function render(w: api.ShihuaWork, img: api.ShihuaImage, source: HTMLCanvasElement, aspect: ShihuaAspect, opt: AspectOptions) {
+  // Pictures drawn without text get the title and author from the layout.
+  const withTitle = !img.title_drawn
   return renderShihuaPoster(
-    { art: source, aspect, text: textForAspect(aspect, posterText(w), w.famous_lines), title: w.title, author: w.author },
-    { box: opt.box, scale: opt.scale, color: opt.color, seal: seal.value, label: label.value, font: font.value }
+    { art: source, aspect, text: textForAspect(aspect, posterText(w), w.famous_lines), title: w.title, author: w.author, withTitle, byline: withTitle ? authorLine(w) : '' },
+    { box: opt.box, scale: opt.scale, color: opt.color, seal: seal.value, label: label.value, font: font.value, titleFont: titleFont.value || undefined }
   )
 }
 
 async function renderOne(aspect: ShihuaAspect) {
   const w = current.value
-  if (!w || !art.value) return
-  const result = await render(w, art.value, aspect, options[aspect])
+  if (!w || !art.value || !image.value) return
+  const result = await render(w, image.value, art.value, aspect, options[aspect])
   const blob = await canvasToBlob(result.canvas, 0.8)
   const old = previews[aspect]
   if (old) URL.revokeObjectURL(old.url)
@@ -182,7 +197,9 @@ async function renderAll() {
 }
 
 async function changeFont() {
-  fontMissing.value = !(await loadShihuaFont(font.value))
+  const loads = [loadShihuaFont(font.value)]
+  if (titleFont.value) loads.push(loadShihuaFont(titleFont.value))
+  fontMissing.value = (await Promise.all(loads)).includes(false)
   if (art.value) await renderAll()
 }
 
@@ -206,7 +223,10 @@ async function open(w: api.ShihuaWork) {
     // Reopening a work keeps the font it was saved with.
     const savedFont = mine.map((r) => r.layout?.font).find((f): f is ShihuaFontId => SHIHUA_FONTS.some((x) => x.id === f))
     if (savedFont) font.value = savedFont
+    const savedTitleFont = mine.map((r) => r.layout?.titleFont).find((f): f is ShihuaFontId => SHIHUA_FONTS.some((x) => x.id === f))
+    titleFont.value = savedTitleFont && savedTitleFont !== font.value ? savedTitleFont : ''
     fontMissing.value = !(await loadShihuaFont(font.value))
+    if (titleFont.value) await loadShihuaFont(titleFont.value)
     if (current.value?.id !== w.id) return
     art.value = source
     await renderAll()
@@ -247,12 +267,13 @@ async function batch() {
   let saved = 0
   try {
     fontMissing.value = !(await loadShihuaFont(font.value))
+    if (titleFont.value) await loadShihuaFont(titleFont.value)
     for (const w of todo) {
       const img = await pickedImage(w)
       if (!img?.url) continue
       const source = await loadShihuaArt(img.url, img.upscaled_url)
       for (const a of SHIHUA_ASPECTS) {
-        const result = await render(w, source, a.id, { scale: 1, color: 'auto' })
+        const result = await render(w, img, source, a.id, { scale: 1, color: 'auto' })
         await api.saveRender(img.id, a.id, await canvasToBlob(result.canvas), { ...result.layout, seal: seal.value, label: label.value })
         batchProgress.done++
         saved++

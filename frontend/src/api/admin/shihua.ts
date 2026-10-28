@@ -92,6 +92,8 @@ export interface ShihuaImage {
   upscale_status: '' | 'queued' | 'running' | 'done' | 'failed'
   upscale_error?: string
   title_check: '' | 'ok' | 'wrong'
+  /** The model wrote the title on the picture (older drawings); otherwise the layout sets it. */
+  title_drawn: boolean
   rejected: boolean
   created_at: string
   started_at?: string
@@ -134,6 +136,7 @@ export interface ShihuaSettings {
   style_prompt: string
   auto_upscale: boolean
   two_people_verify: boolean
+  title_by_model: boolean
 }
 
 export interface ShihuaSettingsView extends ShihuaSettings {

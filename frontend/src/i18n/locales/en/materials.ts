@@ -138,7 +138,7 @@ export default {
       noSegment: 'The segment of this artwork was deleted; no words on the picture',
       byline: 'Byline',
       font: 'Font',
-      fonts: { mashanzheng: 'Ma Shan Zheng', zhimangxing: 'Zhi Mang Xing', wenkai: 'LXGW WenKai' },
+      fonts: { mashanzheng: 'Ma Shan Zheng', zhimangxing: 'Zhi Mang Xing', longcang: 'Long Cang', liujianmaocao: 'Liu Jian Mao Cao', zcoolxiaowei: 'ZCOOL XiaoWei', wenkai: 'LXGW WenKai' },
       fontMissing: 'The font did not load; the preview uses the system Kai font',
       seal: 'Seal',
       label: 'AI label',

@@ -1,7 +1,7 @@
 export default {
   shihua: {
     title: '课本诗画',
-    description: '课本古诗文 → AI 插画海报：模型只画画面、标题和作者名，正文由程序排版，逐字准确',
+    description: '课本古诗文 → AI 插画海报：模型只画画面，标题、作者和正文由程序用书法字体排版，逐字准确',
     tabs: { works: '篇目库', draw: '出图任务', pick: '挑图', layout: '排版导出', settings: '设置' },
     queue: '排队 {queued} · 进行中 {running} · 今日已画 {today}/{limit} · 超分队列 {upscale}',
     paused: '出图暂停：{reason}',
@@ -123,7 +123,10 @@ export default {
       redrawQueued: '已加入队列：{n} 张',
       waiting: '还有 {n} 张在画',
       prompt: '完整提示词',
-      open: '看原图'
+      open: '看原图',
+      view: { art: '原图', poster: '配诗预览' },
+      previewFont: '预览字体',
+      previewHint: '配诗预览按自动排版生成，最终效果在「排版导出」里调整'
     },
     layout: {
       works: '已选定图的篇目',
@@ -143,7 +146,10 @@ export default {
       rendering: '排版中 {done}/{total}',
       fontMissing: '没能加载所选字体，正在用系统楷体；正式出图请在线上后台排版',
       font: '正文字体',
-      fonts: { mashanzheng: '马善政楷书', zhimangxing: '志莽行书', wenkai: '霞鹜文楷' },
+      fonts: { mashanzheng: '马善政楷书', zhimangxing: '志莽行书', longcang: '龙藏行书', liujianmaocao: '刘建毛草（草书）', zcoolxiaowei: '站酷小薇（清秀宋楷）', wenkai: '霞鹜文楷' },
+      titleFont: '标题字体',
+      sameFont: '同正文',
+      titleDrawn: '这张图的标题是模型画的，只排正文；想换标题字体请用新方式再画',
       export: '导出 zip',
       exportAspects: '导出尺寸',
       exporting: '打包中…',
@@ -162,6 +168,8 @@ export default {
       autoUpscale: '选用后自动超分 2 倍',
       upscaleUnavailable: '服务器没有配置超分服务（imagetools），选用后不会超分',
       twoPeople: '二校必须换一位管理员',
+      titleByModel: '让生图模型写标题（旧方式）',
+      titleByModelHint: '默认关闭：画面不写任何字，标题、作者、正文都在排版时用所选书法字体排，可随时换字体、不会写错字；打开后模型在画面上写标题，标题字体不能再换',
       stylePrompt: '画风提示词（留空 = 默认）',
       resetStyle: '恢复默认',
       save: '保存设置',

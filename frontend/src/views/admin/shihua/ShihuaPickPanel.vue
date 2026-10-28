@@ -10,8 +10,26 @@
       >
         {{ t(`shihua.pick.filter.${f}`) }}
       </button>
-      <button class="btn btn-secondary btn-sm ml-auto" @click="reload"><Icon name="refresh" size="sm" /></button>
+      <div class="ml-auto flex items-center gap-2">
+        <div class="flex rounded-lg border border-gray-200 p-0.5 dark:border-dark-600">
+          <button
+            v-for="v in views"
+            :key="v"
+            class="rounded-md px-2.5 py-0.5 text-sm"
+            :class="view === v ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300'"
+            :data-testid="`shihua-pick-view-${v}`"
+            @click="view = v"
+          >
+            {{ t(`shihua.pick.view.${v}`) }}
+          </button>
+        </div>
+        <select v-if="view === 'poster'" v-model="previewFont" class="input w-36 py-1 text-sm" :title="t('shihua.pick.previewFont')" data-testid="shihua-pick-font">
+          <option v-for="f in SHIHUA_FONTS" :key="f.id" :value="f.id">{{ t(`shihua.layout.fonts.${f.id}`) }}</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" @click="reload"><Icon name="refresh" size="sm" /></button>
+      </div>
     </div>
+    <p v-if="view === 'poster'" class="-mt-2 text-xs text-gray-400">{{ t('shihua.pick.previewHint') }}</p>
 
     <div v-if="!rows.length" class="card p-10 text-center text-gray-400">{{ t('shihua.pick.empty') }}</div>
 
@@ -29,7 +47,7 @@
           <button class="btn btn-secondary btn-sm" @click="openRedraw(row.work)">{{ t('shihua.pick.redrawWith') }}</button>
         </div>
       </div>
-      <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+      <div class="mt-3 grid gap-3" :class="view === 'poster' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6'">
         <div
           v-for="img in row.images"
           :key="img.id"
@@ -40,7 +58,13 @@
           ]"
         >
           <a v-if="img.status === 'succeeded'" :href="img.url" target="_blank" rel="noopener" :title="t('shihua.pick.open')">
-            <img :src="img.thumb_url" class="aspect-[2/3] w-full bg-gray-100 object-cover" loading="lazy" />
+            <img
+              :src="view === 'poster' ? posters[posterKey(img)] || img.thumb_url : img.thumb_url"
+              class="aspect-[2/3] w-full bg-gray-100 object-cover"
+              :class="view === 'poster' && !posters[posterKey(img)] ? 'opacity-60' : ''"
+              loading="lazy"
+              :data-testid="`shihua-pick-thumb-${img.id}`"
+            />
           </a>
           <div v-else class="flex aspect-[2/3] w-full items-center justify-center bg-gray-50 p-2 text-center text-xs text-gray-500 dark:bg-dark-800">
             <span v-if="img.status === 'failed'" class="text-red-500">{{ img.error }}</span>
@@ -77,13 +101,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import * as api from '@/api/admin/shihua'
+import { SHIHUA_DEFAULT_FONT, SHIHUA_FONTS, canvasToBlob, loadShihuaArt, renderShihuaPoster, type ShihuaFontId } from '@/utils/shihuaLayout'
 
 const props = defineProps<{ works: api.ShihuaWork[] }>()
 const emit = defineEmits<{ (e: 'reload'): void }>()
@@ -157,11 +182,68 @@ async function confirmRedraw() {
   await redraw(w, 2, redrawTheme.value)
 }
 
+// ---- 配诗预览: each drawing with the poem laid out automatically (2:3, from the thumbnail) ----
+const views = ['art', 'poster'] as const
+const view = ref<(typeof views)[number]>('art')
+const previewFont = ref<ShihuaFontId>(SHIHUA_DEFAULT_FONT)
+const posters = reactive<Record<string, string>>({})
+const failedPosters = new Set<string>()
+let rendering = false
+
+function posterKey(img: api.ShihuaImage) {
+  return `${img.id}:${previewFont.value}`
+}
+
+function authorLine(w: api.ShihuaWork) {
+  return w.author ? `${w.dynasty ? `〔${w.dynasty}〕` : ''}${w.author}` : ''
+}
+
+/** Renders the missing previews one at a time (each is a few hundred ms of canvas work). */
+async function renderPosters() {
+  if (rendering || view.value !== 'poster') return
+  rendering = true
+  try {
+    for (;;) {
+      const todo = rows.value
+        .flatMap((r) => r.images.map((img) => ({ work: r.work, img })))
+        .find(({ img }) => img.status === 'succeeded' && img.thumb_url && !posters[posterKey(img)] && !failedPosters.has(posterKey(img)))
+      if (!todo || view.value !== 'poster') break
+      const { work, img } = todo
+      const key = posterKey(img)
+      try {
+        const art = await loadShihuaArt(img.thumb_url!)
+        const { canvas } = await renderShihuaPoster(
+          {
+            art,
+            aspect: '2x3',
+            text: work.display_text.trim() || work.full_text,
+            title: work.title,
+            author: work.author,
+            withTitle: !img.title_drawn,
+            byline: img.title_drawn ? '' : authorLine(work)
+          },
+          { font: previewFont.value }
+        )
+        posters[key] = URL.createObjectURL(await canvasToBlob(canvas, 0.85))
+      } catch {
+        failedPosters.add(key)
+      }
+    }
+  } finally {
+    rendering = false
+  }
+}
+
+watch([view, previewFont, rows], () => void renderPosters())
+
 onMounted(() => {
   void reload()
   timer = setInterval(() => {
     if (!document.hidden && images.value.some((i) => i.status === 'queued' || i.status === 'running' || i.upscale_status === 'queued' || i.upscale_status === 'running')) void reload()
   }, 8000)
 })
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+  clearInterval(timer)
+  for (const url of Object.values(posters)) URL.revokeObjectURL(url)
+})
 </script>

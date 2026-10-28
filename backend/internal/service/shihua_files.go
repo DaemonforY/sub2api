@@ -86,7 +86,9 @@ func (f *shihuaFiles) Open(rel, exp, sig string) (string, bool) {
 	return filepath.Join(f.dir, filepath.FromSlash(rel)), true
 }
 
+// signImage fills in what the admin page needs: the signed links and whether the model drew a title.
 func (f *shihuaFiles) signImage(img *ShihuaImage) {
+	img.TitleDrawn = strings.Contains(img.Prompt, shihuaTitleMarker)
 	if img.File == "" {
 		return
 	}

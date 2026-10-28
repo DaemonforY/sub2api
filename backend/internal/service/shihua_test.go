@@ -326,16 +326,48 @@ func shihuaTestWork() ShihuaWorkInput {
 		FullText: "空山新雨后，天气晚来秋。\n明月松间照，清泉石上流。", Theme: &ShihuaTheme{PromptTheme: "初秋傍晚，雨后空山"}}
 }
 
-func TestBuildShihuaPromptOnlyTitleAndAuthor(t *testing.T) {
+func TestBuildShihuaPromptNoTextByDefault(t *testing.T) {
 	w := &ShihuaWork{Title: "静夜思", Author: "李白", FullText: "床前明月光", Theme: ShihuaTheme{PromptTheme: "深秋夜，客舍窗前"}}
-	p := BuildShihuaPrompt("", w)
+	p := BuildShihuaPrompt("", w, false)
 	require.True(t, strings.HasPrefix(p, "画风："))
 	require.Contains(t, p, "主题： 深秋夜，客舍窗前")
-	require.Contains(t, p, "主标题「静夜思」")
-	require.Contains(t, p, "作者名「李白」")
+	require.Contains(t, p, "不要出现任何文字")
+	require.NotContains(t, p, "静夜思", "the layout sets the title")
+	require.NotContains(t, p, shihuaTitleMarker)
 	require.NotContains(t, p, "床前明月光", "the body text must never reach the image model")
 	require.Contains(t, p, "右上方保留")
 	require.LessOrEqual(t, len([]rune(p)), shihuaMaxPromptRunes)
+
+	img := ShihuaImage{Prompt: p}
+	(&shihuaFiles{}).signImage(&img)
+	require.False(t, img.TitleDrawn)
+}
+
+func TestBuildShihuaPromptTitleByModel(t *testing.T) {
+	w := &ShihuaWork{Title: "静夜思", Author: "李白", FullText: "床前明月光", Theme: ShihuaTheme{PromptTheme: "深秋夜，客舍窗前"}}
+	p := BuildShihuaPrompt("", w, true)
+	require.Contains(t, p, "主标题「静夜思」")
+	require.Contains(t, p, "作者名「李白」")
+	require.NotContains(t, p, "床前明月光")
+	require.Equal(t, 1, strings.Count(p, "【文字与版式】"))
+	require.LessOrEqual(t, len([]rune(p)), shihuaMaxPromptRunes)
+
+	img := ShihuaImage{Prompt: p}
+	(&shihuaFiles{}).signImage(&img)
+	require.True(t, img.TitleDrawn)
+}
+
+func TestBuildShihuaPromptReplacesSavedTextRules(t *testing.T) {
+	// A style saved before the title modes still carries the old text part.
+	style := "画风： 【美学定位】 细线设色。 " + shihuaTextTitle + " 【风格禁忌】 拒绝3D。"
+	w := &ShihuaWork{Title: "静夜思", Author: "李白", Theme: ShihuaTheme{PromptTheme: "夜"}}
+	p := BuildShihuaPrompt(style, w, false)
+	require.Equal(t, 1, strings.Count(p, "【文字与版式】"))
+	require.NotContains(t, p, "主标题")
+	require.Contains(t, p, "【风格禁忌】 拒绝3D。")
+	require.Contains(t, shihuaThemeSystemPrompt(false), "用书法排标题和正文")
+	require.Contains(t, shihuaThemeSystemPrompt(true), "左上方要竖排书法标题")
+	require.NotContains(t, shihuaThemeSystemPrompt(false), "%!")
 }
 
 func TestShihuaCharCount(t *testing.T) {

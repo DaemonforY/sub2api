@@ -138,7 +138,7 @@ export default {
       noSegment: '这张作品的片段已删除，画上不能放文字',
       byline: '落款',
       font: '字体',
-      fonts: { mashanzheng: '马善政', zhimangxing: '志莽行书', wenkai: '霞鹜文楷' },
+      fonts: { mashanzheng: '马善政', zhimangxing: '志莽行书', longcang: '龙藏行书', liujianmaocao: '刘建毛草', zcoolxiaowei: '站酷小薇', wenkai: '霞鹜文楷' },
       fontMissing: '字体加载失败，预览用的是系统楷体',
       seal: '印章',
       label: 'AI 标注',

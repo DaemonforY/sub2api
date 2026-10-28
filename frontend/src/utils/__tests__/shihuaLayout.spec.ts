@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calmBox, fitText, layoutColumns, posterSize, shihuaFontStack, splitColumns, textForAspect } from '../shihuaLayout'
+import { calmBox, fitText, fitTitled, layoutColumns, posterSize, posterTitle, shihuaFontStack, splitColumns, textForAspect, titledWidth } from '../shihuaLayout'
 
 const xiaoshitan =
   '从小丘西行百二十步，隔篁竹，闻水声，如鸣珮环，心乐之。伐竹取道，下见小潭，水尤清冽。全石以为底，近岸，卷石底以出，为坻，为屿，为嵁，为岩。青树翠蔓，蒙络摇缀，参差披拂。\n潭中鱼可百许头，皆若空游无所依。日光下澈，影布石上，佁然不动；俶尔远逝，往来翕忽。似与游者相乐。'
@@ -31,6 +31,27 @@ describe('shihua layout', () => {
     expect(cell).toBeGreaterThan(100)
     const capped = fitText('床前明月光，', 600, 900, 50)
     expect(capped.cell).toBe(50)
+  })
+
+  it('fits the title, author and text together, the title larger', () => {
+    const text = '草长莺飞二月天，\n拂堤杨柳醉春烟。\n儿童散学归来早，\n忙趁东风放纸鸢。'
+    const f = fitTitled(text, '村居', '〔清〕高鼎', 500, 800, 200)
+    expect(f.titleColumns).toEqual(['村居'])
+    expect(f.bylineColumns).toEqual(['〔清〕高鼎'])
+    expect(f.columns).toHaveLength(4)
+    expect(f.titleCell).toBeGreaterThan(f.cell)
+    expect(f.bylineCell).toBeLessThan(f.cell)
+    expect(titledWidth(f)).toBeLessThanOrEqual(500)
+    expect(f.titleCell * 2).toBeLessThanOrEqual(800)
+    // One size up would not fit.
+    const bigger = fitTitled(text, '村居', '〔清〕高鼎', titledWidth(f) - 1, 800, 200)
+    expect(bigger.cell).toBeLessThan(f.cell)
+  })
+
+  it('drops the note that tells same-named poems apart from the title', () => {
+    expect(posterTitle('绝句（两个黄鹂鸣翠柳）')).toBe('绝句')
+    expect(posterTitle('村居')).toBe('村居')
+    expect(posterTitle('（其一）题')).toBe('（其一）题')
   })
 
   it('finds the blank area the prompt left at the top right', () => {
@@ -69,6 +90,7 @@ describe('shihuaFontStack', () => {
   it('puts the chosen font first and always falls back to LXGW WenKai', () => {
     expect(shihuaFontStack('mashanzheng').startsWith("'Ma Shan Zheng', 'LXGW WenKai'")).toBe(true)
     expect(shihuaFontStack('zhimangxing').startsWith("'Zhi Mang Xing', 'LXGW WenKai'")).toBe(true)
+    expect(shihuaFontStack('liujianmaocao').startsWith("'Liu Jian Mao Cao', 'LXGW WenKai'")).toBe(true)
     expect(shihuaFontStack('wenkai').startsWith("'LXGW WenKai', 'Kaiti SC'")).toBe(true)
     expect(shihuaFontStack()).toBe(shihuaFontStack('mashanzheng'))
   })

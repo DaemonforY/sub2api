@@ -21,9 +21,11 @@ import (
 //	picks one per work → super-resolution on the imagetools service → the admin page sets the body
 //	text, seal and AI label in the browser and uploads one poster per aspect ratio → zip export.
 //
-// The image model only writes the title and the author's name: tested on 2026-10-25 it got 106
-// characters of 《小石潭记》 wrong in four places, and a vision model asked to proofread reported no
-// errors, so the body text is never left to the model.
+// The body text is never left to the image model: tested on 2026-10-25 it got 106 characters of
+// 《小石潭记》 wrong in four places, and a vision model asked to proofread reported no errors. By
+// default the model draws no text at all and the layout sets the title, the author and the body in a
+// calligraphy font the admin picks; the older mode (settings title_by_model) lets the model write
+// the title and the author's name.
 
 const (
 	SettingKeyShihua = "shihua_settings"
@@ -190,10 +192,13 @@ type ShihuaImage struct {
 	UpscaleError  string     `json:"upscale_error,omitempty"`
 	UpscaledFile  string     `json:"-"`
 	TitleCheck    string     `json:"title_check"`
-	Rejected      bool       `json:"rejected"`
-	CreatedAt     time.Time  `json:"created_at"`
-	StartedAt     *time.Time `json:"started_at,omitempty"`
-	FinishedAt    *time.Time `json:"finished_at,omitempty"`
+	// TitleDrawn: the picture carries the title the model wrote (its prompt asked for one), so the
+	// layout sets only the body text.
+	TitleDrawn bool       `json:"title_drawn"`
+	Rejected   bool       `json:"rejected"`
+	CreatedAt  time.Time  `json:"created_at"`
+	StartedAt  *time.Time `json:"started_at,omitempty"`
+	FinishedAt *time.Time `json:"finished_at,omitempty"`
 
 	// Signed links, filled in for the admin page.
 	URL         string `json:"url,omitempty"`
@@ -278,6 +283,9 @@ type ShihuaSettings struct {
 	StylePrompt     string `json:"style_prompt"` // "" = DefaultShihuaStylePrompt
 	AutoUpscale     bool   `json:"auto_upscale"`
 	TwoPeopleVerify bool   `json:"two_people_verify"`
+	// TitleByModel has the image model write the title and the author's name (the font can't be
+	// changed afterwards); off, the picture has no text and the layout sets the title too.
+	TitleByModel bool `json:"title_by_model"`
 }
 
 // ShihuaSettingsView is the settings page: the stored values plus what the page needs to show.
@@ -292,34 +300,55 @@ type ShihuaSettingsView struct {
 var shihuaSizes = map[string]bool{"1024x1536": true, "1536x1024": true, "1024x1024": true}
 var shihuaQualities = map[string]bool{"low": true, "medium": true, "high": true}
 
-// DefaultShihuaStylePrompt is the series' look (the user's 新中式细线设色 template), with the text part
-// rewritten so the model writes only the title and the author's name.
+// DefaultShihuaStylePrompt is the series' look (the user's 新中式细线设色 template) without its text
+// part: BuildShihuaPrompt adds the text rules of the title mode.
 const DefaultShihuaStylePrompt = "画风： 【美学定位】 新中式细线设色装饰插画海报，融合东方散点透视与现代平面构成。画面兼具工笔线描的严谨结构与现代版式的呼吸感，整体干净、饱满、雅致。 " +
 	"【构图与空间】 采用高位俯瞰或散点透视构建完整统一的场景，保证景物间尺度、遮挡与远近关系明确。遵循“大色面与连贯留白→中尺度结构→局部细节”的层级组织画面。利用道路、水流、山势、枝干或建筑边界形成自然的视觉引导线。地面、水面或云气采用连贯的暖米白留白参与空间组织，避免画面被零散小景切碎。 " +
 	"【造型与细节控制】 线条纤细、连续、准确。大形与大色面承担主要视觉重量，核心主体区域结构清晰、细节丰富，辅助区域与远景适度概括，逐步降低对比度与细节密度。严禁全图铺满均匀碎点、杂乱线网、重复纹理或琐碎色斑，确保核心焦点突出。 " +
 	"【色彩与质感】 饱满、干净、哑光的东方传统设色（协调运用石青、石绿、朱砂、赭石、藤黄等传统色系，主次分明，点睛色克制集中）。色块内部具细微层次与自然叠色，搭配少量克制的墨黑阴影。通过精细线描与哑光设色自然呈现温润纸本感，无人工噪点与做旧磨损。 " +
-	"【文字与版式】 画面中只允许出现主标题和作者名两处文字：主标题采用大幅暖白色中文书法，竖排置于画面左上的高对比连续色面区，边缘干净无立体发光特效；作者名为小号端正楷体，在主标题下方。除此之外不要任何其它文字、印章、落款、题跋或伪文字。在画面右上方保留一块约占画面宽 30%、高 40% 的连续暖米白天空或云气留白，留白内不要任何景物和文字（后期会排版正文）。 " +
 	"【风格禁忌】 拒绝摄影写实、3D渲染、厚重水墨、油画笔触、日系动漫风、空洞极简色块、全图毛边及伪汉字。"
 
-// BuildShihuaPrompt is the full image prompt of a work: the style, the scene and the two texts the
-// model may write.
-func BuildShihuaPrompt(style string, w *ShihuaWork) string {
+// The text rules of the two title modes. shihuaTitleMarker starts the part that names the texts the
+// model writes; an image whose prompt has it carries a drawn title.
+const (
+	shihuaTextNoText  = "【文字与版式】 画面中不要出现任何文字、书法、印章、落款、题跋或伪文字。在画面右上方保留一块约占画面宽 40%、高 45% 的连续暖米白天空或云气留白，留白内不要任何景物（后期会用书法排版标题和正文）。"
+	shihuaTextTitle   = "【文字与版式】 画面中只允许出现主标题和作者名两处文字：主标题采用大幅暖白色中文书法，竖排置于画面左上的高对比连续色面区，边缘干净无立体发光特效；作者名为小号端正楷体，在主标题下方。除此之外不要任何其它文字、印章、落款、题跋或伪文字。在画面右上方保留一块约占画面宽 30%、高 40% 的连续暖米白天空或云气留白，留白内不要任何景物和文字（后期会排版正文）。"
+	shihuaTitleMarker = "【画面文字"
+)
+
+// shihuaTextSectionRe matches a 【文字与版式】 part in a saved style (up to the next 【 section), which
+// the title mode replaces.
+var shihuaTextSectionRe = regexp.MustCompile(`【文字与版式】[^【]*`)
+
+// BuildShihuaPrompt is the full image prompt of a work: the style, the scene and the text rules. With
+// titleByModel the model writes the title and the author's name; otherwise no text at all.
+func BuildShihuaPrompt(style string, w *ShihuaWork, titleByModel bool) string {
 	if strings.TrimSpace(style) == "" {
 		style = DefaultShihuaStylePrompt
 	}
+	text := shihuaTextNoText
+	if titleByModel {
+		text = shihuaTextTitle
+	}
+	style = strings.TrimSpace(shihuaTextSectionRe.ReplaceAllString(style, ""))
 	var b strings.Builder
-	_, _ = b.WriteString(strings.TrimSpace(style))
+	_, _ = b.WriteString(style)
+	_, _ = b.WriteString(" ")
+	_, _ = b.WriteString(text)
 	_, _ = b.WriteString("\n主题： ")
 	_, _ = b.WriteString(strings.TrimSpace(w.Theme.PromptTheme))
-	_, _ = b.WriteString("\n【画面文字（必须逐字准确，不得增字、漏字、改字）】 主标题「")
-	_, _ = b.WriteString(w.Title)
-	_, _ = b.WriteString("」大字书法竖排")
-	if author := strings.TrimSpace(w.Author); author != "" {
-		_, _ = b.WriteString("；作者名「")
-		_, _ = b.WriteString(author)
-		_, _ = b.WriteString("」小字")
+	if titleByModel {
+		_, _ = b.WriteString("\n" + shihuaTitleMarker + "（必须逐字准确，不得增字、漏字、改字）】 主标题「")
+		_, _ = b.WriteString(w.Title)
+		_, _ = b.WriteString("」大字书法竖排")
+		if author := strings.TrimSpace(w.Author); author != "" {
+			_, _ = b.WriteString("；作者名「")
+			_, _ = b.WriteString(author)
+			_, _ = b.WriteString("」小字")
+		}
+		_, _ = b.WriteString("。")
 	}
-	_, _ = b.WriteString("。 出图")
+	_, _ = b.WriteString(" 出图")
 	return b.String()
 }
 
@@ -731,7 +760,7 @@ func (s *ShihuaService) CreateJob(ctx context.Context, adminID int64, in ShihuaJ
 			missing = append(missing, w.Title)
 			continue
 		}
-		prompt := BuildShihuaPrompt(st.StylePrompt, w)
+		prompt := BuildShihuaPrompt(st.StylePrompt, w, st.TitleByModel)
 		for n := 0; n < in.Candidates; n++ {
 			images = append(images, ShihuaImage{WorkID: w.ID, Status: ShihuaImageQueued, Prompt: prompt, Size: st.Size, Quality: st.Quality})
 		}
@@ -790,7 +819,7 @@ func (s *ShihuaService) Redraw(ctx context.Context, workID int64, in ShihuaRedra
 		return nil, ErrShihuaNoTheme
 	}
 	st := s.Settings(ctx)
-	prompt := BuildShihuaPrompt(st.StylePrompt, w)
+	prompt := BuildShihuaPrompt(st.StylePrompt, w, st.TitleByModel)
 	images := make([]ShihuaImage, in.Count)
 	for i := range images {
 		images[i] = ShihuaImage{WorkID: w.ID, Status: ShihuaImageQueued, Prompt: prompt, Size: st.Size, Quality: st.Quality}

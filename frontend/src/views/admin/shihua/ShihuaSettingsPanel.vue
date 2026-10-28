@@ -37,6 +37,8 @@
       <div class="space-y-2 pt-6 text-sm text-gray-700 dark:text-gray-300">
         <label class="flex items-center gap-2"><Toggle v-model="form.auto_upscale" /> {{ t('shihua.settings.autoUpscale') }}</label>
         <label class="flex items-center gap-2"><Toggle v-model="form.two_people_verify" /> {{ t('shihua.settings.twoPeople') }}</label>
+        <label class="flex items-center gap-2"><Toggle v-model="form.title_by_model" data-testid="shihua-title-by-model" /> {{ t('shihua.settings.titleByModel') }}</label>
+        <p class="text-xs text-gray-400">{{ t('shihua.settings.titleByModelHint') }}</p>
       </div>
     </div>
     <p v-if="settings && !settings.upscale_available" class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
@@ -74,14 +76,14 @@ const qualities = ['high', 'medium', 'low']
 const keys = ref<ApiKey[]>([])
 const saving = ref(false)
 const form = reactive<api.ShihuaSettings>({
-  key_id: 0, text_model: '', size: '1024x1536', quality: 'high', concurrency: 2, daily_limit: 50, style_prompt: '', auto_upscale: true, two_people_verify: false
+  key_id: 0, text_model: '', size: '1024x1536', quality: 'high', concurrency: 2, daily_limit: 50, style_prompt: '', auto_upscale: true, two_people_verify: false, title_by_model: false
 })
 
 function apply(v: api.ShihuaSettingsView | null) {
   if (!v) return
   Object.assign(form, {
     key_id: v.key_id, text_model: v.text_model, size: v.size, quality: v.quality, concurrency: v.concurrency, daily_limit: v.daily_limit,
-    style_prompt: v.style_prompt, auto_upscale: v.auto_upscale, two_people_verify: v.two_people_verify
+    style_prompt: v.style_prompt, auto_upscale: v.auto_upscale, two_people_verify: v.two_people_verify, title_by_model: v.title_by_model
   })
 }
 watch(() => props.settings, apply, { immediate: true })

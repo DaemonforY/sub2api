@@ -1,7 +1,7 @@
 export default {
   shihua: {
     title: 'Textbook poems',
-    description: 'Textbook poems and classical prose → illustrated posters: the model draws the picture, title and author; the body text is typeset by the page, exact to the character',
+    description: 'Textbook poems and classical prose → illustrated posters: the model draws only the picture; the title, author and body are set by the page in a calligraphy font, exact to the character',
     tabs: { works: 'Works', draw: 'Drawing jobs', pick: 'Pick', layout: 'Layout & export', settings: 'Settings' },
     queue: 'Queued {queued} · running {running} · drawn today {today}/{limit} · upscale queue {upscale}',
     paused: 'Drawing paused: {reason}',
@@ -123,7 +123,10 @@ export default {
       redrawQueued: 'Queued {n}',
       waiting: '{n} still drawing',
       prompt: 'Full prompt',
-      open: 'Open original'
+      open: 'Open original',
+      view: { art: 'Picture', poster: 'With the poem' },
+      previewFont: 'Preview font',
+      previewHint: 'The preview is laid out automatically; fine-tune it under Layout & export'
     },
     layout: {
       works: 'Works with a picked picture',
@@ -143,7 +146,10 @@ export default {
       rendering: 'Laying out {done}/{total}',
       fontMissing: 'The chosen font could not be loaded; using the system Kaiti. Lay out final posters on the live admin.',
       font: 'Body font',
-      fonts: { mashanzheng: 'Ma Shan Zheng (brush kaishu)', zhimangxing: 'Zhi Mang Xing (running script)', wenkai: 'LXGW WenKai (kaishu)' },
+      fonts: { mashanzheng: 'Ma Shan Zheng (brush kaishu)', zhimangxing: 'Zhi Mang Xing (running script)', longcang: 'Long Cang (running script)', liujianmaocao: 'Liu Jian Mao Cao (cursive)', zcoolxiaowei: 'ZCOOL XiaoWei (song-kai)', wenkai: 'LXGW WenKai (kaishu)' },
+      titleFont: 'Title font',
+      sameFont: 'Same as body',
+      titleDrawn: 'The model drew this picture\'s title, so only the body is set; redraw with the new mode to choose a title font',
       export: 'Export zip',
       exportAspects: 'Sizes to export',
       exporting: 'Packing…',
@@ -162,6 +168,8 @@ export default {
       autoUpscale: 'Upscale 2× when picked',
       upscaleUnavailable: 'The upscaling service (imagetools) is not configured; picked pictures will not be upscaled',
       twoPeople: 'Check 2 needs a different admin',
+      titleByModel: 'Let the image model write the title (old mode)',
+      titleByModelHint: 'Off by default: the picture has no text and the layout sets the title, author and body in the chosen calligraphy font. On: the model writes the title and its font can\'t be changed',
       stylePrompt: 'Style prompt (empty = default)',
       resetStyle: 'Reset to default',
       save: 'Save settings',
