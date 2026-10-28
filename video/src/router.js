@@ -13,6 +13,7 @@ export const router = createRouter({
     { path: '/tools', name: 'tools', component: () => import('./pages/Tools.vue') },
     { path: '/tools/:slug', name: 'tool', component: () => import('./pages/Tool.vue') },
     { path: '/pricing', name: 'pricing', component: () => import('./pages/Pricing.vue') },
+    { path: '/voices', name: 'voices', component: () => import('./pages/Voices.vue') },
     { path: '/review', name: 'review', component: () => import('./pages/Review.vue') },
     { path: '/:rest(.*)*', name: 'missing', component: () => import('./pages/Missing.vue') }
   ]

@@ -674,6 +674,10 @@ func ProvideVideoService(repo VideoRepository, cfg *config.Config, settings Sett
 				}
 				svc.SetPaidTTS(doubao, billing, cache)
 			}
+			// 我的音色: users clone their voice into the slots listed in the video settings.
+			if clones, ok := repo.(VideoCloneRepository); ok {
+				svc.SetVoiceClones(clones, NewDoubaoVoiceTrainer(cfg.Video.DoubaoAPIKey, cfg.Video.DoubaoAppID, cfg.Video.DoubaoAccessKey))
+			}
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

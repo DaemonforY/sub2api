@@ -36,6 +36,7 @@
                 <button class="block w-full px-4 py-2 text-left hover:bg-ink-50 dark:hover:bg-ink-800" :disabled="signingIn" @click="menu = false; doSignIn()">切换 Key / 账号</button>
                 <a :href="mainSite('/purchase')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">充值</a>
                 <a :href="mainSite('/usage')" target="_blank" rel="noopener" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800">用量明细</a>
+                <RouterLink to="/voices" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800" @click="menu = false">我的音色</RouterLink>
                 <RouterLink v-if="session.me.admin" to="/review" class="block px-4 py-2 hover:bg-ink-50 dark:hover:bg-ink-800" @click="menu = false">案例审核</RouterLink>
                 <button class="block w-full px-4 py-2 text-left text-red-600 hover:bg-ink-50 dark:hover:bg-ink-800" @click="signOut(); menu = false">退出登录</button>
               </div>

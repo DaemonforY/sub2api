@@ -221,3 +221,13 @@ export async function textModels() {
     return []
   }
 }
+
+/** The signed-in user's cloned voices (我的音色); [] when signed out or unavailable. */
+export async function myClones() {
+  if (!session.key) return []
+  try {
+    return (await api('/clones')).items || []
+  } catch {
+    return []
+  }
+}

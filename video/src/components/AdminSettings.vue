@@ -29,6 +29,40 @@
     </section>
 
     <section class="card p-5">
+      <h2 class="font-semibold">我的音色（豆包声音复刻 2.0）</h2>
+      <p class="mt-1 text-sm leading-6 text-ink-500">
+        用户在「我的音色」录 10–30 秒声音复刻自己的音色。音色位要先在火山引擎「豆包语音 → 声音复刻」里购买（≤50 个 ¥138/个，会到期，到期需续费），把控制台里的音色 ID（S_ 开头）每行一个填在下面；用户新建音色时自动分配一个空闲的位，删除后这个位可以给下一个用户重新训练（每个位豆包最多训练 15 次）。
+        复刻费在训练成功后从余额扣一次，配音按上面的每万字价格扣。不要在控制台里「启用」这些音色，启用后就不能再重新训练。
+      </p>
+      <div class="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]">
+        <label class="text-sm">音色 ID（每行一个，共 {{ slotCount }} 个）
+          <textarea v-model="slotsText" rows="5" class="input mt-1 font-mono text-xs" placeholder="S_xxxxxxxx"></textarea>
+        </label>
+        <div class="space-y-3 text-sm">
+          <label class="flex items-center gap-2">复刻费 $ <input v-model.number="st.clone_price" type="number" min="0" max="10000" step="1" class="input w-24" /></label>
+          <label class="flex items-center gap-2">每人最多 <input v-model.number="st.clone_max_per_user" type="number" min="1" max="20" class="input w-20" /> 个</label>
+        </div>
+      </div>
+      <div v-if="clones.length" class="mt-5 overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="text-ink-400"><tr><th class="py-1 pr-3">#</th><th class="pr-3">用户</th><th class="pr-3">名字</th><th class="pr-3">状态</th><th class="pr-3">音色位</th><th class="pr-3">训练</th><th class="pr-3">授权时间 / IP</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="c in clones" :key="c.id" class="border-t border-ink-100 dark:border-ink-800">
+              <td class="py-1.5 pr-3">{{ c.id }}</td>
+              <td class="pr-3">{{ c.user_id }} {{ c.user_email }}</td>
+              <td class="pr-3">{{ c.name }}</td>
+              <td class="pr-3">{{ { training: '复刻中', ready: '可用', failed: '失败', disabled: '已停用' }[c.status] || c.status }}{{ c.charged ? ` · 已扣 $${c.price}` : '' }}</td>
+              <td class="pr-3 font-mono">{{ c.speaker_id }}</td>
+              <td class="pr-3">{{ c.trainings }}</td>
+              <td class="pr-3">{{ new Date(c.consent_at).toLocaleString() }} · {{ c.consent_ip }}</td>
+              <td><button class="btn-ghost btn-sm" @click="toggleClone(c)">{{ c.status === 'disabled' ? '恢复' : '停用' }}</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card p-5">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="font-semibold">案例库广告</h2>
@@ -60,23 +94,51 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { api, session } from '../lib/api'
 import { toast, toastError } from '../lib/toast'
 
-const st = reactive({ models: [], ads: [], ad_every: 8, tts_price_per_10k: 6 })
+const st = reactive({ models: [], ads: [], ad_every: 8, tts_price_per_10k: 6, clone_slots: [], clone_price: 0, clone_max_per_user: 3 })
+const slotsText = ref('')
+const slotList = () => slotsText.value.split(/[\s,，]+/).map((x) => x.trim()).filter(Boolean)
+const slotCount = computed(() => slotList().length)
+const clones = ref([])
 const groups = ref([])
 const saving = ref(false)
 
 onMounted(async () => {
   try {
     const r = await api('/admin/settings')
-    Object.assign(st, { models: r.settings.models || [], ads: r.settings.ads || [], ad_every: r.settings.ad_every || 8, tts_price_per_10k: r.settings.tts_price_per_10k || 6 })
+    Object.assign(st, {
+      models: r.settings.models || [], ads: r.settings.ads || [], ad_every: r.settings.ad_every || 8, tts_price_per_10k: r.settings.tts_price_per_10k || 6,
+      clone_slots: r.settings.clone_slots || [], clone_price: r.settings.clone_price || 138, clone_max_per_user: r.settings.clone_max_per_user || 3
+    })
+    slotsText.value = st.clone_slots.join('\n')
     groups.value = r.groups || []
   } catch (err) {
     toastError(err)
   }
 })
+onMounted(loadClones)
+
+async function loadClones() {
+  try {
+    clones.value = (await api('/admin/clones')).items || []
+  } catch {
+    clones.value = []
+  }
+}
+
+async function toggleClone(c) {
+  const disable = c.status !== 'disabled'
+  if (disable && !confirm(`停用「${c.name}」？用户将不能再用它配音（已配好的作品不变）。`)) return
+  try {
+    await api(`/admin/clones/${c.id}/disable`, { method: 'POST', body: { disable } })
+    await loadClones()
+  } catch (err) {
+    toastError(err)
+  }
+}
 const addModel = () => st.models.push({ id: '', name: '', note: '', group_id: 0, default: !st.models.length })
 const setDefault = (i) => st.models.forEach((m, j) => (m.default = i === j))
 const addAd = () => st.ads.push({ id: '', title: '', text: '', image: '', link: '', enabled: true })
@@ -101,8 +163,10 @@ async function upload(ad, e) {
 async function save() {
   saving.value = true
   try {
+    st.clone_slots = slotList()
     const r = await api('/admin/settings', { method: 'PUT', body: { ...st } })
     Object.assign(st, r.settings)
+    slotsText.value = (st.clone_slots || []).join('\n')
     toast('已保存')
   } catch (err) {
     toastError(err)

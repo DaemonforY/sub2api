@@ -18,6 +18,7 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 	pub.Use(panelRateLimiter.PublicIP())
 	{
 		pub.GET("/catalog", h.Video.Catalog)
+		pub.GET("/clone-info", h.Video.CloneInfo)
 		pub.GET("/gallery", h.Video.Gallery)
 		pub.GET("/works/:id", h.Video.Work)
 		pub.GET("/works/:id/audio/:file", h.Video.WorkAudio)
@@ -68,5 +69,13 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 		g.GET("/admin/settings", h.Video.AdminSettings)
 		g.PUT("/admin/settings", h.Video.SaveSettings)
 		g.POST("/admin/ads/image", h.Video.UploadAdImage)
+		g.GET("/clones", h.Video.Clones)
+		g.POST("/clones", h.Video.CreateClone)
+		g.PUT("/clones/:cid", h.Video.RenameClone)
+		g.DELETE("/clones/:cid", h.Video.DeleteClone)
+		g.POST("/clones/:cid/retrain", h.Video.RetrainClone)
+		g.POST("/clones/:cid/preview", h.Video.PreviewClone)
+		g.GET("/admin/clones", h.Video.AdminClones)
+		g.POST("/admin/clones/:cid/disable", h.Video.AdminDisableClone)
 	}
 }

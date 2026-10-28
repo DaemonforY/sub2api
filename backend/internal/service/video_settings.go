@@ -45,6 +45,11 @@ type VideoSettings struct {
 	// TTSPricePer10k is what paid narration (豆包语音 2.0) costs users, in balance dollars per
 	// 10,000 characters; 0 = videoDefaultTTSPrice.
 	TTSPricePer10k float64 `json:"tts_price_per_10k"`
+	// 我的音色 (豆包声音复刻 2.0): the voice slots (speaker IDs, S_xxx) bought in the 火山引擎 console,
+	// the one-time fee per clone in balance dollars (0 = videoDefaultClonePrice) and clones per user.
+	CloneSlots      []string `json:"clone_slots"`
+	ClonePrice      float64  `json:"clone_price"`
+	CloneMaxPerUser int      `json:"clone_max_per_user"`
 }
 
 // videoDefaultTTSPrice: 豆包语音 2.0 costs ¥3 per 10,000 characters; balance dollars are sold at ¥1,
@@ -56,6 +61,24 @@ func (v VideoSettings) ttsPrice() float64 {
 		return v.TTSPricePer10k
 	}
 	return videoDefaultTTSPrice
+}
+
+// videoDefaultClonePrice: a prepaid voice slot costs ¥138 in the console (up to 50 slots) and a
+// deleted clone's slot is reused, so the default fee is about one slot at ¥1 per balance dollar.
+const videoDefaultClonePrice = 138.0
+
+func (v VideoSettings) clonePrice() float64 {
+	if v.ClonePrice > 0 {
+		return v.ClonePrice
+	}
+	return videoDefaultClonePrice
+}
+
+func (v VideoSettings) cloneMax() int {
+	if v.CloneMaxPerUser > 0 {
+		return v.CloneMaxPerUser
+	}
+	return 3
 }
 
 // TTSPrice is the paid narration price shown on the site (balance dollars per 10,000 characters).
@@ -149,6 +172,14 @@ func (s *VideoService) SaveSettings(ctx context.Context, admin *User, in VideoSe
 	}
 	in.AdEvery = max(3, min(in.AdEvery, 30))
 	if in.TTSPricePer10k < 0 || in.TTSPricePer10k > 1000 {
+		return VideoSettings{}, ErrVideoSettings
+	}
+	slots, err := normalizeCloneSlots(in.CloneSlots)
+	if err != nil {
+		return VideoSettings{}, err
+	}
+	in.CloneSlots = slots
+	if in.ClonePrice < 0 || in.ClonePrice > 10000 || in.CloneMaxPerUser < 0 || in.CloneMaxPerUser > 20 {
 		return VideoSettings{}, ErrVideoSettings
 	}
 	raw, err := json.Marshal(in)
@@ -313,4 +344,35 @@ func (s *VideoService) runKey(ctx context.Context, p *VideoProject, own string) 
 		return "", "", err
 	}
 	return key, m.ID, nil
+}
+
+// normalizeCloneSlots trims and de-duplicates the speaker IDs (S_ followed by letters and digits).
+func normalizeCloneSlots(in []string) ([]string, error) {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, id := range in {
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		if !videoSpeakerIDOK(id) || len(out) >= 500 {
+			return nil, infraerrors.BadRequest("VIDEO_SETTINGS_SLOT", fmt.Sprintf("音色 ID %q 格式不对：应是控制台里的 S_ 开头的音色 ID（Invalid speaker ID）", clipRunes(id, 40)))
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out, nil
+}
+
+func videoSpeakerIDOK(id string) bool {
+	if len(id) < 3 || len(id) > 64 || !strings.HasPrefix(id, "S_") {
+		return false
+	}
+	for _, r := range id[2:] {
+		ok := r == '_' || r == '-' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
+		if !ok {
+			return false
+		}
+	}
+	return true
 }

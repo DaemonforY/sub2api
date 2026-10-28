@@ -25,7 +25,9 @@ import (
 const (
 	doubaoTTSURL        = "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
 	doubaoTTSResourceID = "seed-tts-2.0"
-	doubaoTTSDone       = 20000000
+	// Speaking with a cloned voice (声音复刻 2.0) bills a different resource.
+	doubaoCloneResourceID = "seed-icl-2.0"
+	doubaoTTSDone         = 20000000
 	// Requests longer than this (bytes of text) are split.
 	doubaoMaxChunkBytes = 1500
 )
@@ -48,7 +50,11 @@ var DoubaoVideoVoices = []VideoVoice{
 	{ID: "zh_male_shenyeboke_uranus_bigtts", Name: "深夜播客", Gender: "男", Style: "松弛低语，适合播客和情感", Lang: "zh", Paid: true},
 }
 
+// videoVoicePaid: the preset 豆包 voices and the users' own clones (clone:<id>) are billed per character.
 func videoVoicePaid(id string) bool {
+	if _, ok := videoCloneID(id); ok {
+		return true
+	}
 	for _, v := range DoubaoVideoVoices {
 		if v.ID == id {
 			return true
@@ -78,12 +84,16 @@ func (d *DoubaoTTS) Synthesize(ctx context.Context, text, voice string, rate int
 	if text == "" {
 		return &VideoSpeech{}, nil
 	}
-	if !videoVoicePaid(voice) {
+	resource := doubaoTTSResourceID
+	switch {
+	case videoSpeakerIDOK(voice):
+		resource = doubaoCloneResourceID // a cloned voice slot
+	case !videoVoicePaid(voice) || strings.HasPrefix(voice, VideoClonePrefix):
 		voice = DoubaoVideoVoices[0].ID
 	}
 	out := &VideoSpeech{}
 	for _, chunk := range splitSpeechText(text, doubaoMaxChunkBytes) {
-		part, err := d.synthesizeChunk(ctx, chunk, voice, max(-50, min(rate, 100)), tone)
+		part, err := d.synthesizeChunk(ctx, chunk, voice, resource, max(-50, min(rate, 100)), tone)
 		if err != nil {
 			return nil, err
 		}
@@ -96,9 +106,10 @@ func (d *DoubaoTTS) Synthesize(ctx context.Context, text, voice string, rate int
 	return out, nil
 }
 
-func (d *DoubaoTTS) synthesizeChunk(ctx context.Context, text, voice string, rate int, tone string) (*VideoSpeech, error) {
+func (d *DoubaoTTS) synthesizeChunk(ctx context.Context, text, voice, resource string, rate int, tone string) (*VideoSpeech, error) {
 	additions := map[string]any{"disable_markdown_filter": false}
-	if tone = strings.TrimSpace(tone); tone != "" {
+	// Clones speak with the standard 2.0 model, which takes no tone hint (only the expressive one does).
+	if tone = strings.TrimSpace(tone); tone != "" && resource != doubaoCloneResourceID {
 		additions["context_texts"] = []string{clipRunes(tone, 60)}
 	}
 	addJSON, _ := json.Marshal(additions)
@@ -127,7 +138,7 @@ func (d *DoubaoTTS) synthesizeChunk(ctx context.Context, text, voice string, rat
 		req.Header.Set("X-Api-App-Id", d.appID)
 		req.Header.Set("X-Api-Access-Key", d.accessKey)
 	}
-	req.Header.Set("X-Api-Resource-Id", doubaoTTSResourceID)
+	req.Header.Set("X-Api-Resource-Id", resource)
 	req.Header.Set("X-Api-Request-Id", hex.EncodeToString(reqID))
 	resp, err := d.client.Do(req)
 	if err != nil {
@@ -257,7 +268,20 @@ func mp3Duration(b []byte) float64 {
 }
 
 // videoTTSFor picks the engine for a voice: paid voices need 豆包 configured.
-func (s *VideoService) videoTTSFor(voice string) (func(ctx context.Context, text, voice string, rate int, tone string) (*VideoSpeech, error), error) {
+// A clone (clone:<id>) speaks through its slot, for its owner only.
+func (s *VideoService) videoTTSFor(ctx context.Context, userID int64, voice string) (func(ctx context.Context, text, voice string, rate int, tone string) (*VideoSpeech, error), error) {
+	if _, ok := videoCloneID(voice); ok {
+		if s.paidTTS == nil {
+			return nil, ErrVideoPaidVoiceOff
+		}
+		speaker, err := s.cloneSpeaker(ctx, userID, voice)
+		if err != nil {
+			return nil, err
+		}
+		return func(ctx context.Context, text, _ string, rate int, tone string) (*VideoSpeech, error) {
+			return s.paidTTS.Synthesize(ctx, text, speaker, rate, tone)
+		}, nil
+	}
 	if !videoVoicePaid(voice) {
 		return func(ctx context.Context, text, voice string, rate int, _ string) (*VideoSpeech, error) {
 			return s.tts.Synthesize(ctx, text, voice, rate)

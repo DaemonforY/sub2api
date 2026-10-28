@@ -212,3 +212,80 @@ func TestVideoRepositoryExports(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, got)
 }
+
+func TestVideoRepositoryClones(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	a := mustCreateUser(t, integrationEntClient, &service.User{Email: "video-clone-a-" + suffix + "@video.test", Username: "vca" + suffix[len(suffix)-4:], Balance: 50})
+	b := mustCreateUser(t, integrationEntClient, &service.User{Email: "video-clone-b-" + suffix + "@video.test", Username: "vcb" + suffix[len(suffix)-4:], Balance: 50})
+	repo := NewVideoRepository(integrationDB).(service.VideoCloneRepository)
+	slots := []string{"S_t1" + suffix, "S_t2" + suffix}
+
+	c1 := &service.VideoVoiceClone{UserID: a.ID, Name: "A 的声音", Status: service.VideoCloneTraining, Trainings: 1, Price: 30, ConsentIP: "1.2.3.4"}
+	require.NoError(t, repo.ClaimClone(ctx, c1, slots, "同意"))
+	require.Equal(t, slots[0], c1.SpeakerID)
+	c2 := &service.VideoVoiceClone{UserID: b.ID, Name: "B", Status: service.VideoCloneTraining, Trainings: 1, Price: 30}
+	require.NoError(t, repo.ClaimClone(ctx, c2, slots, "同意"))
+	require.Equal(t, slots[1], c2.SpeakerID)
+	require.ErrorIs(t, repo.ClaimClone(ctx, &service.VideoVoiceClone{UserID: b.ID, Name: "C", Status: service.VideoCloneTraining}, slots, "同意"), service.ErrVideoCloneFull)
+
+	// Ready: charged once, recorded with the TTS charges.
+	charged, err := repo.MarkCloneReady(ctx, c1.ID)
+	require.NoError(t, err)
+	require.InDelta(t, 30, charged, 1e-9)
+	charged, err = repo.MarkCloneReady(ctx, c1.ID)
+	require.NoError(t, err)
+	require.Zero(t, charged)
+	got, err := repo.GetClone(ctx, c1.ID)
+	require.NoError(t, err)
+	require.Equal(t, service.VideoCloneReady, got.Status)
+	require.True(t, got.Charged)
+	require.Equal(t, "1.2.3.4", got.ConsentIP)
+	balance, _ := NewVideoRepository(integrationDB).(service.VideoTTSBilling).Balance(ctx, a.ID)
+	require.InDelta(t, 20, balance, 1e-9)
+	var cost float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT SUM(cost) FROM video_tts_charges WHERE user_id = $1 AND project_id = 'voice-clone'`, a.ID).Scan(&cost))
+	require.InDelta(t, 30, cost, 1e-9)
+
+	// Retrained after being ready: back to training, never charged again.
+	got.Status, got.Trainings = service.VideoCloneTraining, 2
+	require.NoError(t, repo.UpdateClone(ctx, got))
+	charged, err = repo.MarkCloneReady(ctx, c1.ID)
+	require.NoError(t, err)
+	require.Zero(t, charged)
+
+	// An admin's disable sticks over the owner's updates.
+	require.NoError(t, repo.SetCloneStatus(ctx, c1.ID, service.VideoCloneDisabled, "停用"))
+	got.Status, got.Name = service.VideoCloneReady, "改名"
+	require.NoError(t, repo.UpdateClone(ctx, got))
+	got, _ = repo.GetClone(ctx, c1.ID)
+	require.Equal(t, service.VideoCloneDisabled, got.Status)
+	require.Equal(t, "改名", got.Name)
+	admin, err := repo.AdminListClones(ctx, 500)
+	require.NoError(t, err)
+	found := false
+	for _, x := range admin {
+		if x.ID == c1.ID {
+			found = true
+			require.Equal(t, slots[0], x.SpeakerID)
+			require.Equal(t, a.Email, x.UserEmail)
+		}
+	}
+	require.True(t, found)
+
+	// Only the owner deletes; the slot is free again, and the less-trained slot goes first.
+	ok, err := repo.DeleteClone(ctx, b.ID, c1.ID)
+	require.NoError(t, err)
+	require.False(t, ok)
+	ok, err = repo.DeleteClone(ctx, a.ID, c1.ID)
+	require.NoError(t, err)
+	require.True(t, ok)
+	_, err = repo.GetClone(ctx, c1.ID)
+	require.ErrorIs(t, err, service.ErrVideoCloneNotFound)
+	list, err := repo.ListClones(ctx, a.ID)
+	require.NoError(t, err)
+	require.Empty(t, list)
+	c3 := &service.VideoVoiceClone{UserID: b.ID, Name: "D", Status: service.VideoCloneTraining, Trainings: 1}
+	require.NoError(t, repo.ClaimClone(ctx, c3, slots, "同意"))
+	require.Equal(t, slots[0], c3.SpeakerID)
+}

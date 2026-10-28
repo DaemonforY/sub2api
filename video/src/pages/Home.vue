@@ -151,7 +151,7 @@ import Modal from '../components/Modal.vue'
 import Picker from '../components/Picker.vue'
 import StyleCard from '../components/StyleCard.vue'
 import WorkCard from '../components/WorkCard.vue'
-import { MAIN_SITE_URL, api, catalog, session, signIn, textModels } from '../lib/api'
+import { MAIN_SITE_URL, api, catalog, myClones, session, signIn, textModels } from '../lib/api'
 import { toast, toastError } from '../lib/toast'
 import { prefs, savePrefs } from '../lib/prefs'
 
@@ -164,6 +164,8 @@ const modes = [
 const cat = ref({ styles: [], genres: [], categories: [], ratios: [], voices: [] })
 const models = ref([])
 const featured = ref([])
+const clones = ref([]) // 我的音色
+const cloneOn = ref(false)
 
 const mode = ref(route.query.mode === 'motion' ? 'motion' : prefs.mode || 'film')
 const prompt = ref(typeof route.query.prompt === 'string' ? route.query.prompt : '')
@@ -212,8 +214,18 @@ const voiceOptions = computed(() => [
     v.paid
       ? { value: v.id, label: `${v.name}（${v.gender}）· 付费`, hint: `${v.style} · 豆包语音 $${cat.value.voice_price_per_10k}/万字` }
       : { value: v.id, label: `${v.name}（${v.gender}）`, hint: `${v.style} · 免费` }
-  )
+  ),
+  // The user's own cloned voices (ready ones), then a way to make one.
+  ...clones.value
+    .filter((c) => c.status === 'ready' || c.voice === voice.value)
+    .map((c) => ({ value: c.voice, label: `${c.name} · 我的音色`, hint: c.status === 'ready' ? `你复刻的声音 · $${cat.value.voice_price_per_10k}/万字` : '还没复刻好，请换一个音色' })),
+  ...(cloneOn.value ? [{ value: '__clone__', label: '＋ 复刻我的声音', hint: '录 10–30 秒，用自己的声音配音' }] : [])
 ])
+watch(voice, (v, old) => {
+  if (v !== '__clone__') return
+  voice.value = old
+  router.push('/voices')
+})
 const lengthOptions = [
   { value: 'short', label: '约 30 秒', hint: '3–4 个分镜' },
   { value: 'standard', label: '约 1 分钟', hint: '5–7 个分镜' },
@@ -342,7 +354,7 @@ async function loadRemix(id) {
     const o = w.options || {}
     if (o.ratio) ratio.value = o.ratio
     if (o.style) style.value = o.style
-    if (o.voice) voice.value = o.voice
+    if (o.voice && !o.voice.startsWith('clone:')) voice.value = o.voice // a cloned voice is its owner's only
     if (o.length) length.value = o.length
     if (o.category && w.mode === 'motion') category.value = o.category
     promptEl.value?.focus()
@@ -357,7 +369,18 @@ onMounted(async () => {
   if (typeof route.query.style === 'string') style.value = route.query.style
   api('/gallery?category=featured&size=8', { auth: false }).then((r) => (featured.value = r.items)).catch(() => {})
   api('/models', { auth: false }).then((r) => (siteModels.value = r.items || [])).catch(() => {})
+  api('/clone-info', { auth: false }).then((r) => (cloneOn.value = !!r.enabled)).catch(() => {})
+  loadClones()
   models.value = await textModels()
 })
-watch(() => session.key, async () => (models.value = await textModels()))
+watch(() => session.key, async () => {
+  loadClones()
+  models.value = await textModels()
+})
+
+// A remembered cloned voice that is gone (deleted, or another account) falls back to the default.
+async function loadClones() {
+  clones.value = await myClones()
+  if (session.key && voice.value.startsWith('clone:') && !clones.value.some((c) => c.voice === voice.value)) voice.value = 'zh-CN-XiaoxiaoNeural'
+}
 </script>

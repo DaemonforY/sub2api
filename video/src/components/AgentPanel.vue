@@ -82,6 +82,9 @@
           <optgroup v-if="voices.some((x) => x.paid)" :label="`豆包语音 2.0（付费，$${voicePrice}/万字，从余额扣）`">
             <option v-for="v in voices.filter((x) => x.paid)" :key="v.id" :value="v.id">{{ v.name }}（{{ v.gender }}）· {{ v.style }}</option>
           </optgroup>
+          <optgroup v-if="clones.length" :label="`我的音色（$${voicePrice}/万字，从余额扣）`">
+            <option v-for="c in clones" :key="c.voice" :value="c.voice" :disabled="c.status !== 'ready'">{{ c.name }}{{ c.status === 'ready' ? '' : '（不可用）' }}</option>
+          </optgroup>
         </select>
       </div>
       <div class="rounded-2xl border border-ink-200 bg-white focus-within:border-brand-400 dark:border-ink-700 dark:bg-ink-950">
@@ -115,6 +118,7 @@ const props = defineProps({
   busy: Boolean,
   voices: { type: Array, default: () => [] },
   voicePrice: { type: Number, default: 0 },
+  clones: { type: Array, default: () => [] },
   focusScene: { type: String, default: '' }
 })
 const emit = defineEmits(['send', 'answer', 'stop', 'resume', 'voice'])

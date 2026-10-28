@@ -86,6 +86,9 @@ func videoVoiceKnown(id string) bool {
 			return true
 		}
 	}
+	if _, ok := videoCloneID(id); ok {
+		return true // the owner is checked by checkCloneVoice
+	}
 	return videoVoicePaid(id)
 }
 

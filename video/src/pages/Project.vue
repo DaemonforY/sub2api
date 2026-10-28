@@ -78,6 +78,7 @@
               :busy="busy"
               :voices="voices"
               :voice-price="voicePrice"
+              :clones="clones"
               :focus-scene="p?.spec?.scenes?.[currentScene]?.id || ''"
               @send="send"
               @answer="answer"
@@ -136,6 +137,7 @@
       :busy="busy"
       :voices="voices"
       :voice-price="voicePrice"
+      :clones="clones"
       :focus-scene="p?.spec?.scenes?.[currentScene]?.id || ''"
       @send="send"
       @answer="answer"
@@ -171,7 +173,7 @@ import VersionsDialog from '../components/VersionsDialog.vue'
 import Modal from '../components/Modal.vue'
 import PosterPicker from '../components/PosterPicker.vue'
 import UploadedMedia from '../components/UploadedMedia.vue'
-import { api, apiUpload, catalog, session, signIn } from '../lib/api'
+import { api, apiUpload, catalog, myClones, session, signIn } from '../lib/api'
 import { fmtBytes, fmtTime, modeLabel } from '../lib/media'
 import { exportHtml } from '../lib/exportHtml'
 import { toast, toastError } from '../lib/toast'
@@ -190,6 +192,7 @@ const versionsOpen = ref(false)
 const exporting = ref(false)
 const voices = ref([])
 const voicePrice = ref(0)
+const clones = ref([]) // 我的音色
 const exportOpen = ref(false)
 const exportEnabled = ref(false)
 const categories = ref([])
@@ -391,6 +394,7 @@ onMounted(async () => {
     return
   }
   catalog().then((c) => ((voices.value = c.voices), (voicePrice.value = c.voice_price_per_10k || 0), (exportEnabled.value = !!c.export), (categories.value = c.categories)))
+  myClones().then((list) => (clones.value = list))
   await refresh()
   schedule()
 })

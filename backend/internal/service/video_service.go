@@ -68,6 +68,11 @@ type VideoService struct {
 	ttsBilling   VideoTTSBilling
 	balanceCache videoBalanceCache
 
+	// 我的音色 (SetVoiceClones)
+	clones   VideoCloneRepository
+	trainer  VideoVoiceTrainer
+	previews map[int64][]time.Time // guarded by mu
+
 	// MP4 export and the publishing kit (SetRenderer)
 	exports  VideoExportRepository
 	renderer *videoRenderer
@@ -174,6 +179,9 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 	}
 	if videoVoicePaid(in.Options.Voice) && s.paidTTS == nil {
 		return nil, ErrVideoPaidVoiceOff
+	}
+	if err := s.checkCloneVoice(ctx, key.UserID, in.Options.Voice); err != nil {
+		return nil, err
 	}
 	if m, ok := s.videoModel(ctx, in.Options.Model); ok {
 		in.Options.Model = m.ID
@@ -656,7 +664,7 @@ func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 	if len(todo) == 0 {
 		return nil
 	}
-	synthesize, err := s.videoTTSFor(p.Options.Voice)
+	synthesize, err := s.videoTTSFor(ctx, p.UserID, p.Options.Voice)
 	if err != nil {
 		return err
 	}
@@ -1180,6 +1188,9 @@ func (s *VideoService) SetVoice(ctx context.Context, key *APIKey, id, voice stri
 	}
 	if videoVoicePaid(voice) && s.paidTTS == nil {
 		return nil, ErrVideoPaidVoiceOff
+	}
+	if err := s.checkCloneVoice(ctx, key.UserID, voice); err != nil {
+		return nil, err
 	}
 	return s.startOn(ctx, key, id, func(p *VideoProject) error {
 		if p.Spec == nil || p.Mode != VideoModeFilm {
