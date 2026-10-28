@@ -146,6 +146,7 @@ func RegisterAdminRoutes(
 		registerPromptMarketAdminRoutes(admin, h)
 		registerCardGoodsAdminRoutes(admin, h)
 		registerShihuaAdminRoutes(admin, h)
+		registerMaterialAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
 		registerConversationArchiveRoutes(admin, h, stepUpAuth)
@@ -1294,6 +1295,42 @@ func registerShihuaAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	g.PUT("/images/:id/renders/:aspect", s.SaveRender)
 	g.GET("/renders", s.ListRenders)
 	g.GET("/export", s.Export)
+}
+
+// registerMaterialAdminRoutes 诗画素材库：诗文、片段、意象（AI 拆意象、种子起草、审核）、画风推荐与提示词组装、出图队列与审核、排版导出、禁忌词，从课本诗画导入。
+func registerMaterialAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Material == nil {
+		return
+	}
+	m := h.Material
+	g := admin.Group("/materials")
+	g.GET("/texts", m.ListTexts)
+	g.GET("/texts/:id", m.GetText)
+	g.POST("/import/shihua", m.ImportShihua)
+	g.GET("/styles", m.ListStyles)
+	g.GET("/blocklist", m.ListBlocklist)
+	g.POST("/check", m.CheckPrompt)
+	g.GET("/imagery", m.ListImagery)
+	g.GET("/imagery/candidates", m.ImageryCandidates)
+	g.POST("/imagery/seed", m.DraftImagerySeeds)
+	g.POST("/imagery/status", m.SetImageryStatus)
+	g.PUT("/imagery/:id", m.UpdateImagery)
+	g.GET("/segments/:id/imagery", m.GetSegmentImagery)
+	g.POST("/segments/:id/imagery/extract", m.ExtractSegmentImagery)
+	g.PUT("/segments/:id/imagery", m.SaveSegmentImagery)
+	g.GET("/segments/:id/styles", m.RecommendStyles)
+	g.POST("/segments/:id/prompt", m.BuildPrompt)
+	g.POST("/segments/:id/draw", m.DrawSegment)
+	g.GET("/artworks", m.ListArtworks)
+	g.POST("/artworks/cancel", m.CancelArtworks)
+	g.GET("/artworks/:id", m.GetArtwork)
+	g.POST("/artworks/:id/redraw", m.Redraw)
+	g.POST("/artworks/:id/review", m.ReviewArtwork)
+	g.POST("/artworks/:id/retry", m.RetryArtwork)
+	g.GET("/queue", m.Queue)
+	g.PUT("/artworks/:id/renders/:aspect", m.SaveRender)
+	g.GET("/renders", m.ListRenders)
+	g.GET("/export", m.Export)
 }
 
 // registerCardGoodsAdminRoutes 卡密商品：商品设置、导入 / 作废卡密、发货记录。

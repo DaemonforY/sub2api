@@ -1,0 +1,2217 @@
+{
+ "source": "open-chinese/poetry-collection (MIT), volumes/*.json",
+ "files": "207 (volume_001.json … volume_207.json)",
+ "poems": 207000,
+ "dynasties": {
+  "宋": 122582,
+  "唐": 83267,
+  "未知": 460,
+  "周": 390,
+  "汉": 163,
+  "晋": 138
+ },
+ "note": "A candidate counts once per poem containing its name or a 2+ character alias. Used to pick seed order only.",
+ "items": [
+  {
+   "rank": 1,
+   "name": "风",
+   "category": "气候",
+   "aliases": [
+    "东风",
+    "西风",
+    "春风",
+    "秋风",
+    "北风",
+    "朔风"
+   ],
+   "poems": 64820
+  },
+  {
+   "rank": 2,
+   "name": "山",
+   "category": "地理",
+   "aliases": [
+    "青山",
+    "远山",
+    "群山",
+    "春山",
+    "空山",
+    "高山"
+   ],
+   "poems": 62100
+  },
+  {
+   "rank": 3,
+   "name": "云",
+   "category": "天象",
+   "aliases": [
+    "白云",
+    "浮云",
+    "孤云",
+    "闲云",
+    "彩云"
+   ],
+   "poems": 47388
+  },
+  {
+   "rank": 4,
+   "name": "月",
+   "category": "天象",
+   "aliases": [
+    "明月",
+    "月光",
+    "月色",
+    "皓月"
+   ],
+   "poems": 41919
+  },
+  {
+   "rank": 5,
+   "name": "水",
+   "category": "地理",
+   "aliases": [
+    "流水",
+    "春水",
+    "绿水",
+    "秋水"
+   ],
+   "poems": 39002
+  },
+  {
+   "rank": 6,
+   "name": "江",
+   "category": "地理",
+   "aliases": [
+    "长江",
+    "大江",
+    "江水",
+    "江流"
+   ],
+   "poems": 31474
+  },
+  {
+   "rank": 7,
+   "name": "雨",
+   "category": "气候",
+   "aliases": [
+    "细雨",
+    "微雨",
+    "春雨",
+    "夜雨",
+    "秋雨",
+    "烟雨"
+   ],
+   "poems": 28970
+  },
+  {
+   "rank": 8,
+   "name": "玉",
+   "category": "器物",
+   "aliases": [
+    "玉佩",
+    "美玉"
+   ],
+   "poems": 25748
+  },
+  {
+   "rank": 9,
+   "name": "酒",
+   "category": "器物",
+   "aliases": [
+    "美酒",
+    "浊酒",
+    "酒杯",
+    "樽",
+    "觞",
+    "金樽"
+   ],
+   "poems": 23625
+  },
+  {
+   "rank": 10,
+   "name": "烟",
+   "category": "气候",
+   "aliases": [
+    "炊烟",
+    "孤烟",
+    "烟霞"
+   ],
+   "poems": 19443
+  },
+  {
+   "rank": 11,
+   "name": "雪",
+   "category": "气候",
+   "aliases": [
+    "飞雪",
+    "白雪",
+    "积雪",
+    "大雪"
+   ],
+   "poems": 18568
+  },
+  {
+   "rank": 12,
+   "name": "城",
+   "category": "建筑",
+   "aliases": [
+    "孤城",
+    "城郭",
+    "城头",
+    "城池"
+   ],
+   "poems": 17896
+  },
+  {
+   "rank": 13,
+   "name": "草",
+   "category": "植物",
+   "aliases": [
+    "芳草",
+    "春草",
+    "青草",
+    "萋萋",
+    "野草"
+   ],
+   "poems": 17666
+  },
+  {
+   "rank": 14,
+   "name": "马",
+   "category": "动物",
+   "aliases": [
+    "骏马",
+    "瘦马",
+    "铁马",
+    "骅骝"
+   ],
+   "poems": 15886
+  },
+  {
+   "rank": 15,
+   "name": "楼",
+   "category": "建筑",
+   "aliases": [
+    "高楼",
+    "危楼",
+    "西楼",
+    "小楼",
+    "层楼"
+   ],
+   "poems": 14425
+  },
+  {
+   "rank": 16,
+   "name": "龙",
+   "category": "动物",
+   "aliases": [
+    "蛟龙",
+    "苍龙"
+   ],
+   "poems": 14270
+  },
+  {
+   "rank": 17,
+   "name": "溪",
+   "category": "地理",
+   "aliases": [
+    "溪水",
+    "小溪",
+    "清溪"
+   ],
+   "poems": 13771
+  },
+  {
+   "rank": 18,
+   "name": "竹",
+   "category": "植物",
+   "aliases": [
+    "翠竹",
+    "修竹",
+    "竹林",
+    "竹子"
+   ],
+   "poems": 13538
+  },
+  {
+   "rank": 19,
+   "name": "柳",
+   "category": "植物",
+   "aliases": [
+    "杨柳",
+    "垂柳",
+    "柳枝",
+    "柳条"
+   ],
+   "poems": 11936
+  },
+  {
+   "rank": 20,
+   "name": "松",
+   "category": "植物",
+   "aliases": [
+    "青松",
+    "松树",
+    "古松",
+    "苍松"
+   ],
+   "poems": 11769
+  },
+  {
+   "rank": 21,
+   "name": "霜",
+   "category": "气候",
+   "aliases": [
+    "寒霜",
+    "清霜"
+   ],
+   "poems": 11527
+  },
+  {
+   "rank": 22,
+   "name": "梅",
+   "category": "植物",
+   "aliases": [
+    "梅花",
+    "寒梅",
+    "腊梅",
+    "红梅"
+   ],
+   "poems": 11508
+  },
+  {
+   "rank": 23,
+   "name": "湖",
+   "category": "地理",
+   "aliases": [
+    "湖水",
+    "湖光"
+   ],
+   "poems": 11162
+  },
+  {
+   "rank": 24,
+   "name": "露",
+   "category": "气候",
+   "aliases": [
+    "白露",
+    "清露",
+    "寒露"
+   ],
+   "poems": 10823
+  },
+  {
+   "rank": 25,
+   "name": "亭",
+   "category": "建筑",
+   "aliases": [
+    "长亭",
+    "短亭",
+    "亭台"
+   ],
+   "poems": 9641
+  },
+  {
+   "rank": 26,
+   "name": "泉",
+   "category": "地理",
+   "aliases": [
+    "清泉",
+    "山泉",
+    "泉水"
+   ],
+   "poems": 9598
+  },
+  {
+   "rank": 27,
+   "name": "鸟",
+   "category": "动物",
+   "aliases": [
+    "飞鸟",
+    "宿鸟",
+    "归鸟",
+    "啼鸟",
+    "禽"
+   ],
+   "poems": 9507
+  },
+  {
+   "rank": 28,
+   "name": "窗",
+   "category": "建筑",
+   "aliases": [
+    "轩窗",
+    "西窗",
+    "纱窗",
+    "窗前"
+   ],
+   "poems": 9233
+  },
+  {
+   "rank": 29,
+   "name": "鱼",
+   "category": "动物",
+   "aliases": [
+    "游鱼",
+    "锦鳞",
+    "鲤"
+   ],
+   "poems": 8352
+  },
+  {
+   "rank": 30,
+   "name": "车",
+   "category": "器物",
+   "aliases": [
+    "车马",
+    "香车"
+   ],
+   "poems": 7922
+  },
+  {
+   "rank": 31,
+   "name": "星",
+   "category": "天象",
+   "aliases": [
+    "繁星",
+    "星辰",
+    "星斗"
+   ],
+   "poems": 7782
+  },
+  {
+   "rank": 32,
+   "name": "鹤",
+   "category": "动物",
+   "aliases": [
+    "白鹤",
+    "仙鹤",
+    "黄鹤"
+   ],
+   "poems": 7548
+  },
+  {
+   "rank": 33,
+   "name": "舞",
+   "category": "人物动作",
+   "aliases": [
+    "起舞",
+    "歌舞",
+    "舞袖"
+   ],
+   "poems": 7235
+  },
+  {
+   "rank": 34,
+   "name": "燕",
+   "category": "动物",
+   "aliases": [
+    "燕子",
+    "归燕",
+    "双燕"
+   ],
+   "poems": 7231
+  },
+  {
+   "rank": 35,
+   "name": "兰",
+   "category": "植物",
+   "aliases": [
+    "兰花",
+    "幽兰"
+   ],
+   "poems": 6991
+  },
+  {
+   "rank": 36,
+   "name": "峰",
+   "category": "地理",
+   "aliases": [
+    "高峰",
+    "山峰",
+    "峰峦",
+    "孤峰"
+   ],
+   "poems": 6716
+  },
+  {
+   "rank": 37,
+   "name": "灯",
+   "category": "器物",
+   "aliases": [
+    "孤灯",
+    "青灯",
+    "残灯",
+    "灯火"
+   ],
+   "poems": 6558
+  },
+  {
+   "rank": 38,
+   "name": "锦",
+   "category": "器物",
+   "aliases": [
+    "锦绣",
+    "罗绮"
+   ],
+   "poems": 6267
+  },
+  {
+   "rank": 39,
+   "name": "冰",
+   "category": "气候",
+   "aliases": [
+    "坚冰",
+    "冰雪"
+   ],
+   "poems": 5723
+  },
+  {
+   "rank": 40,
+   "name": "船",
+   "category": "器物",
+   "aliases": [
+    "客船",
+    "画船",
+    "楼船",
+    "渔船"
+   ],
+   "poems": 5495
+  },
+  {
+   "rank": 41,
+   "name": "桥",
+   "category": "建筑",
+   "aliases": [
+    "小桥",
+    "石桥",
+    "断桥",
+    "虹桥"
+   ],
+   "poems": 5491
+  },
+  {
+   "rank": 42,
+   "name": "帘",
+   "category": "建筑",
+   "aliases": [
+    "珠帘",
+    "帘幕",
+    "竹帘",
+    "卷帘"
+   ],
+   "poems": 5456
+  },
+  {
+   "rank": 43,
+   "name": "雁",
+   "category": "动物",
+   "aliases": [
+    "鸿雁",
+    "归雁",
+    "孤雁",
+    "大雁",
+    "征鸿",
+    "鸿"
+   ],
+   "poems": 5451
+  },
+  {
+   "rank": 44,
+   "name": "鼓",
+   "category": "器物",
+   "aliases": [
+    "战鼓",
+    "鼙鼓"
+   ],
+   "poems": 5032
+  },
+  {
+   "rank": 45,
+   "name": "钟",
+   "category": "器物",
+   "aliases": [
+    "钟声",
+    "晚钟",
+    "暮钟"
+   ],
+   "poems": 4941
+  },
+  {
+   "rank": 46,
+   "name": "菊",
+   "category": "植物",
+   "aliases": [
+    "菊花",
+    "黄花",
+    "秋菊"
+   ],
+   "poems": 4801
+  },
+  {
+   "rank": 47,
+   "name": "镜",
+   "category": "器物",
+   "aliases": [
+    "铜镜",
+    "明镜",
+    "妆镜"
+   ],
+   "poems": 4725
+  },
+  {
+   "rank": 48,
+   "name": "落日",
+   "category": "天象",
+   "aliases": [
+    "夕阳",
+    "斜阳",
+    "残阳",
+    "夕照"
+   ],
+   "poems": 4724
+  },
+  {
+   "rank": 49,
+   "name": "荷",
+   "category": "植物",
+   "aliases": [
+    "荷花",
+    "莲",
+    "莲花",
+    "芙蕖",
+    "菡萏"
+   ],
+   "poems": 4706
+  },
+  {
+   "rank": 50,
+   "name": "琴",
+   "category": "器物",
+   "aliases": [
+    "瑶琴",
+    "素琴",
+    "鸣琴"
+   ],
+   "poems": 4683
+  },
+  {
+   "rank": 51,
+   "name": "牛",
+   "category": "动物",
+   "aliases": [
+    "耕牛",
+    "黄牛"
+   ],
+   "poems": 4263
+  },
+  {
+   "rank": 52,
+   "name": "雾",
+   "category": "气候",
+   "aliases": [
+    "烟雾",
+    "薄雾",
+    "雾霭"
+   ],
+   "poems": 3923
+  },
+  {
+   "rank": 53,
+   "name": "鸡",
+   "category": "动物",
+   "aliases": [
+    "鸡鸣"
+   ],
+   "poems": 3726
+  },
+  {
+   "rank": 54,
+   "name": "少年",
+   "category": "人物动作",
+   "aliases": [
+    "儿童",
+    "稚子",
+    "小儿"
+   ],
+   "poems": 3686
+  },
+  {
+   "rank": 55,
+   "name": "剑",
+   "category": "器物",
+   "aliases": [
+    "宝剑",
+    "长剑",
+    "龙泉"
+   ],
+   "poems": 3640
+  },
+  {
+   "rank": 56,
+   "name": "井",
+   "category": "建筑",
+   "aliases": [
+    "井栏",
+    "金井",
+    "辘轳"
+   ],
+   "poems": 3628
+  },
+  {
+   "rank": 57,
+   "name": "桃花",
+   "category": "植物",
+   "aliases": [
+    "桃",
+    "桃李"
+   ],
+   "poems": 3463
+  },
+  {
+   "rank": 58,
+   "name": "帆",
+   "category": "器物",
+   "aliases": [
+    "孤帆",
+    "白帆",
+    "征帆",
+    "云帆"
+   ],
+   "poems": 3288
+  },
+  {
+   "rank": 59,
+   "name": "烛",
+   "category": "器物",
+   "aliases": [
+    "蜡烛",
+    "红烛",
+    "银烛",
+    "烛光"
+   ],
+   "poems": 3259
+  },
+  {
+   "rank": 60,
+   "name": "莺",
+   "category": "动物",
+   "aliases": [
+    "黄莺",
+    "流莺",
+    "啼莺"
+   ],
+   "poems": 3220
+  },
+  {
+   "rank": 61,
+   "name": "落花",
+   "category": "植物",
+   "aliases": [
+    "残花",
+    "飞花",
+    "花落"
+   ],
+   "poems": 3178
+  },
+  {
+   "rank": 62,
+   "name": "游子",
+   "category": "人物动作",
+   "aliases": [
+    "行人",
+    "旅人",
+    "客子",
+    "羁旅"
+   ],
+   "poems": 2959
+  },
+  {
+   "rank": 63,
+   "name": "送别",
+   "category": "人物动作",
+   "aliases": [
+    "送君",
+    "别离",
+    "离别",
+    "折柳"
+   ],
+   "poems": 2889
+  },
+  {
+   "rank": 64,
+   "name": "小舟",
+   "category": "器物",
+   "aliases": [
+    "舟",
+    "扁舟",
+    "孤舟",
+    "轻舟"
+   ],
+   "poems": 2864
+  },
+  {
+   "rank": 65,
+   "name": "佳人",
+   "category": "人物动作",
+   "aliases": [
+    "美人",
+    "红颜",
+    "玉人"
+   ],
+   "poems": 2834
+  },
+  {
+   "rank": 66,
+   "name": "茶",
+   "category": "植物",
+   "aliases": [
+    "茶树",
+    "新茶"
+   ],
+   "poems": 2830
+  },
+  {
+   "rank": 67,
+   "name": "蝉",
+   "category": "动物",
+   "aliases": [
+    "寒蝉",
+    "鸣蝉"
+   ],
+   "poems": 2775
+  },
+  {
+   "rank": 68,
+   "name": "墙",
+   "category": "建筑",
+   "aliases": [
+    "粉墙",
+    "宫墙",
+    "院墙"
+   ],
+   "poems": 2649
+  },
+  {
+   "rank": 69,
+   "name": "鸥",
+   "category": "动物",
+   "aliases": [
+    "沙鸥",
+    "白鸥"
+   ],
+   "poems": 2611
+  },
+  {
+   "rank": 70,
+   "name": "猿",
+   "category": "动物",
+   "aliases": [
+    "猿声",
+    "啼猿",
+    "猴"
+   ],
+   "poems": 2553
+  },
+  {
+   "rank": 71,
+   "name": "扇",
+   "category": "器物",
+   "aliases": [
+    "团扇",
+    "罗扇"
+   ],
+   "poems": 2364
+  },
+  {
+   "rank": 72,
+   "name": "羊",
+   "category": "动物",
+   "aliases": [
+    "牛羊",
+    "羊群"
+   ],
+   "poems": 2146
+  },
+  {
+   "rank": 73,
+   "name": "老翁",
+   "category": "人物动作",
+   "aliases": [
+    "老人",
+    "白发",
+    "衰翁",
+    "野老"
+   ],
+   "poems": 2121
+  },
+  {
+   "rank": 74,
+   "name": "刀",
+   "category": "器物",
+   "aliases": [
+    "宝刀",
+    "金刀"
+   ],
+   "poems": 2079
+  },
+  {
+   "rank": 75,
+   "name": "笛",
+   "category": "器物",
+   "aliases": [
+    "羌笛",
+    "玉笛",
+    "长笛"
+   ],
+   "poems": 2040
+  },
+  {
+   "rank": 76,
+   "name": "读书",
+   "category": "人物动作",
+   "aliases": [
+    "夜读",
+    "书生"
+   ],
+   "poems": 1916
+  },
+  {
+   "rank": 77,
+   "name": "鹿",
+   "category": "动物",
+   "aliases": [
+    "麋鹿"
+   ],
+   "poems": 1910
+  },
+  {
+   "rank": 78,
+   "name": "隐士",
+   "category": "人物动作",
+   "aliases": [
+    "幽人",
+    "山人",
+    "高士"
+   ],
+   "poems": 1824
+  },
+  {
+   "rank": 79,
+   "name": "箫",
+   "category": "器物",
+   "aliases": [
+    "洞箫",
+    "玉箫"
+   ],
+   "poems": 1794
+  },
+  {
+   "rank": 80,
+   "name": "麦",
+   "category": "植物",
+   "aliases": [
+    "麦田",
+    "麦浪"
+   ],
+   "poems": 1732
+  },
+  {
+   "rank": 81,
+   "name": "罗衣",
+   "category": "器物",
+   "aliases": [
+    "衣裳",
+    "征衣",
+    "春衫",
+    "青衫"
+   ],
+   "poems": 1730
+  },
+  {
+   "rank": 82,
+   "name": "登高",
+   "category": "人物动作",
+   "aliases": [
+    "登楼",
+    "凭高"
+   ],
+   "poems": 1725
+  },
+  {
+   "rank": 83,
+   "name": "枫",
+   "category": "植物",
+   "aliases": [
+    "枫叶",
+    "红叶",
+    "枫林"
+   ],
+   "poems": 1649
+  },
+  {
+   "rank": 84,
+   "name": "茅屋",
+   "category": "建筑",
+   "aliases": [
+    "草堂",
+    "茅庐",
+    "茅舍",
+    "草庐"
+   ],
+   "poems": 1618
+  },
+  {
+   "rank": 85,
+   "name": "将军",
+   "category": "人物动作",
+   "aliases": [
+    "将",
+    "元帅"
+   ],
+   "poems": 1582
+  },
+  {
+   "rank": 86,
+   "name": "长空",
+   "category": "天象",
+   "aliases": [
+    "碧空",
+    "晴空",
+    "青天"
+   ],
+   "poems": 1531
+  },
+  {
+   "rank": 87,
+   "name": "犬",
+   "category": "动物",
+   "aliases": [
+    "狗",
+    "鸡犬"
+   ],
+   "poems": 1484
+  },
+  {
+   "rank": 88,
+   "name": "银河",
+   "category": "天象",
+   "aliases": [
+    "星河",
+    "天河",
+    "河汉"
+   ],
+   "poems": 1459
+  },
+  {
+   "rank": 89,
+   "name": "落叶",
+   "category": "植物",
+   "aliases": [
+    "黄叶",
+    "木叶",
+    "败叶"
+   ],
+   "poems": 1415
+  },
+  {
+   "rank": 90,
+   "name": "槐",
+   "category": "植物",
+   "aliases": [
+    "槐花",
+    "古槐"
+   ],
+   "poems": 1396
+  },
+  {
+   "rank": 91,
+   "name": "江岸",
+   "category": "地理",
+   "aliases": [
+    "岸",
+    "江边",
+    "水边"
+   ],
+   "poems": 1390
+  },
+  {
+   "rank": 92,
+   "name": "渔翁",
+   "category": "人物动作",
+   "aliases": [
+    "渔父",
+    "渔人",
+    "钓翁",
+    "渔樵"
+   ],
+   "poems": 1368
+  },
+  {
+   "rank": 93,
+   "name": "青苔",
+   "category": "植物",
+   "aliases": [
+    "苔",
+    "苍苔",
+    "莓苔"
+   ],
+   "poems": 1317
+  },
+  {
+   "rank": 94,
+   "name": "稻",
+   "category": "植物",
+   "aliases": [
+    "稻花",
+    "稻田",
+    "禾"
+   ],
+   "poems": 1270
+  },
+  {
+   "rank": 95,
+   "name": "楼台",
+   "category": "建筑",
+   "aliases": [
+    "台",
+    "楼阁",
+    "阁"
+   ],
+   "poems": 1258
+  },
+  {
+   "rank": 96,
+   "name": "钗",
+   "category": "器物",
+   "aliases": [
+    "金钗",
+    "玉钗",
+    "簪"
+   ],
+   "poems": 1243
+  },
+  {
+   "rank": 97,
+   "name": "倚栏",
+   "category": "人物动作",
+   "aliases": [
+    "凭栏",
+    "倚楼",
+    "凭阑"
+   ],
+   "poems": 1232
+  },
+  {
+   "rank": 98,
+   "name": "栏杆",
+   "category": "建筑",
+   "aliases": [
+    "阑干",
+    "栏",
+    "雕栏"
+   ],
+   "poems": 1213
+  },
+  {
+   "rank": 99,
+   "name": "柳絮",
+   "category": "植物",
+   "aliases": [
+    "杨花",
+    "飞絮"
+   ],
+   "poems": 1209
+  },
+  {
+   "rank": 100,
+   "name": "橘",
+   "category": "植物",
+   "aliases": [
+    "橘树",
+    "橙"
+   ],
+   "poems": 1172
+  },
+  {
+   "rank": 101,
+   "name": "棋",
+   "category": "器物",
+   "aliases": [
+    "围棋",
+    "棋局"
+   ],
+   "poems": 1134
+  },
+  {
+   "rank": 102,
+   "name": "塔",
+   "category": "建筑",
+   "aliases": [
+    "佛塔",
+    "宝塔"
+   ],
+   "poems": 1131
+  },
+  {
+   "rank": 103,
+   "name": "鸳鸯",
+   "category": "动物",
+   "aliases": [],
+   "poems": 1088
+  },
+  {
+   "rank": 104,
+   "name": "柴门",
+   "category": "建筑",
+   "aliases": [
+    "门",
+    "朱门",
+    "蓬门"
+   ],
+   "poems": 1061
+  },
+  {
+   "rank": 105,
+   "name": "杜鹃",
+   "category": "动物",
+   "aliases": [
+    "子规",
+    "杜宇"
+   ],
+   "poems": 1050
+  },
+  {
+   "rank": 106,
+   "name": "鹧鸪",
+   "category": "动物",
+   "aliases": [],
+   "poems": 1050
+  },
+  {
+   "rank": 107,
+   "name": "朝阳",
+   "category": "天象",
+   "aliases": [
+    "旭日",
+    "晓日",
+    "朝日"
+   ],
+   "poems": 1021
+  },
+  {
+   "rank": 108,
+   "name": "书卷",
+   "category": "器物",
+   "aliases": [
+    "书",
+    "诗书",
+    "卷"
+   ],
+   "poems": 1000
+  },
+  {
+   "rank": 109,
+   "name": "饮酒",
+   "category": "人物动作",
+   "aliases": [
+    "独酌",
+    "举杯",
+    "对饮",
+    "醉"
+   ],
+   "poems": 992
+  },
+  {
+   "rank": 110,
+   "name": "骑马",
+   "category": "人物动作",
+   "aliases": [
+    "策马",
+    "跃马",
+    "走马"
+   ],
+   "poems": 977
+  },
+  {
+   "rank": 111,
+   "name": "牡丹",
+   "category": "植物",
+   "aliases": [],
+   "poems": 958
+  },
+  {
+   "rank": 112,
+   "name": "海棠",
+   "category": "植物",
+   "aliases": [],
+   "poems": 951
+  },
+  {
+   "rank": 113,
+   "name": "沧海",
+   "category": "地理",
+   "aliases": [
+    "海",
+    "大海"
+   ],
+   "poems": 924
+  },
+  {
+   "rank": 114,
+   "name": "僧人",
+   "category": "人物动作",
+   "aliases": [
+    "僧",
+    "禅师",
+    "老僧"
+   ],
+   "poems": 918
+  },
+  {
+   "rank": 115,
+   "name": "庭院",
+   "category": "建筑",
+   "aliases": [
+    "院",
+    "深院",
+    "小院",
+    "庭"
+   ],
+   "poems": 888
+  },
+  {
+   "rank": 116,
+   "name": "村落",
+   "category": "地理",
+   "aliases": [
+    "村",
+    "山村",
+    "孤村",
+    "江村"
+   ],
+   "poems": 878
+  },
+  {
+   "rank": 117,
+   "name": "豆",
+   "category": "植物",
+   "aliases": [
+    "豆苗",
+    "豆花"
+   ],
+   "poems": 840
+  },
+  {
+   "rank": 118,
+   "name": "鹰",
+   "category": "动物",
+   "aliases": [
+    "雕",
+    "苍鹰",
+    "鹞"
+   ],
+   "poems": 806
+  },
+  {
+   "rank": 119,
+   "name": "榆",
+   "category": "植物",
+   "aliases": [
+    "榆树",
+    "榆钱"
+   ],
+   "poems": 798
+  },
+  {
+   "rank": 120,
+   "name": "旌旗",
+   "category": "器物",
+   "aliases": [
+    "旗",
+    "旌",
+    "红旗"
+   ],
+   "poems": 792
+  },
+  {
+   "rank": 121,
+   "name": "凤凰",
+   "category": "动物",
+   "aliases": [
+    "凤",
+    "凰"
+   ],
+   "poems": 760
+  },
+  {
+   "rank": 122,
+   "name": "鹏",
+   "category": "动物",
+   "aliases": [
+    "大鹏",
+    "鲲鹏"
+   ],
+   "poems": 757
+  },
+  {
+   "rank": 123,
+   "name": "原野",
+   "category": "地理",
+   "aliases": [
+    "平原",
+    "旷野",
+    "原上"
+   ],
+   "poems": 755
+  },
+  {
+   "rank": 124,
+   "name": "杏花",
+   "category": "植物",
+   "aliases": [
+    "杏"
+   ],
+   "poems": 750
+  },
+  {
+   "rank": 125,
+   "name": "残月",
+   "category": "天象",
+   "aliases": [
+    "晓月",
+    "缺月"
+   ],
+   "poems": 741
+  },
+  {
+   "rank": 126,
+   "name": "波浪",
+   "category": "地理",
+   "aliases": [
+    "波",
+    "浪",
+    "波涛",
+    "惊涛"
+   ],
+   "poems": 739
+  },
+  {
+   "rank": 127,
+   "name": "池塘",
+   "category": "地理",
+   "aliases": [
+    "池",
+    "塘",
+    "春池"
+   ],
+   "poems": 733
+  },
+  {
+   "rank": 128,
+   "name": "芦苇",
+   "category": "植物",
+   "aliases": [
+    "芦",
+    "芦花",
+    "蒹葭",
+    "苇"
+   ],
+   "poems": 733
+  },
+  {
+   "rank": 129,
+   "name": "梧桐",
+   "category": "植物",
+   "aliases": [
+    "桐",
+    "桐叶"
+   ],
+   "poems": 725
+  },
+  {
+   "rank": 130,
+   "name": "田野",
+   "category": "地理",
+   "aliases": [
+    "田",
+    "田园",
+    "阡陌",
+    "田垄"
+   ],
+   "poems": 722
+  },
+  {
+   "rank": 131,
+   "name": "香炉",
+   "category": "器物",
+   "aliases": [
+    "炉香",
+    "香烟",
+    "篆香"
+   ],
+   "poems": 681
+  },
+  {
+   "rank": 132,
+   "name": "垂钓",
+   "category": "人物动作",
+   "aliases": [
+    "独钓",
+    "钓鱼"
+   ],
+   "poems": 673
+  },
+  {
+   "rank": 133,
+   "name": "关隘",
+   "category": "地理",
+   "aliases": [
+    "关",
+    "关山",
+    "雄关"
+   ],
+   "poems": 658
+  },
+  {
+   "rank": 134,
+   "name": "北斗",
+   "category": "天象",
+   "aliases": [
+    "斗柄"
+   ],
+   "poems": 656
+  },
+  {
+   "rank": 135,
+   "name": "宫殿",
+   "category": "建筑",
+   "aliases": [
+    "宫",
+    "殿",
+    "宫阙",
+    "阙"
+   ],
+   "poems": 656
+  },
+  {
+   "rank": 136,
+   "name": "峡谷",
+   "category": "地理",
+   "aliases": [
+    "峡",
+    "三峡",
+    "幽谷"
+   ],
+   "poems": 648
+  },
+  {
+   "rank": 137,
+   "name": "梨花",
+   "category": "植物",
+   "aliases": [
+    "梨"
+   ],
+   "poems": 645
+  },
+  {
+   "rank": 138,
+   "name": "江浦",
+   "category": "地理",
+   "aliases": [
+    "浦",
+    "南浦"
+   ],
+   "poems": 611
+  },
+  {
+   "rank": 139,
+   "name": "桂花",
+   "category": "植物",
+   "aliases": [
+    "桂",
+    "丹桂"
+   ],
+   "poems": 574
+  },
+  {
+   "rank": 140,
+   "name": "画屏",
+   "category": "建筑",
+   "aliases": [
+    "屏风",
+    "屏"
+   ],
+   "poems": 572
+  },
+  {
+   "rank": 141,
+   "name": "筝",
+   "category": "器物",
+   "aliases": [
+    "古筝",
+    "银筝"
+   ],
+   "poems": 558
+  },
+  {
+   "rank": 142,
+   "name": "古道",
+   "category": "地理",
+   "aliases": [
+    "驿路",
+    "长路"
+   ],
+   "poems": 549
+  },
+  {
+   "rank": 143,
+   "name": "篱笆",
+   "category": "建筑",
+   "aliases": [
+    "篱",
+    "东篱",
+    "疏篱"
+   ],
+   "poems": 548
+  },
+  {
+   "rank": 144,
+   "name": "黄河",
+   "category": "地理",
+   "aliases": [],
+   "poems": 546
+  },
+  {
+   "rank": 145,
+   "name": "蛙",
+   "category": "动物",
+   "aliases": [
+    "蛙声"
+   ],
+   "poems": 526
+  },
+  {
+   "rank": 146,
+   "name": "白鹭",
+   "category": "动物",
+   "aliases": [
+    "鹭",
+    "鹭鸶"
+   ],
+   "poems": 521
+  },
+  {
+   "rank": 147,
+   "name": "新月",
+   "category": "天象",
+   "aliases": [
+    "弯月",
+    "月牙"
+   ],
+   "poems": 509
+  },
+  {
+   "rank": 148,
+   "name": "琵琶",
+   "category": "器物",
+   "aliases": [],
+   "poems": 503
+  },
+  {
+   "rank": 149,
+   "name": "征人",
+   "category": "人物动作",
+   "aliases": [
+    "征夫",
+    "戍卒",
+    "将士",
+    "战士"
+   ],
+   "poems": 502
+  },
+  {
+   "rank": 150,
+   "name": "书信",
+   "category": "器物",
+   "aliases": [
+    "信",
+    "家书",
+    "尺素",
+    "锦书"
+   ],
+   "poems": 499
+  },
+  {
+   "rank": 151,
+   "name": "思妇",
+   "category": "人物动作",
+   "aliases": [
+    "闺中",
+    "少妇",
+    "离人"
+   ],
+   "poems": 489
+  },
+  {
+   "rank": 152,
+   "name": "寺庙",
+   "category": "建筑",
+   "aliases": [
+    "寺",
+    "古寺",
+    "禅院",
+    "庙"
+   ],
+   "poems": 483
+  },
+  {
+   "rank": 153,
+   "name": "荷叶",
+   "category": "植物",
+   "aliases": [
+    "莲叶"
+   ],
+   "poems": 475
+  },
+  {
+   "rank": 154,
+   "name": "蝴蝶",
+   "category": "动物",
+   "aliases": [
+    "蝶",
+    "粉蝶"
+   ],
+   "poems": 455
+  },
+  {
+   "rank": 155,
+   "name": "吹笛",
+   "category": "人物动作",
+   "aliases": [
+    "横笛",
+    "弄笛"
+   ],
+   "poems": 452
+  },
+  {
+   "rank": 156,
+   "name": "钓竿",
+   "category": "器物",
+   "aliases": [
+    "钓",
+    "钓丝",
+    "垂纶"
+   ],
+   "poems": 444
+  },
+  {
+   "rank": 157,
+   "name": "小径",
+   "category": "地理",
+   "aliases": [
+    "径",
+    "幽径",
+    "石径"
+   ],
+   "poems": 443
+  },
+  {
+   "rank": 158,
+   "name": "瀑布",
+   "category": "地理",
+   "aliases": [
+    "飞瀑",
+    "瀑"
+   ],
+   "poems": 419
+  },
+  {
+   "rank": 159,
+   "name": "大漠",
+   "category": "地理",
+   "aliases": [
+    "沙漠",
+    "黄沙",
+    "瀚海"
+   ],
+   "poems": 406
+  },
+  {
+   "rank": 160,
+   "name": "沙洲",
+   "category": "地理",
+   "aliases": [
+    "洲",
+    "汀洲"
+   ],
+   "poems": 399
+  },
+  {
+   "rank": 161,
+   "name": "长城",
+   "category": "建筑",
+   "aliases": [],
+   "poems": 338
+  },
+  {
+   "rank": 162,
+   "name": "黄鹂",
+   "category": "动物",
+   "aliases": [
+    "鹂"
+   ],
+   "poems": 336
+  },
+  {
+   "rank": 163,
+   "name": "织布",
+   "category": "人物动作",
+   "aliases": [
+    "织",
+    "机杼",
+    "织女"
+   ],
+   "poems": 333
+  },
+  {
+   "rank": 164,
+   "name": "采莲",
+   "category": "人物动作",
+   "aliases": [
+    "采莲人",
+    "莲舟"
+   ],
+   "poems": 321
+  },
+  {
+   "rank": 165,
+   "name": "岩石",
+   "category": "地理",
+   "aliases": [
+    "石",
+    "岩",
+    "怪石"
+   ],
+   "poems": 315
+  },
+  {
+   "rank": 166,
+   "name": "桑麻",
+   "category": "植物",
+   "aliases": [
+    "桑",
+    "麻",
+    "桑树"
+   ],
+   "poems": 309
+  },
+  {
+   "rank": 167,
+   "name": "蔷薇",
+   "category": "植物",
+   "aliases": [],
+   "poems": 308
+  },
+  {
+   "rank": 168,
+   "name": "飞蓬",
+   "category": "植物",
+   "aliases": [
+    "蓬",
+    "征蓬",
+    "转蓬"
+   ],
+   "poems": 302
+  },
+  {
+   "rank": 169,
+   "name": "烽火",
+   "category": "器物",
+   "aliases": [
+    "烽烟",
+    "狼烟"
+   ],
+   "poems": 300
+  },
+  {
+   "rank": 170,
+   "name": "渡口",
+   "category": "地理",
+   "aliases": [
+    "渡",
+    "津",
+    "野渡"
+   ],
+   "poems": 299
+  },
+  {
+   "rank": 171,
+   "name": "晚霞",
+   "category": "天象",
+   "aliases": [
+    "霞",
+    "彩霞",
+    "落霞"
+   ],
+   "poems": 286
+  },
+  {
+   "rank": 172,
+   "name": "台阶",
+   "category": "建筑",
+   "aliases": [
+    "阶",
+    "石阶",
+    "玉阶"
+   ],
+   "poems": 282
+  },
+  {
+   "rank": 173,
+   "name": "蓑衣",
+   "category": "器物",
+   "aliases": [
+    "蓑",
+    "蓑笠",
+    "斗笠",
+    "笠"
+   ],
+   "poems": 264
+  },
+  {
+   "rank": 174,
+   "name": "抚琴",
+   "category": "人物动作",
+   "aliases": [
+    "弹琴",
+    "鼓琴"
+   ],
+   "poems": 263
+  },
+  {
+   "rank": 175,
+   "name": "蟋蟀",
+   "category": "动物",
+   "aliases": [
+    "蛩",
+    "促织"
+   ],
+   "poems": 253
+  },
+  {
+   "rank": 176,
+   "name": "耕作",
+   "category": "人物动作",
+   "aliases": [
+    "耕",
+    "农夫",
+    "耕田"
+   ],
+   "poems": 250
+  },
+  {
+   "rank": 177,
+   "name": "酒旗",
+   "category": "器物",
+   "aliases": [
+    "酒帘",
+    "青旗"
+   ],
+   "poems": 246
+  },
+  {
+   "rank": 178,
+   "name": "荔枝",
+   "category": "植物",
+   "aliases": [],
+   "poems": 233
+  },
+  {
+   "rank": 179,
+   "name": "江潮",
+   "category": "地理",
+   "aliases": [
+    "潮",
+    "潮水",
+    "春潮"
+   ],
+   "poems": 228
+  },
+  {
+   "rank": 180,
+   "name": "笔砚",
+   "category": "器物",
+   "aliases": [
+    "笔",
+    "砚",
+    "墨"
+   ],
+   "poems": 217
+  },
+  {
+   "rank": 181,
+   "name": "山洞",
+   "category": "地理",
+   "aliases": [
+    "洞",
+    "洞府"
+   ],
+   "poems": 213
+  },
+  {
+   "rank": 182,
+   "name": "砧杵",
+   "category": "器物",
+   "aliases": [
+    "砧",
+    "捣衣"
+   ],
+   "poems": 213
+  },
+  {
+   "rank": 183,
+   "name": "浮萍",
+   "category": "植物",
+   "aliases": [
+    "萍"
+   ],
+   "poems": 182
+  },
+  {
+   "rank": 184,
+   "name": "乌鸦",
+   "category": "动物",
+   "aliases": [
+    "鸦",
+    "寒鸦",
+    "昏鸦",
+    "乌"
+   ],
+   "poems": 173
+  },
+  {
+   "rank": 185,
+   "name": "边塞",
+   "category": "地理",
+   "aliases": [
+    "塞",
+    "塞外",
+    "边关"
+   ],
+   "poems": 173
+  },
+  {
+   "rank": 186,
+   "name": "萤火虫",
+   "category": "动物",
+   "aliases": [
+    "萤",
+    "流萤",
+    "萤火"
+   ],
+   "poems": 172
+  },
+  {
+   "rank": 187,
+   "name": "雷电",
+   "category": "天象",
+   "aliases": [
+    "雷",
+    "闪电"
+   ],
+   "poems": 161
+  },
+  {
+   "rank": 188,
+   "name": "长河",
+   "category": "地理",
+   "aliases": [],
+   "poems": 152
+  },
+  {
+   "rank": 189,
+   "name": "藤萝",
+   "category": "植物",
+   "aliases": [
+    "藤",
+    "枯藤",
+    "萝"
+   ],
+   "poems": 150
+  },
+  {
+   "rank": 190,
+   "name": "牧童",
+   "category": "人物动作",
+   "aliases": [
+    "牧",
+    "牧笛"
+   ],
+   "poems": 145
+  },
+  {
+   "rank": 191,
+   "name": "樵夫",
+   "category": "人物动作",
+   "aliases": [
+    "樵",
+    "樵子"
+   ],
+   "poems": 134
+  },
+  {
+   "rank": 192,
+   "name": "弓箭",
+   "category": "器物",
+   "aliases": [
+    "弓",
+    "箭",
+    "雕弓"
+   ],
+   "poems": 118
+  },
+  {
+   "rank": 193,
+   "name": "浣纱",
+   "category": "人物动作",
+   "aliases": [
+    "浣女",
+    "浣衣"
+   ],
+   "poems": 102
+  },
+  {
+   "rank": 194,
+   "name": "葡萄",
+   "category": "植物",
+   "aliases": [],
+   "poems": 93
+  },
+  {
+   "rank": 195,
+   "name": "驿站",
+   "category": "建筑",
+   "aliases": [
+    "驿",
+    "驿亭",
+    "馆驿"
+   ],
+   "poems": 80
+  },
+  {
+   "rank": 196,
+   "name": "喜鹊",
+   "category": "动物",
+   "aliases": [
+    "鹊"
+   ],
+   "poems": 65
+  },
+  {
+   "rank": 197,
+   "name": "红豆",
+   "category": "植物",
+   "aliases": [
+    "相思子"
+   ],
+   "poems": 61
+  },
+  {
+   "rank": 198,
+   "name": "杜鹃花",
+   "category": "植物",
+   "aliases": [
+    "映山红"
+   ],
+   "poems": 59
+  },
+  {
+   "rank": 199,
+   "name": "山岭",
+   "category": "地理",
+   "aliases": [
+    "岭",
+    "山冈"
+   ],
+   "poems": 50
+  },
+  {
+   "rank": 200,
+   "name": "蜜蜂",
+   "category": "动物",
+   "aliases": [
+    "蜂"
+   ],
+   "poems": 45
+  },
+  {
+   "rank": 201,
+   "name": "深潭",
+   "category": "地理",
+   "aliases": [
+    "潭"
+   ],
+   "poems": 43
+  },
+  {
+   "rank": 202,
+   "name": "彩虹",
+   "category": "天象",
+   "aliases": [
+    "虹",
+    "霓"
+   ],
+   "poems": 42
+  },
+  {
+   "rank": 203,
+   "name": "沙滩",
+   "category": "地理",
+   "aliases": [
+    "滩",
+    "浅滩"
+   ],
+   "poems": 38
+  },
+  {
+   "rank": 204,
+   "name": "山涧",
+   "category": "地理",
+   "aliases": [
+    "涧"
+   ],
+   "poems": 34
+  },
+  {
+   "rank": 205,
+   "name": "烽火台",
+   "category": "建筑",
+   "aliases": [
+    "烽台",
+    "烽燧"
+   ],
+   "poems": 33
+  },
+  {
+   "rank": 206,
+   "name": "草原",
+   "category": "地理",
+   "aliases": [
+    "草地",
+    "牧场"
+   ],
+   "poems": 10
+  },
+  {
+   "rank": 207,
+   "name": "码头",
+   "category": "建筑",
+   "aliases": [
+    "埠",
+    "泊"
+   ],
+   "poems": 0
+  }
+ ]
+}

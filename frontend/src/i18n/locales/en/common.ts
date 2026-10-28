@@ -228,6 +228,7 @@ export default {
     promptMarketAdmin: 'Prompt market',
     goodsAdmin: 'Card-key goods',
     shihuaAdmin: 'Textbook poems',
+    materialsAdmin: 'Poem & art library',
     analyticsAdmin: 'Analytics',
     userInsightsAdmin: 'User insights',
     conversationArchiveAdmin: 'Conversation archive',

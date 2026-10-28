@@ -111,6 +111,8 @@ type Handlers struct {
 	PromptMarket *PromptMarketHandler
 	// Shihua is 课本诗画 (admin).
 	Shihua *ShihuaHandler
+	// Material is the 诗画素材库 (admin).
+	Material *MaterialHandler
 }
 
 // BuildInfo contains build-time information

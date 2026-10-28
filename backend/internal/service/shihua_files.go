@@ -29,9 +29,11 @@ import (
 // (/api/v1/shihua/files/<path>?e=&s=) so the admin page can show them in <img> and <canvas>. The
 // signing key is random per process: links stop working after a restart, and the page asks again.
 type shihuaFiles struct {
-	dir string
-	key []byte
-	now func() time.Time
+	dir   string
+	key   []byte
+	now   func() time.Time
+	route string         // the file route links point at
+	relRe *regexp.Regexp // the paths it serves
 }
 
 const (
@@ -45,9 +47,15 @@ const (
 var shihuaRelRe = regexp.MustCompile(`^works/[0-9]+/[0-9]+(-thumb|-2x|-[0-9x]+)?\.(png|jpg|webp)$`)
 
 func newShihuaFiles(dir string) *shihuaFiles {
+	return newSignedFiles(dir, shihuaFileRoute, shihuaRelRe)
+}
+
+// newSignedFiles is a picture store with its own signing key, route and allowed paths (the 素材库
+// uses one too, so links of one feature never open the other's files).
+func newSignedFiles(dir, route string, relRe *regexp.Regexp) *shihuaFiles {
 	key := make([]byte, 32)
 	_, _ = rand.Read(key)
-	return &shihuaFiles{dir: dir, key: key, now: time.Now}
+	return &shihuaFiles{dir: dir, key: key, now: time.Now, route: route, relRe: relRe}
 }
 
 func (f *shihuaFiles) mac(rel, exp string) string {
@@ -63,13 +71,13 @@ func (f *shihuaFiles) sign(rel string) string {
 		return ""
 	}
 	exp := strconv.FormatInt(f.now().Add(shihuaLinkLifetime).Truncate(time.Hour).Add(time.Hour).Unix(), 10)
-	return shihuaFileRoute + rel + "?e=" + exp + "&s=" + f.mac(rel, exp)
+	return f.route + rel + "?e=" + exp + "&s=" + f.mac(rel, exp)
 }
 
 // Open checks a signed link and returns the file's path on disk.
 func (f *shihuaFiles) Open(rel, exp, sig string) (string, bool) {
 	rel = strings.TrimPrefix(rel, "/")
-	if !shihuaRelRe.MatchString(rel) || !hmac.Equal([]byte(sig), []byte(f.mac(rel, exp))) {
+	if !f.relRe.MatchString(rel) || !hmac.Equal([]byte(sig), []byte(f.mac(rel, exp))) {
 		return "", false
 	}
 	if e, err := strconv.ParseInt(exp, 10, 64); err != nil || f.now().Unix() > e {
@@ -104,7 +112,7 @@ func (f *shihuaFiles) write(rel string, data []byte) error {
 }
 
 func (f *shihuaFiles) read(rel string) ([]byte, error) {
-	if !shihuaRelRe.MatchString(rel) {
+	if !f.relRe.MatchString(rel) {
 		return nil, os.ErrNotExist
 	}
 	return os.ReadFile(filepath.Join(f.dir, filepath.FromSlash(rel)))
@@ -126,11 +134,16 @@ func shihuaExt(data []byte) string {
 
 // saveDrawing stores the model's picture as returned plus a small JPEG for the pick grid.
 func (f *shihuaFiles) saveDrawing(workID, imageID int64, data []byte) (string, int, int, error) {
+	return f.saveWithThumb(fmt.Sprintf("works/%d/%d.%s", workID, imageID, shihuaExt(data)), shihuaThumbRel(workID, imageID), data)
+}
+
+// saveWithThumb stores a picture at rel and a small JPEG of it at thumbRel; it returns rel and the
+// picture's size.
+func (f *shihuaFiles) saveWithThumb(rel, thumbRel string, data []byte) (string, int, int, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return "", 0, 0, err
 	}
-	rel := fmt.Sprintf("works/%d/%d.%s", workID, imageID, shihuaExt(data))
 	if err := f.write(rel, data); err != nil {
 		return "", 0, 0, err
 	}
@@ -143,7 +156,7 @@ func (f *shihuaFiles) saveDrawing(workID, imageID int64, data []byte) (string, i
 	if err := jpeg.Encode(&buf, thumb, &jpeg.Options{Quality: 82}); err != nil {
 		return "", 0, 0, err
 	}
-	if err := f.write(shihuaThumbRel(workID, imageID), buf.Bytes()); err != nil {
+	if err := f.write(thumbRel, buf.Bytes()); err != nil {
 		return "", 0, 0, err
 	}
 	return rel, b.Dx(), b.Dy(), nil
@@ -156,14 +169,20 @@ func (f *shihuaFiles) saveUpscaled(workID, imageID int64, data []byte) (string, 
 
 // saveRender stores a poster uploaded by the admin page (JPEG or PNG).
 func (f *shihuaFiles) saveRender(workID, imageID int64, aspect string, data []byte) (string, int, int, error) {
+	return f.savePoster(func(ext string) string { return fmt.Sprintf("works/%d/%d-%s.%s", workID, imageID, aspect, ext) }, data, ErrShihuaInvalid)
+}
+
+// savePoster checks an uploaded poster (JPEG or PNG, size and edge limits) and stores it at the path
+// relFor builds from its extension; bad uploads return invalid.
+func (f *shihuaFiles) savePoster(relFor func(ext string) string, data []byte, invalid error) (string, int, int, error) {
 	if len(data) == 0 || len(data) > shihuaMaxRenderSize {
-		return "", 0, 0, ErrShihuaInvalid
+		return "", 0, 0, invalid
 	}
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
 	if err != nil || (format != "jpeg" && format != "png") || cfg.Width > shihuaMaxRenderEdge || cfg.Height > shihuaMaxRenderEdge {
-		return "", 0, 0, ErrShihuaInvalid
+		return "", 0, 0, invalid
 	}
-	rel := fmt.Sprintf("works/%d/%d-%s.%s", workID, imageID, aspect, shihuaExt(data))
+	rel := relFor(shihuaExt(data))
 	return rel, cfg.Width, cfg.Height, f.write(rel, data)
 }
 

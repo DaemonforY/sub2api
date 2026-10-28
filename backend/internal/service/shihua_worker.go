@@ -430,3 +430,30 @@ func encodeShihuaJPEG(img image.Image) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+// ---- shared with the 素材库 ----
+
+// AdminDraw draws one picture on the key chosen in the 课本诗画 settings (the 素材库 shares it).
+// Failures are *shihuaDrawError; a missing key is not retryable.
+func (s *ShihuaService) AdminDraw(ctx context.Context, prompt, size, quality string) (*shihuaDrawn, error) {
+	st := s.Settings(ctx)
+	key, err := s.adminKey(ctx, st.KeyID, 0)
+	if err != nil {
+		return nil, &shihuaDrawError{Status: -1, Msg: "没有可用的 API Key，请在「课本诗画 → 设置」里选一把（No API key）"}
+	}
+	return s.draw(ctx, key.Key, prompt, size, quality)
+}
+
+// DrawLimits returns the drawing concurrency and daily limit of the settings, and whether a usable
+// key is configured.
+func (s *ShihuaService) DrawLimits(ctx context.Context) (int, int, bool) {
+	st := s.Settings(ctx)
+	_, err := s.adminKey(ctx, st.KeyID, 0)
+	return st.Concurrency, st.DailyLimit, err == nil
+}
+
+// ImageCost is a picture's price at the site's standard image price.
+func (s *ShihuaService) ImageCost(w, h int) float64 { return s.imageCost(w, h) }
+
+// DataDir is where the 课本诗画 pictures live; the 素材库 keeps its own next to it.
+func (s *ShihuaService) DataDir() string { return s.files.dir }

@@ -814,6 +814,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/admin/materials',
+    name: 'AdminMaterials',
+    component: () => import('@/views/admin/MaterialsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Poem & art library',
+      titleKey: 'materials.title',
+      descriptionKey: 'materials.description'
+    }
+  },
+  {
     path: '/admin/shihua',
     name: 'AdminShihua',
     component: () => import('@/views/admin/ShihuaView.vue'),

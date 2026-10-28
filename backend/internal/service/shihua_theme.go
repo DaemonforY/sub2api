@@ -94,3 +94,19 @@ func parseShihuaTheme(answer string) (*ShihuaTheme, error) {
 	}
 	return &t, nil
 }
+
+// AdminChat runs one text-model call on the key and text model chosen in the 课本诗画 settings. The
+// 素材库 shares them, so the admin configures one key for both pages. It returns the answer and the
+// model used.
+func (s *ShihuaService) AdminChat(ctx context.Context, system, user string) (string, string, error) {
+	st := s.Settings(ctx)
+	key, err := s.adminKey(ctx, st.KeyID, 0)
+	if err != nil {
+		return "", "", err
+	}
+	answer, err := s.chat(ctx, key.Key, st.TextModel, []LearnMessage{
+		{Role: "system", Content: system},
+		{Role: "user", Content: user},
+	})
+	return answer, st.TextModel, err
+}

@@ -54,6 +54,8 @@ export interface ShihuaLayoutResult {
   color: 'ink' | 'light'
   text: string
   font: ShihuaFontId
+  /** The small credit line beside the text ("" when none). */
+  byline?: string
 }
 
 /**
@@ -432,6 +434,11 @@ export interface ShihuaPosterInput {
   text: string
   title: string
   author: string
+  /**
+   * A credit line ("王维《使至塞上》") set smaller, left of the text. 课本诗画 pictures carry the title
+   * the model drew and leave it out; 素材库 pictures have no words at all.
+   */
+  byline?: string
 }
 
 /**
@@ -453,7 +460,8 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
   const sealText = opts.seal ?? '课本诗画'
   const fontId = fontOf(opts.font).id
   const font = shihuaFontStack(fontId)
-  await ensureGlyphs(input.text + sealText, 64, fontId)
+  const byline = (input.byline ?? '').trim()
+  await ensureGlyphs(input.text + byline + sealText, 64, fontId)
 
   let box: { x: number; y: number; w: number; h: number }
   let light = true
@@ -501,10 +509,21 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
   const ink = light ? '#2b2622' : '#f6ecd6'
   const rule = light ? 'rgba(43, 38, 34, 0.28)' : 'rgba(246, 236, 214, 0.3)'
   drawVerticalColumns(ctx, columns, right, box.y, cell, ink, rule, font)
+  let left = right - blockW
+  let lastLen = Array.from(columns[columns.length - 1] ?? '').length
+  let top = box.y
+  if (byline) {
+    // Smaller, without column rules, starting a little lower than the text.
+    const bcell = Math.max(10, Math.round(cell * 0.62))
+    const bcols = layoutColumns(byline, Math.max(1, Math.floor((box.h * 0.86 - cell) / bcell)))
+    top = columns.length ? box.y + cell : box.y
+    drawVerticalColumns(ctx, bcols, left - (columns.length ? cell * 0.2 : 0), top, bcell, ink, 'rgba(0, 0, 0, 0)', font)
+    left -= bcols.length * bcell * SHIHUA_PITCH + (columns.length ? cell * 0.2 : 0)
+    lastLen = (Array.from(bcols[bcols.length - 1] ?? '').length * bcell) / cell
+  }
   if (sealText) {
     const size = Math.round(cell * 1.5)
-    const lastLen = Array.from(columns[columns.length - 1] ?? '').length
-    drawSeal(ctx, sealText, right - blockW - size * 1.1, box.y + lastLen * cell + cell * 0.3, size, font)
+    drawSeal(ctx, sealText, left - size * 1.1, top + lastLen * cell + cell * 0.3, size, font)
   }
   drawLabel(ctx, opts.label ?? 'AI 生成', W, H, opts.labelScale ?? 1)
 
@@ -519,7 +538,8 @@ export async function renderShihuaPoster(input: ShihuaPosterInput, opts: ShihuaL
       columns,
       color: light ? 'ink' : 'light',
       text: input.text,
-      font: fontId
+      font: fontId,
+      byline
     }
   }
 }

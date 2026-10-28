@@ -1260,6 +1260,7 @@ var ProviderSet = wire.NewSet(
 	ProvideImageToolsService,
 	ProvideAnimationJobService,
 	ProvideShihuaService,
+	ProvideMaterialService,
 	ProvideSiteHostingService,
 	ProvideVideoService,
 	ProvideCanvasSessionService,

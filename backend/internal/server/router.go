@@ -188,6 +188,10 @@ func registerRoutes(
 	handler.RegisterPageRoutes(v1, cfg.Pricing.DataDir, gin.HandlerFunc(jwtAuth), gin.HandlerFunc(adminAuth), settingService)
 	// 异步生图存本机磁盘时的结果文件（公开、带随机任务 ID，约 1 天后清理）
 	v1.GET("/image-files/*key", handler.ServeImageFile(cfg.ImageFilesDir()))
+	// 素材库 pictures for the admin pages: signed, expiring links
+	if h.Material != nil {
+		v1.GET("/materials/files/*path", h.Material.File)
+	}
 	// 课本诗画 pictures for the admin pages: signed, expiring links (so <img> and <canvas> can load them)
 	if h.Shihua != nil {
 		v1.GET("/shihua/files/*path", h.Shihua.File)

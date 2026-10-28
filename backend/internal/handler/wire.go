@@ -244,6 +244,7 @@ func ProvideHandlers(
 	cardGoodsHandler *CardGoodsHandler,
 	promptMarketHandler *PromptMarketHandler,
 	shihuaHandler *ShihuaHandler,
+	materialHandler *MaterialHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -301,6 +302,7 @@ func ProvideHandlers(
 		CardGoods:           cardGoodsHandler,
 		PromptMarket:        promptMarketHandler,
 		Shihua:              shihuaHandler,
+		Material:            materialHandler,
 	}
 }
 
@@ -349,6 +351,7 @@ var ProviderSet = wire.NewSet(
 	NewCardGoodsHandler,
 	NewPromptMarketHandler,
 	NewShihuaHandler,
+	NewMaterialHandler,
 	NewCanvasCloudHandler,
 	NewCommunityHandler,
 	NewCourseHandler,
