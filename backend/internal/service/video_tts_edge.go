@@ -73,7 +73,9 @@ const DefaultVideoVoice = "zh-CN-XiaoxiaoNeural"
 // script instead of the voice (for people who add their own voice-over or music).
 const VideoVoiceNone = "none"
 
-func videoSilent(p *VideoProject) bool { return p.Mode == VideoModeFilm && p.Options.Voice == VideoVoiceNone }
+func videoSilent(p *VideoProject) bool {
+	return p.Mode == VideoModeFilm && p.Options.Voice == VideoVoiceNone
+}
 
 func videoVoiceKnown(id string) bool {
 	if id == VideoVoiceNone {
