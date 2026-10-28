@@ -292,11 +292,13 @@ services:
     environment:
       - RENDER_ORIGIN=https://${VIDEO_DOMAIN:-video.hivegpt.cn}
       - FFMPEG_THREADS=2
+      # Pages capturing frames at once (capture mostly waits on the compositor, so 3 ≈ 2.4× faster).
+      - RENDER_WORKERS=${VIDEO_RENDER_WORKERS:-3}
     volumes:
       - sub2api_data:/app/data
-    # Leave a core for the gateway; Chromium + x264 at 1080p peak around 1.5GB.
+    # Leave a core for the gateway; one page + x264 at 1080p peaked around 1.5GB, three pages need more.
     cpus: 2.5
-    mem_limit: 2500m
+    mem_limit: 3500m
     networks:
       - sub2api-network
 

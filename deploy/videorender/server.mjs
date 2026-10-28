@@ -21,6 +21,8 @@ const THREADS = String(process.env.FFMPEG_THREADS || 2)
 // x264 'slow' became the bottleneck once frames came faster; 'medium' encodes ~2× faster at CRF 16,
 // 'veryfast' again much faster — at CRF 16 the difference is file size, not visible quality.
 const PRESET = process.env.FFMPEG_PRESET || 'veryfast'
+// Pages capturing frames at the same time (see render()).
+const WORKERS = Math.min(6, Math.max(1, Number(process.env.RENDER_WORKERS || 3)))
 const PRESETS = ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow']
 // Screenshots are re-encoded by x264, so q85 costs nothing visible and moves 60% fewer bytes.
 const JPEG_QUALITY = Math.min(100, Math.max(50, Number(process.env.JPEG_QUALITY || 85)))
@@ -88,8 +90,10 @@ async function render(job) {
   })
   const wav = out.replace(/\.mp4$/, '') + '.narration.wav'
   const tmp = out + '.part'
+  const segFiles = []
   const errors = []
-  try {
+  // A loaded render page: the frame is drawn by seeking the player and setting the subtitle.
+  const openPage = async () => {
     const page = await browser.newPage()
     await page.setViewport({ width, height, deviceScaleFactor: scale })
     page.on('pageerror', (e) => errors.push('page: ' + e.message))
@@ -100,23 +104,24 @@ async function render(job) {
     if (!player) throw new Error('player frame not found')
     await page.evaluate(() => document.fonts.ready)
     await player.evaluate(() => document.fonts.ready)
-    const full = await page.evaluate('window.__TOTAL')
-    if (!(full > 0)) throw new Error('empty film')
-    const total = job.limit > 0 ? Math.min(full, job.limit) : full // limit: render only the first seconds (tests)
-    const frames = Math.round(total * fps)
-
-    note({ stage: 'audio', frame: 0, frames })
-    await mixNarration(job.audio || [], total, wav)
-
+    const cdp = await page.createCDPSession()
+    return {
+      page,
+      shot: async () => Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: JPEG_QUALITY, optimizeForSpeed: true })).data, 'base64'),
+      seek: async (t) => {
+        await player.evaluate((t) => window.__film.seek(t), t)
+        await page.evaluate((t) => window.__subtitle(t), t)
+      }
+    }
+  }
+  // Encodes one run of frames (video only) into file.
+  const encoder = (file) => {
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-threads', THREADS,
-      '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-', '-i', wav,
-      '-map', '0:v', '-map', '1:a',
+      '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', '-',
       ...(scale < 1 ? ['-vf', `scale=${outW}:${outH}`] : []), // fractional scales may round a pixel off
       '-c:v', 'libx264', '-preset', preset, '-tune', 'animation', '-crf', '16', '-profile:v', 'high', '-level', '4.2',
       '-pix_fmt', 'yuv420p', '-r', String(fps), '-g', String(fps * 2),
-      '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
-      '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
-      '-t', String(total), '-movflags', '+faststart', '-f', 'mp4', tmp], { stdio: ['pipe', 'ignore', 'pipe'] })
+      '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-an', '-f', 'mp4', file], { stdio: ['pipe', 'ignore', 'pipe'] })
     let ffErr = ''
     ff.stderr.on('data', (d) => (ffErr = (ffErr + d).slice(-2000)))
     const done = new Promise((resolve, reject) => {
@@ -124,38 +129,68 @@ async function render(job) {
       ff.on('close', (code) => (code === 0 ? resolve() : reject(new Error('ffmpeg exited ' + code + ': ' + ffErr))))
     })
     ff.stdin.on('error', () => {}) // a dying ffmpeg is reported by `done`
-    const write = async (buf) => {
-      if (!ff.stdin.write(buf)) await Promise.race([new Promise((r) => ff.stdin.once('drain', r)), done])
+    return {
+      write: async (buf) => {
+        if (!ff.stdin.write(buf)) await Promise.race([new Promise((r) => ff.stdin.once('drain', r)), done])
+      },
+      end: () => { ff.stdin.end(); return done }
     }
-    const cdp = await page.createCDPSession()
-    const shot = async () => Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: JPEG_QUALITY, optimizeForSpeed: true })).data, 'base64')
-    const seek = async (t) => {
-      await player.evaluate((t) => window.__film.seek(t), t)
-      await page.evaluate((t) => window.__subtitle(t), t)
-    }
+  }
+  try {
+    const first = await openPage()
+    const full = await first.page.evaluate('window.__TOTAL')
+    if (!(full > 0)) throw new Error('empty film')
+    const total = job.limit > 0 ? Math.min(full, job.limit) : full // limit: render only the first seconds (tests)
+    const frames = Math.round(total * fps)
+
+    note({ stage: 'audio', frame: 0, frames })
+    await mixNarration(job.audio || [], total, wav)
+
+    // Capturing a frame mostly waits for Chromium's next compositor frame (~40 ms on any page, even
+    // an unchanged one), not for the CPU, so pages capturing side by side multiply the throughput
+    // (1 → 3 pages: 28 → 72 frames/s on a laptop). The film is cut into WORKERS runs of frames, each
+    // encoded on its own, then joined without re-encoding and muxed with the narration.
+    const workers = Math.max(1, Math.min(WORKERS, Math.floor(frames / (fps * 2)) || 1))
+    const pages = [first]
+    for (let k = 1; k < workers; k++) pages.push(await openPage())
+    const per = Math.ceil(frames / workers)
+    let doneFrames = 0
     const started = Date.now()
-    for (let i = 0; i < frames; i++) {
-      await seek(i / fps)
-      await write(await shot())
-      if (i % 30 === 0) note({ stage: 'frames', frame: i, frames, fps: i / Math.max(1, (Date.now() - started) / 1000) })
-    }
-    ff.stdin.end()
-    await done
+    await Promise.all(pages.map(async (pg, k) => {
+      const from = k * per, to = Math.min(frames, from + per)
+      if (from >= to) return
+      const file = `${out}.seg${k}.mp4`
+      segFiles[k] = file
+      const enc = encoder(file)
+      for (let i = from; i < to; i++) {
+        await pg.seek(i / fps)
+        await enc.write(await pg.shot())
+        if (++doneFrames % 30 === 0) note({ stage: 'frames', frame: doneFrames, frames, fps: doneFrames / Math.max(1, (Date.now() - started) / 1000) })
+      }
+      await enc.end()
+    }))
+    const list = out + '.segments.txt'
+    fs.writeFileSync(list, segFiles.filter(Boolean).map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n') + '\n')
+    segFiles.push(list)
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-i', wav,
+      '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-ar', '48000', '-ac', '2',
+      '-t', String(total), '-movflags', '+faststart', '-f', 'mp4', tmp])
     fs.renameSync(tmp, out)
     if (cover) {
-      await seek(Math.min(total, Math.max(0, job.coverAt ?? total * 0.3)))
-      fs.writeFileSync(cover, await shot())
+      await first.seek(Math.min(total, Math.max(0, job.coverAt ?? total * 0.3)))
+      fs.writeFileSync(cover, await first.shot())
     }
-    errors.push(...(await page.evaluate(() => (window.__errors || []).map((e) => `${e.scene || ''} ${e.phase || ''} ${e.message}`))))
+    for (const pg of pages) errors.push(...(await pg.page.evaluate(() => (window.__errors || []).map((e) => `${e.scene || ''} ${e.phase || ''} ${e.message}`))))
     const size = fs.statSync(out).size
     note({ stage: 'done', frame: frames, frames })
     const seconds = (Date.now() - started) / 1000
     return { size, duration: total, frames, seconds: Math.round(seconds), fps: +(frames / Math.max(seconds, 0.001)).toFixed(2),
-      gpu: GPU, preset, scale, width: outW, height: outH, errors: errors.slice(0, 20) }
+      gpu: GPU, preset, scale, workers, width: outW, height: outH, errors: [...new Set(errors)].slice(0, 20) }
   } finally {
     await browser.close().catch(() => {})
     fs.rmSync(wav, { force: true })
     fs.rmSync(tmp, { force: true })
+    for (const f of segFiles) if (f) fs.rmSync(f, { force: true })
   }
 }
 
@@ -192,4 +227,4 @@ http.createServer(async (req, res) => {
     if (mine) console.error('render failed:', err)
     send(500, { error: String(err.message || err).slice(0, 1000) })
   }
-}).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN, 'gpu', GPU, 'preset', PRESET, 'jpeg', JPEG_QUALITY))
+}).listen(PORT, () => console.log('videorender listening on', PORT, 'root', ROOT, 'origin', ORIGIN, 'gpu', GPU, 'preset', PRESET, 'jpeg', JPEG_QUALITY, 'workers', WORKERS))

@@ -3,7 +3,7 @@
     <!-- 1. the MP4 files -->
     <section>
       <h3 class="text-sm font-semibold">视频文件</h3>
-      <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：30 帧、高码率 H.264 + AAC，带配音和字幕。1080p 最清晰；720p 快速版渲染时间约减半，适合手机观看。全站按顺序排队，可以关掉窗口，回来再下载。</p>
+      <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：1080p 30 帧、高码率 H.264 + AAC，带配音和字幕。全站按顺序排队，可以关掉窗口，回来再下载。</p>
       <div class="mt-3 grid gap-3 sm:grid-cols-2">
         <div v-for="l in layouts" :key="l.id" class="rounded-xl border border-ink-200 p-3 dark:border-ink-700">
           <div class="flex items-start gap-3">
@@ -91,10 +91,8 @@ const props = defineProps({ project: { type: Object, required: true } })
 defineEmits(['close'])
 
 const layouts = [
-  { id: 'portrait', name: '竖屏 1080p', size: '1080×1920', for: '抖音、视频号、小红书', icon: Smartphone },
-  { id: 'portrait-720', name: '竖屏 720p 快速', size: '720×1280', for: '手机观看、朋友圈，约快一倍', icon: Smartphone },
-  { id: 'landscape', name: '横屏 1080p', size: '1920×1080', for: 'B站、YouTube、西瓜视频', icon: Monitor },
-  { id: 'landscape-720', name: '横屏 720p 快速', size: '1280×720', for: '电脑或手机横屏观看，约快一倍', icon: Monitor }
+  { id: 'portrait', name: '竖屏', size: '1080×1920', for: '抖音、视频号、小红书', icon: Smartphone },
+  { id: 'landscape', name: '横屏', size: '1920×1080', for: 'B站、YouTube、西瓜视频', icon: Monitor }
 ]
 const platforms = [
   { id: 'douyin', name: '抖音', titleLabel: '标题', titleMax: 30, tagMax: 5, layout: 'portrait', upload: 'https://creator.douyin.com/creator-micro/content/upload', tip: '在抖音创作者中心上传，作品描述里粘贴文案。' },
