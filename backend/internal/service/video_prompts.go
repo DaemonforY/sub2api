@@ -334,7 +334,7 @@ Write plain JavaScript statements (no function wrapper, no return):
    Add other helpers the scenes will repeat (badge, stamp, big number, progress bar) when the plans need them.
 4. Begin with a comment block that lists every K member in one line each: scene designers read it first.
 
-Keep it under 220 lines, deterministic (no timers or Date; S.random only while building), class names prefixed
+Keep it under 220 lines (the character a few dozen lines of SVG, not a detailed illustration), deterministic (no timers or Date; S.random only while building), class names prefixed
 with S.id, and leave the stage mostly empty for the scenes: the backdrop must not compete with the content.`
 
 func videoKitPrompt(spec *VideoSpec, styleBrief string, silent bool, previous, instruction string) []LearnMessage {

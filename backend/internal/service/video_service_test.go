@@ -212,6 +212,7 @@ type fakeModel struct {
 	revisions     []string
 	kitBroken     bool     // answer the kit prompt without declaring K
 	kitBrokenOnce bool     // only the first kit answer is broken
+	kitLongOnce   bool     // the first kit answer hits the output limit
 	planKit       string   // the revision plan's kit instruction
 	scenes        []string // system prompts of the scene calls
 	kitAsks       []string // last user message of every kit call
@@ -273,10 +274,14 @@ func (m *fakeModel) stream(ctx context.Context, _, _ string, msgs []LearnMessage
 		}
 	}
 	m.mu.Unlock()
+	finish := ""
+	if m.kitLongOnce && strings.Contains(sys, "shared visual system") && len(m.kitAsks) == 1 {
+		finish = "length"
+	}
 	if err := onDelta(ans); err != nil {
 		return nil, err
 	}
-	return &LearnTutorResult{PromptTokens: 10, CompletionTokens: 5}, nil
+	return &LearnTutorResult{PromptTokens: 10, CompletionTokens: 5, FinishReason: finish}, nil
 }
 
 func newTestVideoService(t *testing.T, model *fakeModel) (*VideoService, *fakeVideoRepo, *fakeTTS) {
@@ -608,6 +613,12 @@ func TestVideoKitFailureFallsBack(t *testing.T) {
 	for _, sys := range model.scenes {
 		require.NotContains(t, sys, "## Shared kit")
 	}
+	events, _ := svc.Events(ctx, 7, p.ID, 0)
+	said := false
+	for _, e := range events {
+		said = said || strings.Contains(e.Text, "整片统一画风没做成")
+	}
+	require.True(t, said, "the project log says the kit failed")
 }
 
 func TestVideoBrokenKitIsFixedOnce(t *testing.T) {
@@ -621,6 +632,20 @@ func TestVideoBrokenKitIsFixedOnce(t *testing.T) {
 	require.Equal(t, goodKit, got.Spec.Common)
 	require.Len(t, model.kitAsks, 2)
 	require.Contains(t, model.kitAsks[1], "This kit does not work")
+}
+
+func TestVideoLongKitIsAskedShorter(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}, kitLongOnce: true}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Equal(t, goodKit, got.Spec.Common)
+	require.Len(t, model.kitAsks, 2)
+	require.Contains(t, model.kitAsks[1], "cut off at the output limit")
+	require.Empty(t, checkKitCode(strings.Replace(goodKit, "var K", "const K", 1)), "const K is fine too")
 }
 
 func TestVideoMotionHasNoKit(t *testing.T) {

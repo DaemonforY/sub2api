@@ -488,7 +488,8 @@ var errVideoTruncated = errLearnRunFailed("回答超过了单次输出上限被�
 
 const (
 	videoSceneMaxTokens = 32000
-	videoKitMaxTokens   = 16000
+	videoKitMaxTokens   = 32000
+	videoKitCompactNote = "\n\nIMPORTANT: a previous answer was cut off at the output limit. Write a much more compact kit: well under 200 lines, the character as one short SVG with few paths, helpers in a line or two each, no comments except the K member list."
 	videoCompactNote    = "\n\nIMPORTANT: a previous answer for this scene was cut off at the output limit. Write a much more compact version: well under 500 lines, build repeated parts with loops and small helper functions, keep SVG paths short, no comments. A complete shorter scene is better than a long unfinished one."
 )
 
@@ -779,6 +780,8 @@ func (s *VideoService) voiceAndKit(ctx context.Context, r *videoRun) error {
 	if kitErr != nil {
 		// Without a kit the scenes style themselves, as films did before kits.
 		slog.Warn("video: kit failed, scenes go without it", "id", p.ID, "err", kitErr)
+		why := strings.TrimSuffix(strings.TrimPrefix(videoErrorText(kitErr), "运行失败："), "，请稍后再试（Run failed）")
+		s.done(ctx, r, "整片统一画风没做成，各分镜各自设计画面（"+clipRunes(why, 80)+"）")
 	}
 	return nil
 }
@@ -798,7 +801,12 @@ func (s *VideoService) writeKit(ctx context.Context, r *videoRun, instruction st
 		s.step(ctx, r, "kit", "正在设计整片统一的画面风格…")
 	}
 	style := findVideoStyle(p.Options.Style)
-	answer, err := s.chat(ctx, r, videoKitPrompt(&spec, style.Brief, videoSilent(p), previous, instruction), videoKitMaxTokens)
+	ask := videoKitPrompt(&spec, style.Brief, videoSilent(p), previous, instruction)
+	answer, err := s.chat(ctx, r, ask, videoKitMaxTokens)
+	if errors.Is(err, errVideoTruncated) {
+		ask[len(ask)-1].Content += videoKitCompactNote
+		answer, err = s.chat(ctx, r, ask, videoKitMaxTokens)
+	}
 	if err != nil {
 		return err
 	}
@@ -833,7 +841,7 @@ func firstErr(errs ...error) error {
 	return nil
 }
 
-var videoKitDeclares = regexp.MustCompile(`\bvar\s+K\s*=`)
+var videoKitDeclares = regexp.MustCompile(`\b(?:var|let|const)\s+K\s*=`)
 
 // checkKitCode returns "" when the kit parses, declares K and avoids the network.
 func checkKitCode(code string) string {
