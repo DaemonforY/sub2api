@@ -44,6 +44,38 @@
             <span class="input-hint">{{ t('admin.learn.interviewsHint') }}</span>
           </label>
         </div>
+        <div class="space-y-1">
+          <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t('admin.learn.drawTitle') }}</div>
+          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('admin.learn.drawHint') }}</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.drawModel') }}</span>
+            <input v-model.trim="form.draw_model" type="text" class="input" placeholder="gpt-image-2" data-testid="learn-draw-model" />
+          </label>
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.drawQuality') }}</span>
+            <select v-model="form.draw_quality" class="input" data-testid="learn-draw-quality">
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+            <span class="input-hint">{{ t('admin.learn.drawQualityHint') }}</span>
+          </label>
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.drawFree') }}</span>
+            <input v-model.number="form.draw_free_per_day" type="number" min="0" max="50" class="input" data-testid="learn-draw-free" />
+          </label>
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.critiqueFree') }}</span>
+            <input v-model.number="form.critique_free_per_day" type="number" min="0" max="500" class="input" data-testid="learn-critique-free" />
+          </label>
+          <label class="text-sm">
+            <span class="input-label">{{ t('admin.learn.drawDailyCap') }}</span>
+            <input v-model.number="form.draw_daily_cap" type="number" min="0" class="input" data-testid="learn-draw-cap" />
+            <span class="input-hint">{{ t('admin.learn.drawDailyCapHint') }}</span>
+          </label>
+        </div>
         <button class="btn btn-primary" :disabled="saving" data-testid="learn-save" @click="save">{{ t('common.save') }}</button>
       </div>
 
@@ -172,7 +204,20 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 const { t } = useI18n()
 const appStore = useAppStore()
 
-const form = reactive<LearnSettings>({ run_enabled: false, model: '', free_runs_per_day: 20, daily_cap: 1000, tutor_free_per_day: 10, interviews_per_day: 3, api_key_set: false })
+const form = reactive<LearnSettings>({
+  run_enabled: false,
+  model: '',
+  free_runs_per_day: 20,
+  daily_cap: 1000,
+  tutor_free_per_day: 10,
+  interviews_per_day: 3,
+  draw_model: 'gpt-image-2',
+  draw_quality: 'low',
+  draw_free_per_day: 2,
+  critique_free_per_day: 10,
+  draw_daily_cap: 200,
+  api_key_set: false
+})
 const certs = ref<LearnCertificate[]>([])
 const insights = ref<LearnInsights | null>(null)
 

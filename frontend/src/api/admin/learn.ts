@@ -8,6 +8,12 @@ export interface LearnSettings {
   daily_cap: number
   tutor_free_per_day: number
   interviews_per_day: number
+  /** 学画画 practice: image model and quality for in-lesson drawings, free drawings / critiques a day, site-wide cap on free drawings. */
+  draw_model: string
+  draw_quality: 'low' | 'medium' | 'high'
+  draw_free_per_day: number
+  critique_free_per_day: number
+  draw_daily_cap: number
   api_key_set: boolean
   /** Write-only: send to replace the learning key; empty keeps it. */
   api_key?: string

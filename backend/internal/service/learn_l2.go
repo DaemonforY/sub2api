@@ -32,6 +32,7 @@ var (
 	ErrLearnTrack          = infraerrors.NotFound("LEARN_TRACK_NOT_FOUND", "学习路线不存在（Unknown track）")
 	ErrLearnCertNotReady   = infraerrors.BadRequest("LEARN_CERT_NOT_READY", "还没达到结业条件，请先完成清单里没打勾的项目（Requirements not met）")
 	ErrLearnCertName       = infraerrors.BadRequest("LEARN_CERT_NAME", "证书上的名字需要 1–20 个字，不能有特殊符号（Invalid name）")
+	ErrLearnCertClosed     = infraerrors.BadRequest("LEARN_CERT_CLOSED", "这条路线还在更新，课程全部上线后开放结业证书（Certificate not open yet）")
 	ErrLearnCertProject    = infraerrors.BadRequest("LEARN_CERT_PROJECT", "请选择你发布的网站，或填写结业项目的 https 公开链接（Choose a site or enter a project link）")
 	ErrLearnCertNotFound   = infraerrors.NotFound("LEARN_CERT_NOT_FOUND", "证书不存在或已撤销（Certificate not found）")
 	ErrLearnCertRestore    = infraerrors.Conflict("LEARN_CERT_RESTORE", "这位学员已经领了新证书，旧证书不能恢复（A newer certificate exists）")
@@ -348,6 +349,9 @@ func (s *LearnService) CertStatus(ctx context.Context, userID int64, trackID str
 	if track == nil {
 		return nil, ErrLearnTrack
 	}
+	if track.CertClosed {
+		return nil, ErrLearnCertClosed
+	}
 	out := &LearnCertStatus{Track: track.ID, Title: track.Title, Items: []LearnCertItem{}, Projects: []LearnProjectOption{}}
 	certs, err := s.repo.CertificatesByUser(ctx, userID)
 	if err != nil {
@@ -498,6 +502,26 @@ func (s *LearnService) projectItem(ctx context.Context, userID int64, track *Lea
 			title = fmt.Sprintf("「%s」模拟面试拿到 %d 分以上", s.catalog.Interviews[topics[0]].Title, learnInterviewPassScore)
 		}
 		return LearnCertItem{Kind: "project", Title: title, Done: passed == len(topics), Detail: detail}, nil
+	case "practice":
+		best, err := s.repo.BestPractice(ctx, userID)
+		if err != nil {
+			return LearnCertItem{}, err
+		}
+		ids := s.catalog.trackExercises(track)
+		passed := 0
+		var missing []string
+		for _, id := range ids {
+			if ex := s.catalog.Exercises[id]; best[id] >= ex.Pass {
+				passed++
+			} else {
+				missing = append(missing, ex.Title)
+			}
+		}
+		detail := fmt.Sprintf("已达标 %d / %d 个", passed, len(ids))
+		if len(missing) > 0 {
+			detail += "，还差：" + strings.Join(missing, "、")
+		}
+		return LearnCertItem{Kind: "project", Title: "每个课内练习的 AI 点评都达到及格分", Done: passed == len(ids), Detail: detail}, nil
 	}
 	return LearnCertItem{Kind: "project", Title: "结业项目"}, nil
 }

@@ -1,0 +1,79 @@
+{
+  "vermeer-water-pitcher": {
+    "src": "/artworks/vermeer-water-pitcher.webp",
+    "width": 1422,
+    "height": 1600,
+    "title": "持水罐的年轻女子",
+    "artist": "维米尔（荷兰）",
+    "date": "约 1662 年",
+    "original": "Johannes Vermeer, Young Woman with a Water Pitcher, ca. 1662",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437881"
+  },
+  "de-la-tour-magdalen": {
+    "src": "/artworks/de-la-tour-magdalen.webp",
+    "width": 1179,
+    "height": 1600,
+    "title": "忏悔的抹大拉",
+    "artist": "乔治·德·拉图尔（法国）",
+    "date": "约 1640 年",
+    "original": "Georges de La Tour, The Penitent Magdalen, ca. 1640",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/436839"
+  },
+  "hokusai-great-wave": {
+    "src": "/artworks/hokusai-great-wave.webp",
+    "width": 1600,
+    "height": 1076,
+    "title": "神奈川冲浪里（《富岳三十六景》）",
+    "artist": "葛饰北斋（日本）",
+    "date": "约 1830–1832 年",
+    "original": "Katsushika Hokusai, Under the Wave off Kanagawa (Kanagawa oki nami ura), also known as The Great Wave, from the series Thirty-six Views of Mount Fuji (Fugaku sanjūrokkei), ca. 1830–32",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/45434"
+  },
+  "ma-yuan-waterfall": {
+    "src": "/artworks/ma-yuan-waterfall.webp",
+    "width": 1600,
+    "height": 1409,
+    "title": "高士观瀑图",
+    "artist": "马远（南宋）",
+    "date": "13 世纪初",
+    "original": "Ma Yuan, Scholar viewing a waterfall, early 13th century",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/40086"
+  },
+  "guo-xi-level-distance": {
+    "src": "/artworks/guo-xi-level-distance.webp",
+    "width": 1600,
+    "height": 854,
+    "title": "树色平远图",
+    "artist": "郭熙（北宋）",
+    "date": "约 1080 年",
+    "original": "Guo Xi, Old Trees, Level Distance, ca. 1080",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/39668"
+  },
+  "rembrandt-self-portrait": {
+    "src": "/artworks/rembrandt-self-portrait.webp",
+    "width": 1319,
+    "height": 1600,
+    "title": "自画像",
+    "artist": "伦勃朗（荷兰）",
+    "date": "1660 年",
+    "original": "Rembrandt (Rembrandt van Rijn), Self-Portrait, 1660",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437397"
+  },
+  "vermeer-young-woman": {
+    "src": "/artworks/vermeer-young-woman.webp",
+    "width": 1429,
+    "height": 1600,
+    "title": "少女习作",
+    "artist": "维米尔（荷兰）",
+    "date": "约 1665–1667 年",
+    "original": "Johannes Vermeer, Study of a Young Woman, ca. 1665–67",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437879"
+  }
+}

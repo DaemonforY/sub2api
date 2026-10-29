@@ -25,6 +25,7 @@ type learnRepoStub struct {
 	checkpoints map[string]time.Time
 	certs       []LearnCertificate
 	interviews  []LearnInterview
+	practice    []LearnPractice
 }
 
 func newLearnRepoStub() *learnRepoStub {
@@ -189,6 +190,25 @@ func (r *learnRepoStub) BestInterviewScores(_ context.Context, userID int64) (ma
 	for _, iv := range r.interviews {
 		if iv.UserID == userID && iv.Status == learnInterviewStatusEnd && iv.Score > out[iv.Topic] {
 			out[iv.Topic] = iv.Score
+		}
+	}
+	return out, nil
+}
+
+func (r *learnRepoStub) SavePractice(_ context.Context, p LearnPractice) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.practice = append(r.practice, p)
+	return nil
+}
+
+func (r *learnRepoStub) BestPractice(_ context.Context, userID int64) (map[string]int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := map[string]int{}
+	for _, p := range r.practice {
+		if p.UserID == userID && p.Score > out[p.Exercise] {
+			out[p.Exercise] = p.Score
 		}
 	}
 	return out, nil

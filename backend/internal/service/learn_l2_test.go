@@ -98,7 +98,7 @@ func newL2Service(t *testing.T, gw string, src LearnSources) (*LearnService, *le
 	settings := mapSettings{}
 	svc := NewLearnService(repo, settings, prefixEncryptor{}, gw, src)
 	_, err := svc.SaveSettings(context.Background(), LearnSettings{RunEnabled: true, Model: "gpt-5.5", FreeRunsPerDay: 1, DailyCap: 100,
-		TutorFree: 1, InterviewsFree: 1, APIKey: "sk-learn"})
+		TutorFree: 1, InterviewsFree: 1, DrawFree: 2, CritiqueFree: 10, DrawDailyCap: 200, APIKey: "sk-learn"})
 	require.NoError(t, err)
 	return svc, repo
 }

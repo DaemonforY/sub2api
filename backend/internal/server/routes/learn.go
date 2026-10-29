@@ -25,6 +25,7 @@ func RegisterLearnRoutes(
 	v1.GET("/learn/checkpoints/:id", panelRateLimiter.PublicIP(), h.Learn.Checkpoint)
 	v1.GET("/learn/cert/:code", panelRateLimiter.PublicIP(), h.Learn.Certificate)
 	v1.GET("/learn/showcase", panelRateLimiter.PublicIP(), h.Learn.Showcase)
+	v1.GET("/learn/exercises/:id", panelRateLimiter.PublicIP(), h.Learn.Exercise)
 
 	g := v1.Group("/learn")
 	g.Use(gin.HandlerFunc(jwtAuth))
@@ -34,6 +35,8 @@ func RegisterLearnRoutes(
 		g.GET("/me", h.Learn.Me)
 		g.POST("/progress", h.Learn.Progress)
 		g.POST("/run", panelRateLimiter.Heavy(), h.Learn.Run)
+		g.POST("/draw", panelRateLimiter.Heavy(), h.Learn.Draw)
+		g.POST("/critique", panelRateLimiter.Heavy(), h.Learn.Critique)
 		g.GET("/keys", h.Learn.Keys)
 		g.POST("/quiz/:lesson", h.Learn.SubmitQuiz)
 		g.POST("/checkpoints/:id/verify", h.Learn.VerifyCheckpoint)

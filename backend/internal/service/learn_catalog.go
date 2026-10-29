@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 )
 
 // The AI 学习 catalog: what the server needs to know about the lessons on /learn. The pages
@@ -23,6 +25,8 @@ type LearnTrackDef struct {
 	// "interviews" (a passed mock interview in each of Interviews).
 	Project    string   `json:"project"`
 	Interviews []string `json:"interviews,omitempty"`
+	// CertClosed: the track is still being written, so its certificate can't be claimed yet.
+	CertClosed bool `json:"cert_closed,omitempty"`
 }
 
 type LearnCheckpointDef struct {
@@ -58,6 +62,27 @@ type LearnInterviewTopic struct {
 	Questions []LearnInterviewQuestion `json:"questions"`
 }
 
+// LearnExerciseDef is an in-lesson practice exercise (学画画): the learner draws in the page
+// (kind draw), uploads a picture (image) or writes an appreciation (text), and a model critiques it
+// against the rubric.
+type LearnExerciseDef struct {
+	Lesson string `json:"lesson"`
+	Title  string `json:"title"`
+	Kind   string `json:"kind"`
+	// Task is what the exercise asks, as the critic reads it.
+	Task   string            `json:"task"`
+	Rubric []LearnRubricItem `json:"rubric"`
+	// Pass: the total score (0–100) that passes.
+	Pass int `json:"pass"`
+}
+
+// LearnRubricItem is one thing the critic scores; the total is the weighted average.
+type LearnRubricItem struct {
+	Dim    string `json:"dim"`
+	Look   string `json:"look"`
+	Weight int    `json:"weight"`
+}
+
 type learnCatalog struct {
 	Tracks      []LearnTrackDef                `json:"tracks"`
 	Checkpoints map[string]LearnCheckpointDef  `json:"checkpoints"`
@@ -65,6 +90,7 @@ type learnCatalog struct {
 	// InterviewTopics in order (the keys of Interviews).
 	InterviewTopics []string                       `json:"interview_topics"`
 	Interviews      map[string]LearnInterviewTopic `json:"interviews"`
+	Exercises       map[string]LearnExerciseDef    `json:"exercises"`
 }
 
 func loadLearnCatalog(raw []byte) (*learnCatalog, error) {
@@ -93,7 +119,7 @@ func (c *learnCatalog) validate() error {
 			}
 		}
 		switch t.Project {
-		case "site", "works":
+		case "site", "works", "practice":
 		case "interviews":
 			if len(t.Interviews) == 0 {
 				return fmt.Errorf("learn catalog: track %s needs interview topics", t.ID)
@@ -133,6 +159,26 @@ func (c *learnCatalog) validate() error {
 			}
 		}
 	}
+	for id, ex := range c.Exercises {
+		if !seen[ex.Lesson] || !learnExerciseRe.MatchString(id) || !strings.HasPrefix(id, ex.Lesson+"-") {
+			return fmt.Errorf("learn catalog: exercise %s", id)
+		}
+		if ex.Title == "" || ex.Task == "" || ex.Pass < 1 || ex.Pass > 100 || len(ex.Rubric) < 2 || len(ex.Rubric) > 6 {
+			return fmt.Errorf("learn catalog: exercise %s fields", id)
+		}
+		switch ex.Kind {
+		case learnExerciseDraw, learnExerciseImage, learnExerciseText:
+		default:
+			return fmt.Errorf("learn catalog: exercise %s kind %q", id, ex.Kind)
+		}
+		dims := map[string]bool{}
+		for _, r := range ex.Rubric {
+			if r.Dim == "" || r.Look == "" || r.Weight < 1 || dims[r.Dim] {
+				return fmt.Errorf("learn catalog: exercise %s rubric %q", id, r.Dim)
+			}
+			dims[r.Dim] = true
+		}
+	}
 	if len(c.InterviewTopics) != len(c.Interviews) {
 		return fmt.Errorf("learn catalog: interview topics")
 	}
@@ -167,4 +213,20 @@ func mustLearnCatalog() *learnCatalog {
 		panic(err)
 	}
 	return c
+}
+
+// exercises of a track, in lesson order then by ID.
+func (c *learnCatalog) trackExercises(t *LearnTrackDef) []string {
+	var out []string
+	for _, lesson := range t.Lessons {
+		var ids []string
+		for id, ex := range c.Exercises {
+			if ex.Lesson == lesson {
+				ids = append(ids, id)
+			}
+		}
+		sort.Strings(ids)
+		out = append(out, ids...)
+	}
+	return out
 }

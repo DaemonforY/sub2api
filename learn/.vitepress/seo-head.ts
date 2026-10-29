@@ -20,6 +20,7 @@ export const SECTIONS: Record<string, string> = {
   scenes: '场景玩法',
   guide: '延伸阅读',
   bigdata: '大数据',
+  art: '学画画',
   ...Object.fromEntries(tracks.map((t) => [t.id, `${t.letter} · ${t.title}`])),
 }
 

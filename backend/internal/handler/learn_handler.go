@@ -91,6 +91,40 @@ func (h *LearnHandler) Run(c *gin.Context) {
 	learnReply(c, out, err)
 }
 
+// Exercise GET /api/v1/learn/exercises/:id (public: the task, rubric and pass mark)
+func (h *LearnHandler) Exercise(c *gin.Context) {
+	out, err := h.svc.Exercise(c.Param("id"))
+	learnReply(c, out, err)
+}
+
+// Draw POST /api/v1/learn/draw {exercise, prompt, size?, key_id?} — draw in a lesson, then the AI critique.
+func (h *LearnHandler) Draw(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	var in service.LearnDrawInput
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.Draw(c.Request.Context(), subject.UserID, in)
+	learnReply(c, out, err)
+}
+
+// Critique POST /api/v1/learn/critique {exercise, image?, text?, key_id?} — AI critique of the learner's picture or text.
+func (h *LearnHandler) Critique(c *gin.Context) {
+	subject, ok := requireAuth(c)
+	if !ok {
+		return
+	}
+	var in service.LearnCritiqueInput
+	if !bindLearn(c, &in) {
+		return
+	}
+	out, err := h.svc.Critique(c.Request.Context(), subject.UserID, in)
+	learnReply(c, out, err)
+}
+
 // Keys GET /api/v1/learn/keys — the learner's active keys, for going on past the free calls.
 func (h *LearnHandler) Keys(c *gin.Context) {
 	subject, ok := requireAuth(c)

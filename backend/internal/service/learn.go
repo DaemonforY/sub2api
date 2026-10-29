@@ -101,6 +101,11 @@ type LearnRepository interface {
 	// BestInterviewScores: the best finished score per topic.
 	BestInterviewScores(ctx context.Context, userID int64) (map[string]int, error)
 
+	// SavePractice records a critiqued exercise attempt (学画画).
+	SavePractice(ctx context.Context, p LearnPractice) error
+	// BestPractice: the learner's best score per exercise.
+	BestPractice(ctx context.Context, userID int64) (map[string]int, error)
+
 	// SetShowcase shows / hides the learner's live certificate of a track on the wall.
 	SetShowcase(ctx context.Context, userID int64, track string, on bool) error
 	SetShowcaseHidden(ctx context.Context, code string, hidden bool) error
@@ -126,8 +131,15 @@ type LearnSettings struct {
 	DailyCap       int    `json:"daily_cap"`
 	TutorFree      int    `json:"tutor_free_per_day"`
 	InterviewsFree int    `json:"interviews_per_day"`
-	APIKeySet      bool   `json:"api_key_set"`
-	APIKey         string `json:"api_key,omitempty"`
+	// 学画画 practice: the image model and quality for drawings, free drawings and critiques a day,
+	// and a site-wide cap on free drawings a day.
+	DrawModel    string `json:"draw_model"`
+	DrawQuality  string `json:"draw_quality"`
+	DrawFree     int    `json:"draw_free_per_day"`
+	CritiqueFree int    `json:"critique_free_per_day"`
+	DrawDailyCap int    `json:"draw_daily_cap"`
+	APIKeySet    bool   `json:"api_key_set"`
+	APIKey       string `json:"api_key,omitempty"`
 	// ClearAPIKey removes the stored learning key (own-key-only mode: learners always use their own keys).
 	ClearAPIKey bool `json:"clear_api_key,omitempty"`
 }
@@ -138,6 +150,8 @@ type LearnConfig struct {
 	FreeRunsPerDay int    `json:"free_runs_per_day"`
 	TutorFree      int    `json:"tutor_free_per_day"`
 	InterviewsFree int    `json:"interviews_per_day"`
+	DrawFree       int    `json:"draw_free_per_day"`
+	CritiqueFree   int    `json:"critique_free_per_day"`
 	Model          string `json:"model"`
 	// OwnKeyOnly: no site learning key, so every run uses one of the learner's own keys.
 	OwnKeyOnly bool `json:"own_key_only"`
@@ -156,6 +170,10 @@ type LearnMe struct {
 	RunsToday       int `json:"runs_today"`
 	TutorToday      int `json:"tutor_today"`
 	InterviewsToday int `json:"interviews_today"`
+	// 学画画: free drawings / critiques left today, and the best score per exercise.
+	DrawsLeft     int            `json:"draws_left"`
+	CritiquesLeft int            `json:"critiques_left"`
+	Practice      map[string]int `json:"practice"`
 }
 
 // LearnMessage is one chat message of an example (assistant tool calls and tool results too).
@@ -234,6 +252,7 @@ type LearnService struct {
 	encryptor  SecretEncryptor
 	gatewayURL string
 	client     *http.Client
+	drawClient *http.Client
 	now        func() time.Time
 	catalog    *learnCatalog
 	sources    LearnSources
@@ -245,7 +264,7 @@ type LearnService struct {
 // NewLearnService: gatewayURL is this server's own base URL (e.g. http://127.0.0.1:8080).
 func NewLearnService(repo LearnRepository, settings learnSettingStore, encryptor SecretEncryptor, gatewayURL string, sources LearnSources) *LearnService {
 	return &LearnService{repo: repo, settings: settings, encryptor: encryptor, gatewayURL: strings.TrimRight(gatewayURL, "/"),
-		client: &http.Client{Timeout: learnRunTimeout}, now: time.Now, catalog: mustLearnCatalog(), sources: sources}
+		client: &http.Client{Timeout: learnRunTimeout}, drawClient: &http.Client{Timeout: learnDrawTimeout}, now: time.Now, catalog: mustLearnCatalog(), sources: sources}
 }
 
 // SetLessonText gives the tutor the lesson pages (set once the built site is loaded).
@@ -259,11 +278,13 @@ func learnDayStart(t time.Time) time.Time {
 }
 
 func (s *LearnService) loadSettings(ctx context.Context) (LearnSettings, string) {
-	out := LearnSettings{FreeRunsPerDay: learnDefaultFreeRuns, DailyCap: learnDefaultDailyCap, TutorFree: learnDefaultTutorFree, InterviewsFree: learnDefaultIntervws}
+	out := LearnSettings{FreeRunsPerDay: learnDefaultFreeRuns, DailyCap: learnDefaultDailyCap, TutorFree: learnDefaultTutorFree, InterviewsFree: learnDefaultIntervws,
+		DrawModel: learnDefaultDrawModel, DrawQuality: learnDefaultDrawQuality, DrawFree: learnDefaultDrawFree, CritiqueFree: learnDefaultCritiqueFree, DrawDailyCap: learnDefaultDrawCap}
 	if s.settings == nil {
 		return out, ""
 	}
-	values, err := s.settings.GetMultiple(ctx, []string{settingLearnRunEnabled, settingLearnRunModel, settingLearnFreeRuns, settingLearnDailyCap, settingLearnAPIKey, settingLearnTutorFree, settingLearnInterviews})
+	values, err := s.settings.GetMultiple(ctx, []string{settingLearnRunEnabled, settingLearnRunModel, settingLearnFreeRuns, settingLearnDailyCap, settingLearnAPIKey, settingLearnTutorFree, settingLearnInterviews,
+		settingLearnDrawModel, settingLearnDrawQuality, settingLearnDrawFree, settingLearnCritiqueFree, settingLearnDrawCap})
 	if err != nil {
 		return out, ""
 	}
@@ -281,6 +302,21 @@ func (s *LearnService) loadSettings(ctx context.Context) (LearnSettings, string)
 	if n, err := strconv.Atoi(values[settingLearnInterviews]); err == nil && n >= 0 {
 		out.InterviewsFree = n
 	}
+	if m := strings.TrimSpace(values[settingLearnDrawModel]); m != "" {
+		out.DrawModel = m
+	}
+	if q := values[settingLearnDrawQuality]; learnDrawQualities[q] {
+		out.DrawQuality = q
+	}
+	if n, err := strconv.Atoi(values[settingLearnDrawFree]); err == nil && n >= 0 {
+		out.DrawFree = n
+	}
+	if n, err := strconv.Atoi(values[settingLearnCritiqueFree]); err == nil && n >= 0 {
+		out.CritiqueFree = n
+	}
+	if n, err := strconv.Atoi(values[settingLearnDrawCap]); err == nil && n >= 0 {
+		out.DrawDailyCap = n
+	}
 	key := ""
 	if enc := values[settingLearnAPIKey]; enc != "" && s.encryptor != nil {
 		if plain, err := s.encryptor.Decrypt(enc); err == nil {
@@ -295,7 +331,7 @@ func (s *LearnService) loadSettings(ctx context.Context) (LearnSettings, string)
 // Without one, every call runs on the learner's own key (own-key-only mode), so nothing is free.
 func freeOnSiteKey(st LearnSettings, siteKey string) LearnSettings {
 	if siteKey == "" {
-		st.FreeRunsPerDay, st.TutorFree, st.InterviewsFree = 0, 0, 0
+		st.FreeRunsPerDay, st.TutorFree, st.InterviewsFree, st.DrawFree, st.CritiqueFree = 0, 0, 0, 0, 0
 	}
 	return st
 }
@@ -309,7 +345,8 @@ func (s *LearnService) Settings(ctx context.Context) LearnSettings {
 // SaveSettings stores the run settings; an empty APIKey keeps the stored one.
 func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (LearnSettings, error) {
 	if in.FreeRunsPerDay < 0 || in.FreeRunsPerDay > 500 || in.DailyCap < 0 || in.DailyCap > 100000 ||
-		in.TutorFree < 0 || in.TutorFree > 500 || in.InterviewsFree < 0 || in.InterviewsFree > 50 {
+		in.TutorFree < 0 || in.TutorFree > 500 || in.InterviewsFree < 0 || in.InterviewsFree > 50 ||
+		in.DrawFree < 0 || in.DrawFree > 50 || in.CritiqueFree < 0 || in.CritiqueFree > 500 || in.DrawDailyCap < 0 || in.DrawDailyCap > 100000 {
 		return LearnSettings{}, errLearnRunInvalid("次数超出范围")
 	}
 	model := strings.TrimSpace(in.Model)
@@ -319,13 +356,32 @@ func (s *LearnService) SaveSettings(ctx context.Context, in LearnSettings) (Lear
 	if in.RunEnabled && model == "" {
 		return LearnSettings{}, errLearnRunInvalid("开启前请填写模型")
 	}
+	drawModel := strings.TrimSpace(in.DrawModel)
+	if drawModel == "" {
+		drawModel = learnDefaultDrawModel
+	}
+	if len(drawModel) > 100 {
+		return LearnSettings{}, errLearnRunInvalid("生图模型名太长")
+	}
+	quality := in.DrawQuality
+	if quality == "" {
+		quality = learnDefaultDrawQuality
+	}
+	if !learnDrawQualities[quality] {
+		return LearnSettings{}, errLearnRunInvalid("生图质量只能是 low、medium 或 high")
+	}
 	values := map[string]string{
-		settingLearnRunEnabled: strconv.FormatBool(in.RunEnabled),
-		settingLearnRunModel:   model,
-		settingLearnFreeRuns:   strconv.Itoa(in.FreeRunsPerDay),
-		settingLearnDailyCap:   strconv.Itoa(in.DailyCap),
-		settingLearnTutorFree:  strconv.Itoa(in.TutorFree),
-		settingLearnInterviews: strconv.Itoa(in.InterviewsFree),
+		settingLearnRunEnabled:   strconv.FormatBool(in.RunEnabled),
+		settingLearnRunModel:     model,
+		settingLearnFreeRuns:     strconv.Itoa(in.FreeRunsPerDay),
+		settingLearnDailyCap:     strconv.Itoa(in.DailyCap),
+		settingLearnTutorFree:    strconv.Itoa(in.TutorFree),
+		settingLearnInterviews:   strconv.Itoa(in.InterviewsFree),
+		settingLearnDrawModel:    drawModel,
+		settingLearnDrawQuality:  quality,
+		settingLearnDrawFree:     strconv.Itoa(in.DrawFree),
+		settingLearnCritiqueFree: strconv.Itoa(in.CritiqueFree),
+		settingLearnDrawCap:      strconv.Itoa(in.DrawDailyCap),
 	}
 	if in.ClearAPIKey {
 		values[settingLearnAPIKey] = ""
@@ -353,7 +409,8 @@ func (s *LearnService) Config(ctx context.Context) LearnConfig {
 	st, key := s.loadSettings(ctx)
 	st = freeOnSiteKey(st, key)
 	return LearnConfig{RunEnabled: st.RunEnabled && st.Model != "", FreeRunsPerDay: st.FreeRunsPerDay,
-		TutorFree: st.TutorFree, InterviewsFree: st.InterviewsFree, Model: st.Model, OwnKeyOnly: key == ""}
+		TutorFree: st.TutorFree, InterviewsFree: st.InterviewsFree, DrawFree: st.DrawFree, CritiqueFree: st.CritiqueFree,
+		Model: st.Model, OwnKeyOnly: key == ""}
 }
 
 // Me: progress, quiz results, checkpoints, certificates and what is left free today.
@@ -393,6 +450,19 @@ func (s *LearnService) Me(ctx context.Context, userID int64) (*LearnMe, error) {
 	if out.InterviewsToday, err = s.repo.CountInterviews(ctx, userID, since); err != nil {
 		return nil, err
 	}
+	draws, err := s.repo.CountRuns(ctx, userID, learnKindDraw, since)
+	if err != nil {
+		return nil, err
+	}
+	critiques, err := s.repo.CountRuns(ctx, userID, learnKindCritique, since)
+	if err != nil {
+		return nil, err
+	}
+	if out.Practice, err = s.repo.BestPractice(ctx, userID); err != nil {
+		return nil, err
+	}
+	out.DrawsLeft = max(st.DrawFree-draws, 0)
+	out.CritiquesLeft = max(st.CritiqueFree-critiques, 0)
 	out.RunsLeft = max(st.FreeRunsPerDay-out.RunsToday, 0)
 	out.TutorLeft = max(st.TutorFree-out.TutorToday, 0)
 	out.InterviewsLeft = max(st.InterviewsFree-out.InterviewsToday, 0)
@@ -604,10 +674,14 @@ func (s *LearnService) Run(ctx context.Context, userID int64, in LearnRunInput) 
 }
 
 func (s *LearnService) callGateway(ctx context.Context, key, model string, in LearnRunInput) (*LearnRunResult, error) {
+	return s.callGatewayMax(ctx, key, model, in, learnMaxOutputTokens)
+}
+
+func (s *LearnService) callGatewayMax(ctx context.Context, key, model string, in LearnRunInput, maxTokens int) (*LearnRunResult, error) {
 	body := map[string]any{
 		"model":                 model,
 		"messages":              in.Messages,
-		"max_completion_tokens": learnMaxOutputTokens,
+		"max_completion_tokens": maxTokens,
 		"stream":                false,
 	}
 	if len(in.ResponseFormat) > 0 {

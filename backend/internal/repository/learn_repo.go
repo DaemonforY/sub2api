@@ -469,3 +469,33 @@ FROM learn_quiz_results GROUP BY lesson_id`)
 	}
 	return out, rows.Err()
 }
+
+func (r *learnRepository) SavePractice(ctx context.Context, p service.LearnPractice) error {
+	items, err := json.Marshal(p.Items)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.ExecContext(ctx, `
+INSERT INTO learn_practice (user_id, lesson_id, exercise_id, kind, prompt, score, items, key_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, 0))`,
+		p.UserID, p.Lesson, p.Exercise, p.Kind, p.Prompt, p.Score, items, p.KeyID)
+	return err
+}
+
+func (r *learnRepository) BestPractice(ctx context.Context, userID int64) (map[string]int, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT exercise_id, MAX(score) FROM learn_practice WHERE user_id = $1 GROUP BY exercise_id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var score int
+		if err := rows.Scan(&id, &score); err != nil {
+			return nil, err
+		}
+		out[id] = score
+	}
+	return out, rows.Err()
+}

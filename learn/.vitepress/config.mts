@@ -54,8 +54,10 @@ export default defineConfig({
       {
         text: '学习路线',
         activeMatch: '^/[a-dh]/',
-        items: tracks.filter((t) => !t.link).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
+        // 学画画 tracks have their own nav entry.
+        items: tracks.filter((t) => t.ready && !t.link && !['i', 'j', 'k'].includes(t.id)).map((t) => ({ text: `${t.letter} · ${t.title}`, link: `/${t.id}/`, activeMatch: `^/${t.id}/` })),
       },
+      { text: '学画画', link: '/art/', activeMatch: '^/(art|i|j)/' },
       { text: '场景玩法', link: '/scenes/', activeMatch: '^/scenes/' },
       { text: '生图提示词', link: '/prompts/', activeMatch: '^/prompts/' },
       { text: '接入教程', link: '/connect/', activeMatch: '^/connect/' },
@@ -80,6 +82,18 @@ export default defineConfig({
       '/c/': trackSidebar('c'),
       '/d/': trackSidebar('d'),
       '/h/': trackSidebar('h'),
+      '/i/': trackSidebar('i'),
+      '/j/': trackSidebar('j'),
+      '/art/': [
+        {
+          text: '学画画 · 从 0 到 1',
+          items: [
+            { text: '总览', link: '/art/' },
+            { text: 'I · 视觉基本功', link: '/i/' },
+            { text: 'J · 题材实战', link: '/j/' },
+          ],
+        },
+      ],
       '/bigdata/': [
         { text: '大数据', items: [{ text: '概览', link: '/bigdata/' }] },
         ...bigdataSidebar,

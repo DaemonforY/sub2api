@@ -15,6 +15,11 @@ import Showcase from './components/Showcase.vue'
 import CampusPerks from './components/CampusPerks.vue'
 import BigdataHub from './components/BigdataHub.vue'
 import KnowledgeGraph from './components/KnowledgeGraph.vue'
+import ArtViewer from './components/ArtViewer.vue'
+import CompareGrid from './components/CompareGrid.vue'
+import EyeQuiz from './components/EyeQuiz.vue'
+import DrawBox from './components/DrawBox.vue'
+import CritiqueBox from './components/CritiqueBox.vue'
 import { initAnalytics, trackPageView } from './analytics'
 import './style.css'
 import './heroui.css'
@@ -66,5 +71,10 @@ export default {
     app.component('Showcase', Showcase)
     app.component('CampusPerks', CampusPerks)
     app.component('BigdataHub', BigdataHub)
+    app.component('ArtViewer', ArtViewer)
+    app.component('CompareGrid', CompareGrid)
+    app.component('EyeQuiz', EyeQuiz)
+    app.component('DrawBox', DrawBox)
+    app.component('CritiqueBox', CritiqueBox)
   },
 } satisfies Theme

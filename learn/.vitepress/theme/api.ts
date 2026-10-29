@@ -100,6 +100,9 @@ interface MeResponse {
   quizzes: Record<string, QuizResult>
   checkpoints: Record<string, string>
   certificates: Certificate[]
+  draws_left?: number
+  critiques_left?: number
+  practice?: Record<string, number>
 }
 
 export const progress = reactive<{
@@ -111,6 +114,10 @@ export const progress = reactive<{
   quizzes: Record<string, QuizResult>
   checkpoints: Record<string, string>
   certificates: Certificate[]
+  drawsLeft: number | null
+  critiquesLeft: number | null
+  /** Best AI critique score per practice exercise (学画画). */
+  practice: Record<string, number>
 }>({
   completed: {},
   loaded: false,
@@ -120,6 +127,9 @@ export const progress = reactive<{
   quizzes: {},
   checkpoints: {},
   certificates: [],
+  drawsLeft: null,
+  critiquesLeft: null,
+  practice: {},
 })
 
 function readLocal(): Record<string, string> {
@@ -144,6 +154,9 @@ function applyMe(me: MeResponse) {
   progress.quizzes = me.quizzes || {}
   progress.checkpoints = me.checkpoints || {}
   progress.certificates = me.certificates || []
+  progress.drawsLeft = me.draws_left ?? null
+  progress.critiquesLeft = me.critiques_left ?? null
+  progress.practice = me.practice || {}
 }
 
 /** Reloads the signed-in learner's state (after a quiz, a checkpoint, a certificate). */
@@ -221,6 +234,8 @@ export interface LearnConfig {
   free_runs_per_day: number
   tutor_free_per_day: number
   interviews_per_day: number
+  draw_free_per_day?: number
+  critique_free_per_day?: number
   model: string
   /** No site learning key: every run, tutor question and interview uses the learner's own key. */
   own_key_only?: boolean
@@ -292,7 +307,81 @@ export function listOwnKeys(): Promise<KeyOption[]> {
 }
 
 /** Reasons meaning the free calls are used up (the learner may go on with their own key). */
-export const QUOTA_REASONS = ['LEARN_RUN_QUOTA', 'LEARN_TUTOR_QUOTA', 'LEARN_INTERVIEW_QUOTA', 'LEARN_OWN_KEY_REQUIRED']
+export const QUOTA_REASONS = [
+  'LEARN_RUN_QUOTA',
+  'LEARN_TUTOR_QUOTA',
+  'LEARN_INTERVIEW_QUOTA',
+  'LEARN_OWN_KEY_REQUIRED',
+  'LEARN_DRAW_QUOTA',
+  'LEARN_DRAW_BUSY',
+  'LEARN_CRITIQUE_QUOTA',
+]
+
+// --- 学画画 practice: drawing in a lesson and AI critiques -------------------------------------
+
+export interface RubricItem {
+  dim: string
+  look: string
+  weight: number
+}
+
+export interface ExerciseView {
+  id: string
+  lesson: string
+  title: string
+  kind: 'draw' | 'image' | 'text'
+  task: string
+  rubric: RubricItem[]
+  pass: number
+}
+
+export interface Critique {
+  score: number
+  pass: number
+  passed: boolean
+  items: { dim: string; score: number; note: string }[]
+  praise: string
+  suggestion: string
+  revised_prompt?: string
+}
+
+export interface DrawResult {
+  image: string
+  critique?: Critique
+  critique_error?: string
+  draws_left: number
+  own_key?: boolean
+  latency_ms: number
+}
+
+const exercisePromises: Record<string, Promise<ExerciseView | null>> = {}
+export function exerciseInfo(id: string): Promise<ExerciseView | null> {
+  exercisePromises[id] ||= api<ExerciseView>(`/learn/exercises/${id}`).catch(() => null)
+  return exercisePromises[id]
+}
+
+function notePractice(exercise: string, c?: Critique) {
+  if (c && c.score > (progress.practice[exercise] || 0)) progress.practice = { ...progress.practice, [exercise]: c.score }
+}
+
+export async function drawExercise(exercise: string, prompt: string, size: string): Promise<DrawResult> {
+  const keyId = keyFor(progress.drawsLeft)
+  const res = await api<DrawResult>('/learn/draw', { method: 'POST', body: JSON.stringify({ exercise, prompt, size, key_id: keyId || undefined }) })
+  if (!res.own_key) progress.drawsLeft = res.draws_left
+  notePractice(exercise, res.critique)
+  return res
+}
+
+export async function critiqueExercise(exercise: string, input: { image?: string; text?: string }): Promise<Critique> {
+  const keyId = keyFor(progress.critiquesLeft)
+  const res = await api<{ critique: Critique; critiques_left: number; own_key?: boolean }>('/learn/critique', {
+    method: 'POST',
+    body: JSON.stringify({ exercise, ...input, key_id: keyId || undefined }),
+  })
+  if (!res.own_key) progress.critiquesLeft = res.critiques_left
+  notePractice(exercise, res.critique)
+  return res.critique
+}
 
 // --- Quizzes, checkpoints, certificates -------------------------------------------------------
 

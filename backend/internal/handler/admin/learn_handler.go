@@ -22,9 +22,11 @@ func (h *LearnHandler) Settings(c *gin.Context) {
 	response.Success(c, h.svc.Settings(c.Request.Context()))
 }
 
-// SaveSettings PUT /api/v1/admin/learn/settings {run_enabled, model, free_runs_per_day, daily_cap, api_key?}
+// SaveSettings PUT /api/v1/admin/learn/settings {run_enabled, model, free_runs_per_day, daily_cap, api_key?, draw_*?}
+// Fields left out keep their stored values (an admin page from before a field existed doesn't reset it).
 func (h *LearnHandler) SaveSettings(c *gin.Context) {
-	var in service.LearnSettings
+	in := h.svc.Settings(c.Request.Context())
+	in.APIKey, in.ClearAPIKey = "", false
 	if err := c.ShouldBindJSON(&in); err != nil {
 		response.BadRequest(c, "参数格式不正确")
 		return

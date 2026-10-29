@@ -33,18 +33,21 @@ const resume = computed(() => {
 })
 
 const BIGDATA = new Set(['e', 'f', 'g'])
+const ART = new Set(['i', 'j', 'k'])
 const tabs = [
   { id: 'all', label: '全部' },
   { id: 'ai', label: 'AI 应用' },
+  { id: 'art', label: '学画画' },
   { id: 'bigdata', label: '大数据' },
 ]
 const tab = ref('all')
-const shown = computed(() =>
-  tracks.filter((t) => tab.value === 'all' || (tab.value === 'bigdata') === BIGDATA.has(t.id)),
-)
+const groupOf = (id: string) => (BIGDATA.has(id) ? 'bigdata' : ART.has(id) ? 'art' : 'ai')
+const shown = computed(() => tracks.filter((t) => tab.value === 'all' || groupOf(t.id) === tab.value))
 
-const lessonCount = tracks.reduce((n, t) => n + t.lessons.length, 0)
-const hours = Math.round(tracks.reduce((n, t) => n + t.lessons.reduce((m, l) => m + l.minutes, 0), 0) / 60)
+// Counts only lessons that are online (学画画 lists the coming ones too).
+const readyLessons = tracks.flatMap((t) => t.lessons.filter((l) => l.ready))
+const lessonCount = readyLessons.length
+const hours = Math.round(readyLessons.reduce((m, l) => m + l.minutes, 0) / 60)
 const totalMinutes = (t: Track) => t.lessons.reduce((n, l) => n + l.minutes, 0)
 const pct = (t: Track) => Math.round((doneIn(t) / t.lessons.length) * 100)
 
@@ -175,6 +178,7 @@ const more = [
             </div>
             <span v-if="!t.ready" class="hu-chip">即将上线</span>
             <span v-else-if="pct(t) === 100" class="hu-chip hu-chip-success">已学完</span>
+            <span v-else-if="ART.has(t.id)" class="hu-chip hu-chip-primary">新 · 更新中</span>
             <span v-else-if="t.id === 'h'" class="hu-chip hu-chip-primary">新</span>
           </div>
           <p class="hu-track-text">{{ t.tagline }}</p>

@@ -207,6 +207,38 @@ func TestLearnRepositoryL3(t *testing.T) {
 	require.GreaterOrEqual(t, quiz["c1"].Passed, 1)
 }
 
+func TestLearnRepositoryPractice(t *testing.T) {
+	ctx := context.Background()
+	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	u1 := mustCreateUser(t, integrationEntClient, &service.User{Email: "lnp-1-" + suffix + "@test.local", Username: "lp1" + suffix[len(suffix)-6:]})
+	u2 := mustCreateUser(t, integrationEntClient, &service.User{Email: "lnp-2-" + suffix + "@test.local", Username: "lp2" + suffix[len(suffix)-6:]})
+	repo := NewLearnRepository(integrationDB)
+
+	items := []service.LearnCritiqueItem{{Dim: "光的方向", Score: 90, Note: "左侧受光"}}
+	require.NoError(t, repo.SavePractice(ctx, service.LearnPractice{UserID: u1.ID, Lesson: "i3", Exercise: "i3-side-light", Kind: "draw", Prompt: "茶壶", Score: 62, Items: items}))
+	require.NoError(t, repo.SavePractice(ctx, service.LearnPractice{UserID: u1.ID, Lesson: "i3", Exercise: "i3-side-light", Kind: "draw", Prompt: "茶壶，侧光", Score: 81, Items: items, KeyID: 0}))
+	require.NoError(t, repo.SavePractice(ctx, service.LearnPractice{UserID: u1.ID, Lesson: "i5", Exercise: "i5-photo", Kind: "image", Score: 55}))
+	require.NoError(t, repo.SavePractice(ctx, service.LearnPractice{UserID: u2.ID, Lesson: "i3", Exercise: "i3-side-light", Kind: "draw", Score: 99}))
+
+	best, err := repo.BestPractice(ctx, u1.ID)
+	require.NoError(t, err)
+	require.Equal(t, map[string]int{"i3-side-light": 81, "i5-photo": 55}, best)
+	var stored string
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT items::text FROM learn_practice WHERE user_id = $1 AND score = 81`, u1.ID).Scan(&stored))
+	require.JSONEq(t, `[{"dim":"光的方向","score":90,"note":"左侧受光"}]`, stored)
+
+	// Draws and critiques are counted per kind for the free allowance.
+	run, err := repo.StartRun(ctx, u1.ID, "i3", "draw", 0)
+	require.NoError(t, err)
+	require.NoError(t, repo.FinishRun(ctx, run, "ok", 30000, 5000, 300))
+	n, err := repo.CountRuns(ctx, u1.ID, "draw", time.Now().Add(-time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, 1, n)
+	n, err = repo.CountRuns(ctx, u1.ID, "critique", time.Now().Add(-time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, 0, n)
+}
+
 func codesOf(certs []service.LearnCertificate) []string {
 	out := make([]string, 0, len(certs))
 	for _, c := range certs {
