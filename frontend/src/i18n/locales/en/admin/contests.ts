@@ -25,6 +25,10 @@ export default {
       manage: 'Entries and prizes',
       summary: 'While running, each month\'s contest is published from the template {lead} days before the 1st: entries and votes open on the 1st, entries close at the end of day {day}, and votes close at {time} on the last day, when the contest is settled. Prizes are still granted under "Entries and prizes".',
       window: 'Entries {start} – {submissionEnd} · votes close {votingEnd}',
+      remindSummary: 'The ops alert recipients get an email {n} days before publishing, and another once it is published.',
+      remindOff: 'No reminder email before publishing.',
+      remindsAt: 'reminder email at {time}',
+      reminded: 'reminder email sent',
       createsAt: 'Publishes at {time}',
       startConfirm: 'Contests will be published from the template. If next month is already inside the lead time, it is published now. Start?',
       stopConfirm: 'No new months will be created. Published contests carry on; cancel them in the list below if needed. Stop?',
@@ -48,6 +52,8 @@ export default {
         submissionEndDay: 'Entries close on day (1–28)',
         votingEndTime: 'Votes close at (last day of the month)',
         leadDays: 'Publish days ahead (0–10)',
+        remindDays: 'Email reminder days ahead (0 = off)',
+        remindHint: 'Reminders go to the email recipients under Ops monitoring → alert settings, with the month\'s dates, rules and prize. Edit the template or stop the schedule before publishing to change them.',
         scheduleHint: 'Entries and votes open at 0:00 on the 1st (China time). Before that the contest shows as "Coming soon", so it can be promoted early.',
         saveHint: 'Template changes apply to months published later. Edit already published contests in the list below.'
       }

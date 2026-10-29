@@ -23,13 +23,13 @@ const stubs = {
 }
 
 const template = {
-  title_template: '{month} 月 AI 画图赛', description: '', rules: '', cover_image: '', submission_end_day: 22, voting_end_time: '20:00', lead_days: 3,
+  title_template: '{month} 月 AI 画图赛', description: '', rules: '', cover_image: '', submission_end_day: 22, voting_end_time: '20:00', lead_days: 3, remind_days: 1,
   max_entries_per_user: 3, votes_per_user: 5, allow_self_vote: false, require_review: true, min_account_age_hours: 0, one_prize_per_user: true,
   min_votes_for_prize: 5, prizes: [{ rank_from: 1, rank_to: 1, type: 'custom', amount: 0, label: '¥120 月度订阅（1 个月）' }]
 }
 const month = (period: string, status: string, extra = {}) => ({
   period, title: `${period} 赛`, submission_start_at: '2026-11-01T00:00:00+08:00', submission_end_at: '2026-11-23T00:00:00+08:00',
-  voting_end_at: '2026-11-30T20:00:00+08:00', create_at: '2026-10-29T00:00:00+08:00', status, ...extra
+  voting_end_at: '2026-11-30T20:00:00+08:00', create_at: '2026-10-29T00:00:00+08:00', remind_at: '2026-10-28T00:00:00+08:00', reminded: false, status, ...extra
 })
 
 describe('ContestAutoCard', () => {
@@ -57,6 +57,7 @@ describe('ContestAutoCard', () => {
     saveAuto.mockResolvedValue({ enabled: false, template, months: [month('2026-11', 'created', { contest_id: 8 }), month('2026-12', 'paused')] })
     const wrapper = mount(ContestAutoCard, { global: { stubs } })
     await flushPromises()
+    expect(wrapper.get('[data-testid="contest-auto-remind"]').text()).toContain('admin.contests.auto.remindsAt')
     await wrapper.get('[data-testid="contest-auto-toggle"]').trigger('click')
     await wrapper.get('[data-testid="confirm"]').trigger('click')
     await flushPromises()

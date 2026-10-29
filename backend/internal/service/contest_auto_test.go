@@ -91,3 +91,31 @@ func TestContestCoverOrDefault(t *testing.T) {
 	require.Equal(t, "/x.png", ContestCoverOrDefault(&Contest{AutoPeriod: "2026-11", CoverImage: "/x.png"}))
 	require.Equal(t, "", ContestCoverOrDefault(&Contest{}))
 }
+
+func TestContestAutoReminder(t *testing.T) {
+	tpl := DefaultContestAutoTemplate() // published 3 days before the 1st, reminder 1 day before that
+	dec, err := BuildAutoContest(tpl, 2026, time.December)
+	require.NoError(t, err)
+	require.False(t, contestAutoRemindDue(dec, tpl, "2026-11", "", cst(2026, 11, 26, 23, 59)))
+	require.True(t, contestAutoRemindDue(dec, tpl, "2026-11", "", cst(2026, 11, 27, 0, 0)))
+	require.False(t, contestAutoRemindDue(dec, tpl, "2026-11", "2026-12", cst(2026, 11, 27, 9, 0)), "once per month")
+	require.False(t, contestAutoRemindDue(dec, tpl, "2026-11", "", cst(2026, 11, 28, 0, 0)), "publishing time reached")
+	require.False(t, contestAutoRemindDue(dec, tpl, "2026-12", "", cst(2026, 11, 27, 9, 0)), "already created")
+	off := tpl
+	off.RemindDays = 0
+	require.False(t, contestAutoRemindDue(dec, off, "2026-11", "", cst(2026, 11, 27, 9, 0)))
+
+	m := contestAutoReminderMail(dec, tpl, "https://hivegpt.cn")
+	require.Equal(t, "[比赛] 12 月 AI 画图赛 将于 2026-11-28 00:00 自动发布", m.Subject)
+	require.Contains(t, m.Body, "2026-12-22 23:59")
+	require.Contains(t, m.Body, "¥120 月度订阅（1 个月）")
+	require.Contains(t, m.Body, `href="https://hivegpt.cn/admin/contests"`)
+	dec.ID = 9
+	p := contestAutoPublishedMail(dec, "")
+	require.Equal(t, "[比赛] 12 月 AI 画图赛 已自动发布", p.Subject)
+	require.Contains(t, p.Body, `href="/contests/9"`)
+
+	bad := DefaultContestAutoTemplate()
+	bad.RemindDays = 8
+	require.Error(t, NormalizeContestAutoTemplate(&bad))
+}

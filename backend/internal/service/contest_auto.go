@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"html"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +44,7 @@ type ContestAutoTemplate struct {
 	SubmissionEndDay   int            `json:"submission_end_day"` // submissions close at the end of this day (1–28)
 	VotingEndTime      string         `json:"voting_end_time"`    // "20:00" on the month's last day
 	LeadDays           int            `json:"lead_days"`          // published this many days before the 1st (0–10)
+	RemindDays         int            `json:"remind_days"`        // email the ops recipients this many days before publishing (0 = off, 1–7)
 	MaxEntriesPerUser  int            `json:"max_entries_per_user"`
 	VotesPerUser       int            `json:"votes_per_user"`
 	AllowSelfVote      bool           `json:"allow_self_vote"`
@@ -57,8 +60,10 @@ type ContestAutoState struct {
 	Enabled    bool
 	Template   ContestAutoTemplate
 	LastPeriod string
-	UpdatedBy  *int64
-	UpdatedAt  time.Time
+	// RemindedPeriod is the last month whose reminder email went out.
+	RemindedPeriod string
+	UpdatedBy      *int64
+	UpdatedAt      time.Time
 }
 
 // ContestAutoMonth is how one month stands, for the admin page.
@@ -69,6 +74,9 @@ type ContestAutoMonth struct {
 	SubmissionEndAt   time.Time `json:"submission_end_at"`
 	VotingEndAt       time.Time `json:"voting_end_at"`
 	CreateAt          time.Time `json:"create_at"`
+	// RemindAt is when the reminder email goes out (zero when reminders are off); Reminded once sent.
+	RemindAt *time.Time `json:"remind_at,omitempty"`
+	Reminded bool       `json:"reminded"`
 	// Status: created / scheduled (on, waiting for CreateAt) / paused (switch off) /
 	// missed (submissions already closed, never created) / skipped (created before, then cancelled or deleted).
 	Status    string `json:"status"`
@@ -96,6 +104,7 @@ func DefaultContestAutoTemplate() ContestAutoTemplate {
 		SubmissionEndDay:   22,
 		VotingEndTime:      "20:00",
 		LeadDays:           3,
+		RemindDays:         1,
 		MaxEntriesPerUser:  3,
 		VotesPerUser:       5,
 		RequireReview:      true,
@@ -163,6 +172,9 @@ func NormalizeContestAutoTemplate(t *ContestAutoTemplate) error {
 	}
 	if t.LeadDays < 0 || t.LeadDays > 10 {
 		return contestInvalid("提前发布天数应在 0–10 之间")
+	}
+	if t.RemindDays < 0 || t.RemindDays > 7 {
+		return contestInvalid("提前提醒天数应在 0–7 之间（0 表示不提醒）")
 	}
 	c, err := BuildAutoContest(*t, 2026, time.February) // the shortest month catches day-range mistakes
 	if err != nil {
@@ -233,6 +245,11 @@ func (s *ContestService) GetAutoSettings(ctx context.Context) (*ContestAutoSetti
 			SubmissionStartAt: c.SubmissionStartAt, SubmissionEndAt: c.SubmissionEndAt, VotingEndAt: c.VotingEndAt,
 			CreateAt: c.SubmissionStartAt.AddDate(0, 0, -st.Template.LeadDays),
 		}
+		if st.Template.RemindDays > 0 {
+			at := m.CreateAt.AddDate(0, 0, -st.Template.RemindDays)
+			m.RemindAt = &at
+			m.Reminded = m.Period <= st.RemindedPeriod
+		}
 		switch {
 		case existing[m.Period] != nil:
 			m.Status, m.ContestID, m.Phase, m.Title = "created", existing[m.Period].ID, existing[m.Period].Phase, existing[m.Period].Title
@@ -285,6 +302,15 @@ func (s *ContestService) RunAutoContests(ctx context.Context) {
 			logger.LegacyPrintf("service.contest", "auto contests: template invalid: %v", err)
 			return
 		}
+		if contestAutoRemindDue(c, st.Template, st.LastPeriod, st.RemindedPeriod, now) {
+			// Recorded first: a failing mail server must not mean one email a minute.
+			if err := s.repo.MarkAutoReminded(ctx, c.AutoPeriod); err != nil {
+				logger.LegacyPrintf("service.contest", "auto contests: mark %s reminded failed: %v", c.AutoPeriod, err)
+				return
+			}
+			st.RemindedPeriod = c.AutoPeriod
+			s.notifyAuto(ctx, contestAutoReminderMail(c, st.Template, s.siteURL(ctx)))
+		}
 		if !contestAutoDue(c, st.Template.LeadDays, st.LastPeriod, now) {
 			continue
 		}
@@ -295,7 +321,117 @@ func (s *ContestService) RunAutoContests(ctx context.Context) {
 		}
 		if created {
 			logger.LegacyPrintf("service.contest", "auto contests: created contest %d for %s", c.ID, c.AutoPeriod)
+			if st.Template.RemindDays > 0 {
+				s.notifyAuto(ctx, contestAutoPublishedMail(c, s.siteURL(ctx)))
+			}
 		}
 		st.LastPeriod = c.AutoPeriod
 	}
+}
+
+// contestAutoRemindDue says whether the month's "about to be published" email should go out now:
+// reminders on, the month not created or reminded yet, inside [publish − RemindDays, publish).
+func contestAutoRemindDue(c *Contest, t ContestAutoTemplate, lastPeriod, remindedPeriod string, now time.Time) bool {
+	if t.RemindDays <= 0 || c.AutoPeriod <= lastPeriod || c.AutoPeriod <= remindedPeriod {
+		return false
+	}
+	publish := c.SubmissionStartAt.AddDate(0, 0, -t.LeadDays)
+	return !now.Before(publish.AddDate(0, 0, -t.RemindDays)) && now.Before(publish)
+}
+
+// ContestAutoMail is one notification for the ops recipients.
+type ContestAutoMail struct {
+	Subject string
+	Body    string
+}
+
+func contestAutoTime(t time.Time) string { return t.In(contestAutoZone).Format("2006-01-02 15:04") }
+
+func contestAutoRulesHTML(c *Contest) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "<ul><li>投稿：%s – %s</li><li>点赞：%s – %s（截止后自动排名）</li>",
+		contestAutoTime(c.SubmissionStartAt), contestAutoTime(c.SubmissionEndAt), contestAutoTime(c.VotingStartAt), contestAutoTime(c.VotingEndAt))
+	for _, p := range c.Prizes {
+		place := fmt.Sprintf("第 %d 名", p.RankFrom)
+		if p.RankTo > p.RankFrom {
+			place = fmt.Sprintf("第 %d–%d 名", p.RankFrom, p.RankTo)
+		}
+		prize := p.Label
+		if p.Type == ContestPrizeBalance {
+			prize = strings.TrimSpace(fmt.Sprintf("%s $%.2f 余额", p.Label, p.Amount))
+		}
+		fmt.Fprintf(&b, "<li>奖品：%s %s</li>", place, html.EscapeString(prize))
+	}
+	review := "不需要审核"
+	if c.RequireReview {
+		review = "需要审核"
+	}
+	fmt.Fprintf(&b, "<li>每人最多投 %d 件、%d 个赞，%s，至少 %d 个赞才能获奖</li></ul>", c.MaxEntriesPerUser, c.VotesPerUser, review, c.MinVotesForPrize)
+	return b.String()
+}
+
+func contestAutoReminderMail(c *Contest, t ContestAutoTemplate, site string) ContestAutoMail {
+	publish := c.SubmissionStartAt.AddDate(0, 0, -t.LeadDays)
+	admin := "后台「活动管理」"
+	if site != "" {
+		admin = fmt.Sprintf(`<a href="%s/admin/contests">后台「活动管理」</a>`, html.EscapeString(site))
+	}
+	body := fmt.Sprintf(`<h3>月度比赛即将自动发布</h3><p>「%s」将在 <b>%s</b>（北京时间）按模板自动发布，内容如下：</p>%s`+
+		`<p>要改标题、规则或奖品，请在发布前到%s的「每月自动比赛 → 编辑模板」修改；这一期不想办，就点「停止」。</p>`+
+		`<p style="color:#888;font-size:12px">每月只提醒一次。提醒天数在模板里设置，设为 0 就不再提醒。</p>`,
+		html.EscapeString(c.Title), contestAutoTime(publish), contestAutoRulesHTML(c), admin)
+	return ContestAutoMail{Subject: fmt.Sprintf("[比赛] %s 将于 %s 自动发布", c.Title, contestAutoTime(publish)), Body: body}
+}
+
+func contestAutoPublishedMail(c *Contest, site string) ContestAutoMail {
+	link := "/contests/" + strconv.FormatInt(c.ID, 10)
+	if site != "" {
+		link = site + link
+	}
+	body := fmt.Sprintf(`<h3>月度比赛已自动发布</h3><p>「%s」已发布：<a href="%s">%s</a></p>%s`+
+		`<p>可以把比赛链接发到公众号和用户群里提前宣传；投稿需要在后台「活动管理 → 作品与奖品」里审核。</p>`,
+		html.EscapeString(c.Title), html.EscapeString(link), html.EscapeString(link), contestAutoRulesHTML(c))
+	return ContestAutoMail{Subject: fmt.Sprintf("[比赛] %s 已自动发布", c.Title), Body: body}
+}
+
+// SetNotifier sends the schedule's emails to the ops alert recipients, with links on the site's URL.
+func (s *ContestService) SetNotifier(ops *OpsService, email *EmailService, settings *SettingService) {
+	if settings != nil {
+		s.siteURLFn = settings.GetFrontendURL
+	}
+	if ops == nil || email == nil {
+		return
+	}
+	s.notify = func(ctx context.Context, m ContestAutoMail) {
+		cfg, err := ops.GetEmailNotificationConfig(ctx)
+		if err != nil || cfg == nil || !cfg.Alert.Enabled || len(cfg.Alert.Recipients) == 0 {
+			logger.LegacyPrintf("service.contest", "auto contests: no ops alert recipients, %q not sent", m.Subject)
+			return
+		}
+		for _, to := range cfg.Alert.Recipients {
+			if addr := strings.TrimSpace(to); addr != "" {
+				if err := email.SendEmail(ctx, addr, m.Subject, m.Body); err != nil {
+					logger.LegacyPrintf("service.contest", "auto contests: mail to %s failed: %v", addr, err)
+				}
+			}
+		}
+	}
+}
+
+// SetAutoNotify replaces the email sender (tests).
+func (s *ContestService) SetAutoNotify(fn func(ctx context.Context, m ContestAutoMail)) {
+	s.notify = fn
+}
+
+func (s *ContestService) notifyAuto(ctx context.Context, m ContestAutoMail) {
+	if s.notify != nil {
+		s.notify(ctx, m)
+	}
+}
+
+func (s *ContestService) siteURL(ctx context.Context) string {
+	if s.siteURLFn == nil {
+		return ""
+	}
+	return strings.TrimRight(strings.TrimSpace(s.siteURLFn(ctx)), "/")
 }

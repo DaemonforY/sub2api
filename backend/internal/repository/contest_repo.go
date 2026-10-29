@@ -603,8 +603,8 @@ func (r *contestRepository) GetAutoState(ctx context.Context) (*service.ContestA
 		raw []byte
 		by  sql.NullInt64
 	)
-	err := r.db.QueryRowContext(ctx, `SELECT enabled, template, last_period, updated_by, updated_at FROM contest_auto_settings WHERE id = 1`).
-		Scan(&st.Enabled, &raw, &st.LastPeriod, &by, &st.UpdatedAt)
+	err := r.db.QueryRowContext(ctx, `SELECT enabled, template, last_period, reminded_period, updated_by, updated_at FROM contest_auto_settings WHERE id = 1`).
+		Scan(&st.Enabled, &raw, &st.LastPeriod, &st.RemindedPeriod, &by, &st.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -655,4 +655,9 @@ UPDATE contest_auto_settings SET last_period = GREATEST(last_period, $1) WHERE i
 		return false, err
 	}
 	return created, tx.Commit()
+}
+
+func (r *contestRepository) MarkAutoReminded(ctx context.Context, period string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE contest_auto_settings SET reminded_period = GREATEST(reminded_period, $1) WHERE id = 1`, period)
+	return err
 }

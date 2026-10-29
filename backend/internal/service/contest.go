@@ -243,6 +243,8 @@ type ContestRepository interface {
 	// CreateAutoContest inserts the month's contest (c.AutoPeriod) and records the month as done.
 	// created is false when another instance created it first; c.ID is set only when created.
 	CreateAutoContest(ctx context.Context, c *Contest) (created bool, err error)
+	// MarkAutoReminded records that the month's reminder email went out.
+	MarkAutoReminded(ctx context.Context, period string) error
 }
 
 // ContestPhaseAt derives the phase of a contest at time now.

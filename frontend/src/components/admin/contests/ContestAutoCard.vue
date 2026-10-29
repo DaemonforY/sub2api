@@ -19,6 +19,7 @@
             day: settings.template.submission_end_day,
             time: settings.template.voting_end_time
           }) }}
+          {{ settings.template.remind_days > 0 ? t('admin.contests.auto.remindSummary', { n: settings.template.remind_days }) : t('admin.contests.auto.remindOff') }}
         </p>
       </div>
       <div v-if="settings" class="flex flex-shrink-0 gap-2">
@@ -47,7 +48,12 @@
           <RouterLink v-if="m.contest_id" :to="`/admin/contests/${m.contest_id}`" class="text-primary-600 hover:underline dark:text-primary-400">
             {{ t('admin.contests.auto.manage') }} →
           </RouterLink>
-          <template v-else-if="m.status === 'scheduled'">{{ t('admin.contests.auto.createsAt', { time: formatDateTime(m.create_at) }) }}</template>
+          <template v-else-if="m.status === 'scheduled'">
+            {{ t('admin.contests.auto.createsAt', { time: formatDateTime(m.create_at) }) }}
+            <span v-if="m.remind_at" data-testid="contest-auto-remind">
+              · {{ m.reminded ? t('admin.contests.auto.reminded') : t('admin.contests.auto.remindsAt', { time: formatDateTime(m.remind_at) }) }}
+            </span>
+          </template>
           <template v-else>{{ t(`admin.contests.auto.statusHint.${m.status}`) }}</template>
         </p>
       </li>
@@ -78,7 +84,7 @@
 
         <section>
           <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.contests.fields.schedule') }}</h4>
-          <div class="grid gap-4 sm:grid-cols-3">
+          <div class="grid gap-4 sm:grid-cols-4">
             <div>
               <label class="input-label">{{ t('admin.contests.auto.fields.submissionEndDay') }}</label>
               <input v-model.number="form.submission_end_day" type="number" min="1" max="28" class="input" />
@@ -91,8 +97,13 @@
               <label class="input-label">{{ t('admin.contests.auto.fields.leadDays') }}</label>
               <input v-model.number="form.lead_days" type="number" min="0" max="10" class="input" />
             </div>
+            <div>
+              <label class="input-label">{{ t('admin.contests.auto.fields.remindDays') }}</label>
+              <input v-model.number="form.remind_days" type="number" min="0" max="7" class="input" data-testid="contest-auto-remind-days" />
+            </div>
           </div>
           <p class="mt-2 text-xs text-gray-500">{{ t('admin.contests.auto.fields.scheduleHint') }}</p>
+          <p class="mt-1 text-xs text-gray-500">{{ t('admin.contests.auto.fields.remindHint') }}</p>
         </section>
 
         <section>

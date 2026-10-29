@@ -310,7 +310,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	gatewayRequestLogService := service.ProvideGatewayRequestLogService(gatewayRequestLogRepository, configConfig)
 	gatewayRequestLogHandler := admin.NewGatewayRequestLogHandler(gatewayRequestLogService)
 	contestRepository := repository.NewContestRepository(db)
-	contestService := service.ProvideContestService(contestRepository, userRepository, redeemCodeRepository, billingCacheService, apiKeyAuthCacheInvalidator, configConfig)
+	contestService := service.ProvideContestService(contestRepository, userRepository, redeemCodeRepository, billingCacheService, apiKeyAuthCacheInvalidator, configConfig, opsService, emailService, settingService)
 	contestHandler := admin.NewContestHandler(contestService)
 	affiliateWithdrawRepository := repository.NewAffiliateWithdrawRepository(client)
 	affiliateWithdrawService := service.NewAffiliateWithdrawService(affiliateWithdrawRepository, growthService, secretEncryptor, affiliateService)

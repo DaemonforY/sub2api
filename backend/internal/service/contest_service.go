@@ -148,6 +148,10 @@ type ContestService struct {
 	granter  *contestBalanceGranter
 	now      func() time.Time
 
+	// notify / siteURLFn: the monthly schedule's emails (SetNotifier).
+	notify    func(ctx context.Context, m ContestAutoMail)
+	siteURLFn func(ctx context.Context) string
+
 	stopOnce sync.Once
 	stopCh   chan struct{}
 	wg       sync.WaitGroup

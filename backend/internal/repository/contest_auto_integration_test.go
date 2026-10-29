@@ -109,3 +109,58 @@ func TestContestAuto_MonthlySchedule(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "20:00", st.Template.VotingEndTime)
 }
+
+func TestContestAuto_ReminderEmails(t *testing.T) {
+	ctx := context.Background()
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM contests WHERE auto_period LIKE '2032-%'`)
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM contest_auto_settings`)
+	})
+	_, err := integrationDB.ExecContext(ctx, `DELETE FROM contest_auto_settings`)
+	require.NoError(t, err)
+
+	svc := service.NewContestService(NewContestRepository(integrationDB), NewUserRepository(integrationEntClient, integrationDB),
+		NewRedeemCodeRepository(integrationEntClient), nil, nil, service.NewContestImageStore(t.TempDir()))
+	var mails []string
+	svc.SetAutoNotify(func(_ context.Context, m service.ContestAutoMail) { mails = append(mails, m.Subject) })
+	zone := time.FixedZone("CST", 8*3600)
+	now := time.Date(2032, 3, 20, 9, 0, 0, 0, zone) // March's entries still open; April is far off
+	svc.SetClock(func() time.Time { return now })
+
+	// Starting mid-March creates March at once: no reminder (too late for one), a "published" email.
+	_, err = svc.SaveAutoSettings(ctx, true, service.DefaultContestAutoTemplate(), 0)
+	require.NoError(t, err)
+	require.Equal(t, []string{"[比赛] 3 月 AI 画图赛 已自动发布"}, mails)
+
+	// April is published 03-29 00:00; the reminder goes out from 03-28 00:00, once.
+	now = time.Date(2032, 3, 28, 10, 0, 0, 0, zone)
+	svc.RunAutoContests(ctx)
+	svc.RunAutoContests(ctx)
+	require.Equal(t, []string{"[比赛] 3 月 AI 画图赛 已自动发布", "[比赛] 4 月 AI 画图赛 将于 2032-03-29 00:00 自动发布"}, mails)
+	st, err := svc.GetAutoSettings(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "2032-04", st.Months[1].Period)
+	require.Equal(t, "scheduled", st.Months[1].Status)
+	require.True(t, st.Months[1].Reminded)
+	require.NotNil(t, st.Months[1].RemindAt)
+
+	now = time.Date(2032, 3, 29, 0, 1, 0, 0, zone)
+	svc.RunAutoContests(ctx)
+	require.Len(t, mails, 3)
+	require.Equal(t, "[比赛] 4 月 AI 画图赛 已自动发布", mails[2])
+
+	// Reminders off: no emails at all.
+	tpl := service.DefaultContestAutoTemplate()
+	tpl.RemindDays = 0
+	_, err = svc.SaveAutoSettings(ctx, true, tpl, 0)
+	require.NoError(t, err)
+	now = time.Date(2032, 4, 28, 10, 0, 0, 0, zone)
+	svc.RunAutoContests(ctx)
+	now = time.Date(2032, 4, 29, 0, 1, 0, 0, zone)
+	svc.RunAutoContests(ctx)
+	require.Len(t, mails, 3)
+	st, err = svc.GetAutoSettings(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "created", st.Months[1].Status)
+	require.Nil(t, st.Months[1].RemindAt)
+}

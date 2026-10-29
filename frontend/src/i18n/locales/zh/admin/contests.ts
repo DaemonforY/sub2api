@@ -25,6 +25,10 @@ export default {
       manage: '作品与奖品',
       summary: '开启后，每月 1 日前 {lead} 天按模板自动发布当月比赛：1 日起投稿和点赞，{day} 日 23:59 截止投稿，月末最后一天 {time} 截止点赞并自动结算。奖品仍需在「作品与奖品」里审核后发放。',
       window: '投稿 {start} – {submissionEnd} · 点赞截止 {votingEnd}',
+      remindSummary: '发布前 {n} 天会给运维告警邮箱发提醒，发布后再发一封通知。',
+      remindOff: '发布前不发提醒邮件。',
+      remindsAt: '{time} 发提醒邮件',
+      reminded: '已发提醒邮件',
       createsAt: '将于 {time} 自动发布',
       startConfirm: '启动后会按模板自动发布比赛；如果下个月已在提前发布的时间内，会马上发布。确定启动？',
       stopConfirm: '停止后不再创建新的月份。已经发布的比赛照常进行，如需取消请在下方列表里操作。确定停止？',
@@ -48,6 +52,8 @@ export default {
         submissionEndDay: '投稿截止日（每月几号，1–28）',
         votingEndTime: '点赞截止时刻（月末最后一天）',
         leadDays: '提前几天发布（0–10）',
+        remindDays: '提前几天邮件提醒（0 不提醒）',
+        remindHint: '提醒发到「运维监控 → 告警设置」里的邮件收件人。邮件里有本期的时间、规则和奖品，需要修改就在发布前编辑模板或停止。',
         scheduleHint: '每月 1 日 0:00 开始投稿和点赞（北京时间）。提前发布期间比赛显示「即将开始」，方便提前宣传。',
         saveHint: '模板修改只影响之后发布的月份；已经发布的比赛请在下方列表里单独编辑。'
       }

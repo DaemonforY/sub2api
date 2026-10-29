@@ -37,6 +37,8 @@ export interface ContestAutoTemplate {
   voting_end_time: string
   /** Published this many days before the 1st. */
   lead_days: number
+  /** Email the ops alert recipients this many days before publishing (0 = off). */
+  remind_days: number
   max_entries_per_user: number
   votes_per_user: number
   allow_self_vote: boolean
@@ -56,6 +58,9 @@ export interface ContestAutoMonth {
   submission_end_at: string
   voting_end_at: string
   create_at: string
+  /** When the reminder email goes out; absent when reminders are off. */
+  remind_at?: string
+  reminded: boolean
   status: ContestAutoMonthStatus
   contest_id?: number
   phase?: string
