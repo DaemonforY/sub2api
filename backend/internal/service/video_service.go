@@ -422,7 +422,9 @@ func videoBalanceError(err error) bool {
 // limits and an overloaded upstream.
 func videoRetryable(err error) bool {
 	msg := strings.ToLower(err.Error())
-	for _, s := range []string{"并发上限", "concurrency limit", "rate limit", "too many requests", "请求太频繁", "temporarily unavailable", "overloaded", "529"} {
+	// Also a gateway hiccup (HTTP 502–504 with no message) and an answer stream cut off midway: the
+	// same call usually goes through a few seconds later.
+	for _, s := range []string{"并发上限", "concurrency limit", "rate limit", "too many requests", "请求太频繁", "temporarily unavailable", "overloaded", "529", "http 502", "http 503", "http 504", "读取结果中断"} {
 		if strings.Contains(msg, s) {
 			return true
 		}
@@ -510,7 +512,18 @@ func (s *VideoService) build(ctx context.Context, r *videoRun) error {
 	if err := s.voiceAndKit(ctx, r); err != nil {
 		return err
 	}
+	r.mu.Lock()
+	var fresh []int // scenes this run writes: they get the review
+	for i, sc := range p.Spec.Scenes {
+		if strings.TrimSpace(sc.Code) == "" {
+			fresh = append(fresh, i)
+		}
+	}
+	r.mu.Unlock()
 	if err := s.codeScenes(ctx, r, nil); err != nil {
+		return err
+	}
+	if err := s.reviewScenes(ctx, r, fresh); err != nil {
 		return err
 	}
 	s.done(ctx, r, fmt.Sprintf("完成：%d 个分镜，共 %.0f 秒。可以在右边继续让 AI 修改。", len(p.Spec.Scenes), p.Spec.TotalDuration()))

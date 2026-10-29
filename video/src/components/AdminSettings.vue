@@ -23,6 +23,12 @@
     </section>
 
     <section class="card p-5">
+      <h2 class="font-semibold">画面检查</h2>
+      <p class="mt-1 text-sm text-ink-500">新做的影片在分镜写完后，渲染服务给每个分镜截 4 张图（带字幕），交给同一个模型对照检查文字重叠、超出、留白太多、角色走样、数字前后不一致、播放报错，有问题就改一次代码。每条片子多一轮模型调用（实测约多 40%–60% 费用、多 1–3 分钟），费用记在用户自己的 Key 上。渲染服务正在导出 MP4 超过 2 分钟时，这条片子跳过检查。</p>
+      <label class="mt-4 flex items-center gap-2 text-sm"><input v-model="reviewOn" type="checkbox" class="accent-brand-500" />开启画面检查</label>
+    </section>
+
+    <section class="card p-5">
       <h2 class="font-semibold">付费配音（豆包语音 2.0）</h2>
       <p class="mt-1 text-sm text-ink-500">用户选豆包音色时，按旁白字数从余额扣费，每段配好后扣一次，失败不扣；余额不够本次配音时不开始。豆包的成本约 ¥3/万字。服务器配置了 VIDEO_DOUBAO_API_KEY（豆包语音控制台 → API Key）后，创作页才会出现这些音色。</p>
       <label class="mt-4 flex items-center gap-2 text-sm">每万字 $ <input v-model.number="st.tts_price_per_10k" type="number" min="0.01" max="1000" step="0.5" class="input w-24" /></label>
@@ -98,7 +104,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { api, session } from '../lib/api'
 import { toast, toastError } from '../lib/toast'
 
-const st = reactive({ models: [], ads: [], ad_every: 8, tts_price_per_10k: 6, clone_slots: [], clone_price: 0, clone_max_per_user: 3 })
+const st = reactive({ models: [], ads: [], ad_every: 8, tts_price_per_10k: 6, clone_slots: [], clone_price: 0, clone_max_per_user: 3, review_off: false })
+const reviewOn = computed({ get: () => !st.review_off, set: (v) => { st.review_off = !v } })
 const slotsText = ref('')
 const slotList = () => slotsText.value.split(/[\s,，]+/).map((x) => x.trim()).filter(Boolean)
 const slotCount = computed(() => slotList().length)
@@ -111,7 +118,8 @@ onMounted(async () => {
     const r = await api('/admin/settings')
     Object.assign(st, {
       models: r.settings.models || [], ads: r.settings.ads || [], ad_every: r.settings.ad_every || 8, tts_price_per_10k: r.settings.tts_price_per_10k || 6,
-      clone_slots: r.settings.clone_slots || [], clone_price: r.settings.clone_price || 138, clone_max_per_user: r.settings.clone_max_per_user || 3
+      clone_slots: r.settings.clone_slots || [], clone_price: r.settings.clone_price || 138, clone_max_per_user: r.settings.clone_max_per_user || 3,
+      review_off: !!r.settings.review_off
     })
     slotsText.value = st.clone_slots.join('\n')
     groups.value = r.groups || []

@@ -50,6 +50,9 @@ type VideoSettings struct {
 	CloneSlots      []string `json:"clone_slots"`
 	ClonePrice      float64  `json:"clone_price"`
 	CloneMaxPerUser int      `json:"clone_max_per_user"`
+	// ReviewOff turns off the review round: stills of each new scene checked and fixed by the model,
+	// which costs about a third more per film.
+	ReviewOff bool `json:"review_off"`
 }
 
 // videoDefaultTTSPrice: 豆包语音 2.0 costs ¥3 per 10,000 characters; balance dollars are sold at ¥1,

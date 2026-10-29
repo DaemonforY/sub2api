@@ -210,15 +210,19 @@ type fakeModel struct {
 	calls         []string
 	block         chan struct{}
 	revisions     []string
-	kitBroken     bool     // answer the kit prompt without declaring K
-	kitBrokenOnce bool     // only the first kit answer is broken
-	kitLongOnce   bool     // the first kit answer hits the output limit
-	planKit       string   // the revision plan's kit instruction
-	planRaw       string   // the whole revision plan answer, when set
-	planSystems   []string // system prompts of the revision plan calls
-	scenes        []string // system prompts of the scene calls
-	kitAsks       []string // last user message of every kit call
+	kitBroken     bool            // answer the kit prompt without declaring K
+	kitBrokenOnce bool            // only the first kit answer is broken
+	kitLongOnce   bool            // the first kit answer hits the output limit
+	reviewFix     map[string]bool // scenes whose review answers with a fix (the rest answer OK)
+	reviews       []LearnMessage  // the last message of every review call
+	planKit       string          // the revision plan's kit instruction
+	planRaw       string          // the whole revision plan answer, when set
+	planSystems   []string        // system prompts of the revision plan calls
+	scenes        []string        // system prompts of the scene calls
+	kitAsks       []string        // last user message of every kit call
 }
+
+const fixedScene = "const el = S.h('div', {text: 'fixed'});\nS.root.appendChild(el);\nreturn function update(t) { S.set(el, {opacity: 1}); };"
 
 const goodKit = "var K = (function () {\n  var bg = S.h('div');\n  S.root.appendChild(bg);\n  return { frame: function (t) { bg.style.opacity = 1; }, c: { accent: '#f80' } };\n})();"
 
@@ -252,6 +256,18 @@ func (m *fakeModel) stream(ctx context.Context, _, _ string, msgs []LearnMessage
 			ans = `{"reply":"好的","kit":"` + m.planKit + `","scenes":[]}`
 		} else {
 			ans = `{"reply":"好的","scenes":[{"id":"s2","instruction":"更大","narration":"新的第二段旁白。"}]}`
+		}
+	case strings.Contains(sys, "checking a scene you wrote"):
+		scene := "s1"
+		if strings.Contains(msgs[1].Content, "Scene s2") {
+			scene = "s2"
+		}
+		m.calls = append(m.calls, "review:"+scene)
+		m.reviews = append(m.reviews, msgs[len(msgs)-1])
+		if m.reviewFix[scene] {
+			ans = "Fixed the overlap.\n```js\n" + fixedScene + "\n```"
+		} else {
+			ans = "OK"
 		}
 	case strings.Contains(sys, "shared visual system"):
 		m.calls = append(m.calls, "kit")
@@ -512,6 +528,9 @@ func TestVideoConcurrencyLimitIsRetried(t *testing.T) {
 	require.Zero(t, refusals)
 
 	require.False(t, videoRetryable(errLearnRunFailed("余额不足")))
+	require.True(t, videoRetryable(errLearnRunFailed(upstreamErrorText(nil, 502))))
+	require.True(t, videoRetryable(errLearnRunFailed("读取结果中断")))
+	require.False(t, videoRetryable(errLearnRunFailed(upstreamErrorText(nil, 400))))
 }
 
 func TestVideoBalanceStopsTheRun(t *testing.T) {

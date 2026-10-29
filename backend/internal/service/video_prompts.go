@@ -392,6 +392,45 @@ func videoKitUsage(common string) string {
 		"top-level name K. A scene that ignores the kit breaks the video's look."
 }
 
+// --- reviewing a scene from stills -------------------------------------------------------------
+
+const videoReviewChecklist = `## Review checklist
+You see screenshots of this scene as the viewer sees it, subtitles included (times are seconds into the scene).
+Look at each one carefully and check:
+1. Text overlapping other text, a picture's own labels, the character or a card edge; stamps or badges covering words.
+2. Text cut off, overflowing its box or the stage, or wrapping where it should not (a headline breaking into the card below).
+3. Elements sitting under the subtitles or crowding the subtitle strip.
+4. Large empty areas or content too small to read on a phone: the main visual should fill most of the stage.
+5. A look that does not match the rest of the video (background, header or the character drawn differently from the shared kit).
+6. Numbers, names or dates that contradict the setting sheet.
+7. Blank or broken frames, or the player errors listed below.
+When nothing on the list is wrong, answer exactly: OK (taste alone is not a reason to change a scene).
+Otherwise return the complete corrected function body in one ` + "```js" + ` block: fix what you saw, keep everything else
+(timing, the sync with the narration, the rest of the layout).`
+
+func videoReviewPrompt(in videoSceneBrief, code string, stills []string, times []float64, playerErrors []string) []LearnMessage {
+	msgs := videoScenePrompt(in, "", "", "")
+	msgs[0].Content = strings.Replace(msgs[0].Content, "You are a senior motion designer who writes hand-crafted HTML/SVG/canvas animation code for a video player.",
+		"You are a senior motion designer who writes hand-crafted HTML/SVG/canvas animation code for a video player. You are now checking a scene you wrote against screenshots of it in the real player, and fixing what is wrong.", 1)
+	msgs[0].Content = strings.Replace(msgs[0].Content, "\nAnswer with the function body only, inside one ```js code block. No explanations.", "\n"+videoReviewChecklist, 1)
+	msgs[1].Images = nil
+	labels := make([]string, len(times))
+	for i, t := range times {
+		labels[i] = fmt.Sprintf("%.1f s", t)
+	}
+	look := fmt.Sprintf("Screenshots of this scene at t = %s, in that order.", strings.Join(labels, ", "))
+	if len(playerErrors) > 0 {
+		look += "\nPlayer errors in this scene:\n- " + strings.Join(playerErrors, "\n- ")
+		if in.Spec.Common != "" && !in.Motion {
+			look += fmt.Sprintf("\n(Line numbers count the shared kit first: subtract about %d.)", strings.Count(in.Spec.Common, "\n")+3)
+		}
+	}
+	look += "\nCheck them against the list: answer OK, or return the corrected function body."
+	return append(msgs,
+		LearnMessage{Role: "assistant", Content: "```js\n" + code + "\n```"},
+		LearnMessage{Role: "user", Content: look, Images: stills})
+}
+
 // --- revising from chat ----------------------------------------------------------------------
 
 type videoRevisionPlan struct {

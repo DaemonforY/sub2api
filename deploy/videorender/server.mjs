@@ -36,6 +36,7 @@ const GPU_FLAGS = GPU === 'swiftshader'
   : ['--disable-gpu', '--disable-gpu-compositing', '--disable-gpu-rasterization']
 
 let current = null // { out, promise } of the job being rendered
+let stillsBusy = null // the stills job running (see stills())
 
 function inside(p) {
   const abs = path.resolve(ROOT, p)
@@ -70,6 +71,73 @@ async function mixNarration(audio, total, out) {
   await run('ffmpeg', [...args, '-filter_complex', chains.join(';') + ';' + mix, '-map', '[out]', '-t', String(total), '-c:a', 'pcm_s16le', out])
 }
 
+function launchBrowser(width, height) {
+  return puppeteer.launch({
+    executablePath: CHROME,
+    headless: 'new',
+    protocolTimeout: 120000,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb',
+      '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
+      ...GPU_FLAGS, `--window-size=${width},${height}`]
+  })
+}
+
+// A loaded render page: the frame is drawn by seeking the player and setting the subtitle.
+async function openRenderPage(browser, job, width, height, scale, errors, quality = JPEG_QUALITY) {
+  const page = (await browser.pages())[0] || (await browser.newPage())
+  await page.setViewport({ width, height, deviceScaleFactor: scale })
+  page.on('pageerror', (e) => errors.push('page: ' + e.message))
+  await page.goto(job.url, { waitUntil: 'networkidle0', timeout: 60000 })
+  await page.evaluate((s) => window.__setup(s), job.setup)
+  await page.waitForFunction('window.__ready === true', { timeout: 120000 })
+  const player = page.frames().find((f) => f.url().includes('/player.html'))
+  if (!player) throw new Error('player frame not found')
+  await page.evaluate(() => document.fonts.ready)
+  await player.evaluate(() => document.fonts.ready)
+  const cdp = await page.createCDPSession()
+  return {
+    page,
+    shot: async () => Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality, optimizeForSpeed: true })).data, 'base64'),
+    // A smaller copy of the frame (the clip's scale shrinks the capture itself).
+    still: async (k) => (await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality, clip: { x: 0, y: 0, width, height, scale: k } })).data,
+    seek: async (t) => {
+      await player.evaluate((t) => window.__film.seek(t), t)
+      await page.evaluate((t) => window.__subtitle(t), t)
+    }
+  }
+}
+
+function checkPage(job, width, height) {
+  if (!job.url || !job.url.startsWith(ORIGIN + '/')) throw new Error('render page must be on ' + ORIGIN)
+  if (!(width > 0 && height > 0 && width <= 3840 && height <= 3840)) throw new Error('bad size')
+}
+
+// Stills for the video agent's review of its own scenes: the film loaded once in one browser, a
+// scaled-down JPEG per requested time (subtitles drawn), and the player's errors.
+async function stills(job) {
+  const { width, height } = job
+  checkPage(job, width, height)
+  const times = (Array.isArray(job.times) ? job.times : []).filter(Number.isFinite).slice(0, 60)
+  const scale = job.scale > 0 && job.scale <= 1 ? job.scale : 0.5
+  const errors = []
+  const browser = await launchBrowser(width, height)
+  try {
+    const pg = await openRenderPage(browser, job, width, height, 1, errors, 75)
+    // Walk the whole film first (seeking is cheap): errors between the stills' moments surface too.
+    const total = Number(await pg.page.evaluate('window.__TOTAL')) || 0
+    for (let t = 0; t < total; t += 0.25) await pg.seek(t)
+    const frames = []
+    for (const t of times) {
+      await pg.seek(t)
+      frames.push(await pg.still(scale))
+    }
+    errors.push(...(await pg.page.evaluate(() => (window.__errors || []).map((e) => `${e.scene || ''} ${e.phase || ''} ${e.message}`))))
+    return { frames, errors: [...new Set(errors)].slice(0, 20) }
+  } finally {
+    await browser.close().catch(() => {})
+  }
+}
+
 async function render(job, maxWorkers = WORKERS) {
   const { setup, fps = 60, width, height } = job
   // scale < 1 captures the same page (laid out at width × height) with fewer pixels, e.g. 2/3 for a
@@ -80,8 +148,7 @@ async function render(job, maxWorkers = WORKERS) {
   const out = inside(job.out)
   const cover = job.cover ? inside(job.cover) : ''
   const progress = job.progress ? inside(job.progress) : ''
-  if (!job.url || !job.url.startsWith(ORIGIN + '/')) throw new Error('render page must be on ' + ORIGIN)
-  if (!(width > 0 && height > 0 && width <= 3840 && height <= 3840)) throw new Error('bad size')
+  checkPage(job, width, height)
   fs.mkdirSync(path.dirname(out), { recursive: true })
   const note = (data) => progress && fs.writeFileSync(progress, JSON.stringify({ ...data, at: Date.now() }))
   note({ stage: 'loading', frame: 0, frames: 0 })
@@ -90,14 +157,7 @@ async function render(job, maxWorkers = WORKERS) {
   // Linux, so background tabs' screenshots hung until the protocol timeout.
   const browsers = []
   const launch = async () => {
-    const b = await puppeteer.launch({
-      executablePath: CHROME,
-      headless: 'new',
-      protocolTimeout: 120000,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--hide-scrollbars', '--mute-audio', '--force-color-profile=srgb',
-        '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
-        ...GPU_FLAGS, `--window-size=${width},${height}`]
-    })
+    const b = await launchBrowser(width, height)
     browsers.push(b)
     return b
   }
@@ -107,29 +167,7 @@ async function render(job, maxWorkers = WORKERS) {
   const errors = []
   const encoders = []
   let failed = null // the first worker error stops the others
-  // A loaded render page: the frame is drawn by seeking the player and setting the subtitle.
-  const openPage = async () => {
-    const browser = await launch()
-    const page = (await browser.pages())[0] || (await browser.newPage())
-    await page.setViewport({ width, height, deviceScaleFactor: scale })
-    page.on('pageerror', (e) => errors.push('page: ' + e.message))
-    await page.goto(job.url, { waitUntil: 'networkidle0', timeout: 60000 })
-    await page.evaluate((s) => window.__setup(s), setup)
-    await page.waitForFunction('window.__ready === true', { timeout: 120000 })
-    const player = page.frames().find((f) => f.url().includes('/player.html'))
-    if (!player) throw new Error('player frame not found')
-    await page.evaluate(() => document.fonts.ready)
-    await player.evaluate(() => document.fonts.ready)
-    const cdp = await page.createCDPSession()
-    return {
-      page,
-      shot: async () => Buffer.from((await cdp.send('Page.captureScreenshot', { format: 'jpeg', quality: JPEG_QUALITY, optimizeForSpeed: true })).data, 'base64'),
-      seek: async (t) => {
-        await player.evaluate((t) => window.__film.seek(t), t)
-        await page.evaluate((t) => window.__subtitle(t), t)
-      }
-    }
-  }
+  const openPage = async () => openRenderPage(await launch(), job, width, height, scale, errors)
   const maxrate = MAXRATE_1080 > 0 ? Math.round((MAXRATE_1080 * 1000 * outW * outH) / (1920 * 1080)) : 0
   const rateCap = maxrate ? ['-maxrate', `${maxrate}k`, '-bufsize', `${maxrate * 2}k`] : []
   // Encodes one run of frames (video only) into file.
@@ -237,8 +275,8 @@ http.createServer(async (req, res) => {
     res.writeHead(code, { 'content-type': 'application/json' })
     res.end(JSON.stringify(body))
   }
-  if (req.method === 'GET' && req.url === '/health') return send(200, { ok: true, busy: !!current })
-  if (req.method !== 'POST' || req.url !== '/render') return send(404, { error: 'not found' })
+  if (req.method === 'GET' && req.url === '/health') return send(200, { ok: true, busy: !!current, stills: !!stillsBusy })
+  if (req.method !== 'POST' || (req.url !== '/render' && req.url !== '/frames')) return send(404, { error: 'not found' })
   let raw = ''
   for await (const chunk of req) {
     raw += chunk
@@ -250,13 +288,30 @@ http.createServer(async (req, res) => {
   } catch {
     return send(400, { error: 'bad json' })
   }
+  if (req.url === '/frames') {
+    // Only beside nothing: an MP4 render already holds up to WORKERS browsers, and one more could run
+    // the container out of memory. sub2api retries a while, then skips the review.
+    if (current || stillsBusy) return send(409, { error: 'busy' })
+    const promise = stills(job)
+    stillsBusy = promise
+    try {
+      send(200, await promise)
+    } catch (err) {
+      console.error('stills failed:', err)
+      send(500, { error: String(err.message || err).slice(0, 1000) })
+    } finally {
+      stillsBusy = null
+    }
+    return
+  }
   // sub2api re-sends a job after it restarts; wait for the render already running instead of refusing.
   const mine = !current
   if (current && current.out !== job.out) return send(409, { error: 'busy' })
   if (mine) {
     // Several pages need several times the memory; a heavy film (full-frame grain, big canvases) can
     // run the container out of it and Chromium is killed mid-capture. Try again with one page.
-    const promise = render(job).catch((err) => {
+    // Stills take seconds; let them finish before this render's browsers start.
+    const promise = (stillsBusy ? stillsBusy.catch(() => {}) : Promise.resolve()).then(() => render(job)).catch((err) => {
       if (WORKERS <= 1) throw err
       console.error('render failed with', WORKERS, 'pages, retrying with one:', err.message || err)
       return render(job, 1)
