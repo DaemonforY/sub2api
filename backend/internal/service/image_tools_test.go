@@ -39,6 +39,10 @@ func (r *imageToolsRepoStub) Charge(_ context.Context, use ImageToolUse, freeDai
 func (r *imageToolsRepoStub) ListUses(context.Context, ImageToolUseQuery) ([]ImageToolUseRecord, int64, error) {
 	return nil, 0, nil
 }
+func (r *imageToolsRepoStub) OrientationStats(context.Context, time.Time) ([]ImageOrientationStat, error) {
+	return []ImageOrientationStat{{Asked: "square", Total: 10, Wrong: 7}}, nil
+}
+
 func (r *imageToolsRepoStub) Stats(context.Context, int64, time.Time) ([]ImageToolStat, error) {
 	return nil, nil
 }

@@ -452,6 +452,8 @@ func registerImageToolsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) 
 		g.GET("/settings", h.Admin.ImageTools.Settings)
 		g.PUT("/settings", h.Admin.ImageTools.SaveSettings)
 		g.GET("/stats", h.Admin.ImageTools.Stats)
+		g.GET("/aspect-hint", h.Admin.ImageTools.AspectHint)
+		g.PUT("/aspect-hint", h.Admin.ImageTools.SaveAspectHint)
 		g.GET("/uses", h.Admin.ImageTools.Uses)
 	}
 }

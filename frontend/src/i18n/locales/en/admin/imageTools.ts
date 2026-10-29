@@ -1,5 +1,16 @@
 export default {
   imageTools: {
+    aspect: {
+      title: 'Image aspect hint',
+      hint: 'The upstream treats size as a hint and often returns another orientation. When on, the gateway appends an orientation and ratio sentence to gpt-image prompts (e.g. "【画幅】portrait, 2:3"), for all users and clients; prompts that already have 【画幅】 are left alone. Below: requests by the size asked for, and how many came back in another orientation. Takes effect within a minute.',
+      enabled: 'Append the aspect hint',
+      day: 'Last 24 hours',
+      week: 'Last 7 days',
+      none: 'No image requests with a size',
+      asked: { portrait: 'Portrait asked', landscape: 'Landscape asked', square: 'Square asked' },
+      wrong: '{n} wrong orientation ({pct}%)',
+      saved: 'Saved; takes effect within a minute'
+    },
     title: 'Image tools',
     description: 'AI background removal and AI upscaling for the canvas: set prices, the daily free runs for subscribers and the on/off switch, and see every run and charge. Only successful runs are charged.',
     settings: {

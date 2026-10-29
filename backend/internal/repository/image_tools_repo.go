@@ -145,3 +145,30 @@ GROUP BY tool ORDER BY tool`, since, userID)
 	}
 	return out, rows.Err()
 }
+
+func (r *imageToolsRepository) OrientationStats(ctx context.Context, since time.Time) ([]service.ImageOrientationStat, error) {
+	rows, err := r.db.QueryContext(ctx, `
+WITH x AS (
+    SELECT split_part(image_input_size, 'x', 1)::int AS iw, split_part(image_input_size, 'x', 2)::int AS ih,
+           split_part(image_output_size, 'x', 1)::int AS ow, split_part(image_output_size, 'x', 2)::int AS oh
+    FROM usage_logs
+    WHERE created_at >= $1 AND model LIKE 'gpt-image%'
+      AND image_input_size ~ '^[0-9]{2,5}x[0-9]{2,5}$' AND image_output_size ~ '^[0-9]{2,5}x[0-9]{2,5}$'
+)
+SELECT CASE WHEN iw > ih THEN 'landscape' WHEN iw < ih THEN 'portrait' ELSE 'square' END,
+       COUNT(*), COUNT(*) FILTER (WHERE sign(iw - ih) <> sign(ow - oh))
+FROM x GROUP BY 1 ORDER BY 2 DESC`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.ImageOrientationStat{}
+	for rows.Next() {
+		var st service.ImageOrientationStat
+		if err := rows.Scan(&st.Asked, &st.Total, &st.Wrong); err != nil {
+			return nil, err
+		}
+		out = append(out, st)
+	}
+	return out, rows.Err()
+}

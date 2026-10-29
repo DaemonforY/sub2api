@@ -47,4 +47,26 @@ export async function uses(query: ImageToolUsesQuery): Promise<ImageToolUseList>
   return data
 }
 
-export default { getSettings, saveSettings, stats, uses }
+/** gpt-image requests with an explicit size, by the orientation asked for, and those that came back in another one. */
+export interface ImageOrientationStat {
+  asked: 'portrait' | 'landscape' | 'square'
+  total: number
+  wrong: number
+}
+
+export interface ImageAspectHint {
+  enabled: boolean
+  day: ImageOrientationStat[]
+  week: ImageOrientationStat[]
+}
+
+export async function getAspectHint(): Promise<ImageAspectHint> {
+  const { data } = await apiClient.get('/admin/image-tools/aspect-hint')
+  return data
+}
+export async function saveAspectHint(enabled: boolean): Promise<ImageAspectHint> {
+  const { data } = await apiClient.put('/admin/image-tools/aspect-hint', { enabled })
+  return data
+}
+
+export default { getSettings, saveSettings, stats, uses, getAspectHint, saveAspectHint }

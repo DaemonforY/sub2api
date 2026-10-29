@@ -34,6 +34,29 @@
         </div>
       </div>
 
+      <div class="card p-5" data-testid="aspect-hint">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 class="font-semibold text-gray-900 dark:text-white">{{ t('admin.imageTools.aspect.title') }}</h3>
+            <p class="mt-1 max-w-3xl text-sm text-gray-500 dark:text-dark-400">{{ t('admin.imageTools.aspect.hint') }}</p>
+          </div>
+          <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300">
+            {{ t('admin.imageTools.aspect.enabled') }}
+            <Toggle :model-value="aspect?.enabled ?? true" :disabled="!aspect || aspectSaving" data-testid="aspect-toggle" @update:model-value="saveAspect" />
+          </label>
+        </div>
+        <div v-if="aspect" class="mt-4 grid gap-4 md:grid-cols-2">
+          <div v-for="period in (['day', 'week'] as const)" :key="period" class="rounded-lg bg-gray-50 p-3 dark:bg-dark-800">
+            <div class="text-xs font-medium text-gray-500">{{ t(`admin.imageTools.aspect.${period}`) }}</div>
+            <div v-if="!aspect[period].length" class="mt-2 text-sm text-gray-400">{{ t('admin.imageTools.aspect.none') }}</div>
+            <div v-for="row in aspect[period]" :key="row.asked" class="mt-2 flex items-center justify-between text-sm">
+              <span class="text-gray-700 dark:text-gray-200">{{ t(`admin.imageTools.aspect.asked.${row.asked}`) }} · {{ row.total }}</span>
+              <span :class="row.wrong / row.total > 0.1 ? 'text-red-600' : 'text-gray-500'">{{ t('admin.imageTools.aspect.wrong', { n: row.wrong, pct: ((100 * row.wrong) / row.total).toFixed(1) }) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid gap-4 md:grid-cols-3">
         <div v-for="period in periods" :key="period" class="card p-4">
           <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t(`admin.imageTools.stats.${period}`) }}</div>
@@ -125,7 +148,7 @@ import { adminAPI } from '@/api/admin'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatBytes, formatDateTime } from '@/utils/format'
 import { IMAGE_TOOLS, imageToolStat, sumImageToolStats, type ImageTool, type ImageToolUse } from '@/api/imageTools'
-import type { ImageToolsSettings, ImageToolsStats } from '@/api/admin/imageTools'
+import type { ImageAspectHint, ImageToolsSettings, ImageToolsStats } from '@/api/admin/imageTools'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -134,6 +157,20 @@ const periods = ['today', 'week', 'month'] as const
 const settings = ref<ImageToolsSettings | null>(null)
 const form = reactive({ enabled: true, price_remove_bg: 0, price_upscale: 0, free_daily: 0 })
 const saving = ref(false)
+const aspect = ref<ImageAspectHint | null>(null)
+const aspectSaving = ref(false)
+
+async function saveAspect(enabled: boolean) {
+  aspectSaving.value = true
+  try {
+    aspect.value = await adminAPI.imageTools.saveAspectHint(enabled)
+    appStore.showSuccess(t('admin.imageTools.aspect.saved'))
+  } catch (error) {
+    showError(error)
+  } finally {
+    aspectSaving.value = false
+  }
+}
 const stats = ref<ImageToolsStats | null>(null)
 const items = ref<ImageToolUse[]>([])
 const total = ref(0)
@@ -216,6 +253,7 @@ onMounted(async () => {
   } catch (error) {
     showError(error)
   }
+  adminAPI.imageTools.getAspectHint().then((v) => (aspect.value = v)).catch(showError)
   await refreshAll()
 })
 </script>

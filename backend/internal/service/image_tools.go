@@ -99,6 +99,9 @@ type ImageToolsRepository interface {
 	ListUses(ctx context.Context, q ImageToolUseQuery) ([]ImageToolUseRecord, int64, error)
 	// Stats sums runs since a time by tool, for one user or (userID 0) everyone.
 	Stats(ctx context.Context, userID int64, since time.Time) ([]ImageToolStat, error)
+	// OrientationStats counts gpt-image requests with an explicit WxH size since a time, by the
+	// orientation asked for, and those that came back in another one (usage_logs).
+	OrientationStats(ctx context.Context, since time.Time) ([]ImageOrientationStat, error)
 }
 
 type imageToolSubscriptions interface {

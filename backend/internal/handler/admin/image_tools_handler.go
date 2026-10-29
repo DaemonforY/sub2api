@@ -69,3 +69,30 @@ func (h *ImageToolsHandler) Uses(c *gin.Context) {
 	}
 	response.Success(c, list)
 }
+
+// AspectHint GET /api/v1/admin/image-tools/aspect-hint: the 生图画幅提示 switch and wrong-orientation counts.
+func (h *ImageToolsHandler) AspectHint(c *gin.Context) {
+	v, err := h.service.AspectHint(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, v)
+}
+
+// SaveAspectHint PUT /api/v1/admin/image-tools/aspect-hint {enabled}
+func (h *ImageToolsHandler) SaveAspectHint(c *gin.Context) {
+	var in struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.BadRequest(c, "参数格式不正确")
+		return
+	}
+	v, err := h.service.SaveAspectHint(c.Request.Context(), in.Enabled)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, v)
+}
