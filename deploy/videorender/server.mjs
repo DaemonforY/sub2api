@@ -70,7 +70,7 @@ async function mixNarration(audio, total, out) {
   await run('ffmpeg', [...args, '-filter_complex', chains.join(';') + ';' + mix, '-map', '[out]', '-t', String(total), '-c:a', 'pcm_s16le', out])
 }
 
-async function render(job) {
+async function render(job, maxWorkers = WORKERS) {
   const { setup, fps = 60, width, height } = job
   // scale < 1 captures the same page (laid out at width × height) with fewer pixels, e.g. 2/3 for a
   // 720p file of a 1080p layout: subtitles and titles keep their places, drawing costs less.
@@ -105,6 +105,8 @@ async function render(job) {
   const tmp = out + '.part'
   const segFiles = []
   const errors = []
+  const encoders = []
+  let failed = null // the first worker error stops the others
   // A loaded render page: the frame is drawn by seeking the player and setting the subtitle.
   const openPage = async () => {
     const browser = await launch()
@@ -145,6 +147,10 @@ async function render(job) {
       ff.on('close', (code) => (code === 0 ? resolve() : reject(new Error('ffmpeg exited ' + code + ': ' + ffErr))))
     })
     ff.stdin.on('error', () => {}) // a dying ffmpeg is reported by `done`
+    done.catch(() => {}) // …unless its worker already failed, killed it and never awaits it
+    let closed = false
+    ff.on('close', () => (closed = true))
+    encoders.push({ kill: () => { if (!closed) ff.kill('SIGKILL') } })
     return {
       write: async (buf) => {
         if (!ff.stdin.write(buf)) await Promise.race([new Promise((r) => ff.stdin.once('drain', r)), done])
@@ -166,25 +172,40 @@ async function render(job) {
     // an unchanged one), not for the CPU, so browsers capturing side by side multiply the throughput
     // (1 → 3 pages: 28 → 72 frames/s on a laptop). The film is cut into WORKERS runs of frames, each
     // encoded on its own, then joined without re-encoding and muxed with the narration.
-    const workers = Math.max(1, Math.min(WORKERS, Math.floor(frames / (fps * 2)) || 1))
+    const workers = Math.max(1, Math.min(maxWorkers, Math.floor(frames / (fps * 2)) || 1))
     const pages = [first]
     for (let k = 1; k < workers; k++) pages.push(await openPage())
     const per = Math.ceil(frames / workers)
     let doneFrames = 0
     const started = Date.now()
-    await Promise.all(pages.map(async (pg, k) => {
+    // allSettled, not all: a failed worker must not leave the others capturing into browsers that the
+    // finally block closes, nor their ffmpeg processes waiting on stdin (each held ~370 MB).
+    const results = await Promise.allSettled(pages.map(async (pg, k) => {
       const from = k * per, to = Math.min(frames, from + per)
       if (from >= to) return
       const file = `${out}.seg${k}.mp4`
       segFiles[k] = file
       const enc = encoder(file)
-      for (let i = from; i < to; i++) {
-        await pg.seek(i / fps)
-        await enc.write(await pg.shot())
-        if (++doneFrames % 30 === 0) note({ stage: 'frames', frame: doneFrames, frames, fps: doneFrames / Math.max(1, (Date.now() - started) / 1000) })
+      try {
+        for (let i = from; i < to; i++) {
+          if (failed) throw failed
+          await pg.seek(i / fps)
+          await enc.write(await pg.shot())
+          if (++doneFrames % 30 === 0) note({ stage: 'frames', frame: doneFrames, frames, fps: doneFrames / Math.max(1, (Date.now() - started) / 1000) })
+        }
+        await enc.end()
+      } catch (err) {
+        if (!failed) {
+          failed = err
+          // Close the browsers now so the other workers' pending captures fail at once instead of
+          // waiting out the protocol timeout.
+          for (const b of browsers) b.close().catch(() => {})
+        }
+        throw err
       }
-      await enc.end()
     }))
+    const bad = results.find((r) => r.status === 'rejected')
+    if (bad) throw failed || bad.reason
     const list = out + '.segments.txt'
     fs.writeFileSync(list, segFiles.filter(Boolean).map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n') + '\n')
     segFiles.push(list)
@@ -203,6 +224,7 @@ async function render(job) {
     return { size, duration: total, frames, seconds: Math.round(seconds), fps: +(frames / Math.max(seconds, 0.001)).toFixed(2),
       gpu: GPU, preset, maxrate_kbps: maxrate, scale, workers, width: outW, height: outH, errors: [...new Set(errors)].slice(0, 20) }
   } finally {
+    for (const e of encoders) e.kill()
     await Promise.all(browsers.map((b) => b.close().catch(() => {})))
     fs.rmSync(wav, { force: true })
     fs.rmSync(tmp, { force: true })
@@ -232,7 +254,13 @@ http.createServer(async (req, res) => {
   const mine = !current
   if (current && current.out !== job.out) return send(409, { error: 'busy' })
   if (mine) {
-    const promise = render(job)
+    // Several pages need several times the memory; a heavy film (full-frame grain, big canvases) can
+    // run the container out of it and Chromium is killed mid-capture. Try again with one page.
+    const promise = render(job).catch((err) => {
+      if (WORKERS <= 1) throw err
+      console.error('render failed with', WORKERS, 'pages, retrying with one:', err.message || err)
+      return render(job, 1)
+    })
     current = { out: job.out, promise }
     promise.catch(() => {}).finally(() => { if (current && current.promise === promise) current = null })
   }

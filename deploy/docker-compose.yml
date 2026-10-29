@@ -289,6 +289,8 @@ services:
     pull_policy: never
     container_name: sub2api-videorender
     restart: unless-stopped
+    # Reaps the Chromium processes the browsers leave behind (node as PID 1 does not).
+    init: true
     environment:
       - RENDER_ORIGIN=https://${VIDEO_DOMAIN:-video.hivegpt.cn}
       - FFMPEG_THREADS=2
