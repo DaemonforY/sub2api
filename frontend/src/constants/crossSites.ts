@@ -39,14 +39,17 @@ export interface CanvasUrlOptions {
   path?: '/' | `/${string}`
   /** 预填到生图工作台的提示词（仅 path 为 /image 时生效） */
   prompt?: string
+  /** 其它查询参数，例如诗画的 poem=<诗词 id> */
+  query?: Record<string, string>
 }
 
-export function canvasUrl({ medium, baseUrl, path = '/', prompt }: CanvasUrlOptions): string {
+export function canvasUrl({ medium, baseUrl, path = '/', prompt, query }: CanvasUrlOptions): string {
   const params = new URLSearchParams({ utm_source: 'hivegpt', utm_medium: medium })
   const root = (baseUrl || '').trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '')
   if (root) params.set('baseUrl', root)
   const text = (prompt || '').trim()
   if (text && path === '/image') params.set('prompt', text.slice(0, 1000))
+  for (const [key, value] of Object.entries(query || {})) params.set(key, value)
   const base = CANVAS_SITE_URL.replace(/\/+$/, '')
   return `${base}${path === '/' ? '/' : path}?${params.toString()}`
 }

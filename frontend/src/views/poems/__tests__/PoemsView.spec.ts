@@ -41,7 +41,7 @@ describe('PoemsView', () => {
     await wrapper.get('[data-testid="poems-search"]').trigger('click')
     await flushPromises()
     expect(api.searchPoems).toHaveBeenLastCalledWith(expect.objectContaining({ q: '纸鸢 东风', random: false }))
-    expect(wrapper.find('[data-testid="poem-draw-1"]').attributes('href')).toContain('prompt=')
+    expect(wrapper.find('[data-testid="poem-draw-1"]').attributes('href')).toContain('/poem?')
   })
 
   it('asks guests to sign in before finding by scene', async () => {

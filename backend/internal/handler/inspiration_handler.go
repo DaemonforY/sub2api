@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strings"
+
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -217,6 +219,13 @@ func (h *InspirationHandler) PublicSearch(c *gin.Context) {
 		Famous: c.Query("famous") == "1", Random: c.Query("random") == "1", Offset: queryInt(c, "offset"),
 	})
 	h.respond(c, gin.H{"items": poems, "has_more": more}, err)
+}
+
+// PublicCandidates GET /poems/candidates?words=纸鸢,东风&dynasty=&collection=
+func (h *InspirationHandler) PublicCandidates(c *gin.Context) {
+	words := strings.FieldsFunc(c.Query("words"), func(r rune) bool { return r == ',' || r == '，' || r == ' ' })
+	poems, err := h.svc.PublicCandidates(c.Request.Context(), libVisitor(c), words, service.LibPoemQuery{Dynasty: c.Query("dynasty"), Collection: c.Query("collection")})
+	h.respond(c, gin.H{"items": poems}, err)
 }
 
 // PublicPoem GET /poems/:id

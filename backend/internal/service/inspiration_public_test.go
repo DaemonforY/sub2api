@@ -198,3 +198,16 @@ func TestPoemsPublicSearchIsLimitedAndHidesAdminMarks(t *testing.T) {
 	_, _, err = s.PublicSearch(ctx, LibVisitor{UserID: 9}, LibPoemQuery{Q: "纸鸢"})
 	require.ErrorIs(t, err, ErrLibPublicOff)
 }
+
+func TestPoemsPublicCandidatesScoreRealPoems(t *testing.T) {
+	s, _, _, _ := newLibPublicTest(t)
+	ctx := context.Background()
+	poems, err := s.PublicCandidates(ctx, LibVisitor{IP: "1.2.3.4"}, []string{"纸鸢", "东风", "a modern word", "纸鸢"}, LibPoemQuery{})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), poems[0].ID)
+	require.Equal(t, 2, poems[0].Score)
+	_, err = s.PublicCandidates(ctx, LibVisitor{IP: "1.2.3.4"}, []string{"modern"}, LibPoemQuery{})
+	require.ErrorIs(t, err, ErrLibInvalid)
+	_, err = s.PublicCandidates(ctx, LibVisitor{IP: "1.2.3.4"}, []string{"纸鸢"}, LibPoemQuery{Collection: "nope"})
+	require.ErrorIs(t, err, ErrLibInvalid)
+}

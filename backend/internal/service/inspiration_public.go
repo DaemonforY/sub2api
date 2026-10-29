@@ -285,6 +285,33 @@ func (s *InspirationService) PublicPoem(ctx context.Context, v LibVisitor, id in
 	return &out, nil
 }
 
+// PublicCandidates is the corpus half of 按画面找 for apps that run the model calls on the user's own
+// key (the canvas 诗画): the poems containing the most of the given words. Counts as one view.
+func (s *InspirationService) PublicCandidates(ctx context.Context, v LibVisitor, words []string, q LibPoemQuery) ([]LibPoem, error) {
+	st := s.PublicSettings(ctx)
+	if !st.Enabled {
+		return nil, ErrLibPublicOff
+	}
+	words = libCleanWords(words)
+	if len(words) == 0 {
+		return nil, ErrLibInvalid
+	}
+	if q.Collection != "" && LibCollections[q.Collection] == "" {
+		return nil, ErrLibInvalid
+	}
+	if err := s.view(ctx, v, st); err != nil {
+		return nil, err
+	}
+	poems, err := s.repo.FindPoems(ctx, words, LibPoemQuery{Dynasty: q.Dynasty, Collection: q.Collection}, 40)
+	if err != nil {
+		return nil, err
+	}
+	for i := range poems {
+		poems[i] = publicPoem(poems[i])
+	}
+	return poems, nil
+}
+
 func (s *InspirationService) freeKey(userID int64) string {
 	return "poems:free:" + strconv.FormatInt(userID, 10) + ":" + s.dayKey()
 }

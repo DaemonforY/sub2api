@@ -9,7 +9,8 @@ import (
 )
 
 // RegisterPoemsRoutes registers 诗词灵感 for users: poem search and pages open to visitors (limited per
-// IP, per user when signed in), 按画面找 for signed-in users (free runs, then billed). No song data.
+// IP, per user when signed in), 按画面找 for signed-in users (free runs, then billed), and the corpus
+// half of 按画面找 for the canvas 诗画 (which runs the model on the user's own key). No song data.
 func RegisterPoemsRoutes(
 	v1 *gin.RouterGroup,
 	h *handler.Handlers,
@@ -27,6 +28,7 @@ func RegisterPoemsRoutes(
 	{
 		g.GET("/config", h.Inspiration.PublicConfig)
 		g.GET("", h.Inspiration.PublicSearch)
+		g.GET("/candidates", h.Inspiration.PublicCandidates)
 		g.GET("/:id", h.Inspiration.PublicPoem)
 		g.POST("/find", panelRateLimiter.Heavy(), h.Inspiration.PublicFind)
 	}
