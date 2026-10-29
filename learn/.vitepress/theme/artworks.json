@@ -10,17 +10,6 @@
     "credit": "The Metropolitan Museum of Art · CC0",
     "link": "https://www.metmuseum.org/art/collection/search/437881"
   },
-  "de-la-tour-magdalen": {
-    "src": "/artworks/de-la-tour-magdalen.webp",
-    "width": 1179,
-    "height": 1600,
-    "title": "忏悔的抹大拉",
-    "artist": "乔治·德·拉图尔（法国）",
-    "date": "约 1640 年",
-    "original": "Georges de La Tour, The Penitent Magdalen, ca. 1640",
-    "credit": "The Metropolitan Museum of Art · CC0",
-    "link": "https://www.metmuseum.org/art/collection/search/436839"
-  },
   "hokusai-great-wave": {
     "src": "/artworks/hokusai-great-wave.webp",
     "width": 1600,
@@ -42,38 +31,5 @@
     "original": "Ma Yuan, Scholar viewing a waterfall, early 13th century",
     "credit": "The Metropolitan Museum of Art · CC0",
     "link": "https://www.metmuseum.org/art/collection/search/40086"
-  },
-  "guo-xi-level-distance": {
-    "src": "/artworks/guo-xi-level-distance.webp",
-    "width": 1600,
-    "height": 854,
-    "title": "树色平远图",
-    "artist": "郭熙（北宋）",
-    "date": "约 1080 年",
-    "original": "Guo Xi, Old Trees, Level Distance, ca. 1080",
-    "credit": "The Metropolitan Museum of Art · CC0",
-    "link": "https://www.metmuseum.org/art/collection/search/39668"
-  },
-  "rembrandt-self-portrait": {
-    "src": "/artworks/rembrandt-self-portrait.webp",
-    "width": 1319,
-    "height": 1600,
-    "title": "自画像",
-    "artist": "伦勃朗（荷兰）",
-    "date": "1660 年",
-    "original": "Rembrandt (Rembrandt van Rijn), Self-Portrait, 1660",
-    "credit": "The Metropolitan Museum of Art · CC0",
-    "link": "https://www.metmuseum.org/art/collection/search/437397"
-  },
-  "vermeer-young-woman": {
-    "src": "/artworks/vermeer-young-woman.webp",
-    "width": 1429,
-    "height": 1600,
-    "title": "少女习作",
-    "artist": "维米尔（荷兰）",
-    "date": "约 1665–1667 年",
-    "original": "Johannes Vermeer, Study of a Young Woman, ca. 1665–67",
-    "credit": "The Metropolitan Museum of Art · CC0",
-    "link": "https://www.metmuseum.org/art/collection/search/437879"
   }
 }

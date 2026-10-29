@@ -65,13 +65,13 @@ func learnPracticeGateway(t *testing.T, items []LearnCritiqueItem, seen *[]map[s
 func TestLearnDraw(t *testing.T) {
 	ctx := context.Background()
 	var seen []map[string]any
-	items := []LearnCritiqueItem{{Dim: "光的方向", Score: 90, Note: "左侧受光"}, {Dim: "明暗层次", Score: 80, Note: "层次清楚"},
-		{Dim: "光的性质", Score: 70, Note: "暖光"}, {Dim: "提示词", Score: 50, Note: "没写软硬"}}
+	items := []LearnCritiqueItem{{Dim: "光的方向", Score: 90, Note: "夕阳在身后"}, {Dim: "氛围", Score: 80, Note: "很温暖"},
+		{Dim: "光效亮点", Score: 70, Note: "有轮廓光"}, {Dim: "提示词", Score: 50, Note: "没写光的颜色"}}
 	gw := learnPracticeGateway(t, items, &seen)
 	defer gw.Close()
 	svc, repo := newL2Service(t, gw.URL, LearnSources{})
 
-	res, err := svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-side-light", Prompt: "桌上一个茶壶，光从左边来", Size: "1536x1024"})
+	res, err := svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "桌上一个茶壶，光从左边来", Size: "1536x1024"})
 	require.NoError(t, err)
 	require.True(t, strings.HasPrefix(res.Image, "data:image/jpeg;base64,"))
 	pic, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(res.Image, "data:image/jpeg;base64,"))
@@ -81,9 +81,9 @@ func TestLearnDraw(t *testing.T) {
 	require.Equal(t, 1536, cfg.Width) // shrunk to the long-edge limit
 	require.Equal(t, 768, cfg.Height)
 
-	// Weighted total (35/30/15/20), computed here rather than taken from the model.
+	// Weighted total (30/30/20/20), computed here rather than taken from the model.
 	require.NotNil(t, res.Critique)
-	require.Equal(t, 76, res.Critique.Score) // (90*35 + 80*30 + 70*15 + 50*20) / 100 = 75.5
+	require.Equal(t, 75, res.Critique.Score) // (90*30 + 80*30 + 70*20 + 50*20) / 100
 	require.True(t, res.Critique.Passed)
 	require.Equal(t, "改写后的提示词", res.Critique.RevisedPrompt)
 	require.Equal(t, 1, res.DrawsLeft)
@@ -94,24 +94,24 @@ func TestLearnDraw(t *testing.T) {
 	require.Equal(t, "low", seen[0]["quality"])
 	require.Equal(t, "1536x1024", seen[0]["size"])
 	critic, _ := json.Marshal(seen[1]["messages"])
-	require.Contains(t, string(critic), "题目要求：画一组桌面静物")
+	require.Contains(t, string(critic), "题目要求：给一个动漫场景打光")
 	require.Contains(t, string(critic), "data:image/jpeg;base64,")
 	require.Equal(t, "draw", repo.runs[0].kind)
 	require.Len(t, repo.practice, 1)
-	require.Equal(t, LearnPractice{UserID: 1, Lesson: "i3", Exercise: "i3-side-light", Kind: "draw", Prompt: "桌上一个茶壶，光从左边来", Score: 76, Items: res.Critique.Items}, repo.practice[0])
+	require.Equal(t, LearnPractice{UserID: 1, Lesson: "i3", Exercise: "i3-mood-light", Kind: "draw", Prompt: "桌上一个茶壶，光从左边来", Score: 75, Items: res.Critique.Items}, repo.practice[0])
 
 	me, err := svc.Me(ctx, 1)
 	require.NoError(t, err)
 	require.Equal(t, 1, me.DrawsLeft)
-	require.Equal(t, map[string]int{"i3-side-light": 76}, me.Practice)
+	require.Equal(t, map[string]int{"i3-mood-light": 75}, me.Practice)
 
 	// A blocked drawing is not counted against the free drawings.
-	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-side-light", Prompt: "会被拦截的描述"})
+	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "会被拦截的描述"})
 	require.Equal(t, "LEARN_RUN_FAILED", infraerrors.Reason(err))
 	require.Contains(t, infraerrors.Message(err), "内容安全审核")
-	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-side-light", Prompt: "第二张"})
+	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "第二张"})
 	require.NoError(t, err)
-	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-side-light", Prompt: "第三张"})
+	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "第三张"})
 	require.Equal(t, "LEARN_DRAW_QUOTA", infraerrors.Reason(err))
 
 	for _, in := range []LearnDrawInput{
@@ -121,18 +121,18 @@ func TestLearnDraw(t *testing.T) {
 		_, err = svc.Draw(ctx, 2, in)
 		require.Equal(t, "LEARN_EXERCISE_INVALID", infraerrors.Reason(err), in.Exercise)
 	}
-	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-side-light", Prompt: " "})
+	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-mood-light", Prompt: " "})
 	require.Equal(t, "LEARN_RUN_INVALID", infraerrors.Reason(err))
-	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-side-light", Prompt: "x", Size: "512x512"})
+	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "x", Size: "512x512"})
 	require.Equal(t, "LEARN_RUN_INVALID", infraerrors.Reason(err))
-	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-side-light", Prompt: strings.Repeat("光", learnMaxPromptRunes+1)})
+	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-mood-light", Prompt: strings.Repeat("光", learnMaxPromptRunes+1)})
 	require.Equal(t, "LEARN_RUN_INVALID", infraerrors.Reason(err))
 }
 
 func TestLearnDrawSiteCap(t *testing.T) {
 	ctx := context.Background()
 	var seen []map[string]any
-	gw := learnPracticeGateway(t, []LearnCritiqueItem{{Dim: "光的方向", Score: 90}, {Dim: "明暗层次", Score: 90}, {Dim: "光的性质", Score: 90}, {Dim: "提示词", Score: 90}}, &seen)
+	gw := learnPracticeGateway(t, []LearnCritiqueItem{{Dim: "光的方向", Score: 90}, {Dim: "氛围", Score: 90}, {Dim: "光效亮点", Score: 90}, {Dim: "提示词", Score: 90}}, &seen)
 	defer gw.Close()
 	svc, _ := newL2Service(t, gw.URL, LearnSources{})
 	st := svc.Settings(ctx)
@@ -140,9 +140,9 @@ func TestLearnDrawSiteCap(t *testing.T) {
 	_, err := svc.SaveSettings(ctx, st)
 	require.NoError(t, err)
 
-	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-side-light", Prompt: "茶壶"})
+	_, err = svc.Draw(ctx, 1, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "茶壶"})
 	require.NoError(t, err)
-	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-side-light", Prompt: "茶壶"})
+	_, err = svc.Draw(ctx, 2, LearnDrawInput{Exercise: "i3-mood-light", Prompt: "茶壶"})
 	require.Equal(t, "LEARN_DRAW_BUSY", infraerrors.Reason(err))
 }
 
@@ -202,14 +202,14 @@ func TestLearnPracticeCertificate(t *testing.T) {
 	// Once the track is complete: every exercise of its lessons must reach its pass mark.
 	svc.catalog.track("i").CertClosed = false
 	defer func() { svc.catalog.track("i").CertClosed = true }()
-	repo.practice = append(repo.practice, LearnPractice{UserID: 1, Exercise: "i3-side-light", Score: 82}, LearnPractice{UserID: 1, Exercise: "i5-photo", Score: 40})
+	repo.practice = append(repo.practice, LearnPractice{UserID: 1, Exercise: "i3-mood-light", Score: 82}, LearnPractice{UserID: 1, Exercise: "i5-photo", Score: 40})
 	st, err := svc.CertStatus(ctx, 1, "i")
 	require.NoError(t, err)
 	project := st.Items[len(st.Items)-1]
 	require.False(t, project.Done)
 	require.Contains(t, project.Detail, "已达标 1 / 3 个")
 	require.Contains(t, project.Detail, "给你的照片做构图体检")
-	repo.practice = append(repo.practice, LearnPractice{UserID: 1, Exercise: "i5-photo", Score: 61}, LearnPractice{UserID: 1, Exercise: "i5-leading-lines", Score: 70})
+	repo.practice = append(repo.practice, LearnPractice{UserID: 1, Exercise: "i5-photo", Score: 61}, LearnPractice{UserID: 1, Exercise: "i5-wallpaper", Score: 70})
 	st, err = svc.CertStatus(ctx, 1, "i")
 	require.NoError(t, err)
 	require.True(t, st.Items[len(st.Items)-1].Done)

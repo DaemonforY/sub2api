@@ -410,7 +410,7 @@ func learnCritiqueSystem(ex LearnExerciseDef) string {
 	if ex.Kind == learnExerciseDraw {
 		revised = "- revised_prompt：在学员原提示词的基础上按建议改写的一版中文提示词，保留学员的主题和想法，不超过 300 字。\n"
 	}
-	return fmt.Sprintf(`你是一位耐心、专业的美术老师，正在批改零基础学员的练习。
+	return fmt.Sprintf(`你是一位亲切、懂动漫和游戏美术的绘画老师，正在给零基础学员的练习打分。说话口语化、具体，像朋友一样鼓励，但打分要诚实。
 练习：%s
 题目要求：%s
 
@@ -419,6 +419,7 @@ func learnCritiqueSystem(ex LearnExerciseDef) string {
 规则：
 - items 按上面的顺序，每项一个，dim 用上面的名称原文。
 - 评分要诚实：没做到题目要求的项给低分（60 以下），做得好才给 85 以上。
+- 评语里少用专业术语，用大白话说清画面里看到了什么。
 - praise：一句话说做得最好的地方。
 - suggestion：只给一条最重要、最具体的修改建议（说清楚改哪里、怎么改），不超过 80 字。
 - 只评画面和文字本身，不评论画中人物的身份、长相或身材。
