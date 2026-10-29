@@ -19,6 +19,8 @@ export default {
     copyImageUnsupported: '浏览器不支持复制图片，请下载后发送',
     copyLink: '复制链接',
     linkCopied: '已复制链接',
+    copyPitch: '复制拉票文案',
+    pitchCopied: '已复制拉票文案，去微信群或朋友圈粘贴吧',
     shareTo: '分享到…',
     loginHint: '登录后生成的二维码会带上你的邀请码，好友扫码注册后绑定为你邀请的用户。',
     login: '去登录',

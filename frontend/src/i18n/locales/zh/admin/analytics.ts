@@ -256,6 +256,8 @@ export default {
       assistant_ask: '向客服提问',
       promo_mascot_open: '打开首页福利小蜂',
       promo_mascot_click: '点击福利小蜂里的优惠',
+      contest_vote: '比赛点赞',
+      contest_vote_login: '点赞前去登录',
       share_card_open: '打开分享卡片',
       share_card_save: '保存分享卡片',
       share_link_copy: '复制分享链接 / 摘录',

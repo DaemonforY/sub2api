@@ -183,6 +183,75 @@ func TestContestReview_RejectRefundsVotes(t *testing.T) {
 	require.Equal(t, 1, detail.Viewer.VotesLeft, "disqualifying refunds the voter")
 }
 
+func TestContestEntryPageAndRandomOrder(t *testing.T) {
+	ctx := context.Background()
+	suffix := time.Now().Format("150405.000000")
+	mk := func(name string) *service.User {
+		return mustCreateUser(t, integrationEntClient, &service.User{Email: name + "-" + suffix + "@contest.test"})
+	}
+	authors := []*service.User{mk("ra"), mk("rb"), mk("rc"), mk("rd")}
+	stranger := mk("rx")
+	svc := service.NewContestService(NewContestRepository(integrationDB), NewUserRepository(integrationEntClient, integrationDB),
+		NewRedeemCodeRepository(integrationEntClient), nil, nil, service.NewContestImageStore(t.TempDir()))
+
+	now := time.Now().UTC()
+	c, err := svc.CreateContest(ctx, &service.Contest{
+		Title: "随机排序赛", Status: service.ContestStatusPublished, RequireReview: true,
+		SubmissionStartAt: now.Add(-time.Hour), SubmissionEndAt: now.Add(time.Hour),
+		VotingStartAt: now.Add(-time.Hour), VotingEndAt: now.Add(2 * time.Hour),
+		MaxEntriesPerUser: 1, VotesPerUser: 1,
+	}, 0)
+	require.NoError(t, err)
+
+	var ids []int64
+	for i, u := range authors {
+		e, err := svc.SubmitEntry(ctx, c.ID, u.ID, service.ContestEntryInput{Title: "作品", Image: contestTestPNG(t)})
+		require.NoError(t, err)
+		if i < 3 { // the last one stays in review
+			require.NoError(t, svc.ReviewEntry(ctx, c.ID, e.ID, service.ContestEntryApproved, ""))
+		}
+		ids = append(ids, e.ID)
+	}
+	pending := ids[3]
+
+	// Random order: the same seed gives the same order across pages; every approved entry once.
+	order := func(seed string) []int64 {
+		var got []int64
+		for page := 1; page <= 3; page++ {
+			list, total, err := svc.ListPublicEntries(ctx, c.ID, 0, "random", seed, page, 1)
+			require.NoError(t, err)
+			require.Equal(t, 3, total)
+			for _, e := range list {
+				got = append(got, e.ID)
+			}
+		}
+		return got
+	}
+	first := order("s1")
+	require.ElementsMatch(t, ids[:3], first)
+	require.Equal(t, first, order("s1"))
+
+	// The entry page: approved entries for everyone, a pending one only for its author.
+	e, err := svc.PublicEntry(ctx, c.ID, ids[0], stranger.ID)
+	require.NoError(t, err)
+	require.False(t, e.IsMine)
+	require.Empty(t, e.UserEmail)
+	require.NotEmpty(t, e.ImageURL)
+	require.NoError(t, svc.Vote(ctx, c.ID, ids[0], stranger.ID, ""))
+	e, err = svc.PublicEntry(ctx, c.ID, ids[0], stranger.ID)
+	require.NoError(t, err)
+	require.True(t, e.VotedByMe)
+
+	_, err = svc.PublicEntry(ctx, c.ID, pending, stranger.ID)
+	require.ErrorIs(t, err, service.ErrContestEntryNotFound)
+	mine, err := svc.PublicEntry(ctx, c.ID, pending, authors[3].ID)
+	require.NoError(t, err)
+	require.True(t, mine.IsMine)
+	require.Equal(t, service.ContestEntryPending, mine.Status)
+	_, err = svc.PublicEntry(ctx, c.ID+100000, ids[0], 0)
+	require.Error(t, err)
+}
+
 func userBalance(t *testing.T, userID int64) float64 {
 	t.Helper()
 	var b float64

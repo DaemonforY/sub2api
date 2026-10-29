@@ -40,6 +40,9 @@ func parseContestPathID(c *gin.Context, name string) (int64, bool) {
 	return id, true
 }
 
+// Service exposes the contest service (link previews for contest pages).
+func (h *ContestHandler) Service() *service.ContestService { return h.service }
+
 // List GET /api/v1/contests
 func (h *ContestHandler) List(c *gin.Context) {
 	list, err := h.service.ListPublicContests(c.Request.Context())
@@ -64,7 +67,7 @@ func (h *ContestHandler) Get(c *gin.Context) {
 	response.Success(c, detail)
 }
 
-// ListEntries GET /api/v1/contests/:id/entries?sort=votes|new
+// ListEntries GET /api/v1/contests/:id/entries?sort=votes|new|random&seed=
 func (h *ContestHandler) ListEntries(c *gin.Context) {
 	id, ok := parseContestPathID(c, "id")
 	if !ok {
@@ -74,12 +77,30 @@ func (h *ContestHandler) ListEntries(c *gin.Context) {
 	if pageSize > 60 {
 		pageSize = 60
 	}
-	entries, total, err := h.service.ListPublicEntries(c.Request.Context(), id, contestViewerID(c), c.Query("sort"), page, pageSize)
+	entries, total, err := h.service.ListPublicEntries(c.Request.Context(), id, contestViewerID(c), c.Query("sort"), c.Query("seed"), page, pageSize)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 	response.Paginated(c, entries, int64(total), page, pageSize)
+}
+
+// GetEntry GET /api/v1/contests/:id/entries/:entryId
+func (h *ContestHandler) GetEntry(c *gin.Context) {
+	id, ok := parseContestPathID(c, "id")
+	if !ok {
+		return
+	}
+	entryID, ok := parseContestPathID(c, "entryId")
+	if !ok {
+		return
+	}
+	entry, err := h.service.PublicEntry(c.Request.Context(), id, entryID, contestViewerID(c))
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, entry)
 }
 
 // Leaderboard GET /api/v1/contests/:id/leaderboard

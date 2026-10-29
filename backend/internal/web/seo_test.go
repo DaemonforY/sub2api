@@ -37,6 +37,16 @@ func (fakeSEOContent) VideoWork(_ context.Context, id string) (*SEOPage, error) 
 	return &SEOPage{Path: "/w/abc", Title: "区块链为什么不能篡改", Description: "60 秒讲清楚"}, nil
 }
 
+func (fakeSEOContent) ContestPage(_ context.Context, contestID, entryID int64) (*SEOPage, error) {
+	switch {
+	case contestID == 3 && entryID == 0:
+		return &SEOPage{Path: "/contests/3", Title: "11 月 AI 画图赛", Description: "第一名送 1 个月月度订阅"}, nil
+	case contestID == 3 && entryID == 7:
+		return &SEOPage{Path: "/contests/3/e/7", Title: "月球上的猫 · 11 月 AI 画图赛", Description: "来给小林点个赞", Image: "/api/v1/contest-images/a.png"}, nil
+	}
+	return nil, nil
+}
+
 func (fakeSEOContent) FAQ() []SEOFAQ {
 	return []SEOFAQ{{Question: "怎么创建 API Key", Answer: "进入「API 密钥」点创建 <b>", Link: "/keys"}}
 }
@@ -209,4 +219,25 @@ func TestGamesPageMeta(t *testing.T) {
 
 	unknown := mainPageMeta(ctx, testSite, nil, "/games/abti/ABCD")
 	require.Equal(t, testSite.Logo, unknown.Image)
+}
+
+func TestContestPageMeta(t *testing.T) {
+	ctx := context.Background()
+
+	entry := mainPageMeta(ctx, testSite, fakeSEOContent{}, "/contests/3/e/7")
+	require.True(t, entry.Index)
+	require.Equal(t, "article", entry.OGType)
+	require.Equal(t, "月球上的猫 · 11 月 AI 画图赛 | HiveGPT", entry.Title)
+	require.Equal(t, "来给小林点个赞", entry.Description)
+	require.Equal(t, "https://hivegpt.cn/api/v1/contest-images/a.png", entry.Image)
+
+	contest := mainPageMeta(ctx, testSite, fakeSEOContent{}, "/contests/3")
+	require.Equal(t, "11 月 AI 画图赛", contest.H1)
+	require.Equal(t, testSite.Logo, contest.Image)
+
+	// Unknown entries and odd paths keep the generic contest card.
+	for _, p := range []string{"/contests/3/e/8", "/contests/3/x/7", "/contests/abc", "/contests/3/e/7/more"} {
+		m := mainPageMeta(ctx, testSite, fakeSEOContent{}, p)
+		require.Equal(t, "AI 创作比赛", m.H1, p)
+	}
 }

@@ -1,6 +1,7 @@
 // Share cards: an image of a page for WeChat Moments / groups — either a passage the reader
-// selected (quote) or the page's key points (summary) — with a QR code back to the page that
-// carries the sharer's invite code. Drawn on a <canvas> in the browser; no server involved.
+// selected (quote), the page's key points (summary) or a picture with its title (image, e.g. a
+// contest entry) — with a QR code back to the page that carries the sharer's invite code. Drawn on
+// a <canvas> in the browser; no server involved.
 //
 // Two identical copies: frontend/src/utils/shareCard.ts and learn/.vitepress/theme/shareCard.ts
 // (frontend/src/utils/__tests__/shareCard.spec.ts fails when they differ). Keep it framework-free.
@@ -50,7 +51,15 @@ export interface SummaryCard extends ShareCardBase {
   points: string[]
 }
 
-export type ShareCard = QuoteCard | SummaryCard
+export interface ImageCard extends ShareCardBase {
+  kind: 'image'
+  /** The picture, same-origin or served with CORS (a tainted canvas can't be exported). */
+  image: string
+  /** Under the title, e.g. 「作者 小林 · 11 月 AI 画图赛」. */
+  caption?: string
+}
+
+export type ShareCard = QuoteCard | SummaryCard | ImageCard
 
 export const QUOTE_MAX_CHARS = 300
 export const QUOTE_MIN_CHARS = 6
@@ -228,13 +237,17 @@ export function headingBefore(range: Range, root: Element): string {
 
 // --- Link ------------------------------------------------------------------------------------------
 
-/** The QR target: the page without its old tracking params, plus the sharer's invite code. */
-export function shareUrl(pageUrl: string, opts: { aff?: string; medium: 'quote' | 'summary'; anchor?: string }): string {
+/**
+ * The QR target: the page without its old tracking params, plus the sharer's invite code.
+ * utm_source defaults to share_card; a campaign (e.g. contest-12) is added when given.
+ */
+export function shareUrl(pageUrl: string, opts: { aff?: string; medium: string; anchor?: string; source?: string; campaign?: string }): string {
   const url = new URL(pageUrl)
   for (const key of ['aff', 'aff_code', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) url.searchParams.delete(key)
   if (opts.aff) url.searchParams.set('aff', opts.aff)
-  url.searchParams.set('utm_source', 'share_card')
+  url.searchParams.set('utm_source', opts.source || 'share_card')
   url.searchParams.set('utm_medium', opts.medium)
+  if (opts.campaign) url.searchParams.set('utm_campaign', opts.campaign)
   url.hash = opts.anchor ? encodeURIComponent(opts.anchor) : ''
   return url.toString()
 }
@@ -628,6 +641,48 @@ function layoutSummary(ctx: Ctx, p: Palette, card: SummaryCard, qr: HTMLCanvasEl
   return finishLayout(stack(items))
 }
 
+/** A picture fitted inside width × maxHeight, with rounded corners and a soft backdrop. */
+function pictureBlock(p: Palette, img: HTMLImageElement, maxHeight: number): Laid {
+  const ratio = img.naturalWidth > 0 && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 1
+  const height = Math.round(Math.min(TEXT_W / ratio, maxHeight))
+  const drawW = Math.min(TEXT_W, height * ratio)
+  return {
+    height,
+    paint: (c, y) => {
+      c.save()
+      c.beginPath()
+      c.roundRect(FRAME + PAD, y, TEXT_W, height, 24)
+      c.clip()
+      c.fillStyle = p.code
+      c.fillRect(FRAME + PAD, y, TEXT_W, height)
+      c.drawImage(img, FRAME + PAD + (TEXT_W - drawW) / 2, y, drawW, height)
+      c.restore()
+    },
+  }
+}
+
+function layoutImage(ctx: Ctx, p: Palette, card: ImageCard, img: HTMLImageElement, qr: HTMLCanvasElement): { height: number; paint: Painter } {
+  const title = textBlock(ctx, card.title, `700 54px ${SANS}`, p.ink, 76, 2)
+  const caption = card.caption ? textBlock(ctx, card.caption, `400 30px ${SANS}`, p.muted, 46, 2) : null
+  const footer = qrRow(ctx, p, card, qr)
+  const fixed = HEAD + FOOT + PAD * 2 + title.height + (caption ? 16 + caption.height : 0) + 40 + 56 + footer.height
+  const items: { laid: Laid; gap: number }[] = [{ laid: title, gap: 0 }]
+  if (caption) items.push({ laid: caption, gap: 16 })
+  items.push({ laid: pictureBlock(p, img, Math.max(360, MAX_H - fixed)), gap: 40 })
+  items.push({ laid: footer, gap: 56 })
+  return finishLayout(stack(items))
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('image failed to load'))
+    img.src = src
+  })
+}
+
 /** Card height from its content, the canvas between MIN_H and MAX_H; extra room goes above the QR row. */
 function finishLayout(content: Laid): { height: number; paint: Painter } {
   const cardH = content.height + PAD * 2
@@ -650,7 +705,12 @@ export async function drawShareCard(card: ShareCard, canvas: HTMLCanvasElement =
   canvas.height = MIN_H
   const measureCtx = canvas.getContext('2d')
   if (!measureCtx) throw new Error('canvas unavailable')
-  const layout = card.kind === 'quote' ? layoutQuote(measureCtx, p, card, qr) : layoutSummary(measureCtx, p, card, qr)
+  const layout =
+    card.kind === 'quote'
+      ? layoutQuote(measureCtx, p, card, qr)
+      : card.kind === 'image'
+        ? layoutImage(measureCtx, p, card, await loadImage(card.image), qr)
+        : layoutSummary(measureCtx, p, card, qr)
 
   canvas.height = layout.height
   const ctx = canvas.getContext('2d')!

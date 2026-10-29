@@ -26,7 +26,7 @@ const contestSelectColumns = `c.id, c.title, c.description, c.rules, c.cover_ima
 c.submission_start_at, c.submission_end_at, c.voting_start_at, c.voting_end_at,
 c.max_entries_per_user, c.votes_per_user, c.allow_self_vote, c.require_review,
 c.min_account_age_hours, c.one_prize_per_user, c.min_votes_for_prize, c.prizes,
-c.settled_at, c.created_by, c.created_at, c.updated_at,
+c.settled_at, c.created_by, c.created_at, c.updated_at, c.auto_period,
 (SELECT COUNT(*) FROM contest_entries e WHERE e.contest_id = c.id AND e.status = 'approved'),
 (SELECT COUNT(*) FROM contest_votes v WHERE v.contest_id = c.id)`
 
@@ -41,7 +41,7 @@ func scanContest(scan func(dest ...any) error) (*service.Contest, error) {
 		&c.SubmissionStartAt, &c.SubmissionEndAt, &c.VotingStartAt, &c.VotingEndAt,
 		&c.MaxEntriesPerUser, &c.VotesPerUser, &c.AllowSelfVote, &c.RequireReview,
 		&c.MinAccountAgeHours, &c.OnePrizePerUser, &c.MinVotesForPrize, &prizes,
-		&settledAt, &createdBy, &c.CreatedAt, &c.UpdatedAt, &c.EntryCount, &c.VoteCount); err != nil {
+		&settledAt, &createdBy, &c.CreatedAt, &c.UpdatedAt, &c.AutoPeriod, &c.EntryCount, &c.VoteCount); err != nil {
 		return nil, err
 	}
 	c.Prizes = []service.ContestPrize{}
@@ -67,21 +67,32 @@ func contestPrizesJSON(p []service.ContestPrize) (string, error) {
 }
 
 func (r *contestRepository) CreateContest(ctx context.Context, c *service.Contest) error {
+	return insertContest(ctx, r.db, c)
+}
+
+// contestQueryRower is a *sql.DB or *sql.Tx.
+type contestQueryRower interface {
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// insertContest inserts c; with an AutoPeriod already taken it returns sql.ErrNoRows.
+func insertContest(ctx context.Context, q contestQueryRower, c *service.Contest) error {
 	prizes, err := contestPrizesJSON(c.Prizes)
 	if err != nil {
 		return err
 	}
-	return r.db.QueryRowContext(ctx, `
+	return q.QueryRowContext(ctx, `
 INSERT INTO contests (title, description, rules, cover_image, status,
   submission_start_at, submission_end_at, voting_start_at, voting_end_at,
   max_entries_per_user, votes_per_user, allow_self_vote, require_review,
-  min_account_age_hours, one_prize_per_user, min_votes_for_prize, prizes, created_by)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18)
+  min_account_age_hours, one_prize_per_user, min_votes_for_prize, prizes, created_by, auto_period)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::jsonb,$18,$19)
+ON CONFLICT (auto_period) WHERE auto_period <> '' DO NOTHING
 RETURNING id`,
 		c.Title, c.Description, c.Rules, c.CoverImage, c.Status,
 		c.SubmissionStartAt.UTC(), c.SubmissionEndAt.UTC(), c.VotingStartAt.UTC(), c.VotingEndAt.UTC(),
 		c.MaxEntriesPerUser, c.VotesPerUser, c.AllowSelfVote, c.RequireReview,
-		c.MinAccountAgeHours, c.OnePrizePerUser, c.MinVotesForPrize, prizes, nullInt64Ptr(c.CreatedBy),
+		c.MinAccountAgeHours, c.OnePrizePerUser, c.MinVotesForPrize, prizes, nullInt64Ptr(c.CreatedBy), c.AutoPeriod,
 	).Scan(&c.ID)
 }
 
@@ -253,6 +264,9 @@ func (r *contestRepository) ListEntries(ctx context.Context, f service.ContestEn
 		order = " ORDER BY e.created_at DESC, e.id DESC"
 	case "rank":
 		order = " ORDER BY e.final_rank ASC NULLS LAST, e.vote_count DESC, e.id ASC"
+	case "random":
+		args = append(args, f.Seed)
+		order = " ORDER BY md5(e.id::text || ':' || $" + itoa(len(args)) + "), e.id ASC"
 	}
 	page, size := f.Page, f.PageSize
 	if page <= 0 {
@@ -577,4 +591,68 @@ func (r *contestRepository) FinishAwardGrant(ctx context.Context, awardID int64,
 	}
 	_, err := r.db.ExecContext(ctx, `UPDATE contest_awards SET status=$2, note=$3, granted_at=$4 WHERE id=$1`, awardID, status, note, ga)
 	return err
+}
+
+// ---------------------------------------------------------------------------
+// Monthly schedule
+// ---------------------------------------------------------------------------
+
+func (r *contestRepository) GetAutoState(ctx context.Context) (*service.ContestAutoState, error) {
+	var (
+		st  service.ContestAutoState
+		raw []byte
+		by  sql.NullInt64
+	)
+	err := r.db.QueryRowContext(ctx, `SELECT enabled, template, last_period, updated_by, updated_at FROM contest_auto_settings WHERE id = 1`).
+		Scan(&st.Enabled, &raw, &st.LastPeriod, &by, &st.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	st.Template = service.DefaultContestAutoTemplate()
+	if len(raw) > 0 && string(raw) != "{}" {
+		st.Template.Prizes = nil
+		if err := json.Unmarshal(raw, &st.Template); err != nil {
+			return nil, fmt.Errorf("decode contest auto template: %w", err)
+		}
+	}
+	st.UpdatedBy = nullInt64ToPtr(by)
+	return &st, nil
+}
+
+func (r *contestRepository) SaveAutoState(ctx context.Context, enabled bool, tpl service.ContestAutoTemplate, updatedBy *int64) error {
+	raw, err := json.Marshal(tpl)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.ExecContext(ctx, `
+INSERT INTO contest_auto_settings (id, enabled, template, updated_by, updated_at) VALUES (1, $1, $2::jsonb, $3, NOW())
+ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled, template = EXCLUDED.template, updated_by = EXCLUDED.updated_by, updated_at = NOW()`,
+		enabled, string(raw), nullInt64Ptr(updatedBy))
+	return err
+}
+
+func (r *contestRepository) CreateAutoContest(ctx context.Context, c *service.Contest) (bool, error) {
+	if c.AutoPeriod == "" {
+		return false, errors.New("auto contest without a period")
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	created := true
+	if err := insertContest(ctx, tx, c); err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return false, err
+		}
+		created = false // another instance created this month first
+	}
+	if _, err := tx.ExecContext(ctx, `
+UPDATE contest_auto_settings SET last_period = GREATEST(last_period, $1) WHERE id = 1`, c.AutoPeriod); err != nil {
+		return false, err
+	}
+	return created, tx.Commit()
 }

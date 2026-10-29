@@ -32,6 +32,7 @@ func RegisterContestRoutes(
 		public.GET("", h.Contest.List)
 		public.GET("/:id", h.Contest.Get)
 		public.GET("/:id/entries", h.Contest.ListEntries)
+		public.GET("/:id/entries/:entryId", h.Contest.GetEntry)
 		public.GET("/:id/leaderboard", h.Contest.Leaderboard)
 	}
 

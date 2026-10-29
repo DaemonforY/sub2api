@@ -288,6 +288,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: 'Contest', titleKey: 'contests.title' }
   },
   {
+    path: '/contests/:id(\\d+)/e/:entryId(\\d+)',
+    name: 'ContestEntry',
+    component: () => import('@/views/ContestEntryView.vue'),
+    meta: { requiresAuth: false, title: 'Contest', titleKey: 'contests.title' }
+  },
+  {
     path: '/style',
     name: 'WritingStyle',
     component: () => import('@/views/StyleView.vue'),

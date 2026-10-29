@@ -19,6 +19,8 @@ export default {
     copyImageUnsupported: "Your browser can't copy images. Download it instead.",
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
+    copyPitch: 'Copy the vote request',
+    pitchCopied: 'Copied. Paste it into a chat or a post',
     shareTo: 'Share…',
     loginHint: 'Sign in and the QR code carries your invite code: friends who sign up from it count as your invitees.',
     login: 'Sign in',

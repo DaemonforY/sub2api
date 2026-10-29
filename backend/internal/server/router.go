@@ -97,11 +97,15 @@ func SetupRouter(
 			if handlers != nil && handlers.Video != nil {
 				videos = handlers.Video.Service()
 			}
+			var contests *service.ContestService
+			if handlers != nil && handlers.Contest != nil {
+				contests = handlers.Contest.Service()
+			}
 			var plaza plazaSource
 			if handlers != nil && handlers.ModelPlaza != nil {
 				plaza = handlers.ModelPlaza
 			}
-			frontendServer.SetSEOContent(newSEOContent(courses, videos, plaza))
+			frontendServer.SetSEOContent(newSEOContent(courses, videos, contests, plaza))
 			frontendServer.SetIndexNowKey(cfg.IndexNow.Key)
 			startIndexNow(cfg.IndexNow, frontendServer, redisClient)
 			frontendServer.SetVideoPlayer(newVideoPlayerSource(videos))

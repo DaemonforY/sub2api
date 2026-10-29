@@ -1,5 +1,5 @@
 <template>
-  <BaseDialog :show="show" :title="input?.kind === 'quote' ? t('shareCard.quoteTitle') : t('shareCard.title')" width="narrow" @close="emit('close')">
+  <BaseDialog :show="show" :title="input?.dialogTitle || (input?.kind === 'quote' ? t('shareCard.quoteTitle') : t('shareCard.title'))" width="narrow" @close="emit('close')">
     <div class="space-y-4" data-testid="share-dialog">
       <!-- An <img> so phones can long-press to save it. -->
       <div class="flex justify-center rounded-xl bg-gray-100 p-2.5 dark:bg-dark-900">
@@ -29,7 +29,7 @@
         </button>
       </div>
 
-      <label v-if="userName" class="flex items-center gap-2 text-sm text-gray-600 dark:text-dark-300">
+      <label v-if="userName && input?.kind !== 'image'" class="flex items-center gap-2 text-sm text-gray-600 dark:text-dark-300">
         <input v-model="showName" type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
         {{ t('shareCard.showName', { name: userName }) }}
       </label>
@@ -45,8 +45,10 @@
           <span>{{ t('shareCard.copyImage') }}</span>
         </button>
         <button v-if="isMobile && canShareFiles" type="button" class="btn btn-primary" :disabled="!images[theme]" @click="shareFile">{{ t('shareCard.shareTo') }}</button>
-        <button type="button" class="btn btn-secondary" @click="copyLink">{{ t('shareCard.copyLink') }}</button>
+        <button type="button" class="btn btn-secondary" data-testid="share-copy-link" @click="copyLink">{{ input?.pitch ? t('shareCard.copyPitch') : t('shareCard.copyLink') }}</button>
       </div>
+
+      <p v-if="pitchPreview" class="whitespace-pre-line break-all rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-dark-900 dark:text-dark-300" data-testid="share-pitch">{{ pitchPreview }}</p>
 
       <p v-if="!authStore.isAuthenticated" class="text-xs text-gray-500 dark:text-dark-400">
         {{ t('shareCard.loginHint') }}
@@ -72,7 +74,7 @@ import { track } from '@/utils/analytics'
 import { dataUrlToBlob, drawShareCard, QUOTE_MAX_CHARS, SHARE_THEMES, shareUrl, type ShareBlock, type ShareCard, type ShareTheme } from '@/utils/shareCard'
 
 export interface ShareCardInput {
-  kind: 'quote' | 'summary'
+  kind: 'quote' | 'summary' | 'image'
   brand: string
   title: string
   label?: string
@@ -83,6 +85,19 @@ export interface ShareCardInput {
   meta?: string
   cta?: string
   anchor?: string
+  /** image cards: the picture (same-origin) and the line under the title. */
+  image?: string
+  caption?: string
+  /** The page the link and QR open; defaults to the current page. */
+  pageUrl?: string
+  /** utm_source / utm_campaign for the link (default share_card, none). */
+  source?: string
+  campaign?: string
+  /** Analytics kind; defaults to `kind`. */
+  trackKind?: string
+  dialogTitle?: string
+  /** When set, 「复制拉票文案」 copies this text (built around the link) instead of the bare link. */
+  pitch?: (link: string) => string
 }
 
 const props = defineProps<{ show: boolean; input: ShareCardInput | null }>()
@@ -126,12 +141,21 @@ async function inviteCode(): Promise<string> {
 
 function pageLink(): string {
   const input = props.input
-  return shareUrl(window.location.origin + window.location.pathname, {
+  return shareUrl(input?.pageUrl || window.location.origin + window.location.pathname, {
     aff: aff.value,
     medium: input?.kind || 'summary',
-    anchor: input?.kind === 'quote' ? input.anchor : ''
+    anchor: input?.kind === 'quote' ? input.anchor : '',
+    source: input?.source,
+    campaign: input?.campaign
   })
 }
+
+const pitchKey = ref(0)
+const pitchPreview = computed(() => {
+  void pitchKey.value
+  return props.show && props.input?.pitch ? props.input.pitch(pageLink()) : ''
+})
+const trackKind = computed(() => props.input?.trackKind || props.input?.kind || 'summary')
 
 function card(id: ShareTheme): ShareCard | null {
   const input = props.input
@@ -147,9 +171,9 @@ function card(id: ShareTheme): ShareCard | null {
     sharer: showName.value && userName.value ? t('shareCard.recommendedBy', { name: userName.value }) : '',
     footer: window.location.host
   }
-  return input.kind === 'quote'
-    ? { ...base, kind: 'quote', blocks: input.blocks || [] }
-    : { ...base, kind: 'summary', summary: input.summary, points: input.points || [] }
+  if (input.kind === 'quote') return { ...base, kind: 'quote', blocks: input.blocks || [] }
+  if (input.kind === 'image') return { ...base, kind: 'image', image: input.image || '', caption: input.caption }
+  return { ...base, kind: 'summary', summary: input.summary, points: input.points || [] }
 }
 
 let generation = 0
@@ -180,7 +204,8 @@ async function open() {
     canShareFiles.value = false
   }
   aff.value = await inviteCode()
-  track('share_card_open', { kind: props.input?.kind || 'summary', chars: (props.input?.blocks || []).reduce((n, b) => n + b.text.length, 0) })
+  pitchKey.value++
+  track('share_card_open', { kind: trackKind.value, chars: (props.input?.blocks || []).reduce((n, b) => n + b.text.length, 0) })
   await renderAll()
 }
 
@@ -200,7 +225,7 @@ function fileName() {
 }
 
 function saved(method: string) {
-  track('share_card_save', { kind: props.input?.kind || 'summary', theme: theme.value, method })
+  track('share_card_save', { kind: trackKind.value, theme: theme.value, method })
 }
 
 function download() {
@@ -235,9 +260,9 @@ async function copyImage() {
 
 async function copyLink() {
   try {
-    await navigator.clipboard.writeText(pageLink())
-    appStore.showSuccess(t('shareCard.linkCopied'))
-    track('share_link_copy', { kind: props.input?.kind || 'summary' })
+    await navigator.clipboard.writeText(pitchPreview.value || pageLink())
+    appStore.showSuccess(pitchPreview.value ? t('shareCard.pitchCopied') : t('shareCard.linkCopied'))
+    track('share_link_copy', { kind: trackKind.value })
   } catch {
     // clipboard unavailable
   }

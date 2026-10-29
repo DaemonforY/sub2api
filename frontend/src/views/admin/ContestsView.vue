@@ -2,6 +2,7 @@
   <AppLayout>
     <TablePageLayout>
       <template #filters>
+        <ContestAutoCard class="mb-4" @changed="load" />
         <div class="card flex flex-wrap items-center justify-between gap-4 p-4 sm:p-6">
           <p class="max-w-3xl text-sm text-gray-600 dark:text-dark-300">{{ t('admin.contests.description') }}</p>
           <button type="button" class="btn btn-primary" data-testid="contest-create" @click="openEditor(null)">
@@ -16,7 +17,10 @@
           <template #cell-title="{ row }">
             <div class="min-w-0 max-w-sm">
               <div class="truncate font-medium text-gray-900 dark:text-white">{{ row.title }}</div>
-              <div class="mt-0.5 text-xs text-gray-400">#{{ row.id }}</div>
+              <div class="mt-0.5 text-xs text-gray-400">
+                #{{ row.id }}
+                <span v-if="row.auto_period" class="ml-1 rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{{ t('admin.contests.auto.badge') }}</span>
+              </div>
             </div>
           </template>
           <template #cell-phase="{ row }">
@@ -185,6 +189,7 @@ import Select from '@/components/common/Select.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ContestAutoCard from '@/components/admin/contests/ContestAutoCard.vue'
 import { useAppStore } from '@/stores'
 import { adminAPI, type ContestInput } from '@/api/admin'
 import type { Contest } from '@/api/contests'

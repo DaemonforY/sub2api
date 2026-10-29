@@ -169,10 +169,13 @@ func NewContestService(repo ContestRepository, userRepo UserRepository, redeemCo
 	}
 }
 
+// SetClock replaces the clock (tests).
+func (s *ContestService) SetClock(now func() time.Time) { s.now = now }
+
 // Images exposes the image store (for the image-serving handler).
 func (s *ContestService) Images() *ContestImageStore { return s.images }
 
-// Start launches the auto-settlement loop.
+// Start launches the loop that settles finished contests and creates the monthly ones.
 func (s *ContestService) Start() {
 	if s == nil || s.repo == nil {
 		return
@@ -188,6 +191,7 @@ func (s *ContestService) Start() {
 				return
 			case <-ticker.C:
 				s.SettleDue(context.Background())
+				s.RunAutoContests(context.Background())
 			}
 		}
 	}()
@@ -430,13 +434,16 @@ func (s *ContestService) decorateEntry(e *ContestEntry, viewerID int64, voted ma
 	e.VotedByMe = voted[e.ID]
 }
 
-// ListPublicEntries lists approved entries; sort "votes" or "new".
-func (s *ContestService) ListPublicEntries(ctx context.Context, contestID, viewerID int64, sortBy string, page, pageSize int) ([]*ContestEntry, int, error) {
+// ListPublicEntries lists approved entries; sort "votes", "new" or "random" (ordered by seed).
+func (s *ContestService) ListPublicEntries(ctx context.Context, contestID, viewerID int64, sortBy, seed string, page, pageSize int) ([]*ContestEntry, int, error) {
 	if _, err := s.getPublicContest(ctx, contestID); err != nil {
 		return nil, 0, err
 	}
+	if sortBy != "new" && sortBy != "random" {
+		sortBy = "votes"
+	}
 	entries, total, err := s.repo.ListEntries(ctx, ContestEntryFilter{
-		ContestID: contestID, Statuses: []string{ContestEntryApproved}, Sort: sortBy, Page: page, PageSize: pageSize,
+		ContestID: contestID, Statuses: []string{ContestEntryApproved}, Sort: sortBy, Seed: truncateRunes(seed, 32), Page: page, PageSize: pageSize,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -456,6 +463,35 @@ func (s *ContestService) ListPublicEntries(ctx context.Context, contestID, viewe
 		e.UserEmail = ""
 	}
 	return entries, total, nil
+}
+
+// PublicEntry returns one entry of a public contest, for its own page: approved entries for everyone,
+// and the author's own entry whatever its status (so they can share it while it's being reviewed).
+func (s *ContestService) PublicEntry(ctx context.Context, contestID, entryID, viewerID int64) (*ContestEntry, error) {
+	if _, err := s.getPublicContest(ctx, contestID); err != nil {
+		return nil, err
+	}
+	e, err := s.repo.GetEntry(ctx, entryID)
+	if err != nil {
+		return nil, err
+	}
+	mine := viewerID > 0 && e.UserID == viewerID
+	if e.ContestID != contestID || (e.Status != ContestEntryApproved && !mine) {
+		return nil, ErrContestEntryNotFound
+	}
+	voted := map[int64]bool{}
+	if viewerID > 0 && e.Status == ContestEntryApproved {
+		ids, err := s.repo.ListUserVotedEntryIDs(ctx, contestID, viewerID)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range ids {
+			voted[id] = true
+		}
+	}
+	s.decorateEntry(e, viewerID, voted)
+	e.UserEmail = ""
+	return e, nil
 }
 
 // ContestLeaderboardRow is one leaderboard line.

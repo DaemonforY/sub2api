@@ -491,6 +491,8 @@ func registerContestAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		contests.GET("", h.Admin.Contest.List)
 		contests.POST("", h.Admin.Contest.Create)
+		contests.GET("/auto", h.Admin.Contest.GetAuto)
+		contests.PUT("/auto", h.Admin.Contest.SaveAuto)
 		contests.GET("/:id", h.Admin.Contest.Get)
 		contests.PUT("/:id", h.Admin.Contest.Update)
 		contests.DELETE("/:id", h.Admin.Contest.Delete)

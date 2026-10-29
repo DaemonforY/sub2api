@@ -256,6 +256,8 @@ export default {
       assistant_ask: 'Asked the assistant',
       promo_mascot_open: 'Opened home offers mascot',
       promo_mascot_click: 'Clicked an offer in the mascot',
+      contest_vote: 'Voted in a contest',
+      contest_vote_login: 'Sent to sign in to vote',
       share_card_open: 'Opened a share card',
       share_card_save: 'Saved a share card',
       share_link_copy: 'Copied a share link or quote',

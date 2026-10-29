@@ -347,7 +347,7 @@ func TestCommunityWorkContestEntries(t *testing.T) {
 	_, err = svc.EnterContest(ctx, author.ID, in)
 	require.ErrorIs(t, err, service.ErrContestWorkEntered, "one live entry per work and contest")
 
-	entries, _, err := contests.ListPublicEntries(ctx, contest.ID, 0, "new", 1, 10)
+	entries, _, err := contests.ListPublicEntries(ctx, contest.ID, 0, "new", "", 1, 10)
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 	require.Equal(t, work.ID, *entries[0].WorkID)

@@ -109,8 +109,10 @@ type Contest struct {
 	Prizes             []ContestPrize `json:"prizes"`
 	SettledAt          *time.Time     `json:"settled_at,omitempty"`
 	CreatedBy          *int64         `json:"created_by,omitempty"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
+	// AutoPeriod is the month ("2026-11") of a contest created by the monthly schedule; empty otherwise.
+	AutoPeriod string    `json:"auto_period,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 
 	// Read-side fields.
 	EntryCount int    `json:"entry_count"`
@@ -193,8 +195,10 @@ type ContestEntryFilter struct {
 	// Statuses restricts the result; empty = all.
 	Statuses []string
 	UserID   *int64
-	// Sort: "votes" (default) or "new".
-	Sort     string
+	// Sort: "votes" (default), "new", "rank" or "random".
+	Sort string
+	// Seed orders "random": the same seed gives the same order, so a visitor's pages don't overlap.
+	Seed     string
 	Page     int
 	PageSize int
 }
@@ -232,6 +236,13 @@ type ContestRepository interface {
 	// ClaimAwardForGrant moves pending/failed → granting and returns the award; ok=false if not claimable.
 	ClaimAwardForGrant(ctx context.Context, contestID, awardID int64) (*ContestAward, bool, error)
 	FinishAwardGrant(ctx context.Context, awardID int64, status, note string, grantedAt *time.Time) error
+
+	// GetAutoState returns the monthly schedule, or nil when it was never saved.
+	GetAutoState(ctx context.Context) (*ContestAutoState, error)
+	SaveAutoState(ctx context.Context, enabled bool, tpl ContestAutoTemplate, updatedBy *int64) error
+	// CreateAutoContest inserts the month's contest (c.AutoPeriod) and records the month as done.
+	// created is false when another instance created it first; c.ID is set only when created.
+	CreateAutoContest(ctx context.Context, c *Contest) (created bool, err error)
 }
 
 // ContestPhaseAt derives the phase of a contest at time now.

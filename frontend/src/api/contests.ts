@@ -46,6 +46,8 @@ export interface Contest {
   min_votes_for_prize: number
   prizes: ContestPrize[]
   settled_at?: string
+  /** Set on contests the monthly schedule created ("2026-11"). */
+  auto_period?: string
   entry_count: number
   vote_count: number
   created_at: string
@@ -109,6 +111,8 @@ export interface ContestDetail {
   awards?: ContestAward[]
 }
 
+export type ContestEntrySort = 'votes' | 'new' | 'random'
+
 export interface ContestLeaderboardRow {
   rank: number
   entry_id: number
@@ -131,9 +135,15 @@ export async function get(id: number): Promise<ContestDetail> {
 
 export async function listEntries(
   id: number,
-  params: { sort?: 'votes' | 'new'; page?: number; page_size?: number }
+  params: { sort?: ContestEntrySort; seed?: string; page?: number; page_size?: number }
 ): Promise<PaginatedResponse<ContestEntry>> {
   const { data } = await apiClient.get(`/contests/${id}/entries`, { params })
+  return data
+}
+
+/** One entry for its own page: approved entries, or the viewer's own entry in any status. */
+export async function getEntry(id: number, entryId: number): Promise<ContestEntry> {
+  const { data } = await apiClient.get(`/contests/${id}/entries/${entryId}`)
   return data
 }
 
@@ -173,5 +183,5 @@ export async function unvote(id: number, entryId: number): Promise<void> {
   await apiClient.delete(`/contests/${id}/entries/${entryId}/vote`)
 }
 
-export const contestsAPI = { list, get, listEntries, leaderboard, submitEntry, submitWorkEntry, withdrawEntry, vote, unvote }
+export const contestsAPI = { list, get, listEntries, getEntry, leaderboard, submitEntry, submitWorkEntry, withdrawEntry, vote, unvote }
 export default contestsAPI

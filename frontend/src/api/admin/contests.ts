@@ -25,6 +25,49 @@ export interface ContestInput {
   prizes: ContestPrize[]
 }
 
+/** The monthly contest template; {year} / {month} in the texts become the month's. */
+export interface ContestAutoTemplate {
+  title_template: string
+  description: string
+  rules: string
+  cover_image: string
+  /** Submissions close at the end of this day (1–28). */
+  submission_end_day: number
+  /** "20:00" on the month's last day. */
+  voting_end_time: string
+  /** Published this many days before the 1st. */
+  lead_days: number
+  max_entries_per_user: number
+  votes_per_user: number
+  allow_self_vote: boolean
+  require_review: boolean
+  min_account_age_hours: number
+  one_prize_per_user: boolean
+  min_votes_for_prize: number
+  prizes: ContestPrize[]
+}
+
+export type ContestAutoMonthStatus = 'created' | 'scheduled' | 'paused' | 'missed' | 'skipped'
+
+export interface ContestAutoMonth {
+  period: string
+  title: string
+  submission_start_at: string
+  submission_end_at: string
+  voting_end_at: string
+  create_at: string
+  status: ContestAutoMonthStatus
+  contest_id?: number
+  phase?: string
+}
+
+export interface ContestAutoSettings {
+  enabled: boolean
+  template: ContestAutoTemplate
+  updated_at?: string
+  months: ContestAutoMonth[]
+}
+
 export interface ContestVote {
   id: number
   entry_id: number
@@ -92,8 +135,19 @@ export async function grantAllBalance(id: number): Promise<{ granted: number; fa
   return data
 }
 
+export async function getAuto(): Promise<ContestAutoSettings> {
+  const { data } = await apiClient.get('/admin/contests/auto')
+  return data
+}
+
+/** Starts or stops the monthly schedule and saves its template; due months are created at once. */
+export async function saveAuto(enabled: boolean, template: ContestAutoTemplate): Promise<ContestAutoSettings> {
+  const { data } = await apiClient.put('/admin/contests/auto', { enabled, template })
+  return data
+}
+
 export const adminContestsAPI = {
-  list, get, create, update, remove, cancel, settle,
+  list, get, create, update, remove, cancel, settle, getAuto, saveAuto,
   listEntries, reviewEntry, listEntryVotes, voidVote,
   listAwards, grantAward, grantAllBalance
 }

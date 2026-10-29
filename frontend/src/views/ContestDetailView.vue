@@ -77,13 +77,13 @@
                 class="overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-800"
                 data-testid="contest-entry"
               >
-                <button type="button" class="block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-dark-900" @click="lightbox = e">
+                <RouterLink :to="contestEntryPath(contestId, e.id)" class="block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-dark-900" data-testid="contest-entry-link">
                   <img :src="e.image_url" :alt="e.title" loading="lazy" class="h-full w-full object-cover transition hover:scale-105" />
-                </button>
+                </RouterLink>
                 <div class="p-3">
                   <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
-                      <h3 class="truncate text-sm font-semibold text-gray-900 dark:text-white" :title="e.title">{{ e.title }}</h3>
+                      <RouterLink :to="contestEntryPath(contestId, e.id)" class="block truncate text-sm font-semibold text-gray-900 hover:text-primary-600 dark:text-white" :title="e.title">{{ e.title }}</RouterLink>
                       <p class="truncate text-xs text-gray-500 dark:text-dark-400">{{ t('contests.entries.by', { name: e.author_name }) }}</p>
                       <a
                         v-if="e.work_id"
@@ -173,6 +173,12 @@
                     </div>
                     <div v-if="e.review_note" class="text-xs text-red-500">{{ e.review_note }}</div>
                   </div>
+                  <RouterLink
+                    v-if="e.status === 'approved' || e.status === 'pending'"
+                    :to="{ path: contestEntryPath(contestId, e.id), query: { share: '1' } }"
+                    class="flex-shrink-0 rounded-md bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:bg-primary-900/30 dark:text-primary-300"
+                    data-testid="contest-my-entry-share"
+                  >📣 {{ t('contests.entries.share') }}</RouterLink>
                   <button
                     v-if="canWithdraw(e)"
                     type="button"
@@ -316,19 +322,6 @@
       </template>
     </BaseDialog>
 
-    <!-- Lightbox -->
-    <BaseDialog :show="!!lightbox" :title="lightbox?.title || ''" width="wide" :close-on-click-outside="true" @close="lightbox = null">
-      <div v-if="lightbox" class="space-y-4">
-        <img :src="lightbox.image_url" :alt="lightbox.title" class="mx-auto max-h-[70vh] rounded-lg object-contain" />
-        <div class="text-sm text-gray-500">{{ t('contests.entries.by', { name: lightbox.author_name }) }} · {{ t('contests.entries.votes', { n: lightbox.vote_count }) }}</div>
-        <p v-if="lightbox.description" class="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">{{ lightbox.description }}</p>
-        <div v-if="lightbox.prompt">
-          <div class="text-xs font-semibold text-gray-500">{{ t('contests.entries.prompt') }}</div>
-          <pre class="mt-1 whitespace-pre-wrap rounded-lg bg-gray-50 p-3 font-mono text-xs text-gray-700 dark:bg-dark-900 dark:text-gray-300">{{ lightbox.prompt }}</pre>
-        </div>
-      </div>
-    </BaseDialog>
-
     <ConfirmDialog
       :show="!!withdrawTarget"
       :title="t('contests.entries.withdraw')"
@@ -342,7 +335,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -352,6 +345,7 @@ import {
   contestsAPI,
   type ContestDetail,
   type ContestEntry,
+  type ContestEntrySort,
   type ContestLeaderboardRow,
   type ContestViewer
 } from '@/api/contests'
@@ -366,9 +360,12 @@ import {
   phaseBadgeClass,
   safeCover
 } from '@/utils/contest'
+import { track } from '@/utils/analytics'
+import { contestEntryPath, contestListSeed, saveVoteIntent, takeVoteIntent } from '@/utils/contestShare'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const appStore = useAppStore()
 const contestId = computed(() => Number(route.params.id))
 
@@ -385,15 +382,16 @@ const entries = ref<ContestEntry[]>([])
 const entriesTotal = ref(0)
 const entriesPage = ref(1)
 const entriesLoading = ref(false)
-const sortBy = ref<'votes' | 'new'>('votes')
+// While votes are open the list is shuffled per visitor, so early leaders don't take all the attention.
+const sortBy = ref<ContestEntrySort>('random')
 const sortOptions = computed(() => [
+  ...(votingOpen.value ? [{ value: 'random' as const, label: t('contests.entries.sortRandom') }] : []),
   { value: 'votes' as const, label: t('contests.entries.sortVotes') },
   { value: 'new' as const, label: t('contests.entries.sortNew') }
 ])
 const board = ref<ContestLeaderboardRow[]>([])
 
 const voteBusy = ref(0)
-const lightbox = ref<ContestEntry | null>(null)
 const withdrawTarget = ref<ContestEntry | null>(null)
 
 const submittingOpen = computed(() => ['submitting', 'submitting_voting'].includes(contest.value.phase))
@@ -438,7 +436,12 @@ async function loadEntries(reset: boolean) {
   entriesLoading.value = true
   try {
     const page = reset ? 1 : entriesPage.value + 1
-    const res = await contestsAPI.listEntries(contestId.value, { sort: sortBy.value, page, page_size: 24 })
+    const res = await contestsAPI.listEntries(contestId.value, {
+      sort: sortBy.value,
+      seed: sortBy.value === 'random' ? contestListSeed() : undefined,
+      page,
+      page_size: 24
+    })
     entries.value = reset ? res.items : [...entries.value, ...res.items]
     entriesTotal.value = res.total
     entriesPage.value = page
@@ -447,18 +450,22 @@ async function loadEntries(reset: boolean) {
   }
 }
 
-function changeSort(value: 'votes' | 'new') {
+function changeSort(value: ContestEntrySort) {
   if (sortBy.value === value) return
   sortBy.value = value
   void loadEntries(true)
 }
 
 async function refreshAll() {
-  await Promise.all([loadDetail(), loadBoard(), loadEntries(true)])
+  await loadDetail()
+  if (sortBy.value === 'random' && !votingOpen.value) sortBy.value = 'votes'
+  await Promise.all([loadBoard(), loadEntries(true)])
 }
 
 async function toggleVote(e: ContestEntry) {
   if (!viewer.value.logged_in) {
+    saveVoteIntent(contestId.value, e.id)
+    track('contest_vote_login', { contest: contestId.value, where: 'list' })
     window.location.assign(`/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
@@ -473,6 +480,7 @@ async function toggleVote(e: ContestEntry) {
       await contestsAPI.vote(contestId.value, e.id)
       e.voted_by_me = true
       e.vote_count += 1
+      track('contest_vote', { contest: contestId.value, after_login: false, where: 'list' })
       appStore.showSuccess(t('contests.toast.voted'))
     }
     await Promise.all([loadDetail(), loadBoard()])
@@ -554,12 +562,13 @@ async function submitEntry() {
       source.value === 'work' && pickedWork.value
         ? await contestsAPI.submitWorkEntry(contestId.value, { work_id: pickedWork.value.id, title: form.title, description: form.description })
         : await contestsAPI.submitEntry(contestId.value, { ...form, image: file.value! })
-    appStore.showSuccess(entry.status === 'pending' ? t('contests.submit.pendingReview') : t('contests.submit.success'))
+    appStore.showSuccess(entry.status === 'pending' ? t('contests.entry.submittedPending') : t('contests.entry.submittedShare'))
     submitOpen.value = false
     Object.assign(form, { title: '', description: '', prompt: '' })
     pickedWork.value = null
     onFileChange({ target: { files: [] } } as unknown as Event)
-    await refreshAll()
+    // Straight to the new entry's page with the 拉票 dialog open: sharing is how entries get votes.
+    await router.push({ path: contestEntryPath(contestId.value, entry.id), query: { share: '1' } })
   } catch (err: any) {
     formError.value = err?.message || t('common.error')
   } finally {
@@ -588,6 +597,18 @@ onMounted(async () => {
     detail.value = null
   } finally {
     loading.value = false
+  }
+  // Back from sign-in after clicking 点赞 on a card: cast that vote now.
+  const intent = detail.value && viewer.value.logged_in ? takeVoteIntent(contestId.value) : null
+  if (intent && votingOpen.value && !viewer.value.voted_entry_ids.includes(intent.entryId)) {
+    try {
+      await contestsAPI.vote(contestId.value, intent.entryId)
+      track('contest_vote', { contest: contestId.value, after_login: true, where: 'list' })
+      appStore.showSuccess(t('contests.entry.votedAfterLogin'))
+      await refreshAll()
+    } catch (err: any) {
+      appStore.showError(err?.message || t('common.error'))
+    }
   }
 })
 

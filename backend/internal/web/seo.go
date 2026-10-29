@@ -66,6 +66,8 @@ type SEOContent interface {
 	Courses(ctx context.Context) ([]SEOPage, error)
 	VideoWorks(ctx context.Context) ([]SEOPage, error)
 	VideoWork(ctx context.Context, id string) (*SEOPage, error)
+	// ContestPage is a public contest (entryID 0) or one of its approved entries; nil when there is none.
+	ContestPage(ctx context.Context, contestID, entryID int64) (*SEOPage, error)
 	FAQ() []SEOFAQ
 }
 
@@ -310,6 +312,22 @@ func mainPageMeta(ctx context.Context, site seoSite, content SEOContent, path st
 		m.Title = "AI 创作比赛 | " + site.Name
 		m.Description = "AI 创作比赛详情：赛题、规则、投稿作品与榜单。"
 		m.H1 = "AI 创作比赛"
+		// /contests/12 and /contests/12/e/34: the contest's or the entry's own title and picture, so
+		// a shared link shows them in QQ, Feishu, Weibo, X and other link previews.
+		if contestID, entryID, ok := parseContestSEOPath(p); ok && content != nil {
+			if page, err := content.ContestPage(ctx, contestID, entryID); err == nil && page != nil {
+				m.Title = page.Title + " | " + site.Name
+				m.Description = clipText(firstNonEmpty(page.Description, m.Description), 160)
+				m.H1 = page.Title
+				if page.Image != "" {
+					m.Image = site.abs(page.Image)
+				}
+				if entryID > 0 {
+					m.OGType = "article"
+				}
+			}
+		}
+		m.Paragraphs = []string{m.Description}
 		return m
 	case strings.HasPrefix(p, "/legal/"):
 		m.Index = true
@@ -780,4 +798,22 @@ func modelPriceLine(m SEOModel) string {
 		return line
 	}
 	return line + "：" + strings.Join(parts, " / ") + "（每 100 万 token）"
+}
+
+// parseContestSEOPath reads /contests/<id> and /contests/<id>/e/<entryId>.
+func parseContestSEOPath(p string) (contestID, entryID int64, ok bool) {
+	parts := strings.Split(strings.TrimPrefix(p, "/contests/"), "/")
+	if len(parts) != 1 && (len(parts) != 3 || parts[1] != "e") {
+		return 0, 0, false
+	}
+	contestID, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil || contestID <= 0 {
+		return 0, 0, false
+	}
+	if len(parts) == 3 {
+		if entryID, err = strconv.ParseInt(parts[2], 10, 64); err != nil || entryID <= 0 {
+			return 0, 0, false
+		}
+	}
+	return contestID, entryID, true
 }

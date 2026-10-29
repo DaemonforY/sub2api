@@ -3,10 +3,12 @@ package server
 import (
 	"context"
 	"math"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/Wei-Shaw/sub2api/internal/web"
 )
@@ -14,10 +16,11 @@ import (
 // seoContent feeds the frontend server's meta tags, sitemaps and llms.txt from the course and video
 // services. Crawlers fetch a lot, so lists are cached for a few minutes.
 type seoContent struct {
-	courses *service.CourseService
-	videos  *service.VideoService
-	plaza   plazaSource
-	faq     []web.SEOFAQ
+	courses  *service.CourseService
+	videos   *service.VideoService
+	contests *service.ContestService
+	plaza    plazaSource
+	faq      []web.SEOFAQ
 
 	modelList  []web.SEOModel
 	modelOK    bool
@@ -29,6 +32,7 @@ type seoContent struct {
 	workList    []web.SEOPage
 	workUntil   time.Time
 	works       map[string]seoWork
+	contestHits map[string]seoWork
 }
 
 // plazaSource is the model plaza as an anonymous visitor sees it (handler.ModelPlazaHandler).
@@ -47,8 +51,8 @@ const (
 	seoWorkCacheMax = 2000
 )
 
-func newSEOContent(courses *service.CourseService, videos *service.VideoService, plaza plazaSource) *seoContent {
-	s := &seoContent{courses: courses, videos: videos, plaza: plaza, works: map[string]seoWork{}}
+func newSEOContent(courses *service.CourseService, videos *service.VideoService, contests *service.ContestService, plaza plazaSource) *seoContent {
+	s := &seoContent{courses: courses, videos: videos, contests: contests, plaza: plaza, works: map[string]seoWork{}, contestHits: map[string]seoWork{}}
 	for _, f := range service.AssistantFAQ() {
 		s.faq = append(s.faq, web.SEOFAQ{Question: f.Title, Answer: f.Text, Link: f.URL})
 	}
@@ -190,4 +194,68 @@ func (s *seoContent) VideoWork(ctx context.Context, id string) (*web.SEOPage, er
 	s.works[id] = seoWork{page: page, until: time.Now().Add(seoContentTTL)}
 	s.mu.Unlock()
 	return page, nil
+}
+
+// contestPreviewTTL is short: vote counts and titles change during a contest, and a link preview
+// should not keep showing a withdrawn entry for long.
+const contestPreviewTTL = time.Minute
+
+func (s *seoContent) ContestPage(ctx context.Context, contestID, entryID int64) (*web.SEOPage, error) {
+	if s.contests == nil || contestID <= 0 || entryID < 0 {
+		return nil, nil
+	}
+	key := strconv.FormatInt(contestID, 10) + "/" + strconv.FormatInt(entryID, 10)
+	s.mu.Lock()
+	if hit, ok := s.contestHits[key]; ok && time.Now().Before(hit.until) {
+		s.mu.Unlock()
+		return hit.page, nil
+	}
+	s.mu.Unlock()
+
+	page, err := s.contestPage(ctx, contestID, entryID)
+	if err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	if len(s.contestHits) >= seoWorkCacheMax {
+		s.contestHits = map[string]seoWork{}
+	}
+	s.contestHits[key] = seoWork{page: page, until: time.Now().Add(contestPreviewTTL)}
+	s.mu.Unlock()
+	return page, nil
+}
+
+func (s *seoContent) contestPage(ctx context.Context, contestID, entryID int64) (*web.SEOPage, error) {
+	detail, err := s.contests.GetPublicContest(ctx, contestID, 0)
+	if err != nil {
+		if infraerrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	c := detail.Contest
+	if entryID == 0 {
+		desc := c.Description
+		if desc == "" {
+			desc = c.Title + "：投稿作品、给喜欢的作品点赞，查看排行榜。"
+		}
+		return &web.SEOPage{Path: "/contests/" + strconv.FormatInt(c.ID, 10), Title: c.Title, Description: desc, Image: c.CoverImage}, nil
+	}
+	e, err := s.contests.PublicEntry(ctx, contestID, entryID, 0)
+	if err != nil {
+		if infraerrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	desc := "「" + e.Title + "」正在参加" + c.Title + "，来给 " + e.AuthorName + " 点个赞吧。"
+	if e.Description != "" {
+		desc += e.Description
+	}
+	return &web.SEOPage{
+		Path:        "/contests/" + strconv.FormatInt(c.ID, 10) + "/e/" + strconv.FormatInt(e.ID, 10),
+		Title:       e.Title + " · " + c.Title,
+		Description: desc,
+		Image:       e.ImageURL,
+	}, nil
 }

@@ -3,7 +3,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import ContestDetailView from '../ContestDetailView.vue'
 
-const { get, listEntries, leaderboard, submitEntry, submitWorkEntry, myWorks, showSuccess, showError } = vi.hoisted(() => ({
+const { get, listEntries, leaderboard, submitEntry, submitWorkEntry, myWorks, showSuccess, showError, vote, push } = vi.hoisted(() => ({
+  vote: vi.fn(),
+  push: vi.fn(),
   get: vi.fn(),
   listEntries: vi.fn(),
   leaderboard: vi.fn(),
@@ -14,10 +16,11 @@ const { get, listEntries, leaderboard, submitEntry, submitWorkEntry, myWorks, sh
   showError: vi.fn()
 }))
 
-vi.mock('@/api/contests', () => ({ contestsAPI: { get, listEntries, leaderboard, submitEntry, submitWorkEntry, withdrawEntry: vi.fn(), vote: vi.fn(), unvote: vi.fn() } }))
+vi.mock('@/api/contests', () => ({ contestsAPI: { get, listEntries, leaderboard, submitEntry, submitWorkEntry, withdrawEntry: vi.fn(), vote, unvote: vi.fn() } }))
 vi.mock('@/api/community', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/api/community')>()), myWorks }))
 vi.mock('@/stores', () => ({ useAppStore: () => ({ showSuccess, showError }) }))
-vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '5' }, fullPath: '/contests/5' }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: '5' }, fullPath: '/contests/5' }), useRouter: () => ({ push }) }))
+vi.mock('@/utils/analytics', () => ({ track: vi.fn() }))
 vi.mock('vue-i18n', async (importOriginal) => ({ ...(await importOriginal<typeof import('vue-i18n')>()), useI18n: () => ({ t: (key: string) => key }) }))
 
 const stubs = {
@@ -42,7 +45,9 @@ const work = (id: number, extra = {}) => ({
 
 describe('ContestDetailView entering a canvas work', () => {
   beforeEach(() => {
-    for (const fn of [get, listEntries, leaderboard, submitEntry, submitWorkEntry, myWorks, showSuccess, showError]) fn.mockReset()
+    for (const fn of [get, listEntries, leaderboard, submitEntry, submitWorkEntry, myWorks, showSuccess, showError, vote, push]) fn.mockReset()
+    localStorage.clear()
+    sessionStorage.clear()
     get.mockResolvedValue({ contest, viewer })
     listEntries.mockResolvedValue({ items: [{ id: 9, contest_id: 5, user_id: 1, title: '已投', description: '', prompt: '', status: 'approved', review_note: '', vote_count: 0, created_at: '', updated_at: '', image_url: '/x.png', author_name: 'a', voted_by_me: false, is_mine: false, work_id: 33 }], total: 1, page: 1, page_size: 24, pages: 1 })
     leaderboard.mockResolvedValue([])
@@ -73,7 +78,8 @@ describe('ContestDetailView entering a canvas work', () => {
     await flushPromises()
     expect(submitWorkEntry).toHaveBeenCalledWith(5, { work_id: 1, title: '作品1', description: '说明1' })
     expect(submitEntry).not.toHaveBeenCalled()
-    expect(showSuccess).toHaveBeenCalledWith('contests.submit.success')
+    expect(showSuccess).toHaveBeenCalledWith('contests.entry.submittedShare')
+    expect(push).toHaveBeenCalledWith({ path: '/contests/5/e/10', query: { share: '1' } })
   })
 
   it('asks to pick a work before submitting', async () => {
@@ -87,5 +93,51 @@ describe('ContestDetailView entering a canvas work', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'contests.submit.submit')!.trigger('click')
     expect(wrapper.text()).toContain('contests.submit.workRequired')
     expect(submitWorkEntry).not.toHaveBeenCalled()
+  })
+})
+
+describe('ContestDetailView while votes are open', () => {
+  const votingContest = { ...contest, phase: 'submitting_voting', voting_start_at: new Date(now - 3600e3).toISOString() }
+  const entry = { id: 9, contest_id: 5, user_id: 1, title: '已投', description: '', prompt: '', status: 'approved', review_note: '', vote_count: 2, created_at: '', updated_at: '', image_url: '/x.png', author_name: 'a', voted_by_me: false, is_mine: false }
+
+  beforeEach(() => {
+    for (const fn of [get, listEntries, leaderboard, vote, showSuccess, showError]) fn.mockReset()
+    localStorage.clear()
+    sessionStorage.clear()
+    listEntries.mockResolvedValue({ items: [entry], total: 1, page: 1, page_size: 24, pages: 1 })
+    leaderboard.mockResolvedValue([])
+  })
+
+  it('shuffles the list with a seed kept for the tab and links cards to the entry page', async () => {
+    get.mockResolvedValue({ contest: votingContest, viewer: { ...viewer, can_vote: true } })
+    const wrapper = mount(ContestDetailView, { global: { stubs } })
+    await flushPromises()
+    const params = listEntries.mock.calls[0][1]
+    expect(params.sort).toBe('random')
+    expect(params.seed).toBe(sessionStorage.getItem('contest_list_seed'))
+    expect(wrapper.find('[data-testid="contest-entry-link"]').exists()).toBe(true)
+  })
+
+  it('remembers the vote of a signed-out visitor and sends them to sign in', async () => {
+    get.mockResolvedValue({ contest: votingContest, viewer: { logged_in: false, votes_used: 0, votes_left: 0, voted_entry_ids: [], my_entries: [], entries_left: 0, can_submit: false, can_vote: false } })
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign })
+    const wrapper = mount(ContestDetailView, { global: { stubs } })
+    await flushPromises()
+    await wrapper.findAll('button').find((b) => b.text() === 'contests.entries.vote')!.trigger('click')
+    expect(JSON.parse(localStorage.getItem('contest_vote_intent')!)).toMatchObject({ contestId: 5, entryId: 9 })
+    expect(assign).toHaveBeenCalledWith('/login?redirect=%2Fcontests%2F5')
+    vi.unstubAllGlobals()
+  })
+
+  it('casts the remembered vote once the visitor is back signed in', async () => {
+    localStorage.setItem('contest_vote_intent', JSON.stringify({ contestId: 5, entryId: 9, at: Date.now() }))
+    get.mockResolvedValue({ contest: votingContest, viewer: { ...viewer, can_vote: true } })
+    vote.mockResolvedValue(undefined)
+    mount(ContestDetailView, { global: { stubs } })
+    await flushPromises()
+    expect(vote).toHaveBeenCalledWith(5, 9)
+    expect(showSuccess).toHaveBeenCalledWith('contests.entry.votedAfterLogin')
+    expect(localStorage.getItem('contest_vote_intent')).toBeNull()
   })
 })

@@ -104,6 +104,13 @@ describe('shareUrl', () => {
     expect(u.searchParams.has('aff')).toBe(false)
     expect(u.hash).toBe('')
   })
+
+  it('takes a source and campaign for contest links', () => {
+    const u = new URL(shareUrl('https://hivegpt.cn/contests/5/e/9?utm_campaign=old', { aff: 'A', medium: 'image', source: 'contest_share', campaign: 'contest-5' }))
+    expect(u.searchParams.get('utm_source')).toBe('contest_share')
+    expect(u.searchParams.get('utm_medium')).toBe('image')
+    expect(u.searchParams.get('utm_campaign')).toBe('contest-5')
+  })
 })
 
 describe('blocksFromRange', () => {

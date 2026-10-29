@@ -303,3 +303,37 @@ func (h *ContestHandler) GrantAllBalance(c *gin.Context) {
 	}
 	response.Success(c, gin.H{"granted": granted, "failed": failed})
 }
+
+// GetAuto GET /api/v1/admin/contests/auto — the monthly schedule and how this month and next stand.
+func (h *ContestHandler) GetAuto(c *gin.Context) {
+	out, err := h.service.GetAutoSettings(c.Request.Context())
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}
+
+type contestAutoRequest struct {
+	Enabled  bool                        `json:"enabled"`
+	Template service.ContestAutoTemplate `json:"template"`
+}
+
+// SaveAuto PUT /api/v1/admin/contests/auto — start / stop the schedule and save its template.
+func (h *ContestHandler) SaveAuto(c *gin.Context) {
+	var req contestAutoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	var adminID int64
+	if subject, ok := middleware.GetAuthSubjectFromContext(c); ok {
+		adminID = subject.UserID
+	}
+	out, err := h.service.SaveAutoSettings(c.Request.Context(), req.Enabled, req.Template, adminID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, out)
+}

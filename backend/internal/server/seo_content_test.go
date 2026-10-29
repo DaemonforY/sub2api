@@ -24,7 +24,7 @@ func TestSEOModelsApplyGroupMultipliers(t *testing.T) {
 				Intervals: []service.PricingInterval{{TierLabel: "1K", PerRequestPrice: &img}}}},
 		},
 	}}
-	models, ok := newSEOContent(nil, nil, plaza).Models(context.Background())
+	models, ok := newSEOContent(nil, nil, nil, plaza).Models(context.Background())
 	require.True(t, ok)
 	require.Len(t, models, 2)
 	require.InDelta(t, 3.0, *models[0].Input, 1e-9)

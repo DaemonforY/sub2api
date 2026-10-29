@@ -12,6 +12,46 @@ export default {
     settleConfirm: 'Settle now? The ranking is frozen at the voting deadline and winners are generated.',
     settleSuccess: 'Settled. Review the winners list, then grant prizes.',
     viewPublic: 'View public page',
+    auto: {
+      badge: 'Auto',
+      title: 'Monthly contest',
+      running: 'Running',
+      stopped: 'Stopped',
+      start: 'Start',
+      stop: 'Stop',
+      started: 'Started. Contests that are due were published',
+      stoppedToast: 'Stopped. No new months will be created',
+      editTemplate: 'Edit template',
+      manage: 'Entries and prizes',
+      summary: 'While running, each month\'s contest is published from the template {lead} days before the 1st: entries and votes open on the 1st, entries close at the end of day {day}, and votes close at {time} on the last day, when the contest is settled. Prizes are still granted under "Entries and prizes".',
+      window: 'Entries {start} – {submissionEnd} · votes close {votingEnd}',
+      createsAt: 'Publishes at {time}',
+      startConfirm: 'Contests will be published from the template. If next month is already inside the lead time, it is published now. Start?',
+      stopConfirm: 'No new months will be created. Published contests carry on; cancel them in the list below if needed. Stop?',
+      status: {
+        created: 'Published',
+        scheduled: 'Scheduled',
+        paused: 'Stopped',
+        missed: 'Not created',
+        skipped: 'Skipped'
+      },
+      statusHint: {
+        created: '',
+        scheduled: '',
+        paused: 'The schedule is stopped. Start it to publish on time',
+        missed: 'Entries for this month have closed, so it is not created',
+        skipped: 'This month was published, then cancelled or deleted. It is not created again'
+      },
+      fields: {
+        titleTemplate: 'Contest title',
+        placeholders: "{'{'}year{'}'} and {'{'}month{'}'} become the month's year and month, e.g. \"{'{'}month{'}'} 月 AI 画图赛\" → \"11 月 AI 画图赛\". They work in the description and rules too.",
+        submissionEndDay: 'Entries close on day (1–28)',
+        votingEndTime: 'Votes close at (last day of the month)',
+        leadDays: 'Publish days ahead (0–10)',
+        scheduleHint: 'Entries and votes open at 0:00 on the 1st (China time). Before that the contest shows as "Coming soon", so it can be promoted early.',
+        saveHint: 'Template changes apply to months published later. Edit already published contests in the list below.'
+      }
+    },
     fields: {
       title: 'Title',
       description: 'Description',

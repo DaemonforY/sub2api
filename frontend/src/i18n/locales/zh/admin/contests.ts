@@ -12,6 +12,46 @@ export default {
     settleConfirm: '确定现在结算？将按投票截止时的票数冻结排名并生成获奖名单。',
     settleSuccess: '已结算，请在「获奖名单」中审核后发放奖品',
     viewPublic: '查看活动页',
+    auto: {
+      badge: '自动',
+      title: '每月自动比赛',
+      running: '运行中',
+      stopped: '已停止',
+      start: '启动',
+      stop: '停止',
+      started: '已启动，到期的比赛已自动发布',
+      stoppedToast: '已停止，不会再创建新的月份',
+      editTemplate: '编辑模板',
+      manage: '作品与奖品',
+      summary: '开启后，每月 1 日前 {lead} 天按模板自动发布当月比赛：1 日起投稿和点赞，{day} 日 23:59 截止投稿，月末最后一天 {time} 截止点赞并自动结算。奖品仍需在「作品与奖品」里审核后发放。',
+      window: '投稿 {start} – {submissionEnd} · 点赞截止 {votingEnd}',
+      createsAt: '将于 {time} 自动发布',
+      startConfirm: '启动后会按模板自动发布比赛；如果下个月已在提前发布的时间内，会马上发布。确定启动？',
+      stopConfirm: '停止后不再创建新的月份。已经发布的比赛照常进行，如需取消请在下方列表里操作。确定停止？',
+      status: {
+        created: '已发布',
+        scheduled: '待发布',
+        paused: '已停止',
+        missed: '未创建',
+        skipped: '已跳过'
+      },
+      statusHint: {
+        created: '',
+        scheduled: '',
+        paused: '自动比赛已停止，启动后会按时发布',
+        missed: '本月投稿已截止，不再创建',
+        skipped: '本月比赛曾自动发布，后来被取消或删除，不会重新创建'
+      },
+      fields: {
+        titleTemplate: '比赛标题',
+        placeholders: "可用 {'{'}year{'}'} 和 {'{'}month{'}'}，会换成当月的年份和月份，如「{'{'}month{'}'} 月 AI 画图赛」→「11 月 AI 画图赛」。介绍和规则里也可以用。",
+        submissionEndDay: '投稿截止日（每月几号，1–28）',
+        votingEndTime: '点赞截止时刻（月末最后一天）',
+        leadDays: '提前几天发布（0–10）',
+        scheduleHint: '每月 1 日 0:00 开始投稿和点赞（北京时间）。提前发布期间比赛显示「即将开始」，方便提前宣传。',
+        saveHint: '模板修改只影响之后发布的月份；已经发布的比赛请在下方列表里单独编辑。'
+      }
+    },
     fields: {
       title: '活动名称',
       description: '活动介绍',

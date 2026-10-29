@@ -54,6 +54,8 @@ var AnalyticsEventNames = map[string]bool{
 	"share_card_open":    true, // opened a share card (props.kind = quote / summary)
 	"share_card_save":    true, // saved it (props.method = download / copy / share / longpress)
 	"share_link_copy":    true, // copied the page link or a quoted passage
+	"contest_vote":       true, // voted for a contest entry (props.contest, after_login, where = entry / list)
+	"contest_vote_login": true, // a signed-out visitor clicked 点赞 and was sent to sign in
 	"learn_run":          true,
 	"editor_copy":        true, // copied the formatted article
 	"editor_draft_push":  true, // pushed to the WeChat draft box
