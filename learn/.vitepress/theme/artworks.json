@@ -31,5 +31,27 @@
     "original": "Ma Yuan, Scholar viewing a waterfall, early 13th century",
     "credit": "The Metropolitan Museum of Art · CC0",
     "link": "https://www.metmuseum.org/art/collection/search/40086"
+  },
+  "hiroshige-sudden-shower": {
+    "src": "/artworks/hiroshige-sudden-shower.webp",
+    "width": 1098,
+    "height": 1600,
+    "title": "大桥安宅骤雨（《名所江户百景》）",
+    "artist": "歌川广重（日本）",
+    "date": "1857 年",
+    "original": "Utagawa Hiroshige, Sudden Shower over Shin-Ōhashi Bridge and Atake (Ōhashi Atake no yūdachi), from the series One Hundred Famous Views of Edo (Meisho Edo hyakkei), 1857",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/55433"
+  },
+  "hiroshige-kanbara-snow": {
+    "src": "/artworks/hiroshige-kanbara-snow.webp",
+    "width": 1600,
+    "height": 1087,
+    "title": "蒲原夜之雪（《东海道五十三次》）",
+    "artist": "歌川广重（日本）",
+    "date": "约 1833–1834 年",
+    "original": "Utagawa Hiroshige, A Snowy Evening at Kanbara Station, ca. 1833–34",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/36937"
   }
 }

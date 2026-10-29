@@ -23,7 +23,7 @@ import {
 import CritiqueCard from './CritiqueCard.vue'
 import OwnKeyPicker from './OwnKeyPicker.vue'
 
-const props = withDefaults(defineProps<{ exercise: string; placeholder?: string; title?: string; sample?: string; sampleCritique?: string }>(), {
+const props = withDefaults(defineProps<{ exercise: string; placeholder?: string; title?: string; sample?: string; sampleText?: string; sampleCritique?: string }>(), {
   title: 'AI 点评',
 })
 
@@ -167,6 +167,10 @@ async function submit() {
     </div>
     <CritiqueCard v-if="critique" :critique="critique" />
     <div v-else-if="sampleCrit && !image" :class="sample ? 'drawbox-out sample' : ''">
+      <div v-if="sampleText && !sample" class="critbox-sample-text">
+        <span>示例赏析</span>
+        <p>{{ sampleText }}</p>
+      </div>
       <div v-if="sample" class="drawbox-pic">
         <img :src="withBase(sample)" alt="示例图片" loading="lazy" />
         <span class="drawbox-ai">示例 · AI 生成</span>
