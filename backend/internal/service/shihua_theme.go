@@ -116,14 +116,22 @@ func parseShihuaTheme(answer string) (*ShihuaTheme, error) {
 // 素材库 shares them, so the admin configures one key for both pages. It returns the answer and the
 // model used.
 func (s *ShihuaService) AdminChat(ctx context.Context, system, user string) (string, string, error) {
+	return s.AdminChatModel(ctx, "", system, user)
+}
+
+// AdminChatModel is AdminChat with another model ("" = the settings' text model), on the same key.
+func (s *ShihuaService) AdminChatModel(ctx context.Context, model, system, user string) (string, string, error) {
 	st := s.Settings(ctx)
 	key, err := s.adminKey(ctx, st.KeyID, 0)
 	if err != nil {
 		return "", "", err
 	}
-	answer, err := s.chat(ctx, key.Key, st.TextModel, []LearnMessage{
+	if model = strings.TrimSpace(model); model == "" {
+		model = st.TextModel
+	}
+	answer, err := s.chat(ctx, key.Key, model, []LearnMessage{
 		{Role: "system", Content: system},
 		{Role: "user", Content: user},
 	})
-	return answer, st.TextModel, err
+	return answer, model, err
 }

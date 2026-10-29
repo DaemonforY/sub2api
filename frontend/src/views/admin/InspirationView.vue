@@ -17,6 +17,7 @@
       <InspirationPoemsPanel v-show="active === 'poems'" ref="poemsPanel" />
       <InspirationFindPanel v-show="active === 'find'" />
       <InspirationSongsPanel v-show="active === 'songs'" @search-poem="searchPoem" />
+      <InspirationPublicPanel v-if="active === 'public'" />
     </div>
   </AppLayout>
 </template>
@@ -28,9 +29,10 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import InspirationPoemsPanel from './inspiration/InspirationPoemsPanel.vue'
 import InspirationFindPanel from './inspiration/InspirationFindPanel.vue'
 import InspirationSongsPanel from './inspiration/InspirationSongsPanel.vue'
+import InspirationPublicPanel from './inspiration/InspirationPublicPanel.vue'
 
 const { t } = useI18n()
-const tabs = ['poems', 'find', 'songs'] as const
+const tabs = ['poems', 'find', 'songs', 'public'] as const
 const active = ref<(typeof tabs)[number]>('poems')
 const poemsPanel = ref<InstanceType<typeof InspirationPoemsPanel> | null>(null)
 

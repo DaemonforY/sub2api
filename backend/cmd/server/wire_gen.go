@@ -456,7 +456,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	materialService := service.ProvideMaterialService(materialRepository, shihuaRepository, shihuaService)
 	materialHandler := handler.NewMaterialHandler(materialService)
 	inspirationRepository := repository.NewInspirationRepository(db)
-	inspirationService := service.ProvideInspirationService(inspirationRepository, shihuaService, materialService)
+	inspirationService := service.ProvideInspirationService(inspirationRepository, shihuaService, materialService, settingRepository, assistantQuotaCache, billingCacheService)
 	inspirationHandler := handler.NewInspirationHandler(inspirationService)
 	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)

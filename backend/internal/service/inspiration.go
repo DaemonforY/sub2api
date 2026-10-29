@@ -134,6 +134,8 @@ type LibSongFacets struct {
 	Years   []int      `json:"years"` // min, max ([] when no song has a year)
 }
 
+type libChatFunc func(ctx context.Context, model, system, user string) (string, string, error)
+
 type InspirationRepository interface {
 	// SearchPoems returns a page and whether there are more.
 	SearchPoems(ctx context.Context, q LibPoemQuery) ([]LibPoem, bool, error)
@@ -159,16 +161,33 @@ type InspirationService struct {
 	repo   InspirationRepository
 	guard  *LyricsGuard
 	shihua *ShihuaService
-	chat   materialChatFunc
+	// chat runs the text model ("" = the 课本诗画 settings' model) on the admin's key.
+	chat libChatFunc
 
 	countsMu sync.Mutex
 	counts   map[string]int
 	countsAt time.Time
+
+	// User-facing pages (nil until EnablePublic).
+	settings     SettingRepository
+	counters     AssistantQuotaCache
+	billing      LibFindBilling
+	balanceCache libBalanceCache
+	now          func() time.Time
 }
 
-// ProvideInspirationService also hands the lyrics guard to 课本诗画 and the 素材库.
-func ProvideInspirationService(repo InspirationRepository, shihuaSvc *ShihuaService, materialSvc *MaterialService) *InspirationService {
+// ProvideInspirationService also hands the lyrics guard to 课本诗画 and the 素材库, and turns on the
+// user-facing 诗词灵感 pages (Redis counters, balance charges).
+func ProvideInspirationService(repo InspirationRepository, shihuaSvc *ShihuaService, materialSvc *MaterialService,
+	settings SettingRepository, counters AssistantQuotaCache, billingCache *BillingCacheService) *InspirationService {
 	s := NewInspirationService(repo, shihuaSvc)
+	if billing, ok := repo.(LibFindBilling); ok {
+		var cache libBalanceCache
+		if billingCache != nil {
+			cache = billingCache
+		}
+		s.EnablePublic(settings, counters, billing, cache)
+	}
 	if shihuaSvc != nil {
 		shihuaSvc.SetLyricsGuard(s.guard)
 	}
@@ -181,7 +200,7 @@ func ProvideInspirationService(repo InspirationRepository, shihuaSvc *ShihuaServ
 func NewInspirationService(repo InspirationRepository, shihuaSvc *ShihuaService) *InspirationService {
 	s := &InspirationService{repo: repo, guard: NewLyricsGuard(repo), shihua: shihuaSvc}
 	if shihuaSvc != nil {
-		s.chat = shihuaSvc.AdminChat
+		s.chat = shihuaSvc.AdminChatModel
 	}
 	return s
 }
@@ -352,7 +371,12 @@ const libRerankPrompt = `你是中国古典诗词与插画的美术指导。给�
 每首写一句理由（不超过 40 字，说明哪几句或哪些意象契合）。只能从候选里选，用候选的 id。
 只输出一个 JSON 对象：{"picks":[{"id":123,"reason":"…"}]}`
 
+// FindByScene is the admin's find: the settings' model, with the songs whose lyrics share the words.
 func (s *InspirationService) FindByScene(ctx context.Context, in LibFindRequest) (*LibFindResult, error) {
+	return s.find(ctx, in, "", true)
+}
+
+func (s *InspirationService) find(ctx context.Context, in LibFindRequest, model string, withSongs bool) (*LibFindResult, error) {
 	in.Scene = strings.TrimSpace(in.Scene)
 	if in.Scene == "" || utf8.RuneCountInString(in.Scene) > 500 {
 		return nil, ErrLibInvalid
@@ -363,7 +387,7 @@ func (s *InspirationService) FindByScene(ctx context.Context, in LibFindRequest)
 	count := clampLimit(in.Count, 8, 20)
 	ctx, cancel := context.WithTimeout(ctx, libModelTimeout)
 	defer cancel()
-	answer, model, err := s.chat(ctx, libKeywordsPrompt, "画面："+in.Scene)
+	answer, used, err := s.chat(ctx, model, libKeywordsPrompt, "画面："+in.Scene)
 	if err != nil {
 		return nil, infraerrors.BadRequest("LIB_MODEL_FAILED", "文本模型调用失败："+infraerrors.Message(err))
 	}
@@ -377,19 +401,20 @@ func (s *InspirationService) FindByScene(ctx context.Context, in LibFindRequest)
 	if len(words) == 0 {
 		return nil, ErrLibModelFailed
 	}
-	res := &LibFindResult{Keywords: words, Picks: []LibPick{}, Songs: []LibSong{}, Model: model}
+	res := &LibFindResult{Keywords: words, Picks: []LibPick{}, Songs: []LibSong{}, Model: used}
 	cands, err := s.repo.FindPoems(ctx, words, LibPoemQuery{Dynasty: in.Dynasty, Collection: in.Collection}, libFindCandidates)
 	if err != nil {
 		return nil, err
 	}
 	res.Candidates = cands
 	if (in.Rerank == nil || *in.Rerank) && len(cands) > 0 {
-		res.Picks = s.rerank(ctx, in.Scene, cands, count)
+		res.Picks = s.rerank(ctx, model, in.Scene, cands, count)
 	}
-	// Songs whose pasted lyrics share the words (admin-only reference).
-	songs, _, err := s.repo.ListSongs(ctx, LibSongQuery{Limit: 200})
-	if err == nil {
-		res.Songs = libSongsWithWords(songs, words, 10)
+	// Songs whose pasted lyrics share the words: admin-only reference, never for users.
+	if withSongs {
+		if songs, _, err := s.repo.ListSongs(ctx, LibSongQuery{Limit: 200}); err == nil {
+			res.Songs = libSongsWithWords(songs, words, 10)
+		}
 	}
 	return res, nil
 }
@@ -411,7 +436,7 @@ func libCleanWords(in []string) []string {
 	return out
 }
 
-func (s *InspirationService) rerank(ctx context.Context, scene string, cands []LibPoem, count int) []LibPick {
+func (s *InspirationService) rerank(ctx context.Context, model, scene string, cands []LibPoem, count int) []LibPick {
 	byID := map[int64]LibPoem{}
 	var b strings.Builder
 	fmt.Fprintf(&b, "画面：%s\n要选：%d 首\n\n候选：\n", scene, count)
@@ -430,7 +455,7 @@ func (s *InspirationService) rerank(ctx context.Context, scene string, cands []L
 		}
 		fmt.Fprintf(&b, "id=%d 《%s》%s %s%s\n%s\n\n", p.ID, p.Title, p.Dynasty, p.Author, famous, strings.Join(lines, " "))
 	}
-	answer, _, err := s.chat(ctx, libRerankPrompt, b.String())
+	answer, _, err := s.chat(ctx, model, libRerankPrompt, b.String())
 	if err != nil {
 		return []LibPick{}
 	}
@@ -667,7 +692,7 @@ func (s *InspirationService) AnalyzeSong(ctx context.Context, id int64) (*LibSon
 	ctx, cancel := context.WithTimeout(ctx, libModelTimeout)
 	defer cancel()
 	user := fmt.Sprintf("歌名：%s\n演唱：%s\n作词：%s\n\n歌词：\n%s", song.Title, song.Artist, song.Lyricist, song.Lyrics)
-	answer, model, err := s.chat(ctx, libAnalyzePrompt, user)
+	answer, model, err := s.chat(ctx, "", libAnalyzePrompt, user)
 	if err != nil {
 		return nil, infraerrors.BadRequest("LIB_MODEL_FAILED", "文本模型调用失败："+infraerrors.Message(err))
 	}

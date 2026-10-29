@@ -298,6 +298,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/poems',
+    name: 'Poems',
+    component: () => import('@/views/poems/PoemsView.vue'),
+    meta: { requiresAuth: false, title: '诗词灵感', titleKey: 'poems.title' }
+  },
+  {
+    path: '/poems/:id(\\d+)',
+    name: 'PoemDetail',
+    component: () => import('@/views/poems/PoemDetailView.vue'),
+    meta: { requiresAuth: false, title: '诗词灵感', titleKey: 'poems.title' }
+  },
+  {
     path: '/games',
     name: 'Games',
     component: () => import('@/views/games/GamesView.vue'),

@@ -1321,6 +1321,8 @@ func registerInspirationAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers)
 	g.POST("/songs/:id/star", in.StarSong)
 	g.POST("/songs/:id/analyze", in.AnalyzeSong)
 	g.POST("/lyrics-check", in.CheckLyrics)
+	g.GET("/public", in.AdminPublicSettings)
+	g.PUT("/public", in.AdminSavePublicSettings)
 }
 
 // registerMaterialAdminRoutes 诗画素材库：诗文、片段、意象（AI 拆意象、种子起草、审核）、画风推荐与提示词组装、出图队列与审核、排版导出、禁忌词，从课本诗画导入。

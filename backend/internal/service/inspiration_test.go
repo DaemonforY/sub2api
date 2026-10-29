@@ -172,7 +172,7 @@ func TestLyricsGuardRefusesLyricLinesButNotPoemQuotes(t *testing.T) {
 
 func TestShihuaRefusesWorksAndScenesWithLyrics(t *testing.T) {
 	shihua, _ := newShihuaTestService(t)
-	insp := ProvideInspirationService(newLibRepoFake(), shihua, nil)
+	insp := ProvideInspirationService(newLibRepoFake(), shihua, nil, nil, nil, nil)
 	ctx := context.Background()
 	_, err := insp.CreateSong(ctx, 1, LibSong{Title: "某歌", Lyrics: libTestLyrics})
 	require.NoError(t, err)
@@ -222,7 +222,7 @@ func TestInspirationFindPicksOnlyRealPoems(t *testing.T) {
 	_, err := s.CreateSong(ctx, 1, LibSong{Title: "风筝歌", Lyrics: "东风吹着我的风筝飞得很高很高"})
 	require.NoError(t, err)
 	var calls []string
-	s.chat = func(_ context.Context, system, user string) (string, string, error) {
+	s.chat = func(_ context.Context, _, system, user string) (string, string, error) {
 		calls = append(calls, user)
 		if strings.Contains(system, "检索词") {
 			return `{"keywords":["纸鸢","东风","儿童","a long modern phrase","纸鸢"]}`, "m", nil
@@ -251,7 +251,7 @@ func TestInspirationAnalyzeDropsWhatRepeatsTheLyrics(t *testing.T) {
 	ctx := context.Background()
 	song, err := s.CreateSong(ctx, 1, LibSong{Title: "某歌", Lyrics: libTestLyrics})
 	require.NoError(t, err)
-	s.chat = func(context.Context, string, string) (string, string, error) {
+	s.chat = func(context.Context, string, string, string) (string, string, error) {
 		return `{"summary":"歌里唱我在等一封迟到的回信，写等待","imagery":["青石板","雨巷"],"moods":["等待"],"tags":["民谣"],
 "allusions":[{"title":"水调歌头","author":"苏轼","note":"借中秋怀人的句子收尾"},{"title":"","author":"x","note":"空标题丢掉"}]}`, "m", nil
 	}

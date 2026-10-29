@@ -125,3 +125,33 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`, coll, title, tag+author, dyna
 	require.NoError(t, err)
 	require.Nil(t, got)
 }
+
+func TestInspirationRepositoryChargesFinds(t *testing.T) {
+	ctx := context.Background()
+	repo := NewInspirationRepository(integrationDB).(*inspirationRepository)
+	email := fmt.Sprintf("it-poems-%d@example.com", time.Now().UnixNano())
+	var userID int64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `
+INSERT INTO users (email, password_hash, role, status, balance, concurrency)
+VALUES ($1, 'x', 'user', 'active', 1.5, 1) RETURNING id`, email).Scan(&userID))
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM lib_find_charges WHERE user_id = $1`, userID)
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM users WHERE id = $1`, userID)
+	})
+	since := time.Now().Add(-time.Minute)
+	n0, sum0, err := repo.FindStats(ctx, since)
+	require.NoError(t, err)
+
+	require.NoError(t, repo.ChargeFind(ctx, userID, 0.1, "春天放风筝", "m"))
+	balance, err := repo.Balance(ctx, userID)
+	require.NoError(t, err)
+	require.InDelta(t, 1.4, balance, 1e-9)
+	n, sum, err := repo.FindStats(ctx, since)
+	require.NoError(t, err)
+	require.Equal(t, n0+1, n)
+	require.InDelta(t, sum0+0.1, sum, 1e-9)
+
+	require.ErrorIs(t, repo.ChargeFind(ctx, 0, 0.1, "x", "m"), service.ErrUserNotFound)
+	_, err = repo.Balance(ctx, 0)
+	require.ErrorIs(t, err, service.ErrUserNotFound)
+}

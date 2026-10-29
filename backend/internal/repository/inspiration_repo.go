@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/lib/pq"
@@ -394,4 +395,44 @@ func (r *inspirationRepository) AllLyrics(ctx context.Context) ([]service.LibSon
 		out = append(out, s)
 	}
 	return out, rows.Err()
+}
+
+// ---- 诗词灵感 for users: balance and 按画面找 charges ----
+
+func (r *inspirationRepository) Balance(ctx context.Context, userID int64) (float64, error) {
+	var balance float64
+	err := r.db.QueryRowContext(ctx, `SELECT balance FROM users WHERE id = $1 AND deleted_at IS NULL`, userID).Scan(&balance)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, service.ErrUserNotFound
+	}
+	return balance, err
+}
+
+// ChargeFind takes a run's price from the balance and records it, in one transaction. The balance was
+// checked before the run, so the deduction is unconditional (the result is already shown).
+func (r *inspirationRepository) ChargeFind(ctx context.Context, userID int64, cost float64, scene, model string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `UPDATE users SET balance = balance - $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`, cost, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return service.ErrUserNotFound
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO lib_find_charges (user_id, cost, scene, model) VALUES ($1, $2, $3, $4)`,
+		userID, cost, scene, model); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *inspirationRepository) FindStats(ctx context.Context, since time.Time) (int, float64, error) {
+	var n int
+	var revenue float64
+	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*), COALESCE(SUM(cost), 0) FROM lib_find_charges WHERE created_at >= $1`, since).Scan(&n, &revenue)
+	return n, revenue, err
 }

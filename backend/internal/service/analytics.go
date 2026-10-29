@@ -70,6 +70,9 @@ var AnalyticsEventNames = map[string]bool{
 	"guide_config_open":  true, // opened the no-terminal Codex setup
 	"poem_play_action":   true, // 课本诗画互动版: clicked a term (props.poem, props.term, props.from) or sound (props.action)
 	"poem_play_qr":       true, // … HiveGPT QR panel: props.action = open / close / link
+	"poems_search":       true, // 诗词灵感 (/poems): a search (props.random, props.has_q)
+	"poems_find":         true, // … 按画面找 finished (props.free, props.picks)
+	"poem_draw":          true, // … 用这首诗生图 (props.id)
 }
 
 var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true}

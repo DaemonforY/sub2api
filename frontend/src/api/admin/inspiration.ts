@@ -186,3 +186,35 @@ export async function analyzeSong(id: number): Promise<LibSongAnalysis> {
   const { data } = await apiClient.post(`${BASE}/songs/${id}/analyze`, {}, { timeout: MODEL_TIMEOUT })
   return data
 }
+
+export interface LibPublicSettings {
+  enabled: boolean
+  find_enabled: boolean
+  free_finds_per_day: number
+  find_price: number
+  find_model: string
+  daily_find_cap: number
+  guest_per_minute: number
+  guest_per_day: number
+  user_per_minute: number
+  user_per_day: number
+  find_count: number
+}
+
+export interface LibPublicStats {
+  runs_today: number
+  paid_today: number
+  revenue_today: number
+  paid_7d: number
+  revenue_7d: number
+}
+
+export async function getPublicSettings(): Promise<{ settings: LibPublicSettings; stats: LibPublicStats }> {
+  const { data } = await apiClient.get(`${BASE}/public`)
+  return data
+}
+
+export async function savePublicSettings(s: LibPublicSettings): Promise<{ settings: LibPublicSettings }> {
+  const { data } = await apiClient.put(`${BASE}/public`, s)
+  return data
+}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
+	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -192,4 +193,66 @@ func (h *InspirationHandler) CheckLyrics(c *gin.Context) {
 		hits = []service.LyricsHit{}
 	}
 	h.respond(c, gin.H{"hits": hits}, err)
+}
+
+// ---- 诗词灵感 for users (/api/v1/poems/*): no songs, limited and billed in the service ----
+
+func libVisitor(c *gin.Context) service.LibVisitor {
+	if subject, ok := middleware2.GetAuthSubjectFromContext(c); ok && subject.UserID > 0 {
+		return service.LibVisitor{UserID: subject.UserID}
+	}
+	return service.LibVisitor{IP: middleware2.SecurityClientIP(c)}
+}
+
+// PublicConfig GET /poems/config
+func (h *InspirationHandler) PublicConfig(c *gin.Context) {
+	cfg, err := h.svc.PublicConfig(c.Request.Context(), libVisitor(c))
+	h.respond(c, cfg, err)
+}
+
+// PublicSearch GET /poems?q=&dynasty=&collection=&author=&famous=1&random=1&offset=
+func (h *InspirationHandler) PublicSearch(c *gin.Context) {
+	poems, more, err := h.svc.PublicSearch(c.Request.Context(), libVisitor(c), service.LibPoemQuery{
+		Q: c.Query("q"), Dynasty: c.Query("dynasty"), Collection: c.Query("collection"), Author: c.Query("author"),
+		Famous: c.Query("famous") == "1", Random: c.Query("random") == "1", Offset: queryInt(c, "offset"),
+	})
+	h.respond(c, gin.H{"items": poems, "has_more": more}, err)
+}
+
+// PublicPoem GET /poems/:id
+func (h *InspirationHandler) PublicPoem(c *gin.Context) {
+	id, ok := shihuaPathID(c, service.ErrLibPoemNotFound)
+	if !ok {
+		return
+	}
+	p, err := h.svc.PublicPoem(c.Request.Context(), libVisitor(c), id)
+	h.respond(c, p, err)
+}
+
+// PublicFind POST /poems/find {scene, dynasty, collection} (signed in)
+func (h *InspirationHandler) PublicFind(c *gin.Context) {
+	var in service.LibFindRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrLibInvalid)
+		return
+	}
+	res, err := h.svc.PublicFind(c.Request.Context(), libVisitor(c).UserID, in)
+	h.respond(c, res, err)
+}
+
+// AdminPublicSettings GET /admin/inspiration/public
+func (h *InspirationHandler) AdminPublicSettings(c *gin.Context) {
+	stats, err := h.svc.PublicStats(c.Request.Context())
+	h.respond(c, gin.H{"settings": h.svc.PublicSettings(c.Request.Context()), "stats": stats}, err)
+}
+
+// AdminSavePublicSettings PUT /admin/inspiration/public
+func (h *InspirationHandler) AdminSavePublicSettings(c *gin.Context) {
+	var in service.LibPublicSettings
+	if err := c.ShouldBindJSON(&in); err != nil {
+		response.ErrorFrom(c, service.ErrLibInvalid)
+		return
+	}
+	st, err := h.svc.SavePublicSettings(c.Request.Context(), in)
+	h.respond(c, gin.H{"settings": st}, err)
 }
