@@ -433,7 +433,7 @@ type ContentEngineRepository interface {
 	ListVersions(ctx context.Context, owner, itemID int64) ([]ContentVersion, error) // without the text
 	GetVersion(ctx context.Context, owner, id int64) (*ContentVersion, error)        // nil when unknown
 
-	ListRules(ctx context.Context, owner int64) ([]ContentRule, error)
+	ListRules(ctx context.Context, owner int64) ([]ContentRule, error) // oldest first (by id)
 	CreateRule(ctx context.Context, r *ContentRule) error
 	SetRuleEnabled(ctx context.Context, owner, id int64, enabled bool) error
 	DeleteRule(ctx context.Context, owner, id int64) error

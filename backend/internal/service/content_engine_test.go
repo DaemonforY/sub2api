@@ -333,6 +333,7 @@ func (r *contentRepoStub) ListRules(_ context.Context, owner int64) ([]ContentRu
 			out = append(out, x)
 		}
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out, nil
 }
 func (r *contentRepoStub) CreateRule(_ context.Context, x *ContentRule) error {
