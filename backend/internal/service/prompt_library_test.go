@@ -444,7 +444,8 @@ func TestPromptSyncParsesHandrawStyles(t *testing.T) {
 			{"number": "FA-001", "group": "dup", "generation_name": "dup", "traits": "dup"},
 			{"number": "../x", "group": "bad", "generation_name": "bad", "traits": "bad"},
 			{"number": "FB-002", "group": "FB", "generation_name": "", "traits": "no name is skipped"},
-			{"number": "FG-016", "group": "FG 动漫和赛璐璐 / Anime", "generation_name": "Eiichiro Oda One Piece Manga Style", "traits": ""}
+			{"number": "FG-024", "group": "FG 动漫和赛璐璐 / Anime", "reference": "新海诚《你的名字。》 / Makoto Shinkai Your Name", "generation_name": "Makoto Shinkai Your Name", "traits": ""},
+			{"number": "FG-008", "group": "FG 动漫和赛璐璐 / Anime", "reference": "Patapon Remastered", "generation_name": "Patapon Remastered", "traits": ""}
 		]`))
 	})
 	srv := httptest.NewServer(mux)
@@ -454,7 +455,7 @@ func TestPromptSyncParsesHandrawStyles(t *testing.T) {
 	items, err := sync.fetchHandraw(context.Background(), &PromptSource{ID: "handraw-style", Format: "handraw", Homepage: "https://github.com/yang0/handraw-style",
 		URL: srv.URL + "/yang0/handraw-style/master/skills/handdraw-style-prompter/references/styles.json"})
 	require.NoError(t, err)
-	require.Len(t, items, 3)
+	require.Len(t, items, 4)
 
 	first := items[0]
 	require.Equal(t, "FA-001", first.ExternalID)
@@ -468,7 +469,10 @@ func TestPromptSyncParsesHandrawStyles(t *testing.T) {
 	require.Equal(t, "https://github.com/yang0/handraw-style", first.SourceURL)
 	require.Equal(t, "illustration", first.Scenes[0])
 	require.Contains(t, first.SourceTags, "国际社论幽默")
+	require.Contains(t, first.Prompt, "画风：Playful Deadpan Doodle，手绘插画。")
 	require.Equal(t, "3d", items[1].Scenes[0])
-	// A style without traits is the style name alone.
-	require.Equal(t, "【画面主题：在这里写你要画的内容】\n\n画风：Eiichiro Oda One Piece Manga Style，手绘插画。", items[2].Prompt)
+	require.Equal(t, "【画面主题：在这里写你要画的内容】\n\n画风：Felt Diorama。\n风格特征：羊毛毡质感、微缩场景", items[1].Prompt, "3D styles are not called hand-drawn")
+	// A style without traits is its name and Chinese reference, not "手绘插画".
+	require.Equal(t, "【画面主题：在这里写你要画的内容】\n\n画风：Makoto Shinkai Your Name（新海诚《你的名字。》）。", items[2].Prompt)
+	require.Equal(t, "【画面主题：在这里写你要画的内容】\n\n画风：Patapon Remastered。", items[3].Prompt)
 }

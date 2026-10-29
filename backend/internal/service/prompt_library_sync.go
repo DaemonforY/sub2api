@@ -473,10 +473,10 @@ type handrawStyle struct {
 var handrawStyleNumber = regexp.MustCompile(`^F[A-Z]-\d{3}$`)
 
 // fetchHandraw reads yang0/handraw-style's styles.json (skills/handdraw-style-prompter/references):
-// 327 numbered hand-drawn styles, each a style name and its traits. A style becomes a prompt with a
+// 367 numbered styles (hand-drawn, 3D and photography), each a style name and its traits. A style becomes a prompt with a
 // placeholder for the subject; its sample image (images/individual/<FA>/<FA-001>.webp) is the cover.
 // The project's MIT license asks for credit to yang0 and the repository: author and source link.
-// 13 styles have no traits (mostly named after one anime or game); their prompt is the style name alone.
+// 20 styles have no traits (named after an artist, anime or game); their prompt is the style name and its reference.
 func (s *PromptLibrarySyncService) fetchHandraw(ctx context.Context, src *PromptSource) ([]PromptItem, error) {
 	body, err := s.open(ctx, src.URL)
 	if err != nil {
@@ -500,15 +500,28 @@ func (s *PromptLibrarySyncService) fetchHandraw(ctx context.Context, src *Prompt
 		// "FA 国际社论幽默 / Editorial & Humor Doodle" -> "国际社论幽默"
 		group := strings.TrimSpace(strings.SplitN(string(rec.Group), "/", 2)[0])
 		group = strings.TrimSpace(strings.TrimPrefix(group, number[:2]))
-		prompt := "【画面主题：在这里写你要画的内容】\n\n画风：" + name + "，手绘插画。"
-		if traits != "" {
-			prompt += "\n风格特征：" + traits
+		ref := strings.TrimSpace(string(rec.Reference))
+		prompt := "【画面主题：在这里写你要画的内容】\n\n画风：" + name
+		switch {
+		case traits == "":
+			// A style without traits is named after an artist or work the model knows (the repository
+			// marks them name-activated): the name and its Chinese reference alone, without "手绘插画",
+			// which would pull e.g. 新海诚's light toward a pencil sketch.
+			if zh := strings.TrimSpace(strings.SplitN(ref, "/", 2)[0]); zh != "" && !strings.EqualFold(zh, name) {
+				prompt += "（" + zh + "）"
+			}
+			prompt += "。"
+		case number[:2] == "FF" || number[:2] == "FI":
+			// 3D and photography styles are not hand-drawn.
+			prompt += "。\n风格特征：" + traits
+		default:
+			prompt += "，手绘插画。\n风格特征：" + traits
 		}
 		description := "手绘风格图鉴 " + number
 		if group != "" {
 			description += " · " + group
 		}
-		if ref := strings.TrimSpace(string(rec.Reference)); ref != "" {
+		if ref != "" {
 			description += "。风格参考：" + ref
 		}
 		description += "。来自 yang0/handraw-style，把第一行换成你要画的内容即可。"
