@@ -108,9 +108,10 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:"Ping
 #stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden}
 #stage *{box-sizing:border-box}
 #screen{position:fixed;inset:0;z-index:5;cursor:pointer}
-#sub{position:fixed;left:50%;bottom:11%;transform:translateX(-50%);z-index:6;max-width:84%;padding:4px 14px;border-radius:8px;background:rgba(0,0,0,.65);color:#fff;font-size:clamp(14px,2.6vw,30px);text-align:center;pointer-events:none}
+#sub{position:fixed;left:50%;bottom:3.5%;transform:translateX(-50%);z-index:6;max-width:84%;padding:4px 14px;border-radius:8px;background:rgba(0,0,0,.65);color:#fff;font-size:clamp(14px,2.6vw,30px);text-align:center;pointer-events:none}
 #ui{position:fixed;left:0;right:0;bottom:0;z-index:7;display:flex;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(transparent,rgba(0,0,0,.7));color:#fff;font-size:13px;opacity:0;transition:opacity .2s}
 body:hover #ui{opacity:1}
+body:hover #sub{bottom:max(3.5%,56px)}
 #ui button{background:none;border:0;color:#fff;font-size:15px;cursor:pointer}
 #bar{flex:1;accent-color:#f97316}
 #big{position:fixed;left:50%;top:50%;z-index:8;width:72px;height:72px;margin:-36px 0 0 -36px;border:0;border-radius:50%;background:rgba(255,255,255,.92);color:#ea580c;font-size:28px;cursor:pointer}
