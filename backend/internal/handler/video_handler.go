@@ -171,6 +171,22 @@ func (h *VideoHandler) Message(c *gin.Context) {
 	h.reply(c, p, err)
 }
 
+// ChangeImages POST /api/v1/video/projects/:id/images {replace: {img2: token}, add: [token], remove: [id], note}
+// — swaps the pictures of a finished video (tokens from POST /video/images) and rebuilds the
+// scenes that show them.
+func (h *VideoHandler) ChangeImages(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	var in service.VideoImagesChange
+	if !bindVideo(c, &in) {
+		return
+	}
+	p, err := h.service.ChangeImages(c.Request.Context(), key, c.Param("id"), in)
+	h.reply(c, p, err)
+}
+
 func (h *VideoHandler) Repair(c *gin.Context) {
 	key, ok := videoKey(c)
 	if !ok {

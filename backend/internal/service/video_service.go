@@ -1268,6 +1268,12 @@ func (s *VideoService) Restore(ctx context.Context, userID int64, id string, ver
 	}
 	p.Spec, p.Status, p.Error, p.Stage = v.Spec, VideoStatusReady, "", ""
 	p.Duration = v.Spec.TotalDuration()
+	// The version's pictures come back too (换图 keeps the old files).
+	p.Options.Images = nil
+	for _, img := range v.Spec.Images {
+		img.URL, img.Desc = "", ""
+		p.Options.Images = append(p.Options.Images, img)
+	}
 	if err := s.repo.Save(ctx, p); err != nil {
 		return nil, err
 	}

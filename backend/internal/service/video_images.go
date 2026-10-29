@@ -132,35 +132,43 @@ func (s *VideoService) attachImages(p *VideoProject, tokens []string) ([]VideoIm
 	if len(tokens) > VideoImagesMax {
 		return nil, ErrVideoImageCount
 	}
-	stage := s.stageDir(p.UserID)
 	dir := s.projectDir(p.ID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
 	out := make([]VideoImage, 0, len(tokens))
 	for i, token := range tokens {
-		if !videoStageTokenRe.MatchString(token) {
-			return nil, ErrVideoImageGone
-		}
-		data, err := os.ReadFile(filepath.Join(stage, token))
+		img, err := s.stagedImage(p, token, fmt.Sprintf("img%d", i+1))
 		if err != nil {
-			return nil, ErrVideoImageGone
-		}
-		cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
-		if err != nil {
-			return nil, ErrVideoImageGone
-		}
-		mime := "image/jpeg"
-		if format == "png" {
-			mime = "image/png"
-		}
-		img := VideoImage{ID: fmt.Sprintf("img%d", i+1), File: "img-" + token, Mime: mime, Width: cfg.Width, Height: cfg.Height, Size: int64(len(data))}
-		if err := os.WriteFile(filepath.Join(dir, filepath.Base(img.File)), data, 0o644); err != nil { //nolint:gosec // G703: token matched videoStageTokenRe (hex + .jpg/.png), Base keeps it in dir
 			return nil, err
 		}
 		out = append(out, img)
 	}
 	return out, nil
+}
+
+// stagedImage copies one staged picture into the project directory under the given id.
+func (s *VideoService) stagedImage(p *VideoProject, token, id string) (VideoImage, error) {
+	if !videoStageTokenRe.MatchString(token) {
+		return VideoImage{}, ErrVideoImageGone
+	}
+	data, err := os.ReadFile(filepath.Join(s.stageDir(p.UserID), token))
+	if err != nil {
+		return VideoImage{}, ErrVideoImageGone
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if err != nil {
+		return VideoImage{}, ErrVideoImageGone
+	}
+	mime := "image/jpeg"
+	if format == "png" {
+		mime = "image/png"
+	}
+	img := VideoImage{ID: id, File: "img-" + token, Mime: mime, Width: cfg.Width, Height: cfg.Height, Size: int64(len(data))}
+	if err := os.WriteFile(filepath.Join(s.projectDir(p.ID), filepath.Base(img.File)), data, 0o644); err != nil { //nolint:gosec // G703: token matched videoStageTokenRe (hex + .jpg/.png), Base keeps it in dir
+		return VideoImage{}, err
+	}
+	return img, nil
 }
 
 // normalizeVideoImage decodes a picture (JPEG / PNG / WebP / GIF first frame), scales it to at

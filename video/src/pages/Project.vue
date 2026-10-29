@@ -18,6 +18,7 @@
           <button class="btn-ghost btn-sm" :disabled="!isReady" title="复制分享链接" @click="share"><Link2 class="h-3.5 w-3.5" /></button>
           <button v-if="isUpload && p.media?.kind === 'video'" class="btn-ghost btn-sm" title="更换封面" @click="posterOpen = true"><ImageIcon class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">更换封面</span></button>
           <template v-if="!isUpload">
+            <button class="btn-ghost btn-sm" title="更换图片：换掉、删掉或新加图片，只重做用到它们的分镜" :disabled="busy || !p.spec || p.status === 'questions'" data-testid="images-open" @click="imagesOpen = true"><ImageIcon class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">换图</span></button>
             <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
             <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
             <button class="btn-ghost btn-sm" :disabled="!isReady || !exportEnabled" :title="exportEnabled ? '导出 MP4（1080p 30 帧），发布到抖音、视频号、小红书、B站' : '视频导出（MP4）即将上线'" @click="exportOpen = true"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
@@ -155,6 +156,7 @@
         <button class="btn-primary" :disabled="!newPoster || savingPoster" @click="savePoster"><Loader2 v-if="savingPoster" class="h-4 w-4 animate-spin" />保存封面</button>
       </div>
     </Modal>
+    <ImagesDialog v-if="imagesOpen && p" :project="p" @close="imagesOpen = false" @changed="onImagesChanged" />
     <VersionsDialog v-if="versionsOpen && p" :project-id="p.id" :busy="busy" @close="versionsOpen = false" @restored="onRestored" />
   </div>
 </template>
@@ -170,6 +172,7 @@ import PublishDialog from '../components/PublishDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import ScriptTab from '../components/ScriptTab.vue'
 import VersionsDialog from '../components/VersionsDialog.vue'
+import ImagesDialog from '../components/ImagesDialog.vue'
 import Modal from '../components/Modal.vue'
 import PosterPicker from '../components/PosterPicker.vue'
 import UploadedMedia from '../components/UploadedMedia.vue'
@@ -189,6 +192,7 @@ const player = ref(null)
 const history = ref(null)
 const publishOpen = ref(false)
 const versionsOpen = ref(false)
+const imagesOpen = ref(false)
 const exporting = ref(false)
 const voices = ref([])
 const voicePrice = ref(0)
@@ -326,6 +330,13 @@ async function unpublish() {
   } catch (err) {
     toastError(err)
   }
+}
+async function onImagesChanged(next) {
+  p.value = next
+  imagesOpen.value = false
+  tab.value = 'preview'
+  await refresh()
+  schedule()
 }
 function onRestored(next) {
   p.value = next

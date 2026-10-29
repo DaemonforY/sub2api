@@ -2,7 +2,7 @@
   <div class="flex flex-wrap items-center gap-2" data-testid="image-attach">
     <div v-for="(it, i) in props.items" :key="it.key" class="group relative h-16 w-16 overflow-hidden rounded-lg border border-ink-200 bg-ink-100 dark:border-ink-700 dark:bg-ink-800" :title="it.error || it.name">
       <img :src="it.preview" alt="" class="h-full w-full object-cover" :class="{ 'opacity-40': it.status !== 'done' }" />
-      <span class="absolute left-1 top-1 rounded bg-black/60 px-1 text-[10px] leading-4 text-white">图{{ i + 1 }}</span>
+      <span class="absolute left-1 top-1 rounded bg-black/60 px-1 text-[10px] leading-4 text-white">图{{ props.first + i }}</span>
       <div v-if="it.status === 'uploading'" class="absolute inset-x-1 bottom-1 h-1 overflow-hidden rounded-full bg-white/60">
         <div class="h-full bg-brand-500 transition-all" :style="{ width: `${Math.round(it.progress * 100)}%` }"></div>
       </div>
@@ -26,13 +26,13 @@
 <script setup>
 import { onBeforeUnmount, ref } from 'vue'
 import { ImagePlus, X } from 'lucide-vue-next'
-import { apiUpload, session, signIn } from '../lib/api'
+import { session, signIn } from '../lib/api'
+import { isImageFile, stageImage } from '../lib/stageImage'
 import { toast, toastError } from '../lib/toast'
 
-const MAX_SIDE = 2048
 // items: the parent's reactive array, changed in place (two pictures added in one go must not
 // overwrite each other the way consecutive v-model assignments would).
-const props = defineProps({ items: { type: Array, required: true }, max: { type: Number, default: 9 } })
+const props = defineProps({ items: { type: Array, required: true }, max: { type: Number, default: 9 }, first: { type: Number, default: 1 } })
 const input = ref(null)
 let seq = 0
 
@@ -57,7 +57,7 @@ function onPick(e) {
 
 /** Adds files (from the picker, a drop or a paste); returns how many were images. */
 async function add(files) {
-  const pics = files.filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name))
+  const pics = files.filter(isImageFile)
   if (!pics.length) return 0
   if (!(await ensureSignedIn())) return 0
   const room = props.max - props.items.length
@@ -69,29 +69,9 @@ async function add(files) {
   return pics.length
 }
 
-// Large or unusual pictures are scaled down in the browser first (also turns HEIC into JPEG where
-// the browser can open it); the server checks and re-encodes them anyway.
-async function shrink(file) {
-  if (file.size < 3 * 1024 * 1024 && /^image\/(jpeg|png|webp|gif)$/.test(file.type)) return file
-  try {
-    const bmp = await createImageBitmap(file)
-    const k = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(bmp.width * k)
-    canvas.height = Math.round(bmp.height * k)
-    canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height)
-    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.9))
-    return blob ? new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }) : file
-  } catch {
-    return file
-  }
-}
-
 async function upload(it, file) {
   try {
-    const form = new FormData()
-    form.append('file', await shrink(file))
-    const res = await apiUpload('/images', form, { onProgress: (p) => (it.progress = p) })
+    const res = await stageImage(file, (p) => (it.progress = p))
     Object.assign(it, { status: 'done', token: res.token, progress: 1 })
   } catch (err) {
     Object.assign(it, { status: 'error', error: err.message })
