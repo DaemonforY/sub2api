@@ -47,7 +47,7 @@
         <span v-if="sceneLabel" class="hidden truncate text-white/70 sm:inline">{{ sceneLabel }}</span>
         <span class="flex-1"></span>
         <div v-if="hasNarration" class="relative">
-          <button class="rounded px-1.5 py-0.5 hover:bg-white/15" :class="sub.off ? 'text-white/50' : 'text-white'" aria-haspopup="true" :aria-expanded="subMenu" @click.stop="subMenu = !subMenu">字幕</button>
+          <button class="rounded px-1.5 py-0.5 hover:bg-white/15" :class="sub.off ? 'text-white/50' : 'text-white'" aria-haspopup="true" :aria-expanded="subMenu" @click.stop="subMenu = !subMenu">字幕<span class="ml-0.5 text-[10px] opacity-70">▾</span></button>
           <div v-if="subMenu" class="absolute bottom-full right-0 z-10 mb-2 w-44 rounded-lg bg-black/85 p-2 text-xs text-white shadow-lg" @click.stop>
             <div class="mb-1 flex items-center justify-between">
               <span class="text-white/60">字幕</span>
@@ -162,7 +162,11 @@ const sceneIndex = computed(() => {
 const controlsShown = computed(() => !playing.value || overBar.value || shown.value || subMenu.value)
 const sceneLabel = computed(() => (scenes.value.length > 1 ? `${sceneIndex.value + 1}/${scenes.value.length} ${scenes.value[sceneIndex.value]?.title || ''}` : ''))
 
-defineExpose({ seek, play, pause, sceneIndex, t })
+// The project page's 字幕 button opens the same menu (the controls stay up while it is open).
+function openSubtitles() {
+  subMenu.value = true
+}
+defineExpose({ seek, play, pause, sceneIndex, t, openSubtitles })
 
 // ---- talking to the frame --------------------------------------------------------------------
 function post(msg) {

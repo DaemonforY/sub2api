@@ -19,6 +19,7 @@
           <button v-if="isUpload && p.media?.kind === 'video'" class="btn-ghost btn-sm" title="更换封面" @click="posterOpen = true"><ImageIcon class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">更换封面</span></button>
           <template v-if="!isUpload">
             <button class="btn-ghost btn-sm" title="更换图片：换掉、删掉或新加图片，只重做用到它们的分镜" :disabled="busy || !p.spec || p.status === 'questions'" data-testid="images-open" @click="imagesOpen = true"><ImageIcon class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">换图</span></button>
+            <button v-if="hasNarration" class="btn-ghost btn-sm" title="字幕设置：位置、大小、关闭，免费，不用重新生成" :disabled="!hasCode" data-testid="subtitles-open" @click="player?.openSubtitles()"><Captions class="h-3.5 w-3.5" />字幕</button>
             <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
             <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
             <button class="btn-ghost btn-sm" :disabled="!isReady || !exportEnabled" :title="exportEnabled ? '导出 MP4（1080p 30 帧），发布到抖音、视频号、小红书、B站' : '视频导出（MP4）即将上线'" @click="exportOpen = true"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
@@ -53,7 +54,7 @@
         <template v-else-if="tab === 'preview'">
           <div class="mx-auto" :style="{ maxWidth: previewMax }">
             <div class="relative w-full overflow-hidden rounded-xl bg-ink-900 shadow-soft" :style="{ aspectRatio: `${p.width} / ${p.height}` }">
-              <FilmPlayer v-if="hasCode" ref="player" :spec="playable" :audio-url="audioUrl" with-key :editable="isReady" @error="onPlayerError" @time="(x) => (now = x)" @subtitles="saveSubtitles" />
+              <FilmPlayer v-if="hasCode" ref="player" :spec="playable" :audio-url="audioUrl" with-key :editable="!busy" @error="onPlayerError" @time="(x) => (now = x)" @subtitles="saveSubtitles" />
               <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-ink-300">
                 <template v-if="p.status === 'running'">
                   <Loader2 class="h-8 w-8 animate-spin text-brand-400" />
@@ -164,7 +165,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertCircle, Code2, Download, FileCode2, FileText, Film, History, Image as ImageIcon, Link2, Loader2, MessageCircleQuestion, Play, Send } from 'lucide-vue-next'
+import { AlertCircle, Captions, Code2, Download, FileCode2, FileText, Film, History, Image as ImageIcon, Link2, Loader2, MessageCircleQuestion, Play, Send } from 'lucide-vue-next'
 import AgentPanel from '../components/AgentPanel.vue'
 import FilmPlayer from '../components/FilmPlayer.vue'
 import HistorySidebar from '../components/HistorySidebar.vue'
@@ -242,6 +243,7 @@ async function saveSubtitles(next) {
   }
 }
 const isReady = computed(() => p.value?.status === 'ready')
+const hasNarration = computed(() => !!p.value?.spec?.scenes?.some((sc) => sc.narration))
 const hasCode = computed(() => p.value?.spec?.scenes?.some((sc) => sc.code))
 // Play the scenes that already have code (a project can be previewed while the rest is being made).
 const playable = computed(() => {
