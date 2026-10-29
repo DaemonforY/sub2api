@@ -3298,10 +3298,12 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 		)
 		return
 	}
-	// Only an actual upstream 5xx answer can blame the web_search tool. A dropped or reset
-	// connection says nothing about the request (Codex sends web_search on every turn), so it
-	// stays a retryable 5xx instead of a 400 telling the user to remove the tool.
-	if failoverErr.StatusCode >= 500 && !failoverErr.ConnectionFailure && c.GetBool(ctxKeyOpenAIHostedWebSearch) {
+	// Only an actual upstream 5xx answer that looks like the tool failing can blame web_search.
+	// Codex sends web_search on every turn, so a dropped connection, a full upstream
+	// ("Concurrency limit exceeded"), a 524 or a generic "temporarily unavailable" says nothing
+	// about the tool: those stay a retryable 5xx instead of a 400 telling the user to remove it.
+	if failoverErr.StatusCode >= 500 && !failoverErr.ConnectionFailure && c.GetBool(ctxKeyOpenAIHostedWebSearch) &&
+		isOpenAIHostedWebSearchFailureBody(failoverErr.ResponseBody) {
 		service.SetOpsUpstreamError(c, failoverErr.StatusCode, msgHostedWebSearchFailed, "")
 		h.handleStreamingAwareError(c, http.StatusBadRequest, "invalid_request_error", msgHostedWebSearchFailed, streamStarted)
 		return
@@ -3367,6 +3369,28 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 	// 使用默认的错误映射
 	status, errType, errMsg := h.mapUpstreamError(statusCode)
 	h.handleStreamingAwareError(c, status, errType, errMsg, streamStarted)
+}
+
+// isOpenAIHostedWebSearchFailureBody reports whether an exhausted upstream 5xx body is the
+// failure a broken hosted web_search produces: OpenAI's own server_error ("An error occurred
+// while processing your request…", passed through by a sub2api upstream) or an error that names
+// the tool. Gateway-made errors (concurrency limit, temporarily unavailable, Cloudflare 52x
+// pages) and capacity shedding do not match.
+func isOpenAIHostedWebSearchFailureBody(body []byte) bool {
+	if len(body) == 0 {
+		return false
+	}
+	lower := strings.ToLower(string(body))
+	if strings.Contains(lower, "web_search") || strings.Contains(lower, "web search") {
+		return true
+	}
+	for _, path := range []string{"error.code", "response.error.code"} {
+		if strings.EqualFold(strings.TrimSpace(gjson.GetBytes(body, path).String()), "server_error") {
+			return true
+		}
+	}
+	msg := strings.ToLower(strings.TrimSpace(service.ExtractUpstreamErrorMessage(body)))
+	return strings.HasPrefix(msg, "an error occurred while processing your request")
 }
 
 func credentialFailoverClientResponse(failoverErr *service.UpstreamFailoverError) (int, string) {
