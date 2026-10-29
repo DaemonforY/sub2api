@@ -11,15 +11,15 @@
       tabindex="-1"
     ></iframe>
     <!-- A tap on the picture only shows the controls (touch screens have no hover); pausing is the button's job. -->
-    <div class="absolute inset-0" @click="!card && reveal()"></div>
+    <div class="absolute inset-0" @click="!card && onPicture()"></div>
 
     <div v-if="!ready" class="absolute inset-0 flex items-center justify-center bg-ink-950/70 text-sm text-white/70">
       <span class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
     </div>
 
-    <!-- Scenes keep the bottom 14% free for subtitles (video_prompts.go), so the line sits inside that strip;
-         it only rises above the control bar while the controls are showing. -->
-    <div v-if="subtitlesOn && subtitle && !card" class="pointer-events-none absolute inset-x-0 flex justify-center px-[8%] transition-[bottom] duration-200" :style="{ bottom: controlsShown ? '64px' : '3.5%' }">
+    <!-- Scenes keep the bottom 14% free for subtitles (video_prompts.go), so by default the line sits inside
+         that strip; it only rises above the control bar while the controls are showing. -->
+    <div v-if="!sub.off && subtitle && !card" class="pointer-events-none absolute inset-x-0 flex justify-center px-[8%] transition-[bottom] duration-200" :style="subtitlePlace">
       <span class="rounded-lg bg-black/65 px-3 py-1 text-center font-medium leading-snug text-white" :style="{ fontSize: subtitleSize }">{{ subtitle }}</span>
     </div>
 
@@ -46,7 +46,28 @@
         <span class="tabular-nums">{{ fmt(t) }} / {{ fmt(duration) }}</span>
         <span v-if="sceneLabel" class="hidden truncate text-white/70 sm:inline">{{ sceneLabel }}</span>
         <span class="flex-1"></span>
-        <button v-if="hasNarration" class="rounded px-1.5 py-0.5 hover:bg-white/15" :class="subtitlesOn ? 'text-white' : 'text-white/50'" @click.stop="subtitlesOn = !subtitlesOn">字幕</button>
+        <div v-if="hasNarration" class="relative">
+          <button class="rounded px-1.5 py-0.5 hover:bg-white/15" :class="sub.off ? 'text-white/50' : 'text-white'" aria-haspopup="true" :aria-expanded="subMenu" @click.stop="subMenu = !subMenu">字幕</button>
+          <div v-if="subMenu" class="absolute bottom-full right-0 z-10 mb-2 w-44 rounded-lg bg-black/85 p-2 text-xs text-white shadow-lg" @click.stop>
+            <div class="mb-1 flex items-center justify-between">
+              <span class="text-white/60">字幕</span>
+              <span class="flex gap-1">
+                <button v-for="o in [false, true]" :key="String(o)" class="rounded px-2 py-0.5" :class="sub.off === o ? 'bg-white/25' : 'hover:bg-white/15'" @click="setSub({ off: o })">{{ o ? '关' : '开' }}</button>
+              </span>
+            </div>
+            <template v-if="!sub.off">
+              <div class="mb-1 text-white/60">位置</div>
+              <div class="mb-2 flex gap-1">
+                <button v-for="o in SUBTITLE_POSITIONS" :key="o.id" class="flex-1 rounded py-0.5" :class="sub.position === o.id ? 'bg-white/25' : 'hover:bg-white/15'" @click="setSub({ position: o.id })">{{ o.name }}</button>
+              </div>
+              <div class="mb-1 text-white/60">大小</div>
+              <div class="flex gap-1">
+                <button v-for="o in SUBTITLE_SIZES" :key="o.id" class="flex-1 rounded py-0.5" :class="sub.size === o.id ? 'bg-white/25' : 'hover:bg-white/15'" @click="setSub({ size: o.id })">{{ o.name }}</button>
+              </div>
+            </template>
+            <p class="mt-2 leading-4 text-white/45">{{ editable ? '导出的 MP4 / HTML 也按这个来' : '只在你的浏览器里生效' }}</p>
+          </div>
+        </div>
         <button class="rounded p-1 hover:bg-white/15" aria-label="全屏" @click.stop="fullscreen()"><Maximize class="h-4 w-4" /></button>
       </div>
     </div>
@@ -57,7 +78,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Maximize, Pause, Play } from 'lucide-vue-next'
 import { audioBlob } from '../lib/api'
-import { buildSubtitles } from '../lib/subtitles'
+import { buildSubtitles, subtitleStyle, SUBTITLE_POSITIONS, SUBTITLE_SIZES } from '../lib/subtitles'
 
 const props = defineProps({
   spec: { type: Object, default: null },
@@ -70,9 +91,11 @@ const props = defineProps({
   active: { type: Boolean, default: false },
   posterAt: { type: Number, default: 1.6 },
   /** A self-contained player page (/play/<id>: the work's data inlined); without it the spec is posted to /player.html. */
-  src: { type: String, default: '' }
+  src: { type: String, default: '' },
+  /** The owner's project page: the 字幕 menu edits the film's own style (emits `subtitles`), which the exports use. */
+  editable: { type: Boolean, default: false }
 })
-const emit = defineEmits(['error', 'time', 'ready'])
+const emit = defineEmits(['error', 'time', 'ready', 'subtitles'])
 
 const box = ref(null)
 const frame = ref(null)
@@ -80,7 +103,6 @@ const ready = ref(false)
 const playing = ref(false)
 const t = ref(0)
 const overBar = ref(false)
-const subtitlesOn = ref(true)
 const boxWidth = ref(800)
 
 const scenes = computed(() => props.spec?.scenes || [])
@@ -102,7 +124,32 @@ const subtitle = computed(() => {
   const cue = subtitleTrack.value.find((c) => now >= c.start && now < c.end)
   return cue ? cue.text : ''
 })
-const subtitleSize = computed(() => `${Math.max(12, Math.round(boxWidth.value / 34))}px`)
+// Subtitle style: the film's own (spec.subtitles), or for viewers their own choice kept in this browser.
+const SUB_KEY = 'hivegpt-video:subtitles'
+const viewerSub = ref(null)
+try {
+  viewerSub.value = JSON.parse(localStorage.getItem(SUB_KEY) || 'null')
+} catch {
+  viewerSub.value = null
+}
+const subMenu = ref(false)
+const sub = computed(() => subtitleStyle(!props.editable && viewerSub.value ? viewerSub.value : props.spec?.subtitles))
+function setSub(change) {
+  const next = { position: sub.value.position, size: sub.value.size, off: sub.value.off, ...change }
+  if (props.editable) emit('subtitles', next)
+  else {
+    viewerSub.value = next
+    localStorage.setItem(SUB_KEY, JSON.stringify(next))
+  }
+}
+const subtitleSize = computed(() => `${Math.max(12, Math.round((boxWidth.value / 34) * sub.value.scale))}px`)
+// Where the line sits; at the bottom it rises above the control bar while that is showing.
+const subtitlePlace = computed(() => {
+  const pos = sub.value.position
+  if (pos === 'top') return { top: '4%' }
+  if (pos === 'raised') return { bottom: controlsShown.value ? 'max(16%, 64px)' : '16%' }
+  return { bottom: controlsShown.value ? '64px' : '3.5%' }
+})
 const sceneIndex = computed(() => {
   let i = 0
   starts.value.forEach((s, j) => {
@@ -112,7 +159,7 @@ const sceneIndex = computed(() => {
 })
 // The control bar shows while paused, while the pointer is on it, and for 3 s after the mouse moves or
 // the picture is tapped — a resting cursor doesn't keep it (and the lifted subtitles) over the picture.
-const controlsShown = computed(() => !playing.value || overBar.value || shown.value)
+const controlsShown = computed(() => !playing.value || overBar.value || shown.value || subMenu.value)
 const sceneLabel = computed(() => (scenes.value.length > 1 ? `${sceneIndex.value + 1}/${scenes.value.length} ${scenes.value[sceneIndex.value]?.title || ''}` : ''))
 
 defineExpose({ seek, play, pause, sceneIndex, t })
@@ -275,6 +322,10 @@ function reveal() {
   shown.value = true
   clearTimeout(hideTimer)
   hideTimer = setTimeout(() => (shown.value = false), 3000)
+}
+function onPicture() {
+  subMenu.value = false
+  reveal()
 }
 function seek(to) {
   t.value = Math.max(0, Math.min(duration.value, to))

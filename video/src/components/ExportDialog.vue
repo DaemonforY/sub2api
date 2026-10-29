@@ -4,6 +4,7 @@
     <section>
       <h3 class="text-sm font-semibold">视频文件</h3>
       <p class="mt-1 text-xs leading-5 text-ink-500">在服务器上逐帧渲染：1080p 30 帧、高码率 H.264 + AAC，带配音和字幕。全站按顺序排队，可以关掉窗口，回来再下载。</p>
+      <p class="mt-1 text-xs leading-5 text-ink-500">字幕：{{ subtitleLabel }}（在播放器右下角的「字幕」里调整，改了之后重新导出）</p>
       <div class="mt-3 grid gap-3 sm:grid-cols-2">
         <div v-for="l in layouts" :key="l.id" class="rounded-xl border border-ink-200 p-3 dark:border-ink-700">
           <div class="flex items-start gap-3">
@@ -86,8 +87,14 @@ import Modal from './Modal.vue'
 import { api } from '../lib/api'
 import { fmtBytes, fmtTime } from '../lib/media'
 import { toast, toastError } from '../lib/toast'
+import { subtitleStyle, SUBTITLE_POSITIONS, SUBTITLE_SIZES } from '../lib/subtitles'
 
 const props = defineProps({ project: { type: Object, required: true } })
+const subtitleLabel = computed(() => {
+  const st = subtitleStyle(props.project.spec?.subtitles)
+  if (st.off) return '不显示'
+  return `${SUBTITLE_POSITIONS.find((x) => x.id === st.position).name} · ${SUBTITLE_SIZES.find((x) => x.id === st.size).name}号`
+})
 defineEmits(['close'])
 
 const layouts = [

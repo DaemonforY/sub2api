@@ -1343,6 +1343,46 @@ func (s *VideoService) SetVoice(ctx context.Context, key *APIKey, id, voice stri
 	})
 }
 
+// SetSubtitles saves how a film's subtitles are shown (position, size, or none); the player, the MP4
+// export and the HTML export all follow it. Nothing is regenerated.
+func (s *VideoService) SetSubtitles(ctx context.Context, userID int64, id string, in VideoSubtitles) (*VideoProject, error) {
+	switch in.Position {
+	case "", "bottom", "raised", "top":
+	default:
+		return nil, ErrVideoInvalid
+	}
+	switch in.Size {
+	case "", "s", "m", "l":
+	default:
+		return nil, ErrVideoInvalid
+	}
+	p, err := s.own(ctx, userID, id)
+	if err != nil {
+		return nil, err
+	}
+	if p.Spec == nil || p.Mode != VideoModeFilm {
+		return nil, ErrVideoNotReady
+	}
+	if s.running(p.ID) {
+		return nil, ErrVideoBusy
+	}
+	if in.Position == "bottom" {
+		in.Position = ""
+	}
+	if in.Size == "m" {
+		in.Size = ""
+	}
+	if in == (VideoSubtitles{}) {
+		p.Spec.Subtitles = nil
+	} else {
+		p.Spec.Subtitles = &in
+	}
+	if err := s.repo.Save(ctx, p); err != nil {
+		return nil, err
+	}
+	return s.own(ctx, userID, id)
+}
+
 func (s *VideoService) Stop(ctx context.Context, userID int64, id string) error {
 	if _, err := s.own(ctx, userID, id); err != nil {
 		return err

@@ -52,6 +52,7 @@ func RegisterVideoRoutes(v1 *gin.RouterGroup, h *handler.Handlers, apiKeyAuth mi
 		g.POST("/projects/:id/stop", h.Video.Stop)
 		g.PUT("/projects/:id/script", h.Video.EditScript)
 		g.POST("/projects/:id/voice", h.Video.SetVoice)
+		g.POST("/projects/:id/subtitles", h.Video.SetSubtitles)
 		g.GET("/projects/:id/versions", h.Video.Versions)
 		g.POST("/projects/:id/versions/:vid/restore", h.Video.Restore)
 		g.POST("/projects/:id/publish", h.Video.Publish)

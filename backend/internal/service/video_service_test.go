@@ -781,3 +781,28 @@ func TestEdgeTTSProtocol(t *testing.T) {
 	require.Contains(t, gotSSML, "rate='+10%'")
 	require.Contains(t, gotSSML, "你好 &lt;b&gt;&amp;", "narration is XML-escaped")
 }
+
+func TestVideoSetSubtitles(t *testing.T) {
+	svc, repo, _ := newTestVideoService(t, &fakeModel{broken: map[string]int{}})
+	ctx := context.Background()
+	repo.projects["f"] = &VideoProject{ID: "f", UserID: 7, Mode: VideoModeFilm, Status: VideoStatusReady, Title: "t", Width: 1920, Height: 1080,
+		Spec: &VideoSpec{Width: 1920, Height: 1080, Scenes: []VideoScene{{ID: "s1", Duration: 3, Code: "x", Narration: "旁白"}}}}
+	before := videoExportSignature(repo.projects["f"], VideoLayoutLandscape)
+
+	p, err := svc.SetSubtitles(ctx, 7, "f", VideoSubtitles{Position: "top", Size: "l"})
+	require.NoError(t, err)
+	require.Equal(t, &VideoSubtitles{Position: "top", Size: "l"}, p.Spec.Subtitles)
+	// A new style means a new MP4.
+	require.NotEqual(t, before, videoExportSignature(repo.projects["f"], VideoLayoutLandscape))
+
+	// The defaults clear the field, so the film renders as before.
+	p, err = svc.SetSubtitles(ctx, 7, "f", VideoSubtitles{Position: "bottom", Size: "m"})
+	require.NoError(t, err)
+	require.Nil(t, p.Spec.Subtitles)
+	require.Equal(t, before, videoExportSignature(repo.projects["f"], VideoLayoutLandscape))
+
+	_, err = svc.SetSubtitles(ctx, 7, "f", VideoSubtitles{Position: "left"})
+	require.ErrorIs(t, err, ErrVideoInvalid)
+	_, err = svc.SetSubtitles(ctx, 8, "f", VideoSubtitles{Off: true})
+	require.Error(t, err)
+}

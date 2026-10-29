@@ -88,6 +88,15 @@ type VideoSpec struct {
 	// Common is the shared kit (palette, backdrop and chrome, the recurring character …) the player runs
 	// before every scene's code, so the scenes share one look. "" for single animations and older films.
 	Common string `json:"common,omitempty"`
+	// Subtitles is how the owner wants the subtitles shown (player, MP4 and HTML exports); nil = defaults.
+	Subtitles *VideoSubtitles `json:"subtitles,omitempty"`
+}
+
+// VideoSubtitles is the subtitle style of a film.
+type VideoSubtitles struct {
+	Position string `json:"position,omitempty"` // bottom (default) | raised | top
+	Size     string `json:"size,omitempty"`     // s | m (default) | l
+	Off      bool   `json:"off,omitempty"`      // no subtitles at all
 }
 
 type VideoScene struct {

@@ -1,6 +1,25 @@
 // Subtitles from narration + TTS word timings: the narration is cut into short clauses at
 // punctuation, and each clause is shown from the moment its first word is spoken.
 
+// Subtitle style choices (spec.subtitles: {position, size, off}; empty = bottom, medium, on).
+// public/render.js and lib/exportHtml.js place them the same way.
+export const SUBTITLE_POSITIONS = [
+  { id: 'bottom', name: '底部' },
+  { id: 'raised', name: '中下' },
+  { id: 'top', name: '顶部' }
+]
+export const SUBTITLE_SIZES = [
+  { id: 's', name: '小', scale: 0.8 },
+  { id: 'm', name: '中', scale: 1 },
+  { id: 'l', name: '大', scale: 1.3 }
+]
+/** {position, size, off} with defaults filled in. */
+export function subtitleStyle(sub) {
+  const position = SUBTITLE_POSITIONS.some((x) => x.id === sub?.position) ? sub.position : 'bottom'
+  const size = SUBTITLE_SIZES.find((x) => x.id === sub?.size) || SUBTITLE_SIZES[1]
+  return { position, size: size.id, scale: size.scale, off: !!sub?.off }
+}
+
 const BREAK = /[，。！？；：、,.!?;:\n]/
 const MAX = 22
 

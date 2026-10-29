@@ -53,7 +53,7 @@
         <template v-else-if="tab === 'preview'">
           <div class="mx-auto" :style="{ maxWidth: previewMax }">
             <div class="relative w-full overflow-hidden rounded-xl bg-ink-900 shadow-soft" :style="{ aspectRatio: `${p.width} / ${p.height}` }">
-              <FilmPlayer v-if="hasCode" ref="player" :spec="playable" :audio-url="audioUrl" with-key @error="onPlayerError" @time="(x) => (now = x)" />
+              <FilmPlayer v-if="hasCode" ref="player" :spec="playable" :audio-url="audioUrl" with-key :editable="isReady" @error="onPlayerError" @time="(x) => (now = x)" @subtitles="saveSubtitles" />
               <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-ink-300">
                 <template v-if="p.status === 'running'">
                   <Loader2 class="h-8 w-8 animate-spin text-brand-400" />
@@ -228,6 +228,17 @@ async function savePoster() {
     toastError(err)
   } finally {
     savingPoster.value = false
+  }
+}
+// The 字幕 menu on the player: position / size / none, saved with the film so the exports follow it.
+async function saveSubtitles(next) {
+  const before = p.value.spec.subtitles
+  p.value.spec.subtitles = next
+  try {
+    p.value = await api(`/projects/${id.value}/subtitles`, { method: 'POST', body: next })
+  } catch (err) {
+    p.value.spec.subtitles = before
+    toastError(err)
   }
 }
 const isReady = computed(() => p.value?.status === 'ready')

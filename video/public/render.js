@@ -1,4 +1,4 @@
-// Render page for MP4 export (see render.html). __setup({layout, width, height, title, payload, scenes})
+// Render page for MP4 export (see render.html). __setup({layout, width, height, title, payload, scenes, subtitles})
 // builds the frame: the sandboxed player plus subtitles, either the film filling the frame (landscape,
 // like the site's player) or a portrait 1080×1920 frame with the title above the film and large
 // subtitles below. window.__ready / __TOTAL tell the renderer when the film is loaded.
@@ -91,7 +91,10 @@
 
     var starts = [], at = 0
     cfg.scenes.forEach(function (sc) { starts.push(at); at += sc.duration })
-    cues = buildSubtitles(cfg.scenes, starts)
+    // The owner's subtitle style (spec.subtitles, see src/lib/subtitles.js): none, size, position.
+    var st = cfg.subtitles || {}
+    var scale = { s: 0.8, l: 1.3 }[st.size] || 1
+    cues = st.off ? [] : buildSubtitles(cfg.scenes, starts)
 
     frame = document.createElement('iframe')
     frame.setAttribute('sandbox', 'allow-scripts')
@@ -117,6 +120,7 @@
       var sub = el('div', 'sub')
       sub.style.top = Math.round(H * 0.33 + h + 120) + 'px'
       subEl = el('span')
+      subEl.style.fontSize = Math.round(60 * scale) + 'px'
       sub.appendChild(subEl)
       root.appendChild(sub)
       if (cfg.brand) root.appendChild(el('div', 'brand', cfg.brand))
@@ -124,7 +128,9 @@
       frame.style.cssText = 'left:0;top:0;width:' + W + 'px;height:' + H + 'px'
       var sub2 = el('div', 'sub')
       subEl = el('span')
-      subEl.style.fontSize = Math.max(12, Math.round(H > W ? W / 24 : Math.min(W, H * 16 / 9) / 34)) + 'px'
+      subEl.style.fontSize = Math.max(12, Math.round((H > W ? W / 24 : Math.min(W, H * 16 / 9) / 34) * scale)) + 'px'
+      if (st.position === 'raised') sub2.style.bottom = '16%'
+      else if (st.position === 'top') { sub2.style.bottom = 'auto'; sub2.style.top = H > W ? '6%' : '4%' }
       sub2.appendChild(subEl)
       root.appendChild(sub2)
     }

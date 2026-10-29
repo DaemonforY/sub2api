@@ -224,8 +224,8 @@ func videoLayoutBase(layout string) (string, float64) {
 	return layout, 1
 }
 
-// videoExportSignature identifies what a render shows: the scenes (code, timing, audio), the title
-// and the layout.
+// videoExportSignature identifies what a render shows: the scenes (code, timing, audio), the title,
+// the subtitle style and the layout.
 func videoExportSignature(p *VideoProject, layout string) string {
 	h := sha256.New()
 	_, _ = fmt.Fprintf(h, "%s|%s|%s|%dx%d\n", videoRenderVersion, layout, p.Title, p.Width, p.Height)
@@ -243,6 +243,9 @@ func videoExportSignature(p *VideoProject, layout string) string {
 			_, _ = io.WriteString(h, "\n")
 		}
 		_, _ = io.WriteString(h, p.Spec.Common)
+		if sub := p.Spec.Subtitles; sub != nil {
+			_, _ = fmt.Fprintf(h, "\nsubtitles|%s|%s|%t", sub.Position, sub.Size, sub.Off)
+		}
 	}
 	return hex.EncodeToString(h.Sum(nil))[:32]
 }
@@ -514,8 +517,9 @@ func (s *VideoService) renderJob(p *VideoProject, e *VideoExport) videoRenderJob
 		URL: s.renderer.origin + "/render.html", FPS: videoExportFPS, Width: w, Height: h, Scale: scale,
 		Setup: map[string]any{
 			"layout": base, "width": w, "height": h, "title": p.Title, "brand": "HiveGPT 视频",
-			"payload": map[string]any{"width": p.Spec.Width, "height": p.Spec.Height, "theme": p.Spec.Theme, "loop": false, "poster": p.Spec.Poster, "common": p.Spec.Common, "scenes": scenes, "images": PlayerImages(p.Spec)},
-			"scenes":  sceneData,
+			"payload":   map[string]any{"width": p.Spec.Width, "height": p.Spec.Height, "theme": p.Spec.Theme, "loop": false, "poster": p.Spec.Poster, "common": p.Spec.Common, "scenes": scenes, "images": PlayerImages(p.Spec)},
+			"scenes":    sceneData,
+			"subtitles": p.Spec.Subtitles,
 		},
 		Audio: audio, Out: mp4, Cover: cover, CoverAt: coverAt, Progress: progress,
 	}

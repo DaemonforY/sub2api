@@ -255,6 +255,20 @@ func (h *VideoHandler) SetVoice(c *gin.Context) {
 	h.reply(c, p, err)
 }
 
+// SetSubtitles POST /api/v1/video/projects/:id/subtitles — {position, size, off}: the film's subtitle style.
+func (h *VideoHandler) SetSubtitles(c *gin.Context) {
+	key, ok := videoKey(c)
+	if !ok {
+		return
+	}
+	var in service.VideoSubtitles
+	if !bindVideo(c, &in) {
+		return
+	}
+	p, err := h.service.SetSubtitles(c.Request.Context(), key.UserID, c.Param("id"), in)
+	h.reply(c, p, err)
+}
+
 func (h *VideoHandler) Versions(c *gin.Context) {
 	key, ok := videoKey(c)
 	if !ok {
