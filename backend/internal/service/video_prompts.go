@@ -61,6 +61,11 @@ containers with explicit sizes). Keep a safe margin of 6% on every side; the bot
 when the video has narration — keep text out of it. Body text ≥ 34px, headings 64–120px on a 1920×1080 stage
 (scale proportionally for other sizes). Never let text overflow its box: set widths and line-heights, and keep
 lines short. Use S.theme.font for text and S.theme.display for big titles.
+Fill the stage: the main visual (picture, diagram, chart, object) takes most of it. Avoid slide layouts — a small
+title in a corner, a few small cards, half the stage empty; with few elements, make them large.
+People: draw them only when the visual plan needs them, as clean silhouettes or hands with realistic proportions —
+no blob bodies, round heads or dot eyes — unless the visual style is explicitly cartoon-like. A serious or
+documentary tone needs restrained, realistic graphics, never toy-like figures.
 
 Code size: keep the function body compact — aim for under 400 lines. Build repeated parts (characters' limbs,
 rows of items, particles) with loops and small helper functions instead of copying them; keep SVG paths short.
@@ -78,7 +83,14 @@ S.image(id, props?) → a new <img> of the user's picture id (img1, img2 …), a
             (pan & zoom: scale 1 → 1.08 over the scene, x/y drift), reveal with opacity / clip-path, frame it
             (rounded corners, shadow, device mockup), point at details with labels / arrows / circles drawn on top.
 S.images    { img1: { width, height }, … } natural sizes, to keep the aspect ratio (object-fit:contain shows all of it).
-Never redraw a picture by hand or describe it with shapes: show the real image.`
+Never redraw a picture by hand or describe it with shapes: show the real image.
+Show pictures big: a picture is the hero of its scene. When its shape differs from the stage (a tall poster on a
+wide stage), crop and zoom into the part the narration is about (an overflow:hidden frame with a scaled image, or
+object-position) instead of shrinking the whole picture into a small card; text inside a picture must end up
+readable or be cropped out.
+Pictures can already carry labels, captions, logos or watermarks (see the picture notes). Never draw new labels on
+top of or overlapping the ones in the picture: point at the existing labels, or crop to a clean area and add your
+own there. Do not crop so that a watermark or caption is cut in half at the stage edge.`
 
 func videoJSONSchemaHint(v any) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
@@ -143,8 +155,8 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 		}
 		fmt.Fprintf(&b, "- The user attached %d pictures, in this order: %s. They are the main material of the video: look at each one carefully, build the script around what they show (the product, the place, the people, the screenshot's content) and show every picture in at least one scene. Do not invent details the pictures and the request do not support.\n", len(images), strings.Join(ids, ", "))
 		_, _ = b.WriteString("- images: the ids of the pictures a scene shows (usually one or two; [] when none).\n")
-		_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — which picture goes where and how it moves (slow pan / zoom, reveal, split screen, before / after), labels or arrows pointing at details in it (say where in the picture), plus text, icons and simple diagrams around it, tied to phrases of the narration. Besides the user's pictures, only HTML, SVG and canvas graphics; no other photos or footage.\n")
-		_, _ = b.WriteString("- image_notes: one line per picture saying what is in it and where (e.g. 「白色保温杯居中，杯身左侧有 logo，背景浅灰」) — the designer uses it to place labels.\n")
+		_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — which picture goes where and how it moves (slow pan / zoom, reveal, split screen, before / after), labels or arrows pointing at details in it (say where in the picture), plus text, icons and simple diagrams around it, tied to phrases of the narration. Plan pictures large: crop and zoom into the part being talked about (especially a tall picture on a wide stage) rather than showing it small; where a picture already has its own labels, use them or crop them away instead of stacking new labels on top. Besides the user's pictures, only HTML, SVG and canvas graphics; no other photos or footage.\n")
+		_, _ = b.WriteString("- image_notes: one line per picture saying what is in it and where (e.g. 「白色保温杯居中，杯身左侧有 logo，背景浅灰」), including any text, labels, logos or watermarks already in the picture and where they are, and its shape (portrait / landscape) — the designer uses it to place labels and crops.\n")
 	}
 	_, _ = b.WriteString("- The first scene hooks the viewer with a question or surprising fact; the last scene sums up in one memorable line.\n")
 	_, _ = b.WriteString("- Be factually accurate. If the user gave a full script, keep their wording and only split it into scenes.\n")
