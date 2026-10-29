@@ -78,7 +78,11 @@
     var root = document.getElementById('root')
     var W = cfg.width, H = cfg.height, theme = (cfg.payload && cfg.payload.theme) || {}
     var portrait = cfg.layout === 'portrait'
-    root.className = portrait ? 'portrait' : 'landscape'
+    var fw = cfg.payload.width || 1920, fh = cfg.payload.height || 1080
+    // Only a landscape film is wrapped (title above, film in the middle); a portrait film fills the frame
+    // and gets the player's subtitles at the bottom, in the strip its scenes keep free.
+    var wrapped = portrait && fw / fh > 0.75
+    root.className = wrapped ? 'portrait' : (H > W ? 'landscape tall' : 'landscape')
     root.style.width = W + 'px'
     root.style.height = H + 'px'
     root.style.background = theme.bg || '#000'
@@ -92,8 +96,7 @@
     frame = document.createElement('iframe')
     frame.setAttribute('sandbox', 'allow-scripts')
     frame.setAttribute('title', '视频画面')
-    var fw = cfg.payload.width || 1920, fh = cfg.payload.height || 1080
-    if (portrait && fw / fh > 0.75) {
+    if (wrapped) {
       // A landscape film in a portrait frame: title on top, film across the middle, subtitles below.
       var h = Math.round((W * fh) / fw)
       frame.style.cssText = 'left:0;width:' + W + 'px;top:' + Math.round(H * 0.33) + 'px;height:' + h + 'px'
@@ -121,7 +124,7 @@
       frame.style.cssText = 'left:0;top:0;width:' + W + 'px;height:' + H + 'px'
       var sub2 = el('div', 'sub')
       subEl = el('span')
-      subEl.style.fontSize = Math.max(12, Math.round(Math.min(W, H * 16 / 9) / 34)) + 'px'
+      subEl.style.fontSize = Math.max(12, Math.round(H > W ? W / 24 : Math.min(W, H * 16 / 9) / 34)) + 'px'
       sub2.appendChild(subEl)
       root.appendChild(sub2)
     }
