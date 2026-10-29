@@ -1210,13 +1210,23 @@ func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus stri
 		if t := strings.TrimSpace(plan.Title); t != "" {
 			p.Spec.Title, p.Title = clipRunes(t, videoTitleMaxChars), clipRunes(t, videoTitleMaxChars)
 		}
+		// Subtitles are the player's: a new style is saved as is, no scene is rebuilt for it.
+		subtitlesChanged := false
+		if plan.Subtitles != nil && !videoSilent(p) {
+			if sub, ok := normalizeVideoSubtitles(*plan.Subtitles); ok {
+				p.Spec.Subtitles, subtitlesChanged = sub, true
+			}
+		}
 		r.mu.Unlock()
 		if reply := strings.TrimSpace(plan.Reply); reply != "" {
 			_ = s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "assistant", Text: reply})
 		}
 		if len(redo) == 0 {
-			if kitChanged {
+			switch {
+			case kitChanged:
 				s.done(ctx, r, "修改完成（整片画面风格）")
+			case subtitlesChanged:
+				s.done(ctx, r, "已调整字幕")
 			}
 			return nil
 		}
@@ -1346,14 +1356,8 @@ func (s *VideoService) SetVoice(ctx context.Context, key *APIKey, id, voice stri
 // SetSubtitles saves how a film's subtitles are shown (position, size, or none); the player, the MP4
 // export and the HTML export all follow it. Nothing is regenerated.
 func (s *VideoService) SetSubtitles(ctx context.Context, userID int64, id string, in VideoSubtitles) (*VideoProject, error) {
-	switch in.Position {
-	case "", "bottom", "raised", "top":
-	default:
-		return nil, ErrVideoInvalid
-	}
-	switch in.Size {
-	case "", "s", "m", "l":
-	default:
+	sub, ok := normalizeVideoSubtitles(in)
+	if !ok {
 		return nil, ErrVideoInvalid
 	}
 	p, err := s.own(ctx, userID, id)
@@ -1366,6 +1370,26 @@ func (s *VideoService) SetSubtitles(ctx context.Context, userID int64, id string
 	if s.running(p.ID) {
 		return nil, ErrVideoBusy
 	}
+	p.Spec.Subtitles = sub
+	if err := s.repo.Save(ctx, p); err != nil {
+		return nil, err
+	}
+	return s.own(ctx, userID, id)
+}
+
+// normalizeVideoSubtitles checks a subtitle style and drops the defaults (bottom, medium, on); nil when
+// nothing is left.
+func normalizeVideoSubtitles(in VideoSubtitles) (*VideoSubtitles, bool) {
+	switch in.Position {
+	case "", "bottom", "raised", "top":
+	default:
+		return nil, false
+	}
+	switch in.Size {
+	case "", "s", "m", "l":
+	default:
+		return nil, false
+	}
 	if in.Position == "bottom" {
 		in.Position = ""
 	}
@@ -1373,14 +1397,9 @@ func (s *VideoService) SetSubtitles(ctx context.Context, userID int64, id string
 		in.Size = ""
 	}
 	if in == (VideoSubtitles{}) {
-		p.Spec.Subtitles = nil
-	} else {
-		p.Spec.Subtitles = &in
+		return nil, true
 	}
-	if err := s.repo.Save(ctx, p); err != nil {
-		return nil, err
-	}
-	return s.own(ctx, userID, id)
+	return &in, true
 }
 
 func (s *VideoService) Stop(ctx context.Context, userID int64, id string) error {

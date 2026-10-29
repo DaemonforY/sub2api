@@ -214,6 +214,8 @@ type fakeModel struct {
 	kitBrokenOnce bool     // only the first kit answer is broken
 	kitLongOnce   bool     // the first kit answer hits the output limit
 	planKit       string   // the revision plan's kit instruction
+	planRaw       string   // the whole revision plan answer, when set
+	planSystems   []string // system prompts of the revision plan calls
 	scenes        []string // system prompts of the scene calls
 	kitAsks       []string // last user message of every kit call
 }
@@ -243,7 +245,10 @@ func (m *fakeModel) stream(ctx context.Context, _, _ string, msgs []LearnMessage
 		ans = "```json\n" + `{"title":"测试视频","summary":"s","character":"橙色圆形小机器人","facts":["订阅费 ¥1,450/月"],"scenes":[{"title":"一","narration":"第一段旁白。","visual":"v1"},{"title":"二","narration":"第二段旁白。","visual":"v2"}]}` + "\n```"
 	case strings.Contains(sys, "The user asks for changes"):
 		m.calls = append(m.calls, "plan")
-		if m.planKit != "" {
+		m.planSystems = append(m.planSystems, sys)
+		if m.planRaw != "" {
+			ans = m.planRaw
+		} else if m.planKit != "" {
 			ans = `{"reply":"好的","kit":"` + m.planKit + `","scenes":[]}`
 		} else {
 			ans = `{"reply":"好的","scenes":[{"id":"s2","instruction":"更大","narration":"新的第二段旁白。"}]}`
@@ -805,4 +810,36 @@ func TestVideoSetSubtitles(t *testing.T) {
 	require.ErrorIs(t, err, ErrVideoInvalid)
 	_, err = svc.SetSubtitles(ctx, 8, "f", VideoSubtitles{Off: true})
 	require.Error(t, err)
+}
+
+func TestVideoMessageMovesSubtitlesWithoutRebuilding(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	svc, _, tts := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	svc.Wait()
+	before, _ := svc.Get(ctx, 7, p.ID)
+	calls := tts.calls
+
+	model.planRaw = `{"reply":"字幕已放到顶部、调大；播放器右下角的「字幕」随时可以改。","scenes":[],"subtitles":{"position":"top","size":"l"}}`
+	_, err := svc.Message(ctx, videoKeyA, p.ID, "所有分镜，口播字幕位置向下方调整", "")
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Equal(t, &VideoSubtitles{Position: "top", Size: "l"}, got.Spec.Subtitles)
+	require.Empty(t, model.revisions, "no scene is rebuilt for subtitles")
+	require.Equal(t, calls, tts.calls)
+	for i := range before.Spec.Scenes {
+		require.Equal(t, before.Spec.Scenes[i].Code, got.Spec.Scenes[i].Code)
+	}
+	require.Contains(t, model.planSystems[len(model.planSystems)-1], "Subtitles are not part of any scene")
+
+	// An unknown style is ignored rather than saved.
+	model.planRaw = `{"reply":"好的","scenes":[],"subtitles":{"position":"left"}}`
+	_, err = svc.Message(ctx, videoKeyA, p.ID, "字幕放左边", "")
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ = svc.Get(ctx, 7, p.ID)
+	require.Equal(t, &VideoSubtitles{Position: "top", Size: "l"}, got.Spec.Subtitles)
 }

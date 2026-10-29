@@ -404,6 +404,8 @@ type videoRevisionPlan struct {
 	} `json:"scenes"`
 	Title string `json:"title,omitempty"`
 	Kit   string `json:"kit,omitempty"` // a change to the shared kit (the whole look), for films that have one
+	// Subtitles is a new subtitle style (the player draws subtitles, not the scenes); nil = unchanged.
+	Subtitles *VideoSubtitles `json:"subtitles,omitempty"`
 }
 
 func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []string) []LearnMessage {
@@ -429,6 +431,10 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []
 	}
 	if p.Spec.Common != "" {
 		sys += "\nThis video has a shared kit that every scene runs first: the palette, fonts, background, header / counter and the recurring character's design. A change to any of those for the whole video goes in \"kit\" (one precise instruction, e.g. 「主色改成深蓝 #1e3a8a，背景去掉网格」) instead of listing every scene; list scenes only when their own content must change too. Leave kit empty otherwise."
+	}
+	if !videoSilent(p) {
+		schema["subtitles"] = map[string]any{"position": "（只有要改字幕位置时才填：bottom / raised / top）", "size": "（s / m / l）", "off": false}
+		sys += "\nSubtitles are not part of any scene: the player draws them over the picture from the narration, in the bottom strip by default, and the scene code cannot move, resize or hide them. When the user asks to move, enlarge, shrink or hide the subtitles (口播字幕 / 字幕位置 / 字幕挡住了文字), fill \"subtitles\" with the full new style — position bottom (底部, the default, inside the strip the scenes keep empty), raised (中下) or top (顶部); size s / m / l; off true to hide them — leave scenes empty, and in the reply say it is done and that the 「字幕」 button at the bottom right of the player changes it any time, free. Subtitles covering on-screen text are fixed the same way, never by rebuilding scenes. Change scenes only if the user also asks for a scene's own content to change."
 	}
 	sys += "\nIf the user says an earlier change did not take effect, or that the video still looks like the first version, do that earlier change again: list the scenes it concerns with a precise instruction. You cannot see the video, so never claim what the user is seeing and never answer with an empty scene list in that case."
 	user := "Video: " + p.Spec.Title + "\nScenes:\n" + outline.String()
