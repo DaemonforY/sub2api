@@ -70,6 +70,8 @@ export default {
       }
     },
     viewer: {
+      loginPitch: 'Sign up to get {n} votes for the entries you like',
+      myVotes: 'My votes',
       votesLeft: '{left} of {total} votes left',
       loginToVote: 'Log in to vote',
       loginToSubmit: 'Log in to submit',
@@ -112,6 +114,52 @@ export default {
       live: 'Live ranking',
       final: 'Final ranking',
       empty: 'No ranking yet'
+    },
+    hero: {
+      stats: '{entries} entries · {votes} votes',
+      create: 'Draw one',
+      share: 'Share the contest',
+      upcomingHint: 'Entries open at {time}. You can start drawing now',
+      prizeNote: 'The entry with the most votes at the deadline wins, with at least {n} valid votes',
+      days: 'days',
+      hours: 'hrs',
+      minutes: 'min'
+    },
+    timeline: {
+      title: 'Schedule',
+      open: 'Entries and votes open',
+      submissionOpen: 'Entries open',
+      votingOpen: 'Votes open',
+      submissionClose: 'Entries close',
+      votingClose: 'Votes close, ranking is final',
+      award: 'Prizes after the results are posted'
+    },
+    howto: {
+      title: 'How to take part',
+      drawTitle: 'Draw a picture with AI',
+      drawText: 'Create it on the HiveGPT canvas or in the image workbench. Any theme.',
+      submitTitle: 'Enter it',
+      submitText: 'Upload a picture or pick a work you published on the canvas, up to {n} per person, shown once approved.',
+      shareTitle: 'Ask friends to vote',
+      shareText: 'Every entry has a poster and a link. Signed-up friends get {n} votes each.'
+    },
+    noEntries: {
+      title: 'No entries yet. Be the first',
+      text: 'The first entries are the first ones people see.',
+      upcoming: 'Entries open at {time}. You can start drawing now.',
+      ideas: 'Need an idea? Pick one and start drawing',
+      idea1: 'An orange cat napping on a sunny windowsill, watercolor',
+      idea2: 'A street food stall on a rainy neon night, cyberpunk',
+      idea3: 'A small boat in an ink-wash landscape',
+      idea4: 'A shiba in a spacesuit picnicking on the moon',
+      idea5: 'A corner shop from a childhood summer, film colors',
+      idea6: 'A paper-cut rabbit in the snow'
+    },
+    shareCard: {
+      schedule: 'From {start}, votes close {end}',
+      how: 'Draw a picture with AI and enter it; sign up to vote ({n} votes each)',
+      cta: 'Scan to join',
+      pitch: '{title} is on! Draw a picture with AI to enter; the most-voted entry wins: {link}'
     },
     entry: {
       votesLabel: 'votes',

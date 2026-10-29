@@ -85,3 +85,9 @@ func TestContestAutoMonthsAndDue(t *testing.T) {
 	require.True(t, contestAutoDue(nov, 3, "", cst(2026, 11, 22, 23, 59)))
 	require.False(t, contestAutoDue(nov, 3, "", cst(2026, 11, 23, 0, 0)), "submissions already closed")
 }
+
+func TestContestCoverOrDefault(t *testing.T) {
+	require.Equal(t, ContestMonthlyCover, ContestCoverOrDefault(&Contest{AutoPeriod: "2026-11"}))
+	require.Equal(t, "/x.png", ContestCoverOrDefault(&Contest{AutoPeriod: "2026-11", CoverImage: "/x.png"}))
+	require.Equal(t, "", ContestCoverOrDefault(&Contest{}))
+}

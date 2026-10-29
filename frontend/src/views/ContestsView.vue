@@ -24,7 +24,7 @@
           class="group overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-dark-700 dark:bg-dark-800"
         >
           <div class="relative h-40 overflow-hidden bg-gradient-to-br from-fuchsia-500 via-violet-500 to-amber-400">
-            <img v-if="safeCover(c.cover_image)" :src="safeCover(c.cover_image)" alt="" class="h-full w-full object-cover" />
+            <img v-if="contestCover(c)" :src="contestCover(c)" alt="" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
             <span v-else class="absolute inset-0 flex items-center justify-center text-6xl opacity-90">🎨</span>
             <span :class="['absolute left-3 top-3', phaseBadgeClass(c.phase)]">{{ t(`contests.phase.${c.phase}`) }}</span>
           </div>
@@ -53,7 +53,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
 import { contestsAPI, type Contest } from '@/api/contests'
-import { formatContestPrize, phaseBadgeClass, formatDateTime, safeCover } from '@/utils/contest'
+import { contestCover, formatContestPrize, phaseBadgeClass, formatDateTime } from '@/utils/contest'
 
 const { t } = useI18n()
 const contests = ref<Contest[]>([])

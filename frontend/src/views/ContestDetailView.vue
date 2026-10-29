@@ -6,40 +6,127 @@
         ← {{ t('contests.backToList') }}
       </RouterLink>
 
-      <div v-if="loading" class="mt-6 h-64 animate-pulse rounded-2xl bg-gray-200 dark:bg-dark-800"></div>
+      <div v-if="loading" class="mt-4 h-80 animate-pulse rounded-3xl bg-gray-200 dark:bg-dark-800"></div>
       <div v-else-if="!detail" class="card mt-6 py-16 text-center text-sm text-gray-500">{{ t('contests.loadFailed') }}</div>
 
       <template v-else>
-        <!-- Header -->
-        <section class="mt-4 overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-800">
-          <div v-if="safeCover(contest.cover_image)" class="h-48 w-full overflow-hidden sm:h-64">
-            <img :src="safeCover(contest.cover_image)" alt="" class="h-full w-full object-cover" />
-          </div>
-          <div class="p-6">
-            <div class="flex flex-wrap items-center gap-3">
-              <span :class="phaseBadgeClass(contest.phase)">{{ t(`contests.phase.${contest.phase}`) }}</span>
-              <span v-if="countdown" class="text-sm font-medium text-primary-600 dark:text-primary-400" data-testid="contest-countdown">
-                {{ t(countdown.labelKey) }} {{ remaining }}
-              </span>
+        <!-- Hero: cover, title, countdown, the prize and what to do now -->
+        <section class="relative mt-4 overflow-hidden rounded-3xl bg-gradient-to-br from-[#2e1065] via-[#5b21b6] to-[#a21caf] text-white shadow-xl" data-testid="contest-hero">
+          <img v-if="cover" :src="cover" alt="" class="absolute inset-y-0 right-0 h-full w-full object-cover md:w-3/4" />
+          <div class="absolute inset-0 bg-gradient-to-r from-[#1e0b4b] via-[#2e1065]/90 to-[#2e1065]/10 md:via-[#2e1065]/80 md:to-transparent"></div>
+          <svg class="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12]" aria-hidden="true">
+            <defs>
+              <pattern id="contest-comb" width="56" height="97" patternUnits="userSpaceOnUse" patternTransform="scale(0.7)">
+                <path d="M28 0 56 16v32L28 64 0 48V16zM28 64v33" fill="none" stroke="#fff" stroke-width="1.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#contest-comb)" />
+          </svg>
+
+          <div class="relative grid gap-8 p-6 sm:p-10 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-end">
+            <div class="max-w-2xl">
+              <div class="flex flex-wrap items-center gap-2">
+                <span :class="phaseBadgeClass(contest.phase)">{{ t(`contests.phase.${contest.phase}`) }}</span>
+                <span class="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+                  {{ t('contests.hero.stats', { entries: contest.entry_count, votes: contest.vote_count }) }}
+                </span>
+              </div>
+              <h1 class="mt-4 text-3xl font-black tracking-tight drop-shadow sm:text-5xl">{{ contest.title }}</h1>
+              <p v-if="contest.description" class="mt-4 max-w-xl whitespace-pre-line text-sm leading-relaxed text-white/85 sm:text-base">{{ contest.description }}</p>
+
+              <div v-if="countdown" class="mt-6" data-testid="contest-countdown">
+                <div class="text-xs font-medium uppercase tracking-wider text-white/70">{{ t(countdown.labelKey) }}</div>
+                <div class="mt-2 flex gap-2">
+                  <div v-for="part in countdownBoxes" :key="part.unit" class="min-w-[64px] rounded-xl bg-white/12 px-3 py-2 text-center ring-1 ring-white/20 backdrop-blur">
+                    <div class="text-2xl font-bold tabular-nums sm:text-3xl">{{ part.value }}</div>
+                    <div class="text-[11px] text-white/70">{{ part.unit }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-7 flex flex-wrap gap-3">
+                <template v-if="submittingOpen">
+                  <button
+                    v-if="viewer.logged_in"
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-violet-700 shadow-lg transition hover:bg-violet-50 disabled:opacity-60"
+                    :disabled="!viewer.can_submit"
+                    data-testid="contest-submit-open"
+                    @click="openSubmit"
+                  >🎨 {{ t('contests.submit.button') }}</button>
+                  <RouterLink
+                    v-else
+                    :to="{ path: '/login', query: { redirect: route.fullPath } }"
+                    class="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-violet-700 shadow-lg transition hover:bg-violet-50"
+                  >🎨 {{ t('contests.viewer.loginToSubmit') }}</RouterLink>
+                </template>
+                <a
+                  v-if="contest.phase !== 'settled' && contest.phase !== 'cancelled' && contest.phase !== 'tallying'"
+                  :href="canvasUrl({ medium: 'contest-hero', path: '/image' })"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :class="[
+                    'inline-flex items-center gap-1.5 rounded-xl px-5 py-2.5 text-sm font-semibold transition',
+                    submittingOpen ? 'bg-white/10 text-white ring-1 ring-white/30 hover:bg-white/20' : 'bg-white text-violet-700 shadow-lg hover:bg-violet-50'
+                  ]"
+                  data-testid="contest-go-create"
+                  @click="track('cta_click', { where: 'contest_hero_create' })"
+                >✨ {{ t('contests.hero.create') }}</a>
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/20"
+                  data-testid="contest-share"
+                  @click="shareOpen = true"
+                >📣 {{ t('contests.hero.share') }}</button>
+              </div>
+              <p v-if="contest.phase === 'upcoming'" class="mt-3 text-xs text-white/75">{{ t('contests.hero.upcomingHint', { time: formatDateTime(contest.submission_start_at) }) }}</p>
             </div>
-            <h1 class="mt-3 text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">{{ contest.title }}</h1>
-            <p v-if="contest.description" class="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-600 dark:text-dark-300">
-              {{ contest.description }}
-            </p>
-            <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt class="text-gray-500 dark:text-dark-400">{{ t('contests.schedule.submission') }}</dt>
-                <dd class="font-medium text-gray-900 dark:text-white">
-                  {{ formatDateTime(contest.submission_start_at) }} – {{ formatDateTime(contest.submission_end_at) }}
-                </dd>
+
+            <!-- First prize -->
+            <div v-if="firstPrize" class="rounded-2xl bg-white/12 p-5 ring-1 ring-white/25 backdrop-blur-md" data-testid="contest-hero-prize">
+              <div class="flex items-center gap-3">
+                <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-2xl shadow-lg">🏆</span>
+                <div>
+                  <div class="text-xs font-medium text-white/75">{{ formatPrizePlaces(firstPrize, t) }}</div>
+                  <div class="text-lg font-bold leading-tight text-amber-200">{{ formatPrizeReward(firstPrize, t) }}</div>
+                </div>
               </div>
-              <div>
-                <dt class="text-gray-500 dark:text-dark-400">{{ t('contests.schedule.voting') }}</dt>
-                <dd class="font-medium text-gray-900 dark:text-white">
-                  {{ formatDateTime(contest.voting_start_at) }} – {{ formatDateTime(contest.voting_end_at) }}
-                </dd>
-              </div>
-            </dl>
+              <p v-if="contest.min_votes_for_prize > 0" class="mt-3 text-xs leading-relaxed text-white/75">{{ t('contests.hero.prizeNote', { n: contest.min_votes_for_prize }) }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Timeline + how to take part -->
+        <section class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div class="card p-5 sm:p-6">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('contests.timeline.title') }}</h2>
+            <ol class="mt-4 space-y-0">
+              <li v-for="(m, i) in milestones" :key="m.key" class="relative flex gap-3 pb-5 last:pb-0">
+                <span v-if="i < milestones.length" class="absolute left-[9px] top-5 h-full w-px bg-gray-200 dark:bg-dark-700" :class="{ hidden: i === milestones.length }"></span>
+                <span :class="['relative z-10 mt-0.5 flex h-[19px] w-[19px] flex-shrink-0 items-center justify-center rounded-full text-[10px] font-bold', m.done ? 'bg-primary-500 text-white' : nextMilestone === m.key ? 'bg-white ring-2 ring-primary-500 dark:bg-dark-800' : 'bg-gray-200 dark:bg-dark-700']">{{ m.done ? '✓' : '' }}</span>
+                <div class="min-w-0">
+                  <div :class="['text-sm font-medium', m.done ? 'text-gray-500 dark:text-dark-400' : 'text-gray-900 dark:text-white']">{{ t(`contests.timeline.${m.key}`) }}</div>
+                  <div class="text-xs text-gray-500 dark:text-dark-400">{{ formatDateTime(m.at) }}</div>
+                </div>
+              </li>
+              <li class="relative flex gap-3">
+                <span class="relative z-10 mt-0.5 h-[19px] w-[19px] flex-shrink-0 rounded-full bg-amber-100 text-center text-[11px] leading-[19px] dark:bg-amber-900/40">🎁</span>
+                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ t('contests.timeline.award') }}</div>
+              </li>
+            </ol>
+          </div>
+
+          <div class="card p-5 sm:p-6">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('contests.howto.title') }}</h2>
+            <ol class="mt-4 space-y-4">
+              <li v-for="(step, i) in howto" :key="i" class="flex gap-3">
+                <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50 text-lg dark:bg-primary-900/30">{{ step.icon }}</span>
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ i + 1 }}. {{ step.title }}</div>
+                  <p class="mt-0.5 text-xs leading-relaxed text-gray-600 dark:text-dark-300">{{ step.text }}</p>
+                </div>
+              </li>
+            </ol>
           </div>
         </section>
 
@@ -51,7 +138,7 @@
                 {{ t('contests.entries.title') }}
                 <span class="ml-1 text-sm font-normal text-gray-500">({{ entriesTotal }})</span>
               </h2>
-              <div class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-dark-800">
+              <div v-if="entriesTotal > 0" class="inline-flex rounded-lg bg-gray-100 p-1 dark:bg-dark-800">
                 <button
                   v-for="opt in sortOptions"
                   :key="opt.value"
@@ -67,53 +154,66 @@
               </div>
             </div>
 
-            <div v-if="entries.length === 0 && !entriesLoading" class="card py-16 text-center text-sm text-gray-500 dark:text-dark-400">
-              {{ t('contests.entries.empty') }}
+            <div v-if="entries.length === 0 && !entriesLoading" class="rounded-2xl border-2 border-dashed border-gray-200 bg-white px-6 py-12 text-center dark:border-dark-700 dark:bg-dark-800/60" data-testid="contest-empty">
+              <div class="text-5xl">🖼️</div>
+              <h3 class="mt-4 text-base font-semibold text-gray-900 dark:text-white">{{ t('contests.noEntries.title') }}</h3>
+              <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+                {{ contest.phase === 'upcoming' ? t('contests.noEntries.upcoming', { time: formatDateTime(contest.submission_start_at) }) : t('contests.noEntries.text') }}
+              </p>
+              <div class="mx-auto mt-6 max-w-2xl">
+                <div class="text-xs font-medium text-gray-500 dark:text-dark-400">{{ t('contests.noEntries.ideas') }}</div>
+                <div class="mt-3 flex flex-wrap justify-center gap-2">
+                  <a
+                    v-for="idea in ideas"
+                    :key="idea"
+                    :href="canvasUrl({ medium: 'contest-idea', path: '/image', prompt: idea })"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-700 transition hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-600 dark:bg-dark-900 dark:text-dark-200 dark:hover:border-primary-700 dark:hover:bg-primary-900/30"
+                    data-testid="contest-idea"
+                    @click="track('cta_click', { where: 'contest_idea' })"
+                  >✨ {{ idea }}</a>
+                </div>
+              </div>
             </div>
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <article
                 v-for="e in entries"
                 :key="e.id"
-                class="overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-800"
+                class="group overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-dark-700 dark:bg-dark-800"
                 data-testid="contest-entry"
               >
-                <RouterLink :to="contestEntryPath(contestId, e.id)" class="block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-dark-900" data-testid="contest-entry-link">
-                  <img :src="e.image_url" :alt="e.title" loading="lazy" class="h-full w-full object-cover transition hover:scale-105" />
+                <RouterLink :to="contestEntryPath(contestId, e.id)" class="relative block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-dark-900" data-testid="contest-entry-link">
+                  <img :src="e.image_url" :alt="e.title" loading="lazy" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <span class="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">👍 {{ e.vote_count }}</span>
+                  <span v-if="e.is_mine" class="absolute left-2 top-2 rounded-full bg-primary-500 px-2 py-0.5 text-[10px] font-semibold text-white">{{ t('contests.entries.mine') }}</span>
                 </RouterLink>
                 <div class="p-3">
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
+                  <div class="flex items-center gap-2.5">
+                    <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xs font-bold text-white">{{ initial(e.author_name) }}</span>
+                    <div class="min-w-0 flex-1">
                       <RouterLink :to="contestEntryPath(contestId, e.id)" class="block truncate text-sm font-semibold text-gray-900 hover:text-primary-600 dark:text-white" :title="e.title">{{ e.title }}</RouterLink>
                       <p class="truncate text-xs text-gray-500 dark:text-dark-400">{{ t('contests.entries.by', { name: e.author_name }) }}</p>
-                      <a
-                        v-if="e.work_id"
-                        :href="canvasUrl({ medium: 'contest-entry', path: `/w/${e.work_id}` })"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="text-xs text-primary-600 hover:underline dark:text-primary-400"
-                        data-testid="contest-entry-work"
-                      >{{ t('contests.entries.viewWork') }} ↗</a>
                     </div>
-                    <span v-if="e.is_mine" class="flex-shrink-0 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
-                      {{ t('contests.entries.mine') }}
-                    </span>
-                  </div>
-                  <div class="mt-3 flex items-center justify-between">
-                    <span class="text-sm font-semibold text-gray-800 dark:text-gray-200">{{ t('contests.entries.votes', { n: e.vote_count }) }}</span>
                     <button
                       v-if="votingOpen"
                       type="button"
                       :disabled="voteBusy === e.id || (!e.voted_by_me && !canCastNewVote(e))"
-                      :class="[
-                        'btn btn-sm',
-                        e.voted_by_me ? 'btn-secondary' : 'btn-primary'
-                      ]"
+                      :class="['btn btn-sm flex-shrink-0', e.voted_by_me ? 'btn-secondary' : 'btn-primary']"
                       :title="voteButtonTitle(e)"
                       @click="toggleVote(e)"
                     >
                       {{ e.voted_by_me ? t('contests.entries.voted') : t('contests.entries.vote') }}
                     </button>
                   </div>
+                  <a
+                    v-if="e.work_id"
+                    :href="canvasUrl({ medium: 'contest-entry', path: `/w/${e.work_id}` })"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-2 inline-block text-xs text-primary-600 hover:underline dark:text-primary-400"
+                    data-testid="contest-entry-work"
+                  >{{ t('contests.entries.viewWork') }} ↗</a>
                 </div>
               </article>
             </div>
@@ -126,37 +226,29 @@
 
           <!-- Sidebar -->
           <aside class="space-y-4">
-            <div v-if="submittingOpen || votingOpen" class="card p-5" data-testid="contest-action-card">
+            <div v-if="votingOpen || submittingOpen" class="card p-5" data-testid="contest-action-card">
               <template v-if="!viewer.logged_in">
-                <RouterLink :to="{ path: '/login', query: { redirect: route.fullPath } }" class="btn btn-primary w-full">
-                  {{ submittingOpen ? t('contests.viewer.loginToSubmit') : t('contests.viewer.loginToVote') }}
+                <p class="text-sm text-gray-600 dark:text-dark-300">{{ t('contests.viewer.loginPitch', { n: contest.votes_per_user }) }}</p>
+                <RouterLink :to="{ path: '/login', query: { redirect: route.fullPath } }" class="btn btn-primary mt-3 w-full">
+                  {{ votingOpen ? t('contests.viewer.loginToVote') : t('contests.viewer.loginToSubmit') }}
                 </RouterLink>
               </template>
               <template v-else>
-                <button
-                  v-if="submittingOpen"
-                  type="button"
-                  class="btn btn-primary w-full"
-                  :disabled="!viewer.can_submit"
-                  data-testid="contest-submit-open"
-                  @click="openSubmit"
-                >
-                  {{ t('contests.submit.button') }}
-                </button>
-                <p v-if="submittingOpen" class="mt-2 text-center text-xs text-gray-500 dark:text-dark-400">
-                  {{ t('contests.submit.limit', { n: contest.max_entries_per_user, left: viewer.entries_left }) }}
-                </p>
-                <div v-if="votingOpen" class="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-center text-sm dark:bg-dark-900">
+                <div v-if="votingOpen" class="text-center">
                   <template v-if="viewer.vote_blocked_reason === 'account_too_new'">
-                    <span class="text-amber-600 dark:text-amber-400">{{ t('contests.viewer.accountTooNew', { hours: contest.min_account_age_hours }) }}</span>
+                    <span class="text-sm text-amber-600 dark:text-amber-400">{{ t('contests.viewer.accountTooNew', { hours: contest.min_account_age_hours }) }}</span>
                   </template>
                   <template v-else>
-                    <span class="font-medium text-gray-800 dark:text-gray-200">
-                      {{ t('contests.viewer.votesLeft', { left: viewer.votes_left, total: contest.votes_per_user }) }}
-                    </span>
-                    <p v-if="viewer.votes_left === 0" class="mt-1 text-xs text-gray-500">{{ t('contests.viewer.noVotesLeft') }}</p>
+                    <div class="text-xs text-gray-500 dark:text-dark-400">{{ t('contests.viewer.myVotes') }}</div>
+                    <div class="mt-1 flex justify-center gap-1.5" :title="t('contests.viewer.votesLeft', { left: viewer.votes_left, total: contest.votes_per_user })">
+                      <span v-for="i in contest.votes_per_user" :key="i" :class="['text-xl', i <= viewer.votes_left ? '' : 'opacity-25 grayscale']">👍</span>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">{{ viewer.votes_left === 0 ? t('contests.viewer.noVotesLeft') : t('contests.viewer.votesLeft', { left: viewer.votes_left, total: contest.votes_per_user }) }}</p>
                   </template>
                 </div>
+                <p v-if="submittingOpen" :class="['text-center text-xs text-gray-500 dark:text-dark-400', votingOpen ? 'mt-3 border-t border-gray-100 pt-3 dark:border-dark-700' : '']">
+                  {{ t('contests.submit.limit', { n: contest.max_entries_per_user, left: viewer.entries_left }) }}
+                </p>
               </template>
             </div>
 
@@ -205,6 +297,35 @@
               </ul>
             </div>
 
+            <!-- Leaderboard -->
+            <div class="card p-5">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('contests.leaderboard.title') }}</h3>
+                <span class="text-xs text-gray-500">{{ board[0]?.final ? t('contests.leaderboard.final') : t('contests.leaderboard.live') }}</span>
+              </div>
+              <div v-if="board.length === 0" class="mt-4 flex flex-col items-center py-4 text-center">
+                <div class="flex items-end gap-2 opacity-60">
+                  <span class="flex h-10 w-10 items-end justify-center rounded-t-lg bg-gray-200 pb-1 text-sm dark:bg-dark-700">🥈</span>
+                  <span class="flex h-14 w-10 items-end justify-center rounded-t-lg bg-amber-100 pb-1 text-sm dark:bg-amber-900/30">🥇</span>
+                  <span class="flex h-8 w-10 items-end justify-center rounded-t-lg bg-orange-100 pb-1 text-sm dark:bg-orange-900/20">🥉</span>
+                </div>
+                <p class="mt-3 text-xs text-gray-500">{{ t('contests.leaderboard.empty') }}</p>
+              </div>
+              <ol class="mt-3 space-y-2">
+                <li v-for="row in board" :key="row.entry_id">
+                  <RouterLink :to="contestEntryPath(contestId, row.entry_id)" class="flex items-center gap-3 rounded-lg p-1 text-sm transition hover:bg-gray-50 dark:hover:bg-dark-700/50">
+                    <span :class="['w-6 flex-shrink-0 text-center font-bold', rankColor(row.rank)]">{{ row.rank <= 3 ? ['🥇', '🥈', '🥉'][row.rank - 1] : row.rank }}</span>
+                    <img :src="row.image_url" alt="" :class="['flex-shrink-0 rounded object-cover', row.rank <= 3 ? 'h-10 w-10' : 'h-8 w-8']" />
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-gray-800 dark:text-gray-200">{{ row.title }}</span>
+                      <span class="block truncate text-xs text-gray-500">{{ row.author_name }}</span>
+                    </span>
+                    <span class="flex-shrink-0 font-semibold text-gray-900 dark:text-white">{{ row.votes }}</span>
+                  </RouterLink>
+                </li>
+              </ol>
+            </div>
+
             <!-- Prizes -->
             <div v-if="contest.prizes.length" class="card p-5">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('contests.prizes.title') }}</h3>
@@ -215,23 +336,6 @@
                 </li>
               </ul>
               <p class="mt-3 text-xs text-gray-500 dark:text-dark-400">{{ t('contests.prizes.rulesNote') }}</p>
-            </div>
-
-            <!-- Leaderboard -->
-            <div class="card p-5">
-              <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('contests.leaderboard.title') }}</h3>
-                <span class="text-xs text-gray-500">{{ board[0]?.final ? t('contests.leaderboard.final') : t('contests.leaderboard.live') }}</span>
-              </div>
-              <p v-if="board.length === 0" class="mt-3 text-sm text-gray-500">{{ t('contests.leaderboard.empty') }}</p>
-              <ol class="mt-3 space-y-2">
-                <li v-for="row in board" :key="row.entry_id" class="flex items-center gap-3 text-sm">
-                  <span :class="['w-6 flex-shrink-0 text-center font-bold', rankColor(row.rank)]">{{ row.rank }}</span>
-                  <img :src="row.image_url" alt="" class="h-8 w-8 flex-shrink-0 rounded object-cover" />
-                  <span class="min-w-0 flex-1 truncate text-gray-800 dark:text-gray-200">{{ row.title }}</span>
-                  <span class="flex-shrink-0 font-semibold text-gray-900 dark:text-white">{{ row.votes }}</span>
-                </li>
-              </ol>
             </div>
 
             <div v-if="contest.rules" class="card p-5">
@@ -322,6 +426,8 @@
       </template>
     </BaseDialog>
 
+    <ShareCardDialog :show="shareOpen" :input="shareInput" @close="shareOpen = false" />
+
     <ConfirmDialog
       :show="!!withdrawTarget"
       :title="t('contests.entries.withdraw')"
@@ -340,6 +446,7 @@ import { useI18n } from 'vue-i18n'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import ShareCardDialog, { type ShareCardInput } from '@/components/share/ShareCardDialog.vue'
 import { useAppStore } from '@/stores'
 import {
   contestsAPI,
@@ -353,12 +460,13 @@ import { contestBlockReason, myWorks as fetchMyWorks, type CommunityWork } from 
 import { canvasUrl } from '@/constants/crossSites'
 import {
   contestCountdown,
+  contestCover,
+  contestMilestones,
+  countdownParts,
   formatDateTime,
   formatPrizePlaces,
   formatPrizeReward,
-  formatRemaining,
-  phaseBadgeClass,
-  safeCover
+  phaseBadgeClass
 } from '@/utils/contest'
 import { track } from '@/utils/analytics'
 import { contestEntryPath, contestListSeed, saveVoteIntent, takeVoteIntent } from '@/utils/contestShare'
@@ -401,7 +509,56 @@ const votingOpen = computed(() => ['voting', 'submitting_voting'].includes(conte
 const nowTick = ref(Date.now())
 let timer: ReturnType<typeof setInterval> | undefined
 const countdown = computed(() => (detail.value ? contestCountdown(contest.value) : null))
-const remaining = computed(() => (countdown.value ? formatRemaining(new Date(countdown.value.target).getTime() - nowTick.value, t) : ''))
+const countdownBoxes = computed(() => {
+  if (!countdown.value) return []
+  const p = countdownParts(new Date(countdown.value.target).getTime() - nowTick.value)
+  return [
+    { unit: t('contests.hero.days'), value: p.days },
+    { unit: t('contests.hero.hours'), value: String(p.hours).padStart(2, '0') },
+    { unit: t('contests.hero.minutes'), value: String(p.minutes).padStart(2, '0') }
+  ]
+})
+const cover = computed(() => (detail.value ? contestCover(contest.value) : ''))
+const firstPrize = computed(() => contest.value.prizes.find((p) => p.rank_from === 1) || null)
+const milestones = computed(() => contestMilestones(contest.value, nowTick.value))
+const nextMilestone = computed(() => milestones.value.find((m) => !m.done)?.key || '')
+const howto = computed(() => [
+  { icon: '🎨', title: t('contests.howto.drawTitle'), text: t('contests.howto.drawText') },
+  { icon: '📤', title: t('contests.howto.submitTitle'), text: t('contests.howto.submitText', { n: contest.value.max_entries_per_user }) },
+  { icon: '📣', title: t('contests.howto.shareTitle'), text: t('contests.howto.shareText', { n: contest.value.votes_per_user }) }
+])
+const ideas = computed(() => [1, 2, 3, 4, 5, 6].map((i) => t(`contests.noEntries.idea${i}`)))
+
+function initial(name: string): string {
+  return (name || '?').trim().slice(0, 1).toUpperCase()
+}
+
+// ---- share the contest ----
+const shareOpen = ref(false)
+const shareInput = computed<ShareCardInput | null>(() => {
+  if (!detail.value) return null
+  const c = contest.value
+  const points = [
+    firstPrize.value ? `${formatPrizePlaces(firstPrize.value, t)}：${formatPrizeReward(firstPrize.value, t)}` : '',
+    t('contests.shareCard.schedule', { start: formatDateTime(c.submission_start_at), end: formatDateTime(c.voting_end_at) }),
+    t('contests.shareCard.how', { n: c.votes_per_user })
+  ].filter(Boolean)
+  return {
+    kind: 'summary',
+    brand: 'HiveGPT 创作比赛',
+    label: t(`contests.phase.${c.phase}`),
+    title: c.title,
+    summary: c.description,
+    points,
+    cta: t('contests.shareCard.cta'),
+    pageUrl: window.location.origin + `/contests/${c.id}`,
+    source: 'contest_share',
+    campaign: `contest-${c.id}`,
+    trackKind: 'contest_page',
+    dialogTitle: t('contests.hero.share'),
+    pitch: (link) => t('contests.shareCard.pitch', { title: c.title, link })
+  }
+})
 
 function rankColor(rank: number): string {
   return rank === 1 ? 'text-amber-500' : rank === 2 ? 'text-gray-400' : rank === 3 ? 'text-orange-400' : 'text-gray-500'

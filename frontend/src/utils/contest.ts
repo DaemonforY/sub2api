@@ -52,6 +52,14 @@ export function formatDateTime(value?: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Cover of contests made by the monthly schedule when the template sets none. */
+export const MONTHLY_CONTEST_COVER = '/contest-media/monthly-draw.webp'
+
+/** The contest's cover: its own, else the monthly cover for scheduled contests, else ''. */
+export function contestCover(c: Pick<Contest, 'cover_image' | 'auto_period'>): string {
+  return safeCover(c.cover_image) || (c.auto_period ? MONTHLY_CONTEST_COVER : '')
+}
+
 /** Only allow https or site-relative cover images. */
 export function safeCover(url?: string): string {
   if (!url) return ''
@@ -92,4 +100,31 @@ export function formatRemaining(ms: number, t: Translate): string {
   if (hours) parts.push(t('contests.schedule.hours', { n: hours }))
   if (!days) parts.push(t('contests.schedule.minutes', { n: mins }))
   return parts.join(' ')
+}
+
+export interface ContestMilestone {
+  key: 'open' | 'submissionOpen' | 'votingOpen' | 'submissionClose' | 'votingClose'
+  at: string
+  done: boolean
+}
+
+/** The contest's dates in order, merging submission and voting opening when they coincide. */
+export function contestMilestones(c: Contest, now = Date.now()): ContestMilestone[] {
+  const same = new Date(c.submission_start_at).getTime() === new Date(c.voting_start_at).getTime()
+  const list: Omit<ContestMilestone, 'done'>[] = same
+    ? [{ key: 'open', at: c.submission_start_at }]
+    : [
+        { key: 'submissionOpen', at: c.submission_start_at },
+        { key: 'votingOpen', at: c.voting_start_at }
+      ]
+  list.push({ key: 'submissionClose', at: c.submission_end_at }, { key: 'votingClose', at: c.voting_end_at })
+  return list
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+    .map((m) => ({ ...m, done: new Date(m.at).getTime() <= now }))
+}
+
+/** Remaining time split for a countdown display; all zero once passed. */
+export function countdownParts(ms: number): { days: number; hours: number; minutes: number } {
+  const total = Math.max(0, Math.floor(ms / 60000))
+  return { days: Math.floor(total / 1440), hours: Math.floor((total % 1440) / 60), minutes: total % 60 }
 }

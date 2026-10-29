@@ -239,7 +239,7 @@ func (s *seoContent) contestPage(ctx context.Context, contestID, entryID int64) 
 		if desc == "" {
 			desc = c.Title + "：投稿作品、给喜欢的作品点赞，查看排行榜。"
 		}
-		return &web.SEOPage{Path: "/contests/" + strconv.FormatInt(c.ID, 10), Title: c.Title, Description: desc, Image: c.CoverImage}, nil
+		return &web.SEOPage{Path: "/contests/" + strconv.FormatInt(c.ID, 10), Title: c.Title, Description: desc, Image: service.ContestCoverOrDefault(c)}, nil
 	}
 	e, err := s.contests.PublicEntry(ctx, contestID, entryID, 0)
 	if err != nil {

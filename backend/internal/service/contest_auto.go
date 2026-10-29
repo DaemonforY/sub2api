@@ -16,6 +16,18 @@ import (
 // automatic one; prizes are still granted by an admin. Turning the switch off stops future months
 // only. A month is created at most once, so a cancelled or deleted contest is not brought back.
 
+// ContestMonthlyCover is the cover the site shows for scheduled contests that set none
+// (frontend/public/contest-media; the frontend's MONTHLY_CONTEST_COVER).
+const ContestMonthlyCover = "/contest-media/monthly-draw.webp"
+
+// ContestCoverOrDefault is the contest's cover, or the monthly cover for scheduled contests.
+func ContestCoverOrDefault(c *Contest) string {
+	if c.CoverImage == "" && c.AutoPeriod != "" {
+		return ContestMonthlyCover
+	}
+	return c.CoverImage
+}
+
 // contestAutoZone: the site's contests run on China time, whatever the server's TZ.
 var contestAutoZone = time.FixedZone("Asia/Shanghai", 8*3600)
 

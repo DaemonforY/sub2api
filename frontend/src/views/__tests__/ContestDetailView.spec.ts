@@ -27,7 +27,8 @@ const stubs = {
   PlazaNavBar: true,
   RouterLink: { template: '<a><slot /></a>' },
   BaseDialog: { props: ['show'], template: '<div v-if="show"><slot /><slot name="footer" /></div>' },
-  ConfirmDialog: true
+  ConfirmDialog: true,
+  ShareCardDialog: true
 }
 
 const now = Date.now()

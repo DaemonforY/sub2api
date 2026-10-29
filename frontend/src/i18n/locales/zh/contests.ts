@@ -70,6 +70,8 @@ export default {
       }
     },
     viewer: {
+      loginPitch: '注册后每人有 {n} 个赞，给喜欢的作品点赞吧',
+      myVotes: '我的赞',
       votesLeft: '你还剩 {left} / {total} 个赞',
       loginToVote: '登录后点赞',
       loginToSubmit: '登录后投稿',
@@ -112,6 +114,52 @@ export default {
       live: '实时排名',
       final: '最终排名',
       empty: '暂无排名'
+    },
+    hero: {
+      stats: '{entries} 件作品 · {votes} 个赞',
+      create: '去画一张',
+      share: '分享比赛',
+      upcomingHint: '{time} 开放投稿，现在就可以先画起来',
+      prizeNote: '点赞截止时赞数最多、且至少 {n} 个有效赞的作品获奖',
+      days: '天',
+      hours: '时',
+      minutes: '分'
+    },
+    timeline: {
+      title: '比赛日程',
+      open: '开始投稿和点赞',
+      submissionOpen: '开始投稿',
+      votingOpen: '开始点赞',
+      submissionClose: '投稿截止',
+      votingClose: '点赞截止，自动排名',
+      award: '公示无异议后发奖'
+    },
+    howto: {
+      title: '怎么参加',
+      drawTitle: '用 AI 画一张图',
+      drawText: '在 HiveGPT 无限画布或生图工作台创作，主题不限。',
+      submitTitle: '投稿参赛',
+      submitText: '上传图片或直接选画布里发布的作品，每人最多 {n} 件，审核通过后展示。',
+      shareTitle: '邀请朋友点赞',
+      shareText: '每件作品都有拉票海报和链接，朋友注册后每人有 {n} 个赞。'
+    },
+    noEntries: {
+      title: '还没有作品，来当第一个投稿的人',
+      text: '第一个投稿的作品会最先被大家看到。',
+      upcoming: '{time} 开放投稿，现在就可以先画起来。',
+      ideas: '没灵感？点一个直接去画',
+      idea1: '午后窗台上打盹的橘猫，水彩风格',
+      idea2: '雨夜霓虹街头的小吃摊，赛博朋克',
+      idea3: '水墨山水里的一叶小舟，大片留白',
+      idea4: '穿宇航服的柴犬在月球上野餐',
+      idea5: '童年夏天的小卖部，怀旧胶片色调',
+      idea6: '剪纸风格的一只小兔子在雪地里'
+    },
+    shareCard: {
+      schedule: '{start} 开始，{end} 截止点赞',
+      how: '用 AI 画一张图投稿，注册即可点赞（每人 {n} 个赞）',
+      cta: '扫码参加比赛',
+      pitch: '{title} 开始啦！用 AI 画一张图就能投稿，点赞第一名有奖，一起来玩：{link}'
     },
     entry: {
       votesLabel: '个赞',
