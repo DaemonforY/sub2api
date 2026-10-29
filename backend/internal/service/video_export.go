@@ -48,7 +48,7 @@ const (
 	videoExportTimeout   = 3 * time.Hour
 	videoExportQueueSize = 200
 	// Bump when render.html / the render settings change, so films are rendered again.
-	videoRenderVersion = "3"
+	videoRenderVersion = "4"
 )
 
 var (

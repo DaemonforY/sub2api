@@ -1,5 +1,5 @@
 <template>
-  <div ref="box" class="group relative h-full w-full select-none overflow-hidden bg-black" :class="card ? '' : 'rounded-xl'" @mouseenter="hover = true" @mouseleave="hover = false">
+  <div ref="box" class="group relative h-full w-full select-none overflow-hidden bg-black" :class="card ? '' : 'rounded-xl'" @mousemove="!card && reveal()" @mouseleave="shown = false">
     <!-- The scene code runs in a sandboxed frame: scripts only, no same-origin, no network (see player.html CSP). -->
     <iframe
       ref="frame"
@@ -17,7 +17,9 @@
       <span class="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white"></span>
     </div>
 
-    <div v-if="subtitlesOn && subtitle && !card" class="pointer-events-none absolute inset-x-0 bottom-[11%] flex justify-center px-[8%]">
+    <!-- Scenes keep the bottom 14% free for subtitles (video_prompts.go), so the line sits inside that strip;
+         it only rises above the control bar while the controls are showing. -->
+    <div v-if="subtitlesOn && subtitle && !card" class="pointer-events-none absolute inset-x-0 flex justify-center px-[8%] transition-[bottom] duration-200" :style="{ bottom: controlsShown ? '64px' : '3.5%' }">
       <span class="rounded-lg bg-black/65 px-3 py-1 text-center font-medium leading-snug text-white" :style="{ fontSize: subtitleSize }">{{ subtitle }}</span>
     </div>
 
@@ -25,7 +27,7 @@
       <Play class="ml-1 h-7 w-7" fill="currentColor" />
     </button>
 
-    <div v-if="!card" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8 text-white opacity-0 transition group-hover:opacity-100" :class="{ 'opacity-100': !playing || shown }">
+    <div v-if="!card" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8 text-white opacity-0 transition" :class="{ 'opacity-100': controlsShown }" @mouseenter="overBar = true" @mouseleave="overBar = false">
       <input
         type="range"
         min="0"
@@ -77,7 +79,7 @@ const frame = ref(null)
 const ready = ref(false)
 const playing = ref(false)
 const t = ref(0)
-const hover = ref(false)
+const overBar = ref(false)
 const subtitlesOn = ref(true)
 const boxWidth = ref(800)
 
@@ -108,6 +110,9 @@ const sceneIndex = computed(() => {
   })
   return i
 })
+// The control bar shows while paused, while the pointer is on it, and for 3 s after the mouse moves or
+// the picture is tapped — a resting cursor doesn't keep it (and the lifted subtitles) over the picture.
+const controlsShown = computed(() => !playing.value || overBar.value || shown.value)
 const sceneLabel = computed(() => (scenes.value.length > 1 ? `${sceneIndex.value + 1}/${scenes.value.length} ${scenes.value[sceneIndex.value]?.title || ''}` : ''))
 
 defineExpose({ seek, play, pause, sceneIndex, t })
