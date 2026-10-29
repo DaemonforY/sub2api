@@ -488,6 +488,7 @@ var errVideoTruncated = errLearnRunFailed("回答超过了单次输出上限被�
 
 const (
 	videoSceneMaxTokens = 32000
+	videoKitMaxTokens   = 16000
 	videoCompactNote    = "\n\nIMPORTANT: a previous answer for this scene was cut off at the output limit. Write a much more compact version: well under 500 lines, build repeated parts with loops and small helper functions, keep SVG paths short, no comments. A complete shorter scene is better than a long unfinished one."
 )
 
@@ -505,7 +506,7 @@ func (s *VideoService) build(ctx context.Context, r *videoRun) error {
 	if p.Mode == VideoModeMotion && p.Spec == nil {
 		s.motionSpec(r)
 	}
-	if err := s.voiceScenes(ctx, r); err != nil {
+	if err := s.voiceAndKit(ctx, r); err != nil {
 		return err
 	}
 	if err := s.codeScenes(ctx, r, nil); err != nil {
@@ -615,6 +616,14 @@ func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 		}
 	}
 	spec.Title = clipRunes(spec.Title, videoTitleMaxChars)
+	spec.Character = clipRunes(strings.TrimSpace(spec.Character), 300)
+	var facts []string
+	for _, f := range spec.Facts {
+		if f = clipRunes(strings.TrimSpace(f), 80); f != "" && len(facts) < 16 {
+			facts = append(facts, f)
+		}
+	}
+	spec.Facts, spec.Common = facts, ""
 	r.mu.Lock()
 	r.p.Spec = &spec
 	if spec.Title != "" {
@@ -740,6 +749,98 @@ func (s *VideoService) voiceScenes(ctx context.Context, r *videoRun) error {
 		s.done(ctx, r, fmt.Sprintf("配音完成，全片 %.0f 秒", p.Spec.TotalDuration()))
 	}
 	return nil
+}
+
+// voiceAndKit records the narration and, for a film whose scenes are all still to be written, writes the
+// shared kit at the same time (neither needs the other).
+func (s *VideoService) voiceAndKit(ctx context.Context, r *videoRun) error {
+	p := r.p
+	r.mu.Lock()
+	needKit := p.Mode == VideoModeFilm && p.Spec != nil && p.Spec.Common == "" && len(p.Spec.Scenes) > 1
+	for _, sc := range p.Spec.Scenes {
+		if strings.TrimSpace(sc.Code) != "" {
+			needKit = false // an older film being resumed: new scenes must match the ones it has
+		}
+	}
+	r.mu.Unlock()
+	if !needKit {
+		return s.voiceScenes(ctx, r)
+	}
+	kitDone := make(chan error, 1)
+	go func() { kitDone <- s.writeKit(ctx, r, "") }()
+	voiceErr := s.voiceScenes(ctx, r)
+	kitErr := <-kitDone
+	if voiceErr != nil {
+		return voiceErr
+	}
+	if errors.Is(kitErr, ErrVideoBalance) || ctx.Err() != nil {
+		return firstErr(kitErr, ctx.Err())
+	}
+	if kitErr != nil {
+		// Without a kit the scenes style themselves, as films did before kits.
+		slog.Warn("video: kit failed, scenes go without it", "id", p.ID, "err", kitErr)
+	}
+	return nil
+}
+
+// writeKit writes the film's shared kit (spec.common), or changes it by instruction.
+func (s *VideoService) writeKit(ctx context.Context, r *videoRun, instruction string) error {
+	p := r.p
+	r.mu.Lock()
+	spec := *p.Spec
+	spec.Scenes = append([]VideoScene(nil), p.Spec.Scenes...)
+	r.mu.Unlock()
+	previous := ""
+	if instruction != "" {
+		previous = spec.Common
+		s.step(ctx, r, "kit", "正在修改整片的画面风格…")
+	} else {
+		s.step(ctx, r, "kit", "正在设计整片统一的画面风格…")
+	}
+	style := findVideoStyle(p.Options.Style)
+	answer, err := s.chat(ctx, r, videoKitPrompt(&spec, style.Brief, videoSilent(p), previous, instruction), videoKitMaxTokens)
+	if err != nil {
+		return err
+	}
+	code := extractCodeBlock(answer)
+	if problem := checkKitCode(code); problem != "" {
+		// One chance to fix it, as for scenes.
+		msgs := videoKitPrompt(&spec, style.Brief, videoSilent(p), "", "")
+		msgs = append(msgs, LearnMessage{Role: "assistant", Content: "```js\n" + code + "\n```"},
+			LearnMessage{Role: "user", Content: "This kit does not work: " + problem + "\nFix the cause and return the complete corrected kit."})
+		if answer, err = s.chat(ctx, r, msgs, videoKitMaxTokens); err != nil {
+			return err
+		}
+		code = extractCodeBlock(answer)
+		if problem = checkKitCode(code); problem != "" {
+			return errLearnRunFailed("统一画面风格的代码不可用（" + clipRunes(problem, 80) + "）")
+		}
+	}
+	r.mu.Lock()
+	p.Spec.Common = code
+	r.mu.Unlock()
+	s.save(ctx, r)
+	s.done(ctx, r, "整片画面风格已定好")
+	return nil
+}
+
+func firstErr(errs ...error) error {
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+var videoKitDeclares = regexp.MustCompile(`\bvar\s+K\s*=`)
+
+// checkKitCode returns "" when the kit parses, declares K and avoids the network.
+func checkKitCode(code string) string {
+	if !videoKitDeclares.MatchString(code) {
+		return "the kit must declare var K = …"
+	}
+	return checkSceneCode(code + "\nreturn function update(t) {};")
 }
 
 // codeScenes writes the code of every scene without code, and rewrites the scenes in redo with
@@ -876,7 +977,7 @@ func (s *VideoService) writeSceneCode(ctx context.Context, r *videoRun, brief vi
 		return "", err
 	}
 	code := extractCodeBlock(answer)
-	if problem := checkSceneCode(code); problem != "" {
+	if problem := checkSceneWithKit(brief, code); problem != "" {
 		answer, err = s.chat(ctx, r, videoScenePrompt(brief, code, "", problem), videoSceneMaxTokens)
 		if errors.Is(err, errVideoTruncated) {
 			return "", errVideoSceneTooLong
@@ -885,11 +986,23 @@ func (s *VideoService) writeSceneCode(ctx context.Context, r *videoRun, brief vi
 			return "", err
 		}
 		code = extractCodeBlock(answer)
-		if problem = checkSceneCode(code); problem != "" {
+		if problem = checkSceneWithKit(brief, code); problem != "" {
 			return "", errLearnRunFailed("动画代码有语法错误（" + clipRunes(problem, 80) + "）")
 		}
 	}
 	return code, nil
+}
+
+// checkSceneWithKit checks the scene alone, then together with the film's kit (which runs before it in
+// the player), so a scene that re-declares one of the kit's names is caught here.
+func checkSceneWithKit(brief videoSceneBrief, code string) string {
+	if problem := checkSceneCode(code); problem != "" || brief.Spec.Common == "" || brief.Motion {
+		return problem
+	}
+	if problem := checkSceneCode(brief.Spec.Common + "\n" + code); problem != "" {
+		return fmt.Sprintf("together with the shared kit (its %d lines come first, so subtract them from the line number): %s", strings.Count(brief.Spec.Common, "\n")+1, problem)
+	}
+	return ""
 }
 
 var videoForbiddenCode = regexp.MustCompile(`\b(fetch|XMLHttpRequest|WebSocket|EventSource|importScripts|navigator\.sendBeacon)\b|\bimport\s*\(`)
@@ -1049,6 +1162,7 @@ func (s *VideoService) Message(ctx context.Context, key *APIKey, id, text, focus
 func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus string) error {
 	p := r.p
 	redo := map[string]string{}
+	kitChanged := false
 	if p.Mode == VideoModeMotion {
 		redo[p.Spec.Scenes[0].ID] = text
 		_ = s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "assistant", Text: "好的，我来按你的要求修改。"})
@@ -1061,6 +1175,13 @@ func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus stri
 		var plan videoRevisionPlan
 		if raw := extractJSONObject(answer); raw == "" || json.Unmarshal([]byte(raw), &plan) != nil {
 			return errLearnRunFailed("没能理解这次修改，请换个说法再试")
+		}
+		if kit := strings.TrimSpace(plan.Kit); kit != "" && p.Spec.Common != "" {
+			// The whole look lives in the kit: change it once instead of in every scene.
+			if err := s.writeKit(ctx, r, kit); err != nil {
+				return err
+			}
+			kitChanged = true
 		}
 		r.mu.Lock()
 		for _, change := range plan.Scenes {
@@ -1086,6 +1207,9 @@ func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus stri
 			_ = s.repo.AddEvent(ctx, p.ID, &VideoEvent{Kind: "assistant", Text: reply})
 		}
 		if len(redo) == 0 {
+			if kitChanged {
+				s.done(ctx, r, "修改完成（整片画面风格）")
+			}
 			return nil
 		}
 		if err := s.voiceScenes(ctx, r); err != nil {

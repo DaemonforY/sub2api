@@ -244,7 +244,8 @@
     var scene = { id: sc.id, start: 0, duration: sc.duration, root: root, update: null, failed: false };
     Math.random = mulberry32(42 + index * 104729);
     try {
-      var fn = new Function('S', '"use strict";\n' + (sc.code || 'return function(){};'));
+      // The video's shared kit (spec.common: palette, backdrop, recurring character …) runs first in every scene.
+      var fn = new Function('S', '"use strict";\n' + (kit ? kit + '\n' : '') + (sc.code || 'return function(){};'));
       var update = fn(S);
       scene.update = typeof update === 'function' ? update : update && typeof update.update === 'function' ? update.update.bind(update) : null;
       if (!scene.update) throw new Error('the scene code must return an update(t) function');
@@ -259,7 +260,7 @@
   // three.js is only fetched (from the site — the frame has no network) when a scene uses S.three.
   var threeLoading = null;
   function needsThree(project) {
-    return !window.THREE && (project.scenes || []).some(function (sc) { return /\bS\.three\b/.test(sc.code || ''); });
+    return !window.THREE && (/\bS\.three\b/.test(project.common || '') || (project.scenes || []).some(function (sc) { return /\bS\.three\b/.test(sc.code || ''); }));
   }
   // The user's pictures (S.image) are loaded and decoded before the film reports ready, so the first
   // frame and every exported frame already show them. A picture that fails stays a grey box.
@@ -307,7 +308,9 @@
     build(project);
   }
 
+  var kit = '';
   function build(project) {
+    kit = typeof project.common === 'string' ? project.common : '';
     stage.innerHTML = '';
     Array.prototype.slice.call(document.head.querySelectorAll('style[data-scene]')).forEach(function (n) { n.remove(); });
     film = { width: project.width || 1920, height: project.height || 1080, theme: project.theme || {}, loop: !!project.loop, scenes: [] };

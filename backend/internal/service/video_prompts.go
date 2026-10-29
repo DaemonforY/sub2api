@@ -130,8 +130,10 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	}
 	schema := map[string]any{
 		"title": "狭义相对论：当光速重塑时空", "summary": "一句话说明这个视频讲什么", "audience": "大学生", "goal": "看完能说清楚时间膨胀从哪来",
-		"language": "zh-CN",
-		"scenes":   []map[string]any{{"id": "s1", "title": "开场：一个看似矛盾的公设", "narration": "旁白原文，口语化，一句一句……", "tone": "好奇地抛出问题，语速稍快", "visual": "画面设计：要出现什么、怎么动、关键字幕、图表数据"}},
+		"language":  "zh-CN",
+		"character": "",
+		"facts":     []string{"光速 c ≈ 30 万千米/秒", "1905 年 爱因斯坦发表狭义相对论"},
+		"scenes":    []map[string]any{{"id": "s1", "title": "开场：一个看似矛盾的公设", "narration": "旁白原文，口语化，一句一句……", "tone": "好奇地抛出问题，语速稍快", "visual": "画面设计：要出现什么、怎么动、关键字幕、图表数据"}},
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are the director and scriptwriter of short narrated explainer videos rendered as HTML animation.\n")
@@ -159,6 +161,8 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 		_, _ = b.WriteString("- image_notes: one line per picture saying what is in it and where (e.g. 「白色保温杯居中，杯身左侧有 logo，背景浅灰」), including any text, labels, logos or watermarks already in the picture and where they are, and its shape (portrait / landscape) — the designer uses it to place labels and crops.\n")
 	}
 	_, _ = b.WriteString("- The first scene hooks the viewer with a question or surprising fact; the last scene sums up in one memorable line.\n")
+	_, _ = b.WriteString("- character: when the video has a recurring character, mascot or host, describe its look once and concretely (body shape, colours, face, clothes or accessories) so every scene draws the same one; \"\" when there is none.\n")
+	_, _ = b.WriteString("- facts: the facts, numbers, names and dates the video shows on screen, each written exactly as it must appear in every scene (e.g. 「订阅费 ¥1,450/月」). Take them from the request or well-established knowledge; never invent dates, prices or statistics — an illustrative number is written here once and reused unchanged. Every number in the visual plans must match this list.\n")
 	_, _ = b.WriteString("- Be factually accurate. If the user gave a full script, keep their wording and only split it into scenes.\n")
 	if genre.Brief != "" {
 		_, _ = b.WriteString("Format: " + genre.Brief + "\n")
@@ -220,8 +224,12 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 	if len(in.Spec.Images) > 0 {
 		_, _ = b.WriteString("\n" + videoImagesDoc)
 	}
+	if in.Spec.Common != "" && !in.Motion {
+		_, _ = b.WriteString(videoKitUsage(in.Spec.Common))
+	}
 	_, _ = b.WriteString("\n\n## This video\n")
 	fmt.Fprintf(&b, "Stage: %d × %d px. Theme: %s\n", in.Spec.Width, in.Spec.Height, videoJSONSchemaHint(in.Spec.Theme))
+	_, _ = b.WriteString(videoSettingSheet(in.Spec))
 	if in.StyleBrief != "" {
 		_, _ = b.WriteString("Visual style: " + in.StyleBrief + "\n")
 	}
@@ -281,12 +289,107 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 		msgs = append(msgs, LearnMessage{Role: "assistant", Content: "```js\n" + previous + "\n```"})
 		switch {
 		case failure != "":
-			msgs = append(msgs, LearnMessage{Role: "user", Content: "Running this code failed:\n" + failure + "\nFix the cause and return the complete corrected function body."})
+			fix := "Running this code failed:\n" + failure + "\nFix the cause and return the complete corrected function body."
+			if in.Spec.Common != "" && !in.Motion {
+				fix += " If the failure comes from the shared kit, stop using the broken K member in this scene and build that part yourself (you cannot change the kit)."
+			}
+			msgs = append(msgs, LearnMessage{Role: "user", Content: fix})
 		case instruction != "":
 			msgs = append(msgs, LearnMessage{Role: "user", Content: "Change this scene: " + instruction + "\nKeep everything else. Return the complete updated function body."})
 		}
 	}
 	return msgs
+}
+
+// --- shared kit --------------------------------------------------------------------------------
+
+// videoKitDoc is the contract of spec.common: code the player runs before every scene's own code.
+const videoKitDoc = `## What you write: the shared kit
+
+Your code is prepended to EVERY scene's function body (it runs once per scene, with that scene's S, before
+the scene's own code), so all scenes share one look. Scene designers then write each scene using your kit.
+
+Write plain JavaScript statements (no function wrapper, no return):
+1. Declare exactly one top-level name: var K = (function () { … return { … }; })(); Keep everything else
+   inside that closure — scenes declare their own variables.
+2. When it runs, build the shared backdrop and chrome inside S.root right away: the stage background (gradient,
+   texture, grid, glow, whatever suits the style) and anything every scene shows in the same place (a series or
+   episode label, the scene counter S.index + 1 / S.total, a logo mark). Scenes never rebuild these.
+3. Return these members:
+   K.frame(t)          animates the backdrop and chrome (drift, pulse); every scene calls it first in update(t)
+   K.c                 palette { bg, surface, text, sub, accent, accent2, line, good, bad } as hex strings
+   K.font, K.display, K.mono   font stacks (family names in single quotes)
+   K.size              type scale in px for this stage { hero, title, kicker, body, small }
+   K.area              content area in px { left, right, top, bottom, width, height }: inside the safe margins,
+                       below the chrome, above the subtitle strip
+   K.title(kicker, text)   adds the scene headline at the house position and returns { kicker, title } elements
+                       (text may contain <em>…</em> for the accent colour; kicker may be ""); they start visible,
+                       the scene animates them
+   K.card(left, top, width, height)   adds a panel in the house style to S.root and returns it
+   K.el(tag, css, html)   an absolutely positioned element with the kit's font and text colour (not yet added)
+   K.character(size)   only when the setting sheet describes a recurring character: adds nothing, returns
+                       { el, set(t, opts) } — an SVG of exactly that character, size × size px, with
+                       opts { mood: 'smile' | 'worry' | 'surprised' | 'determined', look (px), talk, wave, still }
+                       and idle motion (blink, gentle bob) computed from t. Omit it when there is no character.
+   Add other helpers the scenes will repeat (badge, stamp, big number, progress bar) when the plans need them.
+4. Begin with a comment block that lists every K member in one line each: scene designers read it first.
+
+Keep it under 220 lines, deterministic (no timers or Date; S.random only while building), class names prefixed
+with S.id, and leave the stage mostly empty for the scenes: the backdrop must not compete with the content.`
+
+func videoKitPrompt(spec *VideoSpec, styleBrief string, silent bool, previous, instruction string) []LearnMessage {
+	var b strings.Builder
+	_, _ = b.WriteString("You are the art director of a multi-scene HTML animation video. You write the code of its shared visual system.\n\n")
+	_, _ = b.WriteString(videoRuntimeDoc)
+	_, _ = b.WriteString("\n\n" + videoKitDoc)
+	fmt.Fprintf(&b, "\n\n## This video\nStage: %d × %d px. Theme (starting point, refine it): %s\n", spec.Width, spec.Height, videoJSONSchemaHint(spec.Theme))
+	if styleBrief != "" {
+		_, _ = b.WriteString("Visual style: " + styleBrief + "\n")
+	}
+	if silent {
+		_, _ = b.WriteString("No narration and no subtitles: K.area may reach the bottom safe margin.\n")
+	} else {
+		_, _ = b.WriteString("Narrated with subtitles: the bottom 14% of the stage is the subtitle strip, so K.area.bottom stays above it.\n")
+	}
+	_, _ = b.WriteString("\nAnswer with the kit code only, inside one ```js code block. No explanations.")
+
+	var u strings.Builder
+	fmt.Fprintf(&u, "Video: %q — %s\n", spec.Title, spec.Summary)
+	_, _ = u.WriteString(videoSettingSheet(spec))
+	_, _ = u.WriteString("Scenes:\n")
+	for i, sc := range spec.Scenes {
+		fmt.Fprintf(&u, "%d. %s — %s\n", i+1, sc.Title, sc.Visual)
+	}
+	msgs := []LearnMessage{{Role: "system", Content: b.String()}, {Role: "user", Content: u.String()}}
+	if previous != "" {
+		msgs = append(msgs, LearnMessage{Role: "assistant", Content: "```js\n" + previous + "\n```"})
+		msgs = append(msgs, LearnMessage{Role: "user", Content: "Change the kit: " + instruction + "\nKeep every K member and its signature (the scenes already use them); keep everything else. Return the complete updated kit."})
+	}
+	return msgs
+}
+
+// videoSettingSheet is the script's character and facts, for the kit and every scene.
+func videoSettingSheet(spec *VideoSpec) string {
+	var b strings.Builder
+	if spec.Character != "" {
+		_, _ = b.WriteString("Recurring character (draw exactly this, the same in every scene): " + spec.Character + "\n")
+	}
+	if len(spec.Facts) > 0 {
+		_, _ = b.WriteString("Facts shown on screen — write them exactly like this, never contradict them, never invent other dates or numbers:\n")
+		for _, f := range spec.Facts {
+			_, _ = b.WriteString("- " + f + "\n")
+		}
+	}
+	return b.String()
+}
+
+// videoKitUsage tells a scene designer how to build on the shared kit.
+func videoKitUsage(common string) string {
+	return "\n\n## Shared kit (runs before your code in this scene)\n```js\n" + common + "\n```\n" +
+		"Build on it: call K.frame(t) first in update(t); put the scene headline with K.title(…) when the plan has one; " +
+		"use K.c colours, K.size, K.area and K.card / K.el and the other K helpers; draw the recurring character only " +
+		"with K.character(…), never your own version; do not rebuild the background or the chrome; never declare a " +
+		"top-level name K. A scene that ignores the kit breaks the video's look."
 }
 
 // --- revising from chat ----------------------------------------------------------------------
@@ -300,6 +403,7 @@ type videoRevisionPlan struct {
 		Title       string `json:"title,omitempty"`
 	} `json:"scenes"`
 	Title string `json:"title,omitempty"`
+	Kit   string `json:"kit,omitempty"` // a change to the shared kit (the whole look), for films that have one
 }
 
 func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []string) []LearnMessage {
@@ -314,9 +418,17 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []
 		fmt.Fprintf(&outline, "Picture %s: %s\n", img.ID, img.Desc)
 	}
 	schema := map[string]any{"reply": "好的，我把第 2 个分镜的背景改成深蓝色，并放慢了图表的动画。", "scenes": []map[string]any{{"id": "s2", "instruction": "背景改为深蓝色 #0b1f3a；柱状图上升放慢到 1.5 秒", "narration": "（只有要改旁白时才填，填完整的新旁白）"}}, "title": "（只有要改标题时才填）"}
-	sys := "You are the director of an HTML video. The user asks for changes. Decide which scenes must change and write a precise instruction for the motion designer for each (what to change, keep the rest). Only include narration when the spoken words must change (it will be re-recorded). For changes that affect the whole video (colours, fonts, style) list every scene. Reply to the user in one or two sentences in their language. Answer with JSON only, shaped like:\n" + videoJSONSchemaHint(schema)
+	whole := "For changes that affect the whole video (colours, fonts, style) list every scene."
+	if p.Spec.Common != "" {
+		schema["kit"] = "（只有改整片的配色、字体、背景、页眉或角色造型时才填）"
+		whole = "Changes to the whole look go in kit (see below)."
+	}
+	sys := "You are the director of an HTML video. The user asks for changes. Decide which scenes must change and write a precise instruction for the motion designer for each (what to change, keep the rest). Only include narration when the spoken words must change (it will be re-recorded). " + whole + " Reply to the user in one or two sentences in their language. Answer with JSON only, shaped like:\n" + videoJSONSchemaHint(schema)
 	if videoSilent(p) {
 		sys += "\nThis video has no narration (on-screen text only): never fill narration; put text changes in the instruction."
+	}
+	if p.Spec.Common != "" {
+		sys += "\nThis video has a shared kit that every scene runs first: the palette, fonts, background, header / counter and the recurring character's design. A change to any of those for the whole video goes in \"kit\" (one precise instruction, e.g. 「主色改成深蓝 #1e3a8a，背景去掉网格」) instead of listing every scene; list scenes only when their own content must change too. Leave kit empty otherwise."
 	}
 	sys += "\nIf the user says an earlier change did not take effect, or that the video still looks like the first version, do that earlier change again: list the scenes it concerns with a precise instruction. You cannot see the video, so never claim what the user is seeing and never answer with an empty scene list in that case."
 	user := "Video: " + p.Spec.Title + "\nScenes:\n" + outline.String()

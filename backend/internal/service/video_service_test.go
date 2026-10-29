@@ -205,12 +205,19 @@ func (f *fakeTTS) Synthesize(_ context.Context, text, _ string, _ int) (*VideoSp
 
 // fakeModel answers by prompt kind; broken lists scenes whose first code answer has a syntax error.
 type fakeModel struct {
-	mu        sync.Mutex
-	broken    map[string]int
-	calls     []string
-	block     chan struct{}
-	revisions []string
+	mu            sync.Mutex
+	broken        map[string]int
+	calls         []string
+	block         chan struct{}
+	revisions     []string
+	kitBroken     bool     // answer the kit prompt without declaring K
+	kitBrokenOnce bool     // only the first kit answer is broken
+	planKit       string   // the revision plan's kit instruction
+	scenes        []string // system prompts of the scene calls
+	kitAsks       []string // last user message of every kit call
 }
+
+const goodKit = "var K = (function () {\n  var bg = S.h('div');\n  S.root.appendChild(bg);\n  return { frame: function (t) { bg.style.opacity = 1; }, c: { accent: '#f80' } };\n})();"
 
 const goodScene = "const el = S.h('div', {text: 'hi'});\nS.root.appendChild(el);\nreturn function update(t) { S.set(el, {opacity: S.p(t, 0, 1)}); };"
 
@@ -232,16 +239,29 @@ func (m *fakeModel) stream(ctx context.Context, _, _ string, msgs []LearnMessage
 		ans = `{"questions":[{"id":"depth","title":"深度","options":[{"label":"入门","recommended":true},{"label":"进阶"}]}]}`
 	case strings.Contains(sys, "scriptwriter"):
 		m.calls = append(m.calls, "script")
-		ans = "```json\n" + `{"title":"测试视频","summary":"s","scenes":[{"title":"一","narration":"第一段旁白。","visual":"v1"},{"title":"二","narration":"第二段旁白。","visual":"v2"}]}` + "\n```"
+		ans = "```json\n" + `{"title":"测试视频","summary":"s","character":"橙色圆形小机器人","facts":["订阅费 ¥1,450/月"],"scenes":[{"title":"一","narration":"第一段旁白。","visual":"v1"},{"title":"二","narration":"第二段旁白。","visual":"v2"}]}` + "\n```"
 	case strings.Contains(sys, "The user asks for changes"):
 		m.calls = append(m.calls, "plan")
-		ans = `{"reply":"好的","scenes":[{"id":"s2","instruction":"更大","narration":"新的第二段旁白。"}]}`
+		if m.planKit != "" {
+			ans = `{"reply":"好的","kit":"` + m.planKit + `","scenes":[]}`
+		} else {
+			ans = `{"reply":"好的","scenes":[{"id":"s2","instruction":"更大","narration":"新的第二段旁白。"}]}`
+		}
+	case strings.Contains(sys, "shared visual system"):
+		m.calls = append(m.calls, "kit")
+		m.kitAsks = append(m.kitAsks, last)
+		if m.kitBroken || (m.kitBrokenOnce && len(m.kitAsks) == 1) {
+			ans = "```js\nvar Kit = 1;\n```"
+		} else {
+			ans = "```js\n" + goodKit + "\n```"
+		}
 	default:
 		scene := "s1"
 		if strings.Contains(msgs[1].Content, "Scene s2") {
 			scene = "s2"
 		}
 		m.calls = append(m.calls, "code:"+scene)
+		m.scenes = append(m.scenes, sys)
 		if strings.HasPrefix(last, "Change this scene") {
 			m.revisions = append(m.revisions, scene)
 		}
@@ -298,7 +318,7 @@ func TestVideoFilmAsksThenBuilds(t *testing.T) {
 		require.NoError(t, statErr)
 	}
 	require.Equal(t, 2, tts.calls)
-	require.Equal(t, 4, got.Usage.Calls) // questions, script, 2 scenes
+	require.Equal(t, 5, got.Usage.Calls) // questions, script, kit, 2 scenes
 	require.Equal(t, "入门", got.Options.Answers["深度"])
 	require.Len(t, repo.versions[p.ID], 1)
 
@@ -535,6 +555,124 @@ func TestCheckSceneCode(t *testing.T) {
 	require.Contains(t, checkSceneCode("fetch('/x'); return function(){}"), "network")
 	require.Contains(t, checkSceneCode("import('x'); return function(){}"), "network")
 	require.Contains(t, checkSceneCode(""), "no code")
+}
+
+func TestCheckKitAndSceneWithKit(t *testing.T) {
+	require.Empty(t, checkKitCode(goodKit))
+	require.Contains(t, checkKitCode("var Kit = 1;"), "var K")
+	require.Contains(t, checkKitCode("var K = (function () { if ( })();"), "syntax error")
+
+	brief := videoSceneBrief{Spec: &VideoSpec{Common: goodKit}}
+	require.Empty(t, checkSceneWithKit(brief, goodScene))
+	clash := "const K = 1;\nreturn function update(t) {};"
+	require.Empty(t, checkSceneCode(clash), "fine on its own")
+	require.Contains(t, checkSceneWithKit(brief, clash), "shared kit")
+	brief.Motion = true
+	require.Empty(t, checkSceneWithKit(brief, clash), "single animations have no kit")
+}
+
+func TestVideoFilmGetsSharedKit(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, err := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Equal(t, goodKit, got.Spec.Common)
+	require.Equal(t, "橙色圆形小机器人", got.Spec.Character)
+	require.Equal(t, []string{"订阅费 ¥1,450/月"}, got.Spec.Facts)
+	require.Contains(t, model.calls, "kit")
+	require.Len(t, model.scenes, 2)
+	for _, sys := range model.scenes {
+		require.Contains(t, sys, "## Shared kit", "every scene sees the kit")
+		require.Contains(t, sys, goodKit)
+		require.Contains(t, sys, "订阅费 ¥1,450/月", "and the setting sheet")
+		require.Contains(t, sys, "橙色圆形小机器人")
+	}
+}
+
+func TestVideoKitFailureFallsBack(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}, kitBroken: true}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Empty(t, got.Spec.Common)
+	for _, sc := range got.Spec.Scenes {
+		require.NotEmpty(t, sc.Code)
+	}
+	for _, sys := range model.scenes {
+		require.NotContains(t, sys, "## Shared kit")
+	}
+}
+
+func TestVideoBrokenKitIsFixedOnce(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}, kitBrokenOnce: true}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Equal(t, goodKit, got.Spec.Common)
+	require.Len(t, model.kitAsks, 2)
+	require.Contains(t, model.kitAsks[1], "This kit does not work")
+}
+
+func TestVideoMotionHasNoKit(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "motion", Prompt: "x", Options: VideoOptions{Seconds: 8}})
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Empty(t, got.Spec.Common)
+	require.NotContains(t, model.calls, "kit")
+}
+
+func TestVideoMessageChangesKit(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{}}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	svc.Wait()
+	model.planKit = "主色改成深蓝"
+
+	_, err := svc.Message(ctx, videoKeyA, p.ID, "整体换成蓝色", "")
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Len(t, model.kitAsks, 2)
+	require.Contains(t, model.kitAsks[1], "Change the kit: 主色改成深蓝")
+	require.Empty(t, model.revisions, "the whole look changes in the kit, not scene by scene")
+	require.Equal(t, goodKit, got.Spec.Common)
+}
+
+func TestVideoResumedOldFilmGetsNoKit(t *testing.T) {
+	model := &fakeModel{broken: map[string]int{"s2": 2}, kitBroken: true}
+	svc, _, _ := newTestVideoService(t, model)
+	ctx := context.Background()
+	p, _ := svc.Create(ctx, videoKeyA, VideoCreateInput{Mode: "film", Prompt: "x"})
+	svc.Wait()
+	got, _ := svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusFailed, got.Status)
+	require.Empty(t, got.Spec.Common)
+
+	// Scene 1 already has its own look: resuming must not add a kit scene 2 would follow alone.
+	model.kitBroken = false
+	_, err := svc.Resume(ctx, videoKeyA, p.ID)
+	require.NoError(t, err)
+	svc.Wait()
+	got, _ = svc.Get(ctx, 7, p.ID)
+	require.Equal(t, VideoStatusReady, got.Status, got.Error)
+	require.Empty(t, got.Spec.Common)
+	require.Len(t, model.kitAsks, 2, "the first run's kit and its fix; none on resume")
 }
 
 func TestExtractJSONAndCode(t *testing.T) {

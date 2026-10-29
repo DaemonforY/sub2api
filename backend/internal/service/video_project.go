@@ -81,6 +81,13 @@ type VideoSpec struct {
 	Scenes   []VideoScene `json:"scenes"`
 	Images   []VideoImage `json:"images,omitempty"` // the user's pictures, with the model's descriptions
 	Upload   *VideoUpload `json:"upload,omitempty"` // mode "upload": the user's own file instead of scenes
+
+	// Setting sheet from the script, shown to the kit and to every scene so they agree.
+	Character string   `json:"character,omitempty"` // how the recurring character / mascot / host looks ("" when none)
+	Facts     []string `json:"facts,omitempty"`     // facts, numbers and names shown on screen, written once
+	// Common is the shared kit (palette, backdrop and chrome, the recurring character …) the player runs
+	// before every scene's code, so the scenes share one look. "" for single animations and older films.
+	Common string `json:"common,omitempty"`
 }
 
 type VideoScene struct {

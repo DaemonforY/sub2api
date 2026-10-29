@@ -64,7 +64,7 @@ func (s *videoPlayerSource) PlayerData(ctx context.Context, id string) ([]byte, 
 			}
 			scenes = append(scenes, vs)
 		}
-		data, err = json.Marshal(map[string]any{"width": spec.Width, "height": spec.Height, "theme": spec.Theme, "loop": spec.Loop, "poster": spec.Poster, "scenes": scenes, "images": service.PlayerImages(spec)})
+		data, err = json.Marshal(map[string]any{"width": spec.Width, "height": spec.Height, "theme": spec.Theme, "loop": spec.Loop, "poster": spec.Poster, "common": spec.Common, "scenes": scenes, "images": service.PlayerImages(spec)})
 		ok = err == nil
 	} else if err != nil && !isVideoNotFound(err) {
 		return nil, false // a database hiccup: do not cache

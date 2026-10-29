@@ -123,6 +123,7 @@ function payload() {
     height: s.height,
     theme: s.theme,
     loop: !!s.loop,
+    common: s.common || '',
     scenes: s.scenes.map((sc) => ({ id: sc.id, duration: sc.duration, code: sc.code || '', words: sc.audio?.words || [] })),
     images: (s.images || []).map((img) => ({ id: img.id, url: img.url, width: img.width, height: img.height }))
   }
@@ -158,7 +159,7 @@ const posterTime = () => {
 }
 
 // Reload when scene code / timing changes (not on every poll that returns the same spec).
-const signature = computed(() => (props.spec ? props.spec.scenes.map((sc) => `${sc.id}:${sc.duration}:${(sc.code || '').length}:${hash(sc.code || '')}`).join('|') + `|${props.spec.width}x${props.spec.height}|${props.spec.theme?.bg}` : ''))
+const signature = computed(() => (props.spec ? props.spec.scenes.map((sc) => `${sc.id}:${sc.duration}:${(sc.code || '').length}:${hash(sc.code || '')}`).join('|') + `|${props.spec.width}x${props.spec.height}|${props.spec.theme?.bg}|${hash(props.spec.common || '')}` : ''))
 watch(signature, () => {
   sendProject()
   buffers.clear()

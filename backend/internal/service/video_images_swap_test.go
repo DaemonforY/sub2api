@@ -37,6 +37,8 @@ func (m *swapModel) stream(_ context.Context, _, _ string, msgs []LearnMessage, 
 			`{"title":"二","narration":"第二段旁白。","images":["img2"],"visual":"img2 居中"},` +
 			`{"title":"三","narration":"第三段旁白。","images":[],"visual":"文字"}],` +
 			`"image_notes":[{"id":"img1","desc":"白色杯子"},{"id":"img2","desc":"红色盒子"}]}`
+	case strings.Contains(sys, "shared visual system"):
+		ans = "```js\n" + goodKit + "\n```"
 	case strings.Contains(sys, "changed the pictures"):
 		m.planImages, m.planUser = len(last.Images), last.Content
 		ans = m.plan

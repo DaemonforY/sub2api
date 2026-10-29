@@ -55,7 +55,7 @@ const CONTROLLER = `
 
 export async function exportHtml(project, audioUrl, withKey) {
   const spec = project.spec
-  const usesThree = spec.scenes.some((sc) => /\bS\.three\b/.test(sc.code || ''))
+  const usesThree = /\bS\.three\b/.test(spec.common || '') || spec.scenes.some((sc) => /\bS\.three\b/.test(sc.code || ''))
   const [runtime, icons, three] = await Promise.all([
     fetch('/player/runtime.js').then((r) => r.text()),
     fetch('/player/icons.js').then((r) => r.text()),
@@ -94,7 +94,7 @@ export async function exportHtml(project, audioUrl, withKey) {
       return { id: img.id, url, width: img.width, height: img.height }
     })
   )
-  const data = { width: spec.width, height: spec.height, theme: spec.theme, loop: !!spec.loop, scenes, images }
+  const data = { width: spec.width, height: spec.height, theme: spec.theme, loop: !!spec.loop, common: spec.common || '', scenes, images }
   const origin = location.origin
   const html = `<!doctype html>
 <html lang="zh-CN">

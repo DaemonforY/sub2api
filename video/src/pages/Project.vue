@@ -250,7 +250,7 @@ const currentScene = computed(() => {
   const sc = scenes[idx]
   return sc ? p.value.spec.scenes.findIndex((x) => x.id === sc.id) : 0
 })
-const stageText = computed(() => ({ questions: '正在理解你的需求…', script: '正在写脚本和分镜…', voice: '正在配音…', code: '正在制作动画…', plan: '正在理解修改意见…', repair: '正在修复…' })[p.value?.stage] || 'AI 正在工作…')
+const stageText = computed(() => ({ questions: '正在理解你的需求…', script: '正在写脚本和分镜…', voice: '正在配音…', kit: '正在设计整片统一的画面风格…', code: '正在制作动画…', plan: '正在理解修改意见…', repair: '正在修复…' })[p.value?.stage] || 'AI 正在工作…')
 
 const audioUrl = (sc) => (sc.audio?.file ? `/api/v1/video/projects/${p.value.id}/audio/${sc.audio.file}` : '')
 
