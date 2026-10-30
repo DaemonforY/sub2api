@@ -2580,6 +2580,27 @@ func (h *AccountHandler) GetBatchTodayStats(c *gin.Context) {
 	response.Success(c, payload)
 }
 
+// GetBatchRecentRequests 批量获取账号近 1 小时按 3 分钟分格的成功/失败请求数。
+// POST /api/v1/admin/accounts/recent-requests/batch
+func (h *AccountHandler) GetBatchRecentRequests(c *gin.Context) {
+	var req BatchTodayStatsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	accountIDs := normalizeInt64IDList(req.AccountIDs)
+	if len(accountIDs) == 0 {
+		response.Success(c, gin.H{"stats": map[string]any{}})
+		return
+	}
+	result, err := h.accountUsageService.GetRecentRequestsBatch(c.Request.Context(), accountIDs)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, result)
+}
+
 // GetBatchUsage 批量获取多个账号的 current usage。
 // POST /api/v1/admin/accounts/usage/batch
 func (h *AccountHandler) GetBatchUsage(c *gin.Context) {

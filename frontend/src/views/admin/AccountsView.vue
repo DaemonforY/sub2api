@@ -303,6 +303,21 @@
               :error="todayStatsError"
             />
           </template>
+          <template #header-recent_requests="{ column }">
+            <div class="flex items-center">
+              <span>{{ column.label }}</span>
+              <HelpTooltip :content="t('admin.accounts.recentRequests.hint')" width-class="w-72" />
+            </div>
+          </template>
+          <template #cell-recent_requests="{ row }">
+            <AccountRecentRequestsCell
+              :stats="recentRequestsByAccountId[String(row.id)] ?? null"
+              :window-start="recentRequestsWindowStart"
+              :bucket-seconds="recentRequestsBucketSeconds"
+              :loading="recentRequestsLoading"
+              :error="recentRequestsError"
+            />
+          </template>
           <template #cell-groups="{ row }">
             <AccountGroupsCell :groups="accountGroupsForRow(row)" :max-display="4" />
           </template>
@@ -378,8 +393,15 @@
               @probe="handleProbeUpstreamBilling(row)"
             />
           </template>
-          <template #cell-priority="{ value }">
-            <span class="text-sm text-gray-700 dark:text-gray-300">{{ value }}</span>
+          <template #cell-priority="{ row, value }">
+            <div class="flex flex-col items-start gap-0.5">
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ value }}</span>
+              <span
+                v-if="accountSchedulingWeight(row) > 0"
+                class="whitespace-nowrap rounded bg-primary-50 px-1.5 py-0.5 text-[11px] font-medium text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+                :title="t('admin.accounts.schedulingWeightHint')"
+              >{{ t('admin.accounts.schedulingWeightBadge', { weight: accountSchedulingWeight(row) }) }}</span>
+            </div>
           </template>
           <template #header-scheduler_score="{ column }">
             <div class="flex items-center">
@@ -517,6 +539,7 @@ import type { SelectOption } from '@/components/common/Select.vue'
 import AccountStatusIndicator from '@/components/account/AccountStatusIndicator.vue'
 import AccountUsageCell from '@/components/account/AccountUsageCell.vue'
 import AccountTodayStatsCell from '@/components/account/AccountTodayStatsCell.vue'
+import AccountRecentRequestsCell from '@/components/account/AccountRecentRequestsCell.vue'
 import AccountGroupsCell from '@/components/account/AccountGroupsCell.vue'
 import AccountCapacityCell from '@/components/account/AccountCapacityCell.vue'
 import UpstreamBillingRateCell from '@/components/account/UpstreamBillingRateCell.vue'
@@ -532,7 +555,7 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import { sanitizeUrl } from '@/utils/url'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import { formatMultiplier } from '@/utils/formatters'
-import type { Account, AccountListItem, AccountPlatform, AccountSchedulerGroupScore, AccountType, AccountUsageInfo, Proxy as AccountProxy, AdminGroup, WindowStats, ClaudeModel, UpstreamBillingProbeSnapshot } from '@/types'
+import type { Account, AccountListItem, AccountPlatform, AccountSchedulerGroupScore, AccountType, AccountUsageInfo, Proxy as AccountProxy, AdminGroup, WindowStats, AccountRecentRequests, ClaudeModel, UpstreamBillingProbeSnapshot } from '@/types'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -702,6 +725,12 @@ const todayStatsByAccountId = ref<Record<string, WindowStats>>({})
 const todayStatsLoading = ref(false)
 const todayStatsError = ref<string | null>(null)
 const todayStatsReqSeq = ref(0)
+const recentRequestsByAccountId = ref<Record<string, AccountRecentRequests>>({})
+const recentRequestsWindowStart = ref<string | null>(null)
+const recentRequestsBucketSeconds = ref(180)
+const recentRequestsLoading = ref(false)
+const recentRequestsError = ref<string | null>(null)
+const recentRequestsReqSeq = ref(0)
 const pendingTodayStatsRefresh = ref(false)
 const usageManualRefreshToken = ref(0)
 
@@ -863,7 +892,47 @@ const queueBatchedUsage = (account: Account, options?: { force?: boolean }) => {
   }, 0)
 }
 
+const accountSchedulingWeight = (account: { extra?: Record<string, unknown> | null }) => {
+  const raw = Number(account.extra?.scheduling_weight ?? 0)
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0
+}
+
+const refreshRecentRequestsBatch = async () => {
+  if (hiddenColumns.has('recent_requests')) {
+    recentRequestsLoading.value = false
+    recentRequestsError.value = null
+    return
+  }
+  const accountIDs = accounts.value.map(account => account.id)
+  const reqSeq = ++recentRequestsReqSeq.value
+  if (accountIDs.length === 0) {
+    recentRequestsByAccountId.value = {}
+    recentRequestsError.value = null
+    recentRequestsLoading.value = false
+    return
+  }
+  recentRequestsLoading.value = true
+  recentRequestsError.value = null
+  try {
+    const result = await adminAPI.accounts.getBatchRecentRequests(accountIDs)
+    if (reqSeq !== recentRequestsReqSeq.value) return
+    recentRequestsByAccountId.value = result.stats ?? {}
+    recentRequestsWindowStart.value = result.window_start ?? null
+    recentRequestsBucketSeconds.value = result.bucket_seconds || 180
+  } catch (error) {
+    if (reqSeq !== recentRequestsReqSeq.value) return
+    recentRequestsError.value = 'Failed'
+    console.error('Failed to load account recent requests:', error)
+  } finally {
+    if (reqSeq === recentRequestsReqSeq.value) {
+      recentRequestsLoading.value = false
+    }
+  }
+}
+
 const refreshTodayStatsBatch = async () => {
+  // 近 1 小时请求与今日统计在同样的时机刷新（加载、翻页、自动刷新）。
+  void refreshRecentRequestsBatch()
   // Why this checks both columns:
   // - today_stats column shows dedicated today's metrics.
   // - usage column also embeds today's stats for Key/Bedrock rows.
@@ -1044,6 +1113,9 @@ const toggleColumn = (key: string) => {
     hiddenColumns.add(key)
   }
   saveColumnsToStorage()
+  if (key === 'recent_requests' && wasHidden) {
+    void refreshRecentRequestsBatch()
+  }
   if ((key === 'today_stats' || key === 'usage') && wasHidden) {
     refreshTodayStatsBatch().catch((error) => {
       console.error('Failed to load account today stats after showing column:', error)
@@ -1788,7 +1860,8 @@ const allColumns = computed(() => {
     { key: 'capacity', label: t('admin.accounts.columns.capacity'), sortable: false },
     { key: 'status', label: t('admin.accounts.columns.status'), sortable: true },
     { key: 'schedulable', label: t('admin.accounts.columns.schedulable'), sortable: true },
-    { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false }
+    { key: 'today_stats', label: t('admin.accounts.columns.todayStats'), sortable: false },
+    { key: 'recent_requests', label: t('admin.accounts.columns.recentRequests'), sortable: false }
   ]
   if (!authStore.isSimpleMode) {
     c.push({ key: 'groups', label: t('admin.accounts.columns.groups'), sortable: false })

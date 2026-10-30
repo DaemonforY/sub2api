@@ -1341,6 +1341,18 @@ export interface WindowStats {
   user_cost?: number
 }
 
+// 账号近 1 小时请求（每格 3 分钟，s=成功 f=失败）
+export interface AccountRequestBucket {
+  s: number
+  f: number
+}
+
+export interface AccountRecentRequests {
+  success: number
+  failure: number
+  buckets: AccountRequestBucket[]
+}
+
 export interface UsageProgress {
   utilization: number // Percentage (0-100+, 100 = 100%)
   resets_at: string | null

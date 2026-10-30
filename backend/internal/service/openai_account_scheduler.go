@@ -800,6 +800,59 @@ func buildOpenAIWeightedSelectionOrder(
 	}
 
 	pool := append([]openAIAccountCandidateScore(nil), candidates...)
+	rng := newOpenAISelectionRNG(deriveOpenAISelectionSeed(req))
+	if !openAICandidatesHaveSchedulingWeight(pool) {
+		return sampleOpenAICandidatesByScore(pool, &rng, false)
+	}
+
+	// 账号调度权重（见 AccountSchedulingWeightExtraKey）：按优先级分段，段内有权重的账号
+	// 按「评分权重 × 账号权重」抽样排在前面，无权重的账号按评分排在后面兜底。
+	sort.SliceStable(pool, func(i, j int) bool {
+		return pool[i].account.Priority < pool[j].account.Priority
+	})
+	order := make([]openAIAccountCandidateScore, 0, len(pool))
+	for i := 0; i < len(pool); {
+		j := i + 1
+		for j < len(pool) && pool[j].account.Priority == pool[i].account.Priority {
+			j++
+		}
+		var weighted, unweighted []openAIAccountCandidateScore
+		for _, candidate := range pool[i:j] {
+			if candidate.account.SchedulingWeight() > 0 {
+				weighted = append(weighted, candidate)
+			} else {
+				unweighted = append(unweighted, candidate)
+			}
+		}
+		order = append(order, sampleOpenAICandidatesByScore(weighted, &rng, true)...)
+		sort.SliceStable(unweighted, func(a, b int) bool {
+			return isOpenAIAccountCandidateBetter(unweighted[a], unweighted[b])
+		})
+		order = append(order, unweighted...)
+		i = j
+	}
+	return order
+}
+
+func openAICandidatesHaveSchedulingWeight(candidates []openAIAccountCandidateScore) bool {
+	for _, candidate := range candidates {
+		if candidate.account.SchedulingWeight() > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// sampleOpenAICandidatesByScore 按评分做加权随机排列；useAccountWeight 时再乘上账号调度权重。
+// pool 会被就地消耗。
+func sampleOpenAICandidatesByScore(
+	pool []openAIAccountCandidateScore,
+	rng *openAISelectionRNG,
+	useAccountWeight bool,
+) []openAIAccountCandidateScore {
+	if len(pool) == 0 {
+		return nil
+	}
 	weights := make([]float64, len(pool))
 	minScore := pool[0].score
 	for i := 1; i < len(pool); i++ {
@@ -813,11 +866,13 @@ func buildOpenAIWeightedSelectionOrder(
 		if math.IsNaN(weight) || math.IsInf(weight, 0) || weight <= 0 {
 			weight = 1.0
 		}
+		if useAccountWeight {
+			weight *= float64(pool[i].account.SchedulingWeight())
+		}
 		weights[i] = weight
 	}
 
 	order := make([]openAIAccountCandidateScore, 0, len(pool))
-	rng := newOpenAISelectionRNG(deriveOpenAISelectionSeed(req))
 	for len(pool) > 0 {
 		total := 0.0
 		for _, w := range weights {

@@ -12,6 +12,7 @@ import type {
   PaginatedResponse,
   AccountUsageInfo,
   WindowStats,
+  AccountRecentRequests,
   ClaudeModel,
   AccountUsageStatsResponse,
   TempUnschedulableStatus,
@@ -557,6 +558,22 @@ export async function getBatchTodayStats(accountIds: number[]): Promise<BatchTod
   return data
 }
 
+export interface BatchRecentRequestsResponse {
+  window_start: string
+  bucket_seconds: number
+  stats: Record<string, AccountRecentRequests>
+}
+
+/**
+ * 批量获取账号近 1 小时按 3 分钟分格的成功/失败请求数
+ */
+export async function getBatchRecentRequests(accountIds: number[]): Promise<BatchRecentRequestsResponse> {
+  const { data } = await apiClient.post<BatchRecentRequestsResponse>('/admin/accounts/recent-requests/batch', {
+    account_ids: accountIds
+  })
+  return data
+}
+
 /**
  * Set account schedulable status
  * @param id - Account ID
@@ -1066,6 +1083,7 @@ export const accountsAPI = {
   getBatchUsage,
   getTodayStats,
   getBatchTodayStats,
+  getBatchRecentRequests,
   clearRateLimit,
   recoverState,
   resetAccountQuota,

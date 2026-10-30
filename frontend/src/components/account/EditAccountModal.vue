@@ -1573,6 +1573,20 @@
           />
           <p class="input-hint">{{ t('admin.accounts.priorityHint') }}</p>
         </div>
+        <div v-if="account.platform === 'openai'">
+          <label class="input-label">{{ t('admin.accounts.schedulingWeight') }}</label>
+          <input
+            v-model.number="schedulingWeight"
+            type="number"
+            min="0"
+            max="1000"
+            step="1"
+            class="input"
+            data-testid="account-scheduling-weight"
+            :placeholder="t('common.none')"
+          />
+          <p class="input-hint">{{ t('admin.accounts.schedulingWeightHint') }}</p>
+        </div>
         <div>
           <label class="input-label">{{ t('admin.accounts.billingRateMultiplier') }}</label>
           <input
@@ -3267,6 +3281,7 @@ const grokClientToolCacheEnabled = ref(true)
 const interceptWarmupRequests = ref(false)
 const autoPauseOnExpired = ref(false)
 const autoPause5hThreshold = ref<number | null>(null)
+const schedulingWeight = ref<number | null>(null)
 const autoPause7dThreshold = ref<number | null>(null)
 const autoPause5hDisabled = ref(false)
 const autoPause7dDisabled = ref(false)
@@ -3810,6 +3825,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 	upstreamRequestIdHeader.value = readUpstreamRequestIdHeader(extra)
 	openAIImagesUrlToB64JsonEnabled.value = extra?.images_url_to_b64_json === true
 	autoPause5hThreshold.value = typeof extra?.auto_pause_5h_threshold === 'number' ? extra.auto_pause_5h_threshold * 100 : null
+	schedulingWeight.value = typeof extra?.scheduling_weight === 'number' && extra.scheduling_weight > 0 ? extra.scheduling_weight : null
 	autoPause7dThreshold.value = typeof extra?.auto_pause_7d_threshold === 'number' ? extra.auto_pause_7d_threshold * 100 : null
 	autoPause5hDisabled.value = extra?.auto_pause_5h_disabled === true
 	autoPause7dDisabled.value = extra?.auto_pause_7d_disabled === true
@@ -5304,6 +5320,11 @@ const handleSubmit = async () => {
         } else {
           delete newExtra.images_url_to_b64_json
         }
+		}
+		if (schedulingWeight.value != null && schedulingWeight.value > 0) {
+			newExtra.scheduling_weight = Math.min(1000, Math.floor(schedulingWeight.value))
+		} else {
+			delete newExtra.scheduling_weight
 		}
 		if (autoPause5hThreshold.value != null && autoPause5hThreshold.value > 0) {
 			newExtra.auto_pause_5h_threshold = autoPause5hThreshold.value / 100

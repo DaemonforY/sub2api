@@ -1329,6 +1329,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			}
 		})
 		shuffleWithinSortGroups(available)
+		applySchedulingWeightsWithinPriority(available, func(item accountWithLoad) *Account { return item.account }, nil)
 		if rateOrder.enabled {
 			sort.SliceStable(available, func(i, j int) bool {
 				return rateOrder.compare(available[i].account, available[j].account) < 0
@@ -1385,6 +1386,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 	if err != nil {
 		ordered := append([]*Account(nil), candidates...)
 		sortAccountsByPriorityAndLastUsed(ordered, false)
+		applySchedulingWeightsWithinPriority(ordered, func(acc *Account) *Account { return acc }, nil)
 		if rateOrder.enabled {
 			sort.SliceStable(ordered, func(i, j int) bool {
 				return rateOrder.compare(ordered[i], ordered[j]) < 0
@@ -1435,6 +1437,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 
 	// ============ Layer 3: Fallback wait ============
 	sortAccountsByPriorityAndLastUsed(candidates, false)
+	applySchedulingWeightsWithinPriority(candidates, func(acc *Account) *Account { return acc }, nil)
 	if rateOrder.enabled {
 		sort.SliceStable(candidates, func(i, j int) bool {
 			return rateOrder.compare(candidates[i], candidates[j]) < 0
