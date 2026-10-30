@@ -12,7 +12,7 @@ description: 喜欢动漫、游戏和风景？零基础学会画出好看的图�
 - **画**：在页面里写提示词、出图，AI 老师逐项打分，告诉你下一步改哪里。
 
 <div class="art-tracks">
-  <a class="art-track" href="/learn/i/"><b>I · 画面好看的秘密</b><span>打光、构图、配色、镜头、画风：为什么有的图一眼就是壁纸。</span><em>已上线 5 课 · 更新中</em></a>
+  <a class="art-track" href="/learn/i/"><b>I · 画面好看的秘密</b><span>打光、构图、配色、镜头、画风：为什么有的图一眼就是壁纸。</span><em>9 课全部上线</em></a>
   <a class="art-track" href="/learn/j/"><b>J · 想画什么就画什么</b><span>原创角色、游戏场景、风景、萌宠、国风、Q 版头像……一个题材一张配方卡。</span><em>已上线 7 课 · 更新中</em></a>
   <a class="art-track" href="/learn/k/"><b>K · 看懂好画</b><span>动漫里的浮世绘、游戏里的宋画、印象派的光，逛展刷图看得出门道。</span><em>已上线 3 课 · 更新中</em></a>
 </div>
