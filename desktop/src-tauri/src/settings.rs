@@ -1,12 +1,14 @@
 //! Where the app talks to and the device key. The key lives in the system credential store
 //! (Windows Credential Manager / macOS Keychain), never in a plain file.
 //!
-//! Until WeChat login and POST /api/v1/desktop/session exist, the key is entered on the setup
-//! screen. Developers can also set HIVEGPT_API_KEY / HIVEGPT_BASE_URL in the environment.
+//! The key normally comes from the WeChat sign-in (login.rs). Developers can paste one on the setup
+//! screen or set HIVEGPT_API_KEY / HIVEGPT_BASE_URL in the environment.
 
 use std::path::PathBuf;
 
 use tauri::AppHandle;
+
+use crate::login;
 
 const KEYRING_SERVICE: &str = "cn.hivegpt.desktop";
 const KEYRING_USER: &str = "device-key";
@@ -43,6 +45,9 @@ pub struct AccountState {
     base_url: String,
     /// sk-ab…wxyz, for display only.
     key_hint: Option<String>,
+    /// From the WeChat sign-in (empty after pasting a key by hand).
+    user_name: String,
+    group_name: String,
 }
 
 fn hint(key: &str) -> String {
@@ -56,28 +61,42 @@ fn hint(key: &str) -> String {
 }
 
 #[tauri::command]
-pub fn account_state() -> Result<AccountState, String> {
+pub fn account_state(app: AppHandle) -> Result<AccountState, String> {
     let key = api_key()?;
-    Ok(AccountState { signed_in: key.is_some(), base_url: base_url(), key_hint: key.as_deref().map(hint) })
+    let info = if key.is_some() { login::read_account(&app) } else { login::AccountInfo::default() };
+    Ok(AccountState {
+        signed_in: key.is_some(),
+        base_url: base_url(),
+        key_hint: key.as_deref().map(hint),
+        user_name: info.user_name,
+        group_name: info.group_name,
+    })
 }
 
-#[tauri::command]
-pub fn save_key(key: String) -> Result<AccountState, String> {
+pub fn store_key(key: &str) -> Result<(), String> {
     let key = key.trim();
     if !key.starts_with("sk-") || key.len() < 20 {
         return Err("Key 格式不对，应该以 sk- 开头".into());
     }
-    entry()?.set_password(key).map_err(|e| format!("保存失败：{e}"))?;
-    account_state()
+    entry()?.set_password(key).map_err(|e| format!("保存失败：{e}"))
+}
+
+/// Development fallback for when the site has no desktop sign-in yet (e.g. a local sub2api).
+#[tauri::command]
+pub fn save_key(app: AppHandle, key: String) -> Result<AccountState, String> {
+    store_key(&key)?;
+    login::clear_account(&app);
+    account_state(app)
 }
 
 #[tauri::command]
-pub fn sign_out() -> Result<AccountState, String> {
+pub fn sign_out(app: AppHandle) -> Result<AccountState, String> {
     match entry()?.delete_credential() {
         Ok(()) | Err(keyring::Error::NoEntry) => {}
         Err(e) => return Err(format!("退出失败：{e}")),
     }
-    account_state()
+    login::clear_account(&app);
+    account_state(app)
 }
 
 /// Debug builds only: HIVEGPT_DEV_PROMPT makes the app finish setup with the default folder and

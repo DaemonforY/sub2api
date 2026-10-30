@@ -528,6 +528,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/desktop-login',
+    name: 'DesktopLogin',
+    component: () => import('@/views/user/DesktopLoginView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Sign in to HiveGPT Desktop',
+      titleKey: 'desktopLogin.title'
+    }
+  },
+  {
     path: '/canvas-connect',
     name: 'CanvasConnect',
     component: () => import('@/views/user/CanvasConnectView.vue'),

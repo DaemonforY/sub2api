@@ -139,6 +139,13 @@ func RegisterAuthRoutes(
 			FailureMode: middleware.RateLimitFailOpen,
 		}), h.Auth.WeChatSyncProfileStart)
 		// 公众号扫码登录（PC）与验证码登录（手机浏览器，网页出码、用户发给公众号），两者都轮询 qr/status
+		// HiveGPT 桌面助手：应用发起登录请求、轮询结果（手机扫码后在网页上确认）
+		auth.POST("/desktop/start", rateLimiter.LimitWithOptions("desktop-login-start", 20, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailClose,
+		}), h.Desktop.Start)
+		auth.POST("/desktop/poll", rateLimiter.LimitWithOptions("desktop-login-poll", 600, time.Minute, middleware.RateLimitOptions{
+			FailureMode: middleware.RateLimitFailOpen,
+		}), h.Desktop.Poll)
 		auth.POST("/oauth/wechat/qr/create", rateLimiter.LimitWithOptions("oauth-wechat-qr-create", 20, time.Minute, middleware.RateLimitOptions{
 			FailureMode: middleware.RateLimitFailClose,
 		}), h.Auth.WeChatQRLoginCreate)

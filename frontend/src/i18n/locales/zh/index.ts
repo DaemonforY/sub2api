@@ -28,6 +28,7 @@ import shihua from './shihua'
 import materials from './materials'
 import inspiration from './inspiration'
 import poems from './poems'
+import desktop from './desktop'
 
 export default {
   ...landing,
@@ -60,4 +61,5 @@ export default {
   ...materials,
   ...inspiration,
   ...poems,
+  ...desktop,
 }

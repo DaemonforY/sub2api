@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // First-run checklist: 1) the Codex engine is downloaded, 2) a key is saved, 3) a folder is chosen.
-// Step 2 is a temporary paste-a-key form; WeChat QR sign-in replaces it.
+// Step 2 is WeChat QR sign-in; pasting a key stays available for development.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-dialog'
+import WeChatLogin from './WeChatLogin.vue'
 
 const emit = defineEmits<{ ready: [dir: string] }>()
 
@@ -17,6 +18,8 @@ interface AccountState {
   signed_in: boolean
   base_url: string
   key_hint: string | null
+  user_name: string
+  group_name: string
 }
 interface Progress {
   stage: 'download' | 'unpack' | 'done'
@@ -33,6 +36,8 @@ const installError = ref('')
 const keyInput = ref('')
 const keyError = ref('')
 const folder = ref('')
+const showPaste = ref(false)
+const isDev = import.meta.env.DEV
 let unlisten: UnlistenFn | null = null
 
 const percent = computed(() => {
@@ -77,6 +82,11 @@ async function saveKey() {
   }
 }
 
+async function onLoggedIn() {
+  account.value = await invoke<AccountState>('account_state')
+  if ((await invoke<string | null>('dev_autorun')) && canStart.value) emit('ready', folder.value)
+}
+
 async function signOut() {
   account.value = await invoke<AccountState>('sign_out')
 }
@@ -115,16 +125,20 @@ const canStart = computed(() => engine.value?.ready && account.value?.signed_in 
     <section class="step">
       <h2><span class="num">2</span>登录</h2>
       <p v-if="account?.signed_in" class="ok">
-        已登录（{{ account.key_hint }}）
+        已登录<template v-if="account.user_name">：{{ account.user_name }}</template>
+        <span v-if="account.group_name" class="group">（{{ account.group_name }}）</span>
         <button class="link" @click="signOut">退出</button>
       </p>
       <template v-else>
-        <p class="hint">（开发版）微信扫码登录还没接上，先粘贴一个 HiveGPT 的 Key。</p>
-        <div class="row">
-          <input v-model="keyInput" type="password" placeholder="sk-…" @keyup.enter="saveKey" />
-          <button class="primary" :disabled="!keyInput" @click="saveKey">保存</button>
-        </div>
-        <p v-if="keyError" class="error">{{ keyError }}</p>
+        <WeChatLogin @done="onLoggedIn" />
+        <template v-if="isDev">
+          <button class="link dev" @click="showPaste = !showPaste">开发用：粘贴 Key</button>
+          <div v-if="showPaste" class="row">
+            <input v-model="keyInput" type="password" placeholder="sk-…" @keyup.enter="saveKey" />
+            <button class="primary" :disabled="!keyInput" @click="saveKey">保存</button>
+          </div>
+          <p v-if="keyError" class="error">{{ keyError }}</p>
+        </template>
       </template>
     </section>
 
@@ -236,6 +250,15 @@ button.link {
   color: var(--muted);
   text-decoration: underline;
   padding: 0 4px;
+}
+
+.group {
+  color: var(--muted);
+}
+
+button.link.dev {
+  margin-top: 12px;
+  font-size: 12px;
 }
 
 .start {
