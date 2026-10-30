@@ -179,14 +179,14 @@ export default {
     // Admin tour steps
     admin: {
       welcome: {
-        title: '👋 Welcome to Sub2API',
-        description: '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">Sub2API is a powerful AI service gateway platform that helps you easily manage and distribute AI services.</p><p style="margin-bottom: 12px;"><b>🎯 Core Features:</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>📦 <b>Group Management</b> - Create service tiers (VIP, Free Trial, etc.)</li><li>🔗 <b>Account Pool</b> - Connect multiple upstream AI service accounts</li><li>🔑 <b>Key Distribution</b> - Generate independent API Keys for users</li><li>💰 <b>Billing Control</b> - Flexible rate and quota management</li></ul><p style="color: #10b981; font-weight: 600;">Let\'s complete the initial setup in 3 minutes →</p></div>',
+        title: '👋 Welcome to HiveGPT',
+        description: '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">HiveGPT (hivegpt.cn): one API key for GPT, Codex, gpt-image-2 and more. Pay only for what you use; failed requests are free.</p><p style="margin-bottom: 12px;"><b>✨ What users can do here:</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>💬 <b>AI Chat</b> - chat and draw right in the browser</li><li>🎨 <b>Infinite Canvas</b> - generate and edit images, comics, posters</li><li>🔑 <b>API Keys</b> - plug into Claude Code, Codex and other tools</li><li>📚 <b>Learn AI</b> - free tutorials and drawing courses</li></ul><p style="color: #10b981; font-weight: 600;">Next, a quick walk through the admin setup: groups → accounts → keys →</p></div>',
         nextBtn: 'Start Setup 🚀',
         prevBtn: 'Skip'
       },
       groupManage: {
         title: '📦 Step 1: Group Management',
-        description: '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;"><b>What is a Group?</b></p><p style="margin-bottom: 12px;">Groups are the core concept of Sub2API, like a "service package":</p><ul style="margin-left: 20px; margin-bottom: 12px; font-size: 13px;"><li>🎯 Each group can contain multiple upstream accounts</li><li>💰 Each group has independent billing multiplier</li><li>👥 Can be set as public or exclusive</li></ul><p style="margin-top: 12px; padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; font-size: 13px;"><b>💡 Example:</b> You can create "VIP Premium" (high rate) and "Free Trial" (low rate) groups</p><p style="margin-top: 16px; color: #10b981; font-weight: 600;">👉 Click "Group Management" on the left sidebar</p></div>'
+        description: '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;"><b>What is a Group?</b></p><p style="margin-bottom: 12px;">Groups are the core concept of the admin console, like a "service package":</p><ul style="margin-left: 20px; margin-bottom: 12px; font-size: 13px;"><li>🎯 Each group can contain multiple upstream accounts</li><li>💰 Each group has independent billing multiplier</li><li>👥 Can be set as public or exclusive</li></ul><p style="margin-top: 12px; padding: 8px 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; font-size: 13px;"><b>💡 Example:</b> You can create "VIP Premium" (high rate) and "Free Trial" (low rate) groups</p><p style="margin-top: 16px; color: #10b981; font-weight: 600;">👉 Click "Group Management" on the left sidebar</p></div>'
       },
       createGroup: {
         title: '➕ Create New Group',
@@ -279,8 +279,8 @@ export default {
     // User tour steps
     user: {
       welcome: {
-        title: '👋 Welcome to Sub2API',
-        description: '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">Hello! Welcome to the Sub2API AI service platform.</p><p style="margin-bottom: 12px;"><b>🎯 Quick Start:</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>🔑 Create API Key</li><li>📋 Copy key to your application</li><li>🚀 Start using AI services</li></ul><p style="color: #10b981; font-weight: 600;">Just 1 minute, let\'s get started →</p></div>',
+        title: '👋 Welcome to HiveGPT',
+        description: '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">One API key for GPT, Codex, gpt-image-2 and more. Pay only for what you use; failed requests are free.</p><p style="margin-bottom: 12px;"><b>✨ You can:</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li>💬 <b>AI Chat</b> - chat and draw right in the browser</li><li>🎨 <b>Infinite Canvas</b> - generate and edit images, comics, posters</li><li>🔑 <b>API Keys</b> - plug into Claude Code, Codex and other tools</li><li>📚 <b>Learn AI</b> - free tutorials and drawing courses</li></ul><p style="color: #10b981; font-weight: 600;">Take 1 minute to create your first key →</p></div>',
         nextBtn: 'Start 🚀',
         prevBtn: 'Skip'
       },
