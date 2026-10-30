@@ -173,8 +173,8 @@ tracks.push(
       { id: 'j8', title: '美食和治愈系小物', minutes: 15, ready: true },
       { id: 'j9', title: '海报和封面', minutes: 20, ready: true },
       { id: 'j10', title: '绘本和故事插画', minutes: 20, ready: true },
-      { id: 'j11', title: '写实人像', minutes: 20, ready: false },
-      { id: 'j12', title: '头像框、图标和 Logo', minutes: 15, ready: false },
+      { id: 'j11', title: '写实人像', minutes: 20, ready: true },
+      { id: 'j12', title: '头像框、图标和 Logo', minutes: 15, ready: true },
     ],
   },
   {
