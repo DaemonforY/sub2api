@@ -110,8 +110,17 @@ pub fn dev_autorun() -> Option<String> {
 }
 
 /// 文档/HiveGPT 工作区, created on first use. The user can pick any other folder.
+/// Debug builds: HIVEGPT_DEV_WORKSPACE overrides it (used to run each template in its own folder).
 #[tauri::command]
 pub fn default_workspace(_app: AppHandle) -> Result<String, String> {
+    if cfg!(debug_assertions) {
+        if let Ok(dir) = std::env::var("HIVEGPT_DEV_WORKSPACE") {
+            if !dir.trim().is_empty() {
+                std::fs::create_dir_all(&dir).map_err(|e| format!("创建工作区失败：{e}"))?;
+                return Ok(dir);
+            }
+        }
+    }
     let docs = dirs::document_dir().or_else(dirs::home_dir).ok_or("找不到「文档」文件夹")?;
     let dir: PathBuf = docs.join("HiveGPT 工作区");
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建工作区失败：{e}"))?;
