@@ -619,6 +619,29 @@ function ensureCli({ name, pkg, extraDirs, minVersion }) {
   return installed
 }
 
+/**
+ * npm writes three launchers per command on Windows: name, name.cmd and name.ps1. PowerShell
+ * prefers the .ps1, which Windows' default execution policy refuses to run ("running scripts is
+ * disabled on this system"), so `codex` failed in PowerShell. Without the .ps1 it uses the .cmd.
+ * Only our own prefix is touched; npm doesn't need these files.
+ */
+function dropPowerShellShims() {
+  if (!IS_WIN || !exists(NPM_BIN)) return
+  const removed = []
+  for (const name of fs.readdirSync(NPM_BIN)) {
+    if (!name.toLowerCase().endsWith('.ps1')) continue
+    const base = name.slice(0, -4)
+    if (!isFile(path.join(NPM_BIN, `${base}.cmd`))) continue
+    try {
+      fs.rmSync(path.join(NPM_BIN, name), { force: true })
+      removed.push(base)
+    } catch {
+      /* a locked file just stays; the .cmd still works when typed as name.cmd */
+    }
+  }
+  if (removed.length) ok(`已让 PowerShell 直接用 ${removed.join('、')}（去掉了被 Windows 执行策略拦住的 .ps1 启动文件）`)
+}
+
 function nodeBinDirToPersist() {
   const dir = process.env.HIVEGPT_NODE_BIN || path.dirname(process.execPath)
   return dir.startsWith(HIVE_DIR) ? dir : null
@@ -1018,6 +1041,7 @@ async function main() {
     await attempt('Codex', () => setupCodex(key, modelIds))
   }
 
+  dropPowerShellShims()
   const pathDirs = [...pathDirsToPersist]
   const nodeDir = nodeBinDirToPersist()
   if (pathDirs.length && nodeDir) pathDirs.push(nodeDir)
@@ -1068,10 +1092,13 @@ function printNextSteps(tools) {
   if (tools !== 'claude') lines.push(...cli('Codex 命令行', 'codex', 'codex-test'))
   if (tools !== 'codex') lines.push(...cli('Claude Code 命令行', 'claude', 'claude-test'))
   lines.push('    第一次会问要不要信任这个文件夹，选「信任」；然后直接用中文告诉它你想做什么。')
+  if (IS_WIN) lines.push(`    如果提示 ${cyan('running scripts is disabled on this system')}，把命令里的 codex / claude 换成 ${cyan('codex.cmd')} / ${cyan('claude.cmd')} 就行。`)
   if (tools !== 'claude') {
     lines.push(codexAppInstalled()
       ? `  ${bold('用 Codex 桌面 App')}：完全退出 App 再重新打开，新建一个任务，就会用 HiveGPT 了。`
-      : `  ${bold('想用有界面的 Codex 桌面 App')}：在窗口里输入 ${cyan('codex app')} 回车，会打开安装页（${IS_WIN ? 'Microsoft Store' : IS_MAC ? '自动下载安装' : 'Linux 暂无桌面版'}），装好打开即可，配置已经写好。`)
+      : IS_WIN
+        ? `  ${bold('想用有界面的 Codex 桌面 App')}：打开 Microsoft Store 搜索「ChatGPT」（发布者是 OpenAI）安装，或在窗口里输入 ${cyan('codex app')} 回车打开安装页。Codex 就在 ChatGPT 桌面版里，装好打开即可，配置已经写好。`
+        : `  ${bold('想用有界面的 Codex 桌面 App')}：在窗口里输入 ${cyan('codex app')} 回车，会打开安装页（${IS_MAC ? '自动下载安装' : 'Linux 暂无桌面版'}），装好打开即可，配置已经写好。`)
   }
   if (tools !== 'codex') {
     lines.push(desktopInstalled()

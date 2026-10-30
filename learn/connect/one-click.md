@@ -98,7 +98,7 @@ Codex 默认用 `gpt-6.1-sol`（分组里没有时自动换成同系列可用的
 
 ### 用桌面 App
 
-- **Codex 桌面 App**：没装的话，在 PowerShell / 终端里输入 `codex app` 回车，会打开安装页（Windows 是 Microsoft Store，Mac 会自动下载安装）。装好打开就会用 HiveGPT，配置已经写好；如果停在登录页，选用 API Key 继续的入口。已经装了的，**完全退出**再打开，新建一个任务。
+- **Codex 桌面 App**：Codex 现在就在 ChatGPT 桌面版里。没装的话，Windows 打开 **Microsoft Store** 搜索「ChatGPT」（发布者是 OpenAI）安装；Mac 在终端里输入 `codex app` 回车会自动下载安装。装好打开就会用 HiveGPT，配置已经写好；如果停在登录页，选用 API Key 继续的入口。已经装了的，**完全退出**再打开，新建一个任务。
 - **Claude 桌面 App**：没装的话从 [claude.ai/download](https://claude.ai/download) 下载（需要能访问 claude.ai）。装好打开就会用 HiveGPT；已经装了的，完全退出（Mac 按 ⌘Q，Windows 在右下角托盘图标上右键退出）再打开。
 
 到 HiveGPT 的「使用记录」里，能看到刚才的调用。
@@ -154,6 +154,7 @@ $env:HIVEGPT_RESTORE='1'; irm https://hivegpt.cn/install.ps1 | iex
 | 提示 Key 不能用（403） | Key 被停用、设置了 IP 白名单，或没有分配分组，到「API 密钥」页检查 |
 | 下载 Node.js 或 Claude Code 失败 | 多是网络不稳，重新运行一次即可；公司网络拦截的话，换手机热点试试 |
 | 在开始菜单 / 启动台里搜不到 Codex、Claude Code | 正常：装的是命令行工具，要在 PowerShell / 终端里输入 `codex` 或 `claude`；想要桌面 App 见上文「用桌面 App」 |
+| PowerShell 里输入 `codex` 报 `running scripts is disabled on this system` | Windows 默认不让运行 `.ps1` 脚本，而 PowerShell 优先用了 npm 生成的 `codex.ps1`。重新运行一次安装命令（新版会自动去掉它），或者直接把命令换成 `codex.cmd` / `claude.cmd`。不需要改执行策略 |
 | 装完提示找不到 `claude` / `codex` 命令 | 关掉当前终端，**新开一个**再试；新的 PATH 只对新窗口生效 |
 | Claude Code 报「模型不存在」 | 当前终端里还留着旧的 `ANTHROPIC_MODEL`，新开一个终端再运行 |
 | 桌面 App 里没看到 HiveGPT 的模型 | 要**完全退出**再打开，只关窗口不算；Claude 桌面 App 还要切到「HiveGPT」配置（见上文） |
