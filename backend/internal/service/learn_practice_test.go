@@ -207,10 +207,10 @@ func TestLearnPracticeCertificate(t *testing.T) {
 	require.NoError(t, err)
 	project := st.Items[len(st.Items)-1]
 	require.False(t, project.Done)
-	require.Contains(t, project.Detail, "已达标 1 / 5 个")
+	require.Contains(t, project.Detail, "已达标 1 / 6 个")
 	require.Contains(t, project.Detail, "给你的照片做构图体检")
 	repo.practice = append(repo.practice, LearnPractice{UserID: 1, Exercise: "i5-photo", Score: 61}, LearnPractice{UserID: 1, Exercise: "i5-wallpaper", Score: 70},
-		LearnPractice{UserID: 1, Exercise: "i8-style", Score: 75}, LearnPractice{UserID: 1, Exercise: "i4-palette", Score: 80})
+		LearnPractice{UserID: 1, Exercise: "i8-style", Score: 75}, LearnPractice{UserID: 1, Exercise: "i4-palette", Score: 80}, LearnPractice{UserID: 1, Exercise: "i6-camera", Score: 72})
 	st, err = svc.CertStatus(ctx, 1, "i")
 	require.NoError(t, err)
 	require.True(t, st.Items[len(st.Items)-1].Done)
