@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { open } from '@tauri-apps/plugin-dialog'
 import WeChatLogin from './WeChatLogin.vue'
+import { track } from '../lib/track'
 
 const emit = defineEmits<{ ready: [dir: string] }>()
 
@@ -78,13 +79,19 @@ onMounted(async () => {
 
 onUnmounted(() => unlisten.forEach((u) => u()))
 
+/** Short, file-name-free reason for analytics. */
+const reasonOf = (e: unknown) => String(e).replace(/[\\/][^\s，,]*/g, '').slice(0, 60)
+
 async function installEngine() {
   installing.value = true
   installError.value = ''
+  const t0 = Date.now()
   try {
     engine.value = await invoke<EngineStatus>('engine_install')
+    track('desktop_engine_ready', { step: 'engine', secs: Math.round((Date.now() - t0) / 1000), source: progress.value?.source ?? '' })
   } catch (e) {
     installError.value = String(e)
+    track('desktop_engine_failed', { step: 'engine', reason: reasonOf(e) })
   } finally {
     installing.value = false
   }
@@ -93,10 +100,13 @@ async function installEngine() {
 async function installOffice() {
   officeInstalling.value = true
   officeError.value = ''
+  const t0 = Date.now()
   try {
     office.value = await invoke<OfficeStatus>('office_install')
+    track('desktop_engine_ready', { step: 'office', secs: Math.round((Date.now() - t0) / 1000) })
   } catch (e) {
     officeError.value = String(e)
+    track('desktop_engine_failed', { step: 'office', reason: reasonOf(e) })
   } finally {
     officeInstalling.value = false
   }
@@ -119,6 +129,7 @@ async function saveKey() {
 
 async function onLoggedIn() {
   account.value = await invoke<AccountState>('account_state')
+  track('desktop_login_ok', { group: account.value?.group_name ?? '' })
   if ((await invoke<string | null>('dev_autorun')) && canStart.value) emit('ready', folder.value)
 }
 

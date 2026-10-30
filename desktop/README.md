@@ -1,4 +1,4 @@
-# HiveGPT 桌面助手（骨架）
+# HiveGPT 桌面助手
 
 This is a zero-config desktop app: non-developers get Codex-level agent work without touching keys, terminals or OpenAI accounts. The plan, which contains business numbers, is kept locally as `docs/DESKTOP_ASSISTANT_PLAN.md` and is not in git (`docs/*` is ignored).
 
@@ -34,6 +34,13 @@ This folder is a separate pnpm project. It is not part of the web frontend build
    - Each message: `turn/start`, with streamed `item/agentMessage/delta`.
    - Work items: commands and file changes are shown as steps.
    - Approvals: command/file approvals become a Chinese dialog.
+7. **History.** A sidebar lists past conversations from every folder (`thread/list`). Opening one runs `thread/resume` + `thread/read` and continues it in its own folder. Rename uses `thread/name/set`; ✕ archives with `thread/archive`. Only messages come back from `thread/read`; the command and file steps of old turns are not shown.
+8. **Undo a turn (撤销这一轮).**
+   - Before every turn, `snapshot.rs` copies the working folder to `<app data>/snapshots/<thread>/`. Folders over 200 MB or 5,000 files are skipped: that turn can then only be undone in the conversation.
+   - Undo puts every saved file back, then runs `thread/rollback` (1 turn). Files the turn created are moved to `<app data>/撤销回收站/<time>/`, never deleted.
+   - The last 10 snapshots per conversation are kept; conversations idle for 14 days lose theirs.
+9. **Balance.** The header shows the wallet balance or subscription allowance and today's spend, from the gateway's `GET /v1/usage`, plus 充值 below $1. After each turn it shows what the turn cost.
+10. **Analytics.** `track.rs` posts `desktop_*` events to `/api/v1/events` (app `desktop`, visitor = device id). No prompts or file names are sent. The events cover install, open, engine ready/failed, sign-in, task start/done/failed (template, seconds, reason), undo, history and 充值. Debug builds send nothing unless `HIVEGPT_DEV_TRACK=1`.
 
 ## Run
 
@@ -45,11 +52,19 @@ pnpm tauri dev
 
 For development you can skip the key form: `HIVEGPT_API_KEY=sk-… pnpm tauri dev`. `HIVEGPT_BASE_URL` points it at another sub2api.
 
+Debug-build switches:
+- `HIVEGPT_DEV_PROMPT`: finish setup and send this prompt.
+- `HIVEGPT_DEV_WORKSPACE`: the working folder.
+- `HIVEGPT_DEV_UNDO=1`: undo that turn once it finishes.
+- `HIVEGPT_DEV_TRACK=1`: send analytics.
+
+**UI preview without Tauri.** Run `pnpm dev`, then open `http://localhost:1420/dev/mock.html` in a browser. `dev/mock-tauri.ts` fakes every command and the Codex engine, so the screens can be clicked through. Nothing in `dev/` is bundled.
+
 Checks: `pnpm typecheck` (Vue) and `cargo build` in `src-tauri/` (Rust 1.80+). Windows installer: `pnpm tauri build --bundles nsis` on Windows, or the Desktop App Build workflow.
 
 ## Not done yet
 
 - **`GET /api/v1/desktop/version`**, to serve the engine version and per-platform hashes. Today the hash comes from the same mirror as the file, so it catches corruption, not a malicious mirror.
-- History, analytics events, auto-update, and more templates. The office kit and the 8 templates are done.
+- Auto-update, server-delivered skills (phase 2 B), scheduled tasks (phase 2 C).
 - **Testing on a real Windows PC.** `.github/workflows/desktop-build.yml` builds the installer: NSIS, per-user, about 5 MB, artifact `hivegpt-desktop-windows-x64`. It runs on `desktop/**` changes on main and on `feat/desktop-*`, or by hand. The installer has not been run on Windows yet. On Windows the app runs Codex's one-time unelevated sandbox setup when it connects.
 - **Code signing** for Windows and macOS.

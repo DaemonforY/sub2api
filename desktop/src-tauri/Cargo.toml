@@ -1,6 +1,6 @@
 [package]
 name = "hivegpt-desktop"
-version = "0.0.1"
+version = "0.1.0"
 description = "HiveGPT 桌面助手"
 edition = "2021"
 
@@ -26,5 +26,6 @@ flate2 = "1"
 tar = "0.4"
 dirs = "6"
 uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 whoami = "1"
 keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }

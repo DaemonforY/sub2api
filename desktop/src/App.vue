@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import SetupView from './components/SetupView.vue'
 import ChatView from './components/ChatView.vue'
 
 // Setup (engine, sign-in, folder) hands over the chosen working folder; the chat runs in it.
 const workspace = ref('')
+
+// 埋点: desktop_installed (first launch) and desktop_open (every launch).
+onMounted(() => invoke('track_launch').catch(() => {}))
 </script>
 
 <template>

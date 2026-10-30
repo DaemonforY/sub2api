@@ -75,9 +75,22 @@ var AnalyticsEventNames = map[string]bool{
 	"poems_search":       true, // 诗词灵感 (/poems): a search (props.random, props.has_q)
 	"poems_find":         true, // … 按画面找 finished (props.free, props.picks)
 	"poem_draw":          true, // … 用这首诗生图 (props.id)
+	// HiveGPT 桌面助手 (app "desktop", visitor_id = the computer's device id). First task and coming
+	// back on day 2 are read from task_start / open, so the app doesn't keep that state itself.
+	"desktop_installed":      true, // first launch on this computer
+	"desktop_open":           true, // every launch
+	"desktop_engine_ready":   true, // engine / office kit installed (props.step, props.secs, props.source)
+	"desktop_engine_failed":  true, // … failed (props.step, props.reason)
+	"desktop_login_ok":       true, // WeChat sign-in finished on the computer (props.group)
+	"desktop_task_start":     true, // a message sent (props.template = id / sample:<id> / custom, props.turn, props.snapshot)
+	"desktop_task_done":      true, // … the turn completed (props.template, props.secs)
+	"desktop_task_failed":    true, // … it did not (props.reason = interrupted / quota / auth / error)
+	"desktop_undo":           true, // 撤销这一轮 (props.files = restored / skipped / none)
+	"desktop_history_open":   true, // opened a past conversation
+	"desktop_recharge_click": true, // clicked 充值 (props.low)
 }
 
-var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true}
+var analyticsApps = map[string]bool{"main": true, "learn": true, "editor": true, "desktop": true}
 
 var (
 	analyticsIDPattern  = regexp.MustCompile(`^[A-Za-z0-9_-]{8,64}$`)

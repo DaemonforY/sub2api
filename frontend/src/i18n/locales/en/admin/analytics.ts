@@ -237,7 +237,7 @@ export default {
       }
     },
     device: { desktop: 'Desktop', mobile: 'Mobile', tablet: 'Tablet', '': 'Unknown' },
-    apps: { main: 'Main', learn: 'Learn', editor: 'Editor' },
+    apps: { main: 'Main', learn: 'Learn', editor: 'Editor', desktop: 'Desktop' },
     events: {
       signup_view: 'Opened sign-up',
       signup_code_sent: 'Sent sign-up code',
@@ -276,7 +276,18 @@ export default {
       guide_dismiss: 'Closed the get-started card',
       guide_config_open: 'Opened the Codex setup',
       poem_play_action: 'Interactive poem: clicked a term / turned sound on',
-      poem_play_qr: 'Interactive poem: QR panel (open / close / link)'
+      poem_play_qr: 'Interactive poem: QR panel (open / close / link)',
+      desktop_installed: 'Desktop: first launch',
+      desktop_open: 'Desktop: opened',
+      desktop_engine_ready: 'Desktop: engine / office kit installed',
+      desktop_engine_failed: 'Desktop: engine / office kit install failed',
+      desktop_login_ok: 'Desktop: signed in with WeChat',
+      desktop_task_start: 'Desktop: task sent',
+      desktop_task_done: 'Desktop: task completed',
+      desktop_task_failed: 'Desktop: task not completed',
+      desktop_undo: 'Desktop: undid a turn',
+      desktop_history_open: 'Desktop: opened a past conversation',
+      desktop_recharge_click: 'Desktop: clicked top up'
     },
     reminder: {
       title: 'Get-started reminder',

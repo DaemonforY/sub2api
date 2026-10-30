@@ -109,6 +109,13 @@ pub fn dev_autorun() -> Option<String> {
     std::env::var("HIVEGPT_DEV_PROMPT").ok().filter(|s| !s.trim().is_empty())
 }
 
+/// Debug builds only: with HIVEGPT_DEV_UNDO set, the chat undoes the HIVEGPT_DEV_PROMPT turn once it
+/// finishes, so 撤销这一轮 (snapshot restore + thread/rollback) can be tested without clicking.
+#[tauri::command]
+pub fn dev_undo() -> bool {
+    cfg!(debug_assertions) && std::env::var("HIVEGPT_DEV_UNDO").map(|v| !v.trim().is_empty()).unwrap_or(false)
+}
+
 /// 文档/HiveGPT 工作区, created on first use. The user can pick any other folder.
 /// Debug builds: HIVEGPT_DEV_WORKSPACE overrides it (used to run each template in its own folder).
 #[tauri::command]

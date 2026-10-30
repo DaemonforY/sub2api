@@ -74,7 +74,7 @@ pub struct AccountInfo {
     pub group_name: String,
 }
 
-fn client() -> Result<reqwest::Client, String> {
+pub(crate) fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent(concat!("hivegpt-desktop/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(std::time::Duration::from_secs(10))
@@ -124,7 +124,7 @@ pub fn clear_account(app: &AppHandle) {
 
 /// A random id made on first run and kept in the app data dir, so signing in again on this computer
 /// reuses its key instead of piling up new ones.
-fn device_id(app: &AppHandle) -> Result<String, String> {
+pub(crate) fn device_id(app: &AppHandle) -> Result<String, String> {
     let dir = app.path().app_data_dir().map_err(|e| format!("找不到应用数据目录：{e}"))?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("device-id");
@@ -213,4 +213,18 @@ pub async fn check_key() -> Result<KeyCheck, String> {
     }
     // Anything else (403 balance / group problems, 5xx) is left to the conversation's own messages.
     Ok(KeyCheck { status: "ok", message: format!("HTTP {code}") })
+}
+
+/// Balance / plan and today's spend for the header, straight from the gateway's GET /v1/usage
+/// (the same endpoint CC-Switch and friends read with a key). Returned as-is; the web side picks
+/// the fields it shows. None when the site can't be reached, so the header just stays empty.
+#[tauri::command]
+pub async fn usage_summary() -> Result<Option<serde_json::Value>, String> {
+    let Some(key) = settings::api_key()? else { return Ok(None) };
+    let url = format!("{}/v1/usage", settings::base_url());
+    let Ok(resp) = client()?.get(&url).bearer_auth(key).send().await else { return Ok(None) };
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+    Ok(resp.json().await.ok())
 }

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HiveGPT 桌面助手（界面预览，引擎为模拟）</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- Fake Tauri + Codex first (see dev/mock-tauri.ts), then the real app. -->
+    <script type="module">
+      import './mock-tauri.ts'
+      await import('../src/main.ts')
+    </script>
+  </body>
+</html>

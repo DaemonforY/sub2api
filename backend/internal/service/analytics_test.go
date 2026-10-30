@@ -170,3 +170,21 @@ func TestAnalyticsLateSignupAttributionForOAuthUsers(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, repo.late, 1, "tried once per user")
 }
+
+func TestAnalyticsIngestAcceptsDesktopApp(t *testing.T) {
+	repo := &memAnalyticsRepo{}
+	s := NewAnalyticsService(repo)
+	// What the 桌面助手 sends: device id as visitor, Rust reqwest user agent.
+	n, err := s.Ingest(context.Background(), AnalyticsBatch{
+		VisitorID: "3f2b8c1e-9d4a-4e2b-8f3c-1a2b3c4d5e6f", SessionID: "0123456789abcdef0123456789abcdef", App: "desktop",
+		Events: []AnalyticsBatchEvent{
+			{Name: "desktop_task_start", Path: "/desktop", Props: map[string]any{"template": "sample:invoices", "turn": 0.0, "v": "0.1.0", "os": "windows"}},
+			{Name: "desktop_undo", Path: "/desktop", Props: map[string]any{"files": "restored"}},
+		},
+	}, AnalyticsRequestMeta{IP: "198.51.100.23", UserAgent: "hivegpt-desktop/0.1.0"})
+	require.NoError(t, err)
+	require.Equal(t, 2, n)
+	require.Equal(t, "desktop", repo.rows[0].App)
+	require.Equal(t, "sample:invoices", repo.rows[0].Props["template"])
+	require.Equal(t, "windows", repo.rows[0].Props["os"])
+}

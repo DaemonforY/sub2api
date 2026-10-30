@@ -237,7 +237,7 @@ export default {
       }
     },
     device: { desktop: '电脑', mobile: '手机', tablet: '平板', '': '未知' },
-    apps: { main: '主站', learn: '学习站', editor: '排版' },
+    apps: { main: '主站', learn: '学习站', editor: '排版', desktop: '桌面助手' },
     events: {
       signup_view: '打开注册页',
       signup_code_sent: '发送注册验证码',
@@ -276,7 +276,18 @@ export default {
       guide_dismiss: '关闭上手引导',
       guide_config_open: '打开 Codex 配置引导',
       poem_play_action: '诗画互动版：点词 / 开声音',
-      poem_play_qr: '诗画互动版：二维码面板（展开 / 收起 / 点链接）'
+      poem_play_qr: '诗画互动版：二维码面板（展开 / 收起 / 点链接）',
+      desktop_installed: '桌面助手：首次打开',
+      desktop_open: '桌面助手：打开',
+      desktop_engine_ready: '桌面助手：引擎 / 办公工具装好',
+      desktop_engine_failed: '桌面助手：引擎 / 办公工具安装失败',
+      desktop_login_ok: '桌面助手：扫码登录成功',
+      desktop_task_start: '桌面助手：发出任务',
+      desktop_task_done: '桌面助手：任务完成',
+      desktop_task_failed: '桌面助手：任务没完成',
+      desktop_undo: '桌面助手：撤销这一轮',
+      desktop_history_open: '桌面助手：打开历史对话',
+      desktop_recharge_click: '桌面助手：点充值'
     },
     reminder: {
       title: '新用户上手提醒',
