@@ -22,6 +22,7 @@ pub fn run() {
             bridge::engine_stop,
             login::login_start,
             login::login_poll,
+            login::check_key,
             settings::account_state,
             settings::save_key,
             settings::sign_out,

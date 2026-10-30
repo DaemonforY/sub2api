@@ -184,3 +184,33 @@ pub async fn login_poll(app: AppHandle, login: State<'_, LoginState>) -> Result<
     }
     Ok(LoginPoll { status: polled.status })
 }
+
+#[derive(Serialize)]
+pub struct KeyCheck {
+    /// ok / invalid (401: deleted, disabled or wrong key) / unreachable (network or server trouble)
+    status: &'static str,
+    message: String,
+}
+
+/// Asks the gateway whether the saved key still works (GET /v1/models), so a revoked key sends the
+/// user back to sign-in at once instead of after Codex's ~26 s of retries.
+#[tauri::command]
+pub async fn check_key() -> Result<KeyCheck, String> {
+    let Some(key) = settings::api_key()? else {
+        return Ok(KeyCheck { status: "invalid", message: "还没有登录".into() });
+    };
+    let url = format!("{}/v1/models", settings::base_url());
+    let resp = match client()?.get(&url).bearer_auth(key).send().await {
+        Ok(r) => r,
+        Err(e) => return Ok(KeyCheck { status: "unreachable", message: format!("连接 HiveGPT 失败：{e}") }),
+    };
+    let code = resp.status().as_u16();
+    if code == 401 {
+        return Ok(KeyCheck { status: "invalid", message: "这台电脑的 Key 已失效（可能被停用或删除）".into() });
+    }
+    if resp.status().is_success() {
+        return Ok(KeyCheck { status: "ok", message: String::new() });
+    }
+    // Anything else (403 balance / group problems, 5xx) is left to the conversation's own messages.
+    Ok(KeyCheck { status: "ok", message: format!("HTTP {code}") })
+}

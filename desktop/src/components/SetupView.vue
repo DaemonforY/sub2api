@@ -185,7 +185,8 @@ const canStart = computed(() => engine.value?.ready && officeOk.value && account
         <span v-if="account.group_name" class="group">（{{ account.group_name }}）</span>
         <button class="link" @click="signOut">退出</button>
       </p>
-      <template v-else>
+      <!-- Only once the account state has loaded: the login component requests a QR on mount. -->
+      <template v-else-if="account">
         <WeChatLogin @done="onLoggedIn" />
         <template v-if="isDev">
           <button class="link dev" @click="showPaste = !showPaste">开发用：粘贴 Key</button>

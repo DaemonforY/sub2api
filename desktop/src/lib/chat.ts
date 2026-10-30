@@ -32,7 +32,9 @@ export function createChat() {
     busy: false,
     entries: [] as Entry[],
     approvals: [] as Approval[],
-    fatal: '' as string
+    fatal: '' as string,
+    /** The gateway rejected the key (401): the user has to sign in again. */
+    authFailed: false
   })
 
   let noticeSeq = 0
@@ -82,6 +84,7 @@ export function createChat() {
         state.busy = false
         state.turnId = ''
         const turn = params?.turn
+        if (state.authFailed) break
         if (turn?.status === 'failed' && turn.error?.message) notice(friendlyError(turn.error.message), 'error')
         if (turn?.status === 'interrupted') notice('已停止。')
         for (const e of state.entries) if (e.kind === 'agent') e.done = true
@@ -110,6 +113,10 @@ export function createChat() {
         sandboxSetup?.(Boolean(params?.success), params?.error ?? null)
         break
       case 'error':
+        if (isAuthError(params?.error)) {
+          onAuthFailed()
+          break
+        }
         if (params?.willRetry) notice('网络有点慢，正在自动重试…')
         else if (params?.error?.message) notice(friendlyError(params.error.message), 'error')
         break
@@ -169,8 +176,19 @@ export function createChat() {
     state.fatal = '引擎意外退出了，请点「重新连接」。'
   }
 
+  // Codex retries a 401 about six times (~26 s); stop at the first one instead.
+  function onAuthFailed() {
+    if (state.authFailed) return
+    state.authFailed = true
+    state.busy = false
+    if (state.threadId && state.turnId) {
+      client.request('turn/interrupt', { threadId: state.threadId, turnId: state.turnId }).catch(() => {})
+    }
+  }
+
   async function connect(cwd: string) {
     state.fatal = ''
+    state.authFailed = false
     state.cwd = cwd
     const init = await client.start()
     if (init?.platformFamily === 'windows') await prepareWindowsSandbox(cwd)
@@ -210,6 +228,16 @@ export function createChat() {
   }
 
   return { state, connect, send, interrupt, answer }
+}
+
+/** 401 from the gateway, as Codex reports it in `codexErrorInfo` (or only in the message). */
+export function isAuthError(error: any): boolean {
+  const info = error?.codexErrorInfo
+  if (info === 'unauthorized') return true
+  if (info && typeof info === 'object') {
+    for (const v of Object.values(info) as any[]) if (v?.httpStatusCode === 401) return true
+  }
+  return /\b401\b|unauthorized|invalid api key/i.test(String(error?.message ?? ''))
 }
 
 /** Gateway errors are already Chinese; translate the common transport ones. */

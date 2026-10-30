@@ -6,7 +6,7 @@ import { createChat, type Approval } from '../lib/chat'
 import { TEMPLATES, type TaskTemplate } from '../lib/templates'
 
 const props = defineProps<{ workspace: string }>()
-defineEmits<{ 'change-folder': [] }>()
+const emit = defineEmits<{ 'change-folder': []; relogin: [] }>()
 
 const { state, connect, send, interrupt, answer } = createChat()
 const draft = ref('')
@@ -35,6 +35,12 @@ async function start() {
   connecting.value = true
   connectError.value = ''
   try {
+    // A revoked key would otherwise surface only after Codex's retries; check it up front.
+    const key = await invoke<{ status: string; message: string }>('check_key')
+    if (key.status === 'invalid') {
+      state.authFailed = true
+      return
+    }
     await connect(props.workspace)
     const devPrompt = await invoke<string | null>('dev_autorun')
     if (devPrompt && !state.entries.length) send(devPrompt)
@@ -46,6 +52,11 @@ async function start() {
 }
 
 onMounted(start)
+
+async function relogin() {
+  await invoke('sign_out').catch(() => {})
+  emit('relogin')
+}
 
 function submit() {
   const text = draft.value
@@ -79,12 +90,16 @@ watch(
     <header>
       <div class="folder" :title="workspace">📁 {{ workspace }}</div>
       <button @click="openPath(workspace)">打开文件夹</button>
-      <button @click="$emit('change-folder')">换文件夹</button>
+      <button @click="emit('change-folder')">换文件夹</button>
     </header>
 
     <main ref="scroller">
       <p v-if="connecting" class="muted">正在启动…</p>
-      <div v-if="connectError || state.fatal" class="notice error">
+      <div v-if="state.authFailed" class="relogin">
+        <p>登录已失效：这台电脑的 Key 被停用或删除了（也可能是在网页上退出了这台电脑）。</p>
+        <button class="primary" @click="relogin">重新扫码登录</button>
+      </div>
+      <div v-else-if="connectError || state.fatal" class="notice error">
         {{ connectError || state.fatal }}
         <button @click="start">重新连接</button>
       </div>
@@ -195,6 +210,16 @@ main {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.relogin {
+  margin: auto;
+  max-width: 420px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 24px;
 }
 
 .muted {

@@ -10,7 +10,7 @@ const workspace = ref('')
 <template>
   <div class="app">
     <SetupView v-if="!workspace" @ready="(dir: string) => (workspace = dir)" />
-    <ChatView v-else :workspace="workspace" @change-folder="workspace = ''" />
+    <ChatView v-else :workspace="workspace" @change-folder="workspace = ''" @relogin="workspace = ''" />
   </div>
 </template>
 
