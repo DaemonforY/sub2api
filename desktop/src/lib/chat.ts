@@ -106,6 +106,9 @@ export function createChat() {
         if (e) e.output += params.delta ?? ''
         break
       }
+      case 'windowsSandbox/setupCompleted':
+        sandboxSetup?.(Boolean(params?.success), params?.error ?? null)
+        break
       case 'error':
         if (params?.willRetry) notice('网络有点慢，正在自动重试…')
         else if (params?.error?.message) notice(friendlyError(params.error.message), 'error')
@@ -140,6 +143,26 @@ export function createChat() {
     }
   }
 
+  // Windows: Codex's sandbox needs a one-time setup. "unelevated" avoids a UAC prompt; when it
+  // fails, commands simply come back to the user for approval more often.
+  let sandboxSetup: ((ok: boolean, error: string | null) => void) | null = null
+
+  async function prepareWindowsSandbox(cwd: string) {
+    const ready = await client.request<{ status: string }>('windowsSandbox/readiness').catch(() => null)
+    if (!ready || ready.status === 'ready') return
+    notice('第一次使用，正在准备安全运行环境…')
+    const done = new Promise<{ ok: boolean; error: string | null }>((resolve) => {
+      sandboxSetup = (ok, error) => resolve({ ok, error })
+      setTimeout(() => resolve({ ok: false, error: '超时' }), 120_000)
+    })
+    const started = await client
+      .request<{ started: boolean }>('windowsSandbox/setupStart', { mode: 'unelevated', cwd })
+      .catch(() => null)
+    const result = started?.started ? await done : { ok: false, error: '没有启动' }
+    sandboxSetup = null
+    if (!result.ok) notice(`安全运行环境没有准备好（${result.error ?? '未知原因'}），运行命令前会多问你几次。`)
+  }
+
   client.onExit = () => {
     state.ready = false
     state.busy = false
@@ -149,7 +172,8 @@ export function createChat() {
   async function connect(cwd: string) {
     state.fatal = ''
     state.cwd = cwd
-    await client.start()
+    const init = await client.start()
+    if (init?.platformFamily === 'windows') await prepareWindowsSandbox(cwd)
     const res = await client.request('thread/start', {
       cwd,
       approvalPolicy: 'on-request',

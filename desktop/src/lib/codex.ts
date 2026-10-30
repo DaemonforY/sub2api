@@ -21,6 +21,13 @@ export interface ServerRequest {
   params: any
 }
 
+export interface InitializeResult {
+  userAgent: string
+  codexHome: string
+  platformFamily: string
+  platformOs: string
+}
+
 type Pending = { resolve: (v: any) => void; reject: (e: Error) => void }
 
 export class CodexClient {
@@ -33,7 +40,7 @@ export class CodexClient {
   onExit: () => void = () => {}
 
   /** Starts a fresh engine process and completes the initialize handshake. */
-  async start(): Promise<void> {
+  async start(): Promise<InitializeResult> {
     await this.dispose()
     // Listen before spawning so no early line is missed.
     this.unlisten.push(await listen<string>('engine-message', (e) => this.handleLine(e.payload)))
@@ -47,11 +54,12 @@ export class CodexClient {
     // A dev-server reload leaves the old process running; it is already initialized.
     await invoke('engine_stop')
     await invoke('engine_start')
-    await this.request('initialize', {
+    const init = await this.request<InitializeResult>('initialize', {
       clientInfo: { name: 'hivegpt_desktop', title: 'HiveGPT 桌面助手', version: '0.0.1' },
       capabilities: null
     })
     await this.notify('initialized')
+    return init
   }
 
   async dispose(): Promise<void> {

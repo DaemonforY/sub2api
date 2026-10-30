@@ -10,6 +10,9 @@ on:
     paths-ignore:
       - '*.md'
       - 'docs/**'
+      # The desktop app is built by desktop-build.yml; nothing in desktop/ goes into the image.
+      - 'desktop/**'
+      - '.github/workflows/desktop-build.yml'
 
 permissions:
   contents: read
