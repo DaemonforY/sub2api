@@ -4,18 +4,17 @@
 //! data directory. Nothing here touches the user's own `~/.codex` or any Codex they installed.
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
-use base64::Engine as _;
-use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha512};
-use tauri::{AppHandle, Emitter, Manager};
-use tokio::io::AsyncWriteExt;
+use tauri::{AppHandle, Manager};
+
+use crate::download;
 
 /// Pinned engine version. The app-server protocol is experimental, so upgrades are deliberate
 /// (later this comes from GET /api/v1/desktop/version together with per-platform hashes).
 pub const CODEX_VERSION: &str = "0.142.3";
+
+const PROGRESS_EVENT: &str = "engine-install-progress";
 
 /// Mirrors tried in order. All serve the npm registry API, so `<mirror>/@openai%2fcodex/<ver>`
 /// returns the version document with `dist.tarball` and `dist.integrity`.
@@ -29,7 +28,7 @@ pub struct Platform {
     /// Suffix of the npm version, e.g. `0.142.3-win32-x64`.
     npm_suffix: &'static str,
     /// Rust target triple used as the directory name inside the package.
-    triple: &'static str,
+    pub triple: &'static str,
 }
 
 pub fn platform() -> Result<Platform, String> {
@@ -87,14 +86,6 @@ struct Dist {
     size: Option<u64>,
 }
 
-#[derive(Clone, Serialize)]
-struct Progress {
-    stage: &'static str,
-    downloaded: u64,
-    total: u64,
-    mirror: String,
-}
-
 /// Downloads, verifies and unpacks the engine. Emits `engine-install-progress` while working.
 #[tauri::command]
 pub async fn engine_install(app: AppHandle) -> Result<EngineStatus, String> {
@@ -103,11 +94,7 @@ pub async fn engine_install(app: AppHandle) -> Result<EngineStatus, String> {
     }
     let plat = platform()?;
     let version = format!("{CODEX_VERSION}-{}", plat.npm_suffix);
-    let client = reqwest::Client::builder()
-        .user_agent(concat!("hivegpt-desktop/", env!("CARGO_PKG_VERSION")))
-        .connect_timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = download::client()?;
 
     let root = engine_root(&app)?;
     let parent = root.parent().ok_or("应用数据目录异常")?.to_path_buf();
@@ -148,50 +135,17 @@ async fn install_from(
         .ok_or("版本信息里没有 sha512 校验值")?
         .to_string();
 
-    let resp = client
-        .get(&doc.dist.tarball)
-        .send()
-        .await
-        .and_then(|r| r.error_for_status())
-        .map_err(|e| format!("下载失败：{e}"))?;
-    let total = resp.content_length().or(doc.dist.size).unwrap_or(0);
-
     let tgz = parent.join(format!("{version}.tgz.part"));
-    let mut file = tokio::fs::File::create(&tgz).await.map_err(|e| format!("写入失败：{e}"))?;
-    let mut hasher = Sha512::new();
-    let mut downloaded = 0u64;
-    let mut last_emit = Instant::now();
-    let mut stream = resp.bytes_stream();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("下载中断：{e}"))?;
-        hasher.update(&chunk);
-        file.write_all(&chunk).await.map_err(|e| format!("写入失败：{e}"))?;
-        downloaded += chunk.len() as u64;
-        if last_emit.elapsed().as_millis() >= 200 {
-            last_emit = Instant::now();
-            let _ = app.emit(
-                "engine-install-progress",
-                Progress { stage: "download", downloaded, total, mirror: mirror.to_string() },
-            );
-        }
-    }
-    file.flush().await.map_err(|e| e.to_string())?;
-    drop(file);
-
-    let actual = base64::engine::general_purpose::STANDARD.encode(hasher.finalize());
-    if actual != expected {
+    let digests = download::fetch(app, client, &doc.dist.tarball, &tgz, doc.dist.size, PROGRESS_EVENT, mirror).await?;
+    if digests.sha512_b64 != expected {
         let _ = tokio::fs::remove_file(&tgz).await;
         return Err("文件校验不通过（可能被篡改或下载不完整）".into());
     }
 
-    let _ = app.emit(
-        "engine-install-progress",
-        Progress { stage: "unpack", downloaded, total, mirror: mirror.to_string() },
-    );
+    download::emit(app, PROGRESS_EVENT, "unpack", 0, 0, mirror);
     let staging = parent.join(format!("{version}.staging"));
-    let tgz_for_unpack = tgz.clone();
-    let staging_for_unpack = staging.clone();
-    tokio::task::spawn_blocking(move || unpack(&tgz_for_unpack, &staging_for_unpack))
+    let (tgz2, staging2) = (tgz.clone(), staging.clone());
+    tokio::task::spawn_blocking(move || download::unpack_tgz(&tgz2, &staging2))
         .await
         .map_err(|e| e.to_string())??;
     let _ = tokio::fs::remove_file(&tgz).await;
@@ -200,19 +154,6 @@ async fn install_from(
         let _ = tokio::fs::remove_dir_all(root).await;
     }
     tokio::fs::rename(&staging, root).await.map_err(|e| format!("安装失败：{e}"))?;
-    let _ = app.emit("engine-install-progress", Progress { stage: "done", downloaded, total, mirror: mirror.to_string() });
-    Ok(())
-}
-
-fn unpack(tgz: &Path, dest: &Path) -> Result<(), String> {
-    if dest.exists() {
-        std::fs::remove_dir_all(dest).map_err(|e| e.to_string())?;
-    }
-    std::fs::create_dir_all(dest).map_err(|e| e.to_string())?;
-    let f = std::fs::File::open(tgz).map_err(|e| e.to_string())?;
-    let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(f));
-    archive.set_preserve_permissions(true);
-    // `unpack` refuses entries that would escape `dest`.
-    archive.unpack(dest).map_err(|e| format!("解压失败：{e}"))?;
+    download::emit(app, PROGRESS_EVENT, "done", 0, 0, mirror);
     Ok(())
 }

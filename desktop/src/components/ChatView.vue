@@ -3,6 +3,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { openPath } from '@tauri-apps/plugin-opener'
 import { createChat, type Approval } from '../lib/chat'
+import { TEMPLATES, type TaskTemplate } from '../lib/templates'
 
 const props = defineProps<{ workspace: string }>()
 defineEmits<{ 'change-folder': [] }>()
@@ -13,12 +14,22 @@ const connecting = ref(false)
 const connectError = ref('')
 const scroller = ref<HTMLElement | null>(null)
 
-// Starter tasks; the real template library (with sample folders) comes later.
-const examples = [
-  '看看这个文件夹里有哪些文件，按类型分别统计数量',
-  '把这个文件夹里的照片按拍摄月份分到不同的子文件夹',
-  '新建一个 Excel 表格，列出这个文件夹里每个文件的名字、大小和修改时间'
-]
+const picked = ref<TaskTemplate | null>(null)
+const composer = ref<HTMLTextAreaElement | null>(null)
+
+/** Own files: put the prompt in the composer so it can be read and tweaked before sending. */
+async function useOwnFiles(t: TaskTemplate) {
+  picked.value = null
+  draft.value = t.prompt
+  await nextTick()
+  composer.value?.focus()
+}
+
+/** Sample: makes fake files in 「示例」 and runs the task on them straight away. */
+function trySample(t: TaskTemplate) {
+  picked.value = null
+  send(t.samplePrompt)
+}
 
 async function start() {
   connecting.value = true
@@ -79,8 +90,14 @@ watch(
       </div>
 
       <div v-if="state.ready && !state.entries.length" class="empty">
-        <p>想让它帮你做什么？可以试试：</p>
-        <button v-for="ex in examples" :key="ex" class="example" @click="send(ex)">{{ ex }}</button>
+        <p class="empty-title">想让它帮你做什么？选一个常用任务，或者直接在下面打字。</p>
+        <div class="cards">
+          <button v-for="t in TEMPLATES" :key="t.id" class="card" @click="picked = t">
+            <span class="icon">{{ t.icon }}</span>
+            <span class="card-title">{{ t.title }}</span>
+            <span class="card-desc">{{ t.desc }}</span>
+          </button>
+        </div>
       </div>
 
       <template v-for="e in state.entries" :key="e.kind + e.id">
@@ -111,11 +128,25 @@ watch(
         rows="3"
         placeholder="用中文描述你要做的事，回车发送，Shift+回车换行"
         :disabled="!state.ready"
+        ref="composer"
         @keydown.enter.exact.prevent="submit"
       />
       <button v-if="state.busy" @click="interrupt">停止</button>
       <button v-else class="primary" :disabled="!state.ready || !draft.trim()" @click="submit">发送</button>
     </footer>
+
+    <div v-if="picked" class="overlay" @click.self="picked = null">
+      <div class="dialog">
+        <h3>{{ picked.icon }} {{ picked.title }}</h3>
+        <p>{{ picked.desc }}。</p>
+        <p class="reason">用自己的文件：{{ picked.prepare }}结果会放在文件夹里的「输出」中，原文件不会被改动。</p>
+        <div class="actions">
+          <button @click="picked = null">取消</button>
+          <button @click="trySample(picked)">先用示例试试</button>
+          <button class="primary" @click="useOwnFiles(picked)">用这个文件夹里的文件</button>
+        </div>
+      </div>
+    </div>
 
     <div v-if="state.approvals.length" class="overlay">
       <div class="dialog">
@@ -172,14 +203,47 @@ main {
 
 .empty {
   margin: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 520px;
+  max-width: 760px;
+  width: 100%;
 }
 
-.example {
+.empty-title {
+  color: var(--muted);
+  text-align: center;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   text-align: left;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.card:hover {
+  border-color: var(--brand);
+}
+
+.icon {
+  font-size: 22px;
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .bubble {

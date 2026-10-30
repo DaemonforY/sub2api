@@ -1,6 +1,8 @@
 mod bridge;
+mod download;
 mod engine;
 mod login;
+mod office;
 mod settings;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -13,6 +15,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             engine::engine_status,
             engine::engine_install,
+            office::office_status,
+            office::office_install,
             bridge::engine_start,
             bridge::engine_send,
             bridge::engine_stop,

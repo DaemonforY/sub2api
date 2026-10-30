@@ -21,7 +21,15 @@ This folder is a separate pnpm project. It is not part of the web frontend build
    - It writes `config.toml` there (provider `hivegpt` → `https://hivegpt.cn/v1`, key via `HIVEGPT_API_KEY`) and a Chinese `AGENTS.md`.
    - It relays stdout lines as `engine-message` events and takes input through `engine_send`.
    - The user's own `~/.codex` is never read or written.
-4. **UI.** The Vue UI (`src/lib/codex.ts` + `src/lib/chat.ts`) speaks the JSON-RPC:
+4. **Office kit.** `office.rs` installs a private Python plus the office libraries:
+   - Python: python-build-standalone 3.12.15 from the npmmirror mirror, sha256 pinned and cross-checked with the GitHub release.
+   - Libraries: openpyxl, xlrd, pandas, python-docx, python-pptx, pdfplumber, fpdf2, pillow and chardet, installed with pip from the Tsinghua, Aliyun or Huawei PyPI mirror.
+   - Size: about 290 MB on disk. It installs right after the engine.
+   - Wiring: when the kit is ready, its Python goes first on Codex's PATH and AGENTS.md gains a section on handling Excel, Word, PPT and PDF.
+5. **Templates.** `src/lib/templates.ts` holds 8 office tasks, shown as cards in an empty chat. Each card has two actions:
+   - 「用这个文件夹里的文件」 puts an editable prompt in the composer.
+   - 「先用示例试试」 has Codex make fake files in `示例/` and run the task on them.
+6. **UI.** The Vue UI (`src/lib/codex.ts` + `src/lib/chat.ts`) speaks the JSON-RPC:
    - Startup: `initialize` → `thread/start` (cwd = chosen folder, sandbox `workspace-write`, approval `on-request`).
    - Each message: `turn/start`, with streamed `item/agentMessage/delta`.
    - Work items: commands and file changes are shown as steps.
@@ -42,6 +50,6 @@ Checks: `pnpm typecheck` (Vue) and `cargo build` in `src-tauri/` (Rust 1.80+). W
 ## Not done yet
 
 - **`GET /api/v1/desktop/version`**, to serve the engine version and per-platform hashes. Today the hash comes from the same mirror as the file, so it catches corruption, not a malicious mirror.
-- Portable Python + office libraries, the task-template library, history, analytics events, auto-update.
+- History, analytics events, auto-update, and more templates. The office kit and the 8 templates are done.
 - **Testing on a real Windows PC.** `.github/workflows/desktop-build.yml` builds the installer: NSIS, per-user, about 5 MB, artifact `hivegpt-desktop-windows-x64`. It runs on `desktop/**` changes on main and on `feat/desktop-*`, or by hand. The installer has not been run on Windows yet. On Windows the app runs Codex's one-time unelevated sandbox setup when it connects.
 - **Code signing** for Windows and macOS.

@@ -12,6 +12,7 @@ use tokio::process::{Child, ChildStdin, Command};
 use tokio::sync::Mutex;
 
 use crate::engine;
+use crate::office;
 use crate::settings;
 
 #[derive(Default)]
@@ -36,6 +37,22 @@ const AGENTS_MD: &str = r#"# 给 HiveGPT 桌面助手的工作约定
 - 能用已有工具完成的，不要去安装新软件；确实需要时先说明原因。
 "#;
 
+/// Appended when the office kit is installed, so Codex uses it instead of hunting for Python.
+fn office_section(python: &str) -> String {
+    format!(
+        r#"
+## 处理 Excel、Word、PPT、PDF
+
+这台电脑已经装好了专用的 Python（命令是 `{python}`），并带有这些库：openpyxl、xlrd（Excel，含老的 .xls）、pandas（表格整理）、python-docx（Word）、python-pptx（PPT）、pdfplumber（读 PDF 文字和表格）、fpdf2（生成 PDF）、pillow（图片）、chardet（识别 CSV 编码）。
+
+- 处理这类文件时，直接写 Python 脚本用 `{python}` 运行，不要去装 Office 或别的软件，也不要用 pip 再装别的库，除非确实缺少而且先说明原因。
+- 脚本放在「输出/脚本」里，方便用户以后再用；结果文件放在「输出」里。
+- 读 CSV 时先用 chardet 判断编码（国内常见 GBK）；写 Excel 时表头加粗、列宽适当，中文用常见字体。
+- 生成的 Excel / Word / PPT 要能直接用 Office 或 WPS 打开。
+"#
+    )
+}
+
 fn codex_home(app: &AppHandle) -> Result<PathBuf, String> {
     let base = app.path().app_data_dir().map_err(|e| format!("找不到应用数据目录：{e}"))?;
     Ok(base.join("codex-home"))
@@ -46,7 +63,7 @@ fn toml_string(s: &str) -> String {
 }
 
 /// Writes the private config every start, so a changed base URL or engine version applies.
-fn write_codex_home(home: &PathBuf, base_url: &str) -> Result<(), String> {
+fn write_codex_home(home: &PathBuf, base_url: &str, office_ready: bool) -> Result<(), String> {
     std::fs::create_dir_all(home).map_err(|e| format!("创建配置目录失败：{e}"))?;
     let config = format!(
         r#"# 由 HiveGPT 桌面助手生成，每次启动都会重写。
@@ -62,7 +79,11 @@ wire_api = "responses"
         base = toml_string(&format!("{}/v1", base_url.trim_end_matches('/')))
     );
     std::fs::write(home.join("config.toml"), config).map_err(|e| format!("写入配置失败：{e}"))?;
-    std::fs::write(home.join("AGENTS.md"), AGENTS_MD).map_err(|e| format!("写入配置失败：{e}"))?;
+    let mut agents = AGENTS_MD.to_string();
+    if office_ready {
+        agents.push_str(&office_section(office::python_command()));
+    }
+    std::fs::write(home.join("AGENTS.md"), agents).map_err(|e| format!("写入配置失败：{e}"))?;
     Ok(())
 }
 
@@ -82,11 +103,13 @@ pub async fn engine_start(app: AppHandle, bridge: State<'_, Bridge>) -> Result<(
     let key = settings::api_key()?.ok_or("还没有登录")?;
     let base_url = settings::base_url();
     let home = codex_home(&app)?;
-    write_codex_home(&home, &base_url)?;
+    let office_ready = office::is_ready(&app);
+    write_codex_home(&home, &base_url, office_ready)?;
 
-    // Codex looks for its bundled ripgrep next to the binary (vendor/<triple>/codex-path).
+    // The office kit's Python first, then Codex's bundled ripgrep (vendor/<triple>/codex-path).
     let vendor = engine::vendor_dir(&app)?;
-    let mut path_dirs = vec![vendor.join("codex-path")];
+    let mut path_dirs = if office_ready { office::path_dirs(&app) } else { Vec::new() };
+    path_dirs.push(vendor.join("codex-path"));
     if let Some(existing) = std::env::var_os("PATH") {
         path_dirs.extend(std::env::split_paths(&existing));
     }
@@ -97,6 +120,11 @@ pub async fn engine_start(app: AppHandle, bridge: State<'_, Bridge>) -> Result<(
         .env("CODEX_HOME", &home)
         .env("HIVEGPT_API_KEY", key)
         .env("PATH", path)
+        // Chinese file names and GBK consoles: make Python speak UTF-8; pip (if Codex needs it) uses
+        // a domestic mirror.
+        .env("PYTHONUTF8", "1")
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PIP_INDEX_URL", office::PIP_MIRRORS[0])
         .env_remove("OPENAI_API_KEY")
         .env_remove("OPENAI_BASE_URL")
         .stdin(Stdio::piped())
