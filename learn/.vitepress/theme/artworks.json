@@ -53,5 +53,115 @@
     "original": "Utagawa Hiroshige, A Snowy Evening at Kanbara Station, ca. 1833–34",
     "credit": "The Metropolitan Museum of Art · CC0",
     "link": "https://www.metmuseum.org/art/collection/search/36937"
+  },
+  "bruegel-harvesters": {
+    "src": "/artworks/bruegel-harvesters.webp",
+    "width": 1600,
+    "height": 1179,
+    "title": "收割者",
+    "artist": "老彼得·勃鲁盖尔（尼德兰）",
+    "date": "1565 年",
+    "original": "Pieter Bruegel the Elder, The Harvesters, 1565",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/435809"
+  },
+  "ma-yuan-plum-moon": {
+    "src": "/artworks/ma-yuan-plum-moon.webp",
+    "width": 1600,
+    "height": 1495,
+    "title": "月下赏梅图",
+    "artist": "马远（南宋）",
+    "date": "13 世纪初",
+    "original": "Ma Yuan, Viewing plum blossoms by moonlight, early 13th century",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/44638"
+  },
+  "xia-gui-mountain-market": {
+    "src": "/artworks/xia-gui-mountain-market.webp",
+    "width": 1108,
+    "height": 1189,
+    "title": "山市晴岚图",
+    "artist": "夏圭（南宋）",
+    "date": "13 世纪初",
+    "original": "Xia Gui, Mountain Market, Clearing Mist, early 13th century",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/36005"
+  },
+  "pissarro-montmartre": {
+    "src": "/artworks/pissarro-montmartre.webp",
+    "width": 1600,
+    "height": 1292,
+    "title": "蒙马特大街的冬日早晨",
+    "artist": "毕沙罗（法国）",
+    "date": "1897 年",
+    "original": "Camille Pissarro, The Boulevard Montmartre on a Winter Morning, 1897",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437310"
+  },
+  "sisley-moret-winter": {
+    "src": "/artworks/sisley-moret-winter.webp",
+    "width": 1600,
+    "height": 1326,
+    "title": "莫雷的欧仁·穆苏瓦尔街：冬天",
+    "artist": "西斯莱（英国籍，生活在法国）",
+    "date": "1891 年",
+    "original": "Alfred Sisley, Rue Eugène Moussoir at Moret: Winter, 1891",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437686"
+  },
+  "renoir-seashore": {
+    "src": "/artworks/renoir-seashore.webp",
+    "width": 1265,
+    "height": 1600,
+    "title": "海边",
+    "artist": "雷诺阿（法国）",
+    "date": "1883 年",
+    "original": "Auguste Renoir, By the Seashore, 1883",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437430"
+  },
+  "cezanne-sainte-victoire": {
+    "src": "/artworks/cezanne-sainte-victoire.webp",
+    "width": 1600,
+    "height": 949,
+    "title": "圣维克多山",
+    "artist": "塞尚（法国）",
+    "date": "约 1902–1906 年",
+    "original": "Paul Cézanne, Mont Sainte-Victoire, ca. 1902–6",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/435878"
+  },
+  "cezanne-apples": {
+    "src": "/artworks/cezanne-apples.webp",
+    "width": 1600,
+    "height": 1234,
+    "title": "苹果和梨的静物",
+    "artist": "塞尚（法国）",
+    "date": "约 1891–1892 年",
+    "original": "Paul Cézanne, Still Life with Apples and Pears, ca. 1891–92",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/435883"
+  },
+  "van-gogh-cypresses": {
+    "src": "/artworks/van-gogh-cypresses.webp",
+    "width": 1600,
+    "height": 1274,
+    "title": "麦田与柏树",
+    "artist": "梵高（荷兰）",
+    "date": "1889 年",
+    "original": "Vincent van Gogh, Wheat Field with Cypresses, 1889",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/436535"
+  },
+  "seurat-circus": {
+    "src": "/artworks/seurat-circus.webp",
+    "width": 1600,
+    "height": 1070,
+    "title": "马戏团杂耍",
+    "artist": "修拉（法国）",
+    "date": "1887–1888 年",
+    "original": "Georges Seurat, Circus Sideshow (Parade de cirque), 1887–88",
+    "credit": "The Metropolitan Museum of Art · CC0",
+    "link": "https://www.metmuseum.org/art/collection/search/437654"
   }
 }
