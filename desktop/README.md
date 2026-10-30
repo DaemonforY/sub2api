@@ -37,11 +37,11 @@ pnpm tauri dev
 
 For development you can skip the key form: `HIVEGPT_API_KEY=sk-… pnpm tauri dev`. `HIVEGPT_BASE_URL` points it at another sub2api.
 
-Checks: `pnpm typecheck` (Vue) and `cargo build` in `src-tauri/` (Rust 1.80+).
+Checks: `pnpm typecheck` (Vue) and `cargo build` in `src-tauri/` (Rust 1.80+). Windows installer: `pnpm tauri build --bundles nsis` on Windows, or the Desktop App Build workflow.
 
 ## Not done yet
 
 - **`GET /api/v1/desktop/version`**, to serve the engine version and per-platform hashes. Today the hash comes from the same mirror as the file, so it catches corruption, not a malicious mirror.
 - Portable Python + office libraries, the task-template library, history, analytics events, auto-update.
-- **Windows build.** It must be built on Windows; plan: a GitHub Actions `windows-latest` job running `pnpm tauri build`. Until then this has only been run on macOS.
+- **Testing on a real Windows PC.** `.github/workflows/desktop-build.yml` builds the installer: NSIS, per-user, about 5 MB, artifact `hivegpt-desktop-windows-x64`. It runs on `desktop/**` changes on main and on `feat/desktop-*`, or by hand. The installer has not been run on Windows yet. On Windows the app runs Codex's one-time unelevated sandbox setup when it connects.
 - **Code signing** for Windows and macOS.
