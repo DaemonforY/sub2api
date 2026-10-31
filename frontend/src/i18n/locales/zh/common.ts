@@ -229,6 +229,7 @@ export default {
     goodsAdmin: '卡密商品',
     shihuaAdmin: '课本诗画',
     materialsAdmin: '诗画素材库',
+    desktopAdmin: '桌面助手',
     inspirationAdmin: '灵感库',
     analyticsAdmin: '数据看板',
     userInsightsAdmin: '用户画像',

@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { openPath, openUrl } from '@tauri-apps/plugin-opener'
 import { createChat, type Approval, type ThreadSummary, type UndoPreview } from '../lib/chat'
 import { TEMPLATES, type TaskTemplate } from '../lib/templates'
+import { syncTemplates } from '../lib/skills'
 import { money } from '../lib/usage'
 import { track } from '../lib/track'
 
@@ -18,6 +19,8 @@ const connectError = ref('')
 const scroller = ref<HTMLElement | null>(null)
 
 const picked = ref<TaskTemplate | null>(null)
+/** Skills published in the admin (synced on start); the built-in ones until then or when offline. */
+const templates = ref<TaskTemplate[]>(TEMPLATES)
 const composer = ref<HTMLTextAreaElement | null>(null)
 
 /** Own files: put the prompt in the composer so it can be read and tweaked before sending. */
@@ -48,6 +51,8 @@ async function start() {
       state.authFailed = true
       return
     }
+    // Skills first: Codex reads the SKILL.md files when the engine starts.
+    templates.value = await syncTemplates()
     await connect(props.workspace)
     const devPrompt = await invoke<string | null>('dev_autorun')
     if (devPrompt && !state.entries.length) {
@@ -258,7 +263,7 @@ watch(
       <div v-if="state.ready && !state.entries.length" class="empty">
         <p class="empty-title">想让它帮你做什么？选一个常用任务，或者直接在下面打字。</p>
         <div class="cards">
-          <button v-for="t in TEMPLATES" :key="t.id" class="card" @click="picked = t">
+          <button v-for="t in templates" :key="t.id" class="card" @click="picked = t">
             <span class="icon">{{ t.icon }}</span>
             <span class="card-title">{{ t.title }}</span>
             <span class="card-desc">{{ t.desc }}</span>
@@ -332,7 +337,7 @@ watch(
         <p class="reason">用自己的文件：{{ picked.prepare }}结果会放在文件夹里的「输出」中，原文件不会被改动。</p>
         <div class="actions">
           <button @click="picked = null">取消</button>
-          <button @click="trySample(picked)">先用示例试试</button>
+          <button v-if="picked.samplePrompt" @click="trySample(picked)">先用示例试试</button>
           <button class="primary" @click="useOwnFiles(picked)">用这个文件夹里的文件</button>
         </div>
       </div>

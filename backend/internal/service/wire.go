@@ -1302,6 +1302,7 @@ var ProviderSet = wire.NewSet(
 	NewBillingRouteService,
 	NewStarterKeyService,
 	NewDesktopLoginService,
+	NewDesktopSkillService,
 	NewPromptTitleTranslator,
 	ProvidePaymentOrderExpiryService,
 	ProvideBalanceNotifyService,

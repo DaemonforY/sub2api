@@ -9,14 +9,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DesktopHandler serves HiveGPT 桌面助手 sign-in (see service/desktop_login.go):
+// DesktopHandler serves HiveGPT 桌面助手 sign-in (see service/desktop_login.go) and its skills (service/desktop_skills.go):
 // the app starts and polls without a session; the phone page reads and decides while signed in.
 type DesktopHandler struct {
-	login *service.DesktopLoginService
+	login  *service.DesktopLoginService
+	skills *service.DesktopSkillService
 }
 
-func NewDesktopHandler(login *service.DesktopLoginService) *DesktopHandler {
-	return &DesktopHandler{login: login}
+func NewDesktopHandler(login *service.DesktopLoginService, skills *service.DesktopSkillService) *DesktopHandler {
+	return &DesktopHandler{login: login, skills: skills}
 }
 
 type desktopStartRequest struct {

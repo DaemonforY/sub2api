@@ -147,6 +147,7 @@ func RegisterAdminRoutes(
 		registerCardGoodsAdminRoutes(admin, h)
 		registerShihuaAdminRoutes(admin, h)
 		registerMaterialAdminRoutes(admin, h)
+		registerDesktopAdminRoutes(admin, h)
 		registerInspirationAdminRoutes(admin, h)
 		registerAnalyticsAdminRoutes(admin, h)
 		registerUserRiskAdminRoutes(admin, h)
@@ -1419,4 +1420,20 @@ func registerAnalyticsAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	admin.POST("/analytics/channel-links", h.Analytics.AdminCreateChannelLink)
 	admin.PUT("/analytics/channel-links/:id", h.Analytics.AdminUpdateChannelLink)
 	admin.DELETE("/analytics/channel-links/:id", h.Analytics.AdminDeleteChannelLink)
+}
+
+// registerDesktopAdminRoutes 桌面助手：技能库（表单编辑、上下架、排序）和概览（设备、埋点漏斗、各技能成败）。
+func registerDesktopAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	if h.Desktop == nil {
+		return
+	}
+	d := h.Desktop
+	g := admin.Group("/desktop")
+	g.GET("/overview", d.AdminOverview)
+	g.GET("/skills", d.AdminSkills)
+	g.POST("/skills", d.AdminCreateSkill)
+	g.GET("/skills/:id", d.AdminGetSkill)
+	g.PUT("/skills/:id", d.AdminUpdateSkill)
+	g.DELETE("/skills/:id", d.AdminDeleteSkill)
+	g.POST("/skills/:id/status", d.AdminSetSkillStatus)
 }

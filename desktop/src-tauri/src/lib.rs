@@ -4,6 +4,7 @@ mod engine;
 mod login;
 mod office;
 mod settings;
+mod skills;
 mod snapshot;
 mod track;
 
@@ -26,6 +27,7 @@ pub fn run() {
             login::login_poll,
             login::check_key,
             login::usage_summary,
+            skills::skills_sync,
             snapshot::snapshot_take,
             snapshot::snapshot_list,
             snapshot::snapshot_restore,

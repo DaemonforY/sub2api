@@ -983,6 +983,7 @@ const adminNavItems = computed((): NavItem[] => {
     { path: '/admin/course-creators', label: t('nav.courseCreatorsAdmin'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/learn', label: t('nav.learnAdmin'), icon: SparklesIcon, hideInSimpleMode: true },
     { path: '/admin/assistant', label: t('nav.assistantAdmin'), icon: ChatIcon, hideInSimpleMode: true },
+    { path: '/admin/desktop', label: t('nav.desktopAdmin'), icon: SparklesIcon, hideInSimpleMode: true },
     { path: '/admin/analytics', label: t('nav.analyticsAdmin'), icon: ChartIcon, hideInSimpleMode: true },
     { path: '/admin/user-insights', label: t('nav.userInsightsAdmin'), icon: UsersIcon, hideInSimpleMode: true },
     { path: '/admin/conversation-archive', label: t('nav.conversationArchiveAdmin'), icon: ArchiveIcon, hideInSimpleMode: true },

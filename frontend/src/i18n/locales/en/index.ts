@@ -26,6 +26,7 @@ import goods from './goods'
 import chat from './chat'
 import shihua from './shihua'
 import materials from './materials'
+import desktopAdmin from './desktopAdmin'
 import inspiration from './inspiration'
 import poems from './poems'
 import desktop from './desktop'
@@ -62,4 +63,5 @@ export default {
   ...inspiration,
   ...poems,
   ...desktop,
+  ...desktopAdmin,
 }

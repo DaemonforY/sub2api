@@ -1,0 +1,65 @@
+export default {
+  desktopAdmin: {
+    title: '桌面助手',
+    description: '桌面助手的技能库和使用情况',
+    tabs: { overview: '概览', skills: '技能库' },
+    hint: {
+      overview: '数据来自桌面助手的埋点（每台电脑一个设备号）和设备 Key。「发出任务」按电脑去重；回访 = 在两天及以上打开过的电脑。',
+      skills: '上架的技能会在用户下次打开桌面助手时同步：空白对话里的卡片，以及 Codex 自己会用的技能说明（SKILL.md）。每次保存都会升版本号，App 只重新下载改过的技能。'
+    },
+    days: '近 {n} 天',
+    empty: '还没有数据',
+    cards: { devices: '设备 Key', active: '近 7 天用过的电脑', firstTask: '发出过任务的电脑', returned: '回访电脑' },
+    funnel: { title: '漏斗（近 {days} 天）', step: '步骤', computers: '电脑数', events: '次数' },
+    templates: {
+      title: '各技能用得怎么样',
+      name: '技能',
+      starts: '发出',
+      doneRate: '完成率',
+      avg: '平均耗时',
+      topFailure: '最常见原因',
+      custom: '自己输入',
+      sample: '{title}（示例）'
+    },
+    reasons: { interrupted: '用户停止', quota: '余额 / 额度不足', auth: '登录失效', error: '出错' },
+    failures: '安装失败',
+    devices: { title: '最近的电脑', name: '设备', user: '用户', status: '状态', lastUsed: '最近使用', created: '首次登录', never: '没用过' },
+    status: { draft: '草稿', published: '已上架', hidden: '已下架' },
+    skills: {
+      new: '新建技能',
+      title: '技能',
+      slug: '标识',
+      status: '状态',
+      sort: '排序',
+      version: '版本',
+      updated: '更新时间',
+      publish: '上架',
+      hide: '下架',
+      published: '已上架，用户下次打开桌面助手时生效',
+      hidden: '已下架',
+      deleteTitle: '删除技能',
+      deleteMessage: '确定删除「{title}」吗？已经同步到用户电脑上的会在下次打开时移除。只是暂时不想给用户看的话，用「下架」。'
+    },
+    editor: {
+      newTitle: '新建技能',
+      editTitle: '编辑「{title}」',
+      icon: '图标',
+      title: '名称',
+      slug: '标识',
+      slugHint: '小写字母、数字和短横线，例如 invoices。也是埋点和 Codex 技能名（hivegpt-标识）里的那部分，上架后尽量别改。',
+      summary: '一句话说明',
+      summaryHint: '显示在卡片上，也是 Codex 判断什么时候用这个技能的依据：写清楚「做什么、用在什么文件上」。',
+      prepare: '准备说明',
+      prompt: '用自己的文件时的提示词',
+      promptHint: '用户点「用这个文件夹里的文件」时放进输入框，可以再改。',
+      samplePrompt: '示例提示词',
+      samplePromptHint: '用户点「先用示例试试」时直接发送：先造几份假文件，再在上面做同样的事。留空就不显示这个按钮。',
+      needsOffice: '需要办公工具（Excel / Word / PPT / PDF）',
+      sort: '排序',
+      instructions: '技能做法（SKILL.md 正文，Markdown）',
+      instructionsHint: '写给 Codex 看的详细做法：步骤、输出文件放哪、格式要求、要提醒用户核对什么。留空就用上面的提示词。',
+      preview: '用户电脑上收到的 SKILL.md（保存前的版本）',
+      saved: '已保存'
+    }
+  }
+}

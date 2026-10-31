@@ -1,0 +1,65 @@
+export default {
+  desktopAdmin: {
+    title: 'Desktop assistant',
+    description: 'Skill library and usage of the desktop assistant',
+    tabs: { overview: 'Overview', skills: 'Skills' },
+    hint: {
+      overview: 'From the desktop assistant’s analytics (one device id per computer) and its device keys. “Task sent” counts computers; returning = opened on two or more days.',
+      skills: 'Published skills reach users the next time they open the desktop assistant: a card in the empty chat, plus the instructions Codex follows on its own (SKILL.md). Every save bumps the version; the app re-downloads only changed skills.'
+    },
+    days: 'Last {n} days',
+    empty: 'No data yet',
+    cards: { devices: 'Device keys', active: 'Computers used in 7 days', firstTask: 'Computers that sent a task', returned: 'Returning computers' },
+    funnel: { title: 'Funnel (last {days} days)', step: 'Step', computers: 'Computers', events: 'Events' },
+    templates: {
+      title: 'How each skill does',
+      name: 'Skill',
+      starts: 'Sent',
+      doneRate: 'Completed',
+      avg: 'Avg time',
+      topFailure: 'Top reason',
+      custom: 'Typed by the user',
+      sample: '{title} (sample)'
+    },
+    reasons: { interrupted: 'Stopped by the user', quota: 'Out of balance / allowance', auth: 'Signed out', error: 'Error' },
+    failures: 'Install failures',
+    devices: { title: 'Recent computers', name: 'Device', user: 'User', status: 'Status', lastUsed: 'Last used', created: 'First sign-in', never: 'Never' },
+    status: { draft: 'Draft', published: 'Published', hidden: 'Hidden' },
+    skills: {
+      new: 'New skill',
+      title: 'Skill',
+      slug: 'Slug',
+      status: 'Status',
+      sort: 'Order',
+      version: 'Version',
+      updated: 'Updated',
+      publish: 'Publish',
+      hide: 'Hide',
+      published: 'Published — users get it the next time they open the app',
+      hidden: 'Hidden',
+      deleteTitle: 'Delete skill',
+      deleteMessage: 'Delete “{title}”? Computers that already have it remove it on their next launch. To take it away for now, use Hide.'
+    },
+    editor: {
+      newTitle: 'New skill',
+      editTitle: 'Edit “{title}”',
+      icon: 'Icon',
+      title: 'Name',
+      slug: 'Slug',
+      slugHint: 'Lower-case letters, digits and dashes, e.g. invoices. Also used in analytics and the Codex skill name (hivegpt-<slug>); avoid changing it once published.',
+      summary: 'One-line summary',
+      summaryHint: 'Shown on the card, and what Codex reads to decide when to use the skill: say what it does and on which files.',
+      prepare: 'What to prepare',
+      prompt: 'Prompt for the user’s own files',
+      promptHint: 'Put in the composer when the user picks “use the files in this folder”; they can edit it.',
+      samplePrompt: 'Sample prompt',
+      samplePromptHint: 'Sent as is when the user picks “try a sample first”: make a few fake files, then do the same task on them. Leave empty to hide that button.',
+      needsOffice: 'Needs the office kit (Excel / Word / PPT / PDF)',
+      sort: 'Order',
+      instructions: 'How to do it (SKILL.md body, Markdown)',
+      instructionsHint: 'Detailed steps for Codex: what to do, where outputs go, formats, what the user should double-check. Empty = use the prompt above.',
+      preview: 'SKILL.md the computers receive (as last saved)',
+      saved: 'Saved'
+    }
+  }
+}

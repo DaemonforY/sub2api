@@ -14,6 +14,7 @@ use tokio::sync::Mutex;
 use crate::engine;
 use crate::office;
 use crate::settings;
+use crate::skills;
 
 #[derive(Default)]
 pub struct Bridge {
@@ -53,7 +54,7 @@ fn office_section(python: &str) -> String {
     )
 }
 
-fn codex_home(app: &AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn codex_home(app: &AppHandle) -> Result<PathBuf, String> {
     let base = app.path().app_data_dir().map_err(|e| format!("找不到应用数据目录：{e}"))?;
     Ok(base.join("codex-home"))
 }
@@ -77,7 +78,7 @@ env_key = "HIVEGPT_API_KEY"
 wire_api = "responses"
 "#,
         base = toml_string(&format!("{}/v1", base_url.trim_end_matches('/')))
-    );
+    ) + &skills::disabled_skills_toml(home);
     std::fs::write(home.join("config.toml"), config).map_err(|e| format!("写入配置失败：{e}"))?;
     let mut agents = AGENTS_MD.to_string();
     if office_ready {

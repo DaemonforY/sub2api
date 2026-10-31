@@ -26,7 +26,12 @@ This folder is a separate pnpm project. It is not part of the web frontend build
    - Libraries: openpyxl, xlrd, pandas, python-docx, python-pptx, pdfplumber, fpdf2, pillow and chardet, installed with pip from the Tsinghua, Aliyun or Huawei PyPI mirror.
    - Size: about 290 MB on disk. It installs right after the engine.
    - Wiring: when the kit is ready, its Python goes first on Codex's PATH and AGENTS.md gains a section on handling Excel, Word, PPT and PDF.
-5. **Templates.** `src/lib/templates.ts` holds 8 office tasks, shown as cards in an empty chat. Each card has two actions:
+5. **Skills (技能库).** Operators edit skills in 后台 → 桌面助手 (`/admin/desktop`, table `desktop_skills`, migration 321).
+   - On every launch, before the engine starts, `skills.rs` fetches `GET /api/v1/desktop/skills`.
+   - Each skill's `SKILL.md` goes to `<codex-home>/skills/hivegpt-<slug>/`, rewritten only when its version changed; skills taken down are removed. Codex then also uses a skill when the user just describes the task.
+   - The cards in the empty chat come from the same list. Offline, the last list is used; with none at all, the built-in `src/lib/templates.ts` (the same 8 office tasks the migration seeds).
+   - `config.toml` switches off every other skill: the user's own `~/.agents/skills` and Codex's bundled system skills.
+   Each card has two actions:
    - 「用这个文件夹里的文件」 puts an editable prompt in the composer.
    - 「先用示例试试」 has Codex make fake files in `示例/` and run the task on them.
 6. **UI.** The Vue UI (`src/lib/codex.ts` + `src/lib/chat.ts`) speaks the JSON-RPC:

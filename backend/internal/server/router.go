@@ -178,6 +178,7 @@ func registerRoutes(
 	routes.RegisterPoemsRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterTutorRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterAnalyticsRoutes(v1, h, optionalJWTAuth, redisClient)
+	routes.RegisterDesktopPublicRoutes(v1, h, redisClient)
 	routes.RegisterGrowthRoutes(v1, h, settingService, panelRateLimiter)
 	routes.RegisterAppStateRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
 	routes.RegisterPromptLibraryRoutes(v1, h, apiKeyAuth, settingService, panelRateLimiter)
