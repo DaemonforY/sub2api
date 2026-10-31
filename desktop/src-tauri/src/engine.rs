@@ -1,7 +1,10 @@
 //! The Codex engine: a pinned `@openai/codex` platform build, downloaded on first run from
 //! domestic npm mirrors (the installer stays small; hivegpt.cn's Seoul server is too slow for a
-//! ~120 MB download), checked against the registry's sha512 integrity and unpacked into the app's
-//! data directory. Nothing here touches the user's own `~/.codex` or any Codex they installed.
+//! ~120 MB download), checked against a sha512 pinned in this file and unpacked into the app's data
+//! directory. Nothing here touches the user's own `~/.codex` or any Codex they installed.
+//!
+//! The hash is pinned here rather than taken from the mirror's own metadata, so a compromised or
+//! tampered mirror can't swap the engine: it would have to match a hash compiled into the app.
 
 use std::path::{Path, PathBuf};
 
@@ -29,16 +32,43 @@ pub struct Platform {
     npm_suffix: &'static str,
     /// Rust target triple used as the directory name inside the package.
     pub triple: &'static str,
+    /// sha512 of `@openai/codex@<CODEX_VERSION>-<npm_suffix>`, base64 as in npm's `integrity`. Taken from
+    /// registry.npmjs.org and cross-checked with npmmirror; update together with CODEX_VERSION.
+    sha512: &'static str,
 }
 
 pub fn platform() -> Result<Platform, String> {
     let p = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("windows", "x86_64") => Platform { npm_suffix: "win32-x64", triple: "x86_64-pc-windows-msvc" },
-        ("windows", "aarch64") => Platform { npm_suffix: "win32-arm64", triple: "aarch64-pc-windows-msvc" },
-        ("macos", "aarch64") => Platform { npm_suffix: "darwin-arm64", triple: "aarch64-apple-darwin" },
-        ("macos", "x86_64") => Platform { npm_suffix: "darwin-x64", triple: "x86_64-apple-darwin" },
-        ("linux", "x86_64") => Platform { npm_suffix: "linux-x64", triple: "x86_64-unknown-linux-musl" },
-        ("linux", "aarch64") => Platform { npm_suffix: "linux-arm64", triple: "aarch64-unknown-linux-musl" },
+        ("windows", "x86_64") => Platform {
+            npm_suffix: "win32-x64",
+            triple: "x86_64-pc-windows-msvc",
+            sha512: "Oj9QroSPpvHG5sD84alPBd3J/MLtnumm/01n+xbglXtph24pLLyONLp2SAB4tARJzROlZ1Vf3WsrNpcU1iGXWA==",
+        },
+        ("windows", "aarch64") => Platform {
+            npm_suffix: "win32-arm64",
+            triple: "aarch64-pc-windows-msvc",
+            sha512: "An0/fDUanbMFXRWD27gKgLM0aYIztrlHdNrLX6SDWXOkoj8dxOCfW1Y/6ToZNI7TxxLQMN2CYXLKW3y+hI9MIQ==",
+        },
+        ("macos", "aarch64") => Platform {
+            npm_suffix: "darwin-arm64",
+            triple: "aarch64-apple-darwin",
+            sha512: "/ctHm6s2vpUuFY0D212BbzretO0hi1FqUioD1eUoK/qcfG4nhVl3710m5GdtadYQLJbNmdXFfAWrBIQbG/aB0A==",
+        },
+        ("macos", "x86_64") => Platform {
+            npm_suffix: "darwin-x64",
+            triple: "x86_64-apple-darwin",
+            sha512: "TVBDgkcAmQtTM2atJYeJpGjOOCerczZcwFOUF9aOQVTmMxgz4E0tuR2jqcR648FAtE81r5iNh2EGFN+Fte8ayA==",
+        },
+        ("linux", "x86_64") => Platform {
+            npm_suffix: "linux-x64",
+            triple: "x86_64-unknown-linux-musl",
+            sha512: "EQ5svml7q8lVm9vyCGYyR83OgkF995xSrlLq5IwgIT1t+TGhmLajo0mHjmQTahIW8gSmGMsRZTTI+p5FjRPrVA==",
+        },
+        ("linux", "aarch64") => Platform {
+            npm_suffix: "linux-arm64",
+            triple: "aarch64-unknown-linux-musl",
+            sha512: "eB4gtmnwMJSt07YP1Xl19U0zqH4aDcZNC3w9dkzMxbn0NJrkAmH8uB8KLSmVez7C/28QP8E9aaNy+EeZQfaxVA==",
+        },
         (os, arch) => return Err(format!("暂不支持这个系统（{os} / {arch}）")),
     };
     Ok(p)
@@ -102,7 +132,7 @@ pub async fn engine_install(app: AppHandle) -> Result<EngineStatus, String> {
 
     let mut errors = Vec::new();
     for mirror in MIRRORS {
-        match install_from(&app, &client, mirror, &version, &parent, &root).await {
+        match install_from(&app, &client, mirror, &version, plat.sha512, &parent, &root).await {
             Ok(()) => return engine_status(app),
             Err(e) => errors.push(format!("{mirror}：{e}")),
         }
@@ -115,6 +145,7 @@ async fn install_from(
     client: &reqwest::Client,
     mirror: &str,
     version: &str,
+    pinned_sha512: &str,
     parent: &Path,
     root: &Path,
 ) -> Result<(), String> {
@@ -128,12 +159,12 @@ async fn install_from(
         .json()
         .await
         .map_err(|e| format!("版本信息格式不对：{e}"))?;
-    let expected = doc
-        .dist
-        .integrity
-        .strip_prefix("sha512-")
-        .ok_or("版本信息里没有 sha512 校验值")?
-        .to_string();
+    // The mirror's metadata only tells us where the file is; what it must hash to is compiled in.
+    // A mirror that lists a different hash is skipped before downloading anything.
+    if doc.dist.integrity.strip_prefix("sha512-") != Some(pinned_sha512) {
+        return Err("镜像上的版本信息和内置校验值不一致，换下一个镜像".into());
+    }
+    let expected = pinned_sha512.to_string();
 
     let tgz = parent.join(format!("{version}.tgz.part"));
     let digests = download::fetch(app, client, &doc.dist.tarball, &tgz, doc.dist.size, PROGRESS_EVENT, mirror).await?;
@@ -156,4 +187,17 @@ async fn install_from(
     tokio::fs::rename(&staging, root).await.map_err(|e| format!("安装失败：{e}"))?;
     download::emit(app, PROGRESS_EVENT, "done", 0, 0, mirror);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+
+    #[test]
+    fn every_platform_has_a_well_formed_pinned_hash() {
+        let p = platform().expect("this platform is supported");
+        let raw = base64::engine::general_purpose::STANDARD.decode(p.sha512).expect("base64");
+        assert_eq!(raw.len(), 64, "sha512 is 64 bytes");
+    }
 }

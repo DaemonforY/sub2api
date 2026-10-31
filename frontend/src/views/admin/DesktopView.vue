@@ -224,6 +224,20 @@
             <span class="input-label">{{ t('desktopAdmin.editor.preview') }}</span>
             <pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-xs dark:bg-dark-800">{{ skillMD }}</pre>
           </div>
+          <div v-if="editing" data-testid="desktop-skill-revisions">
+            <span class="input-label">{{ t('desktopAdmin.editor.history', { n: revisions.length }) }}</span>
+            <p v-if="!revisions.length" class="text-xs text-gray-500">{{ t('desktopAdmin.editor.noHistory') }}</p>
+            <ul v-else class="max-h-48 space-y-1 overflow-auto text-xs">
+              <li v-for="r in revisions" :key="r.id" class="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-1.5 dark:bg-dark-800">
+                <span class="min-w-0 truncate">
+                  v{{ r.version }} · {{ r.snapshot.title }} ·
+                  {{ t(`desktopAdmin.editor.replacedBy.${r.action}`) }} · {{ formatTime(r.created_at) }}
+                  <template v-if="r.actor_email"> · {{ r.actor_email }}</template>
+                </span>
+                <button class="btn btn-secondary btn-sm shrink-0" @click="loadRevision(r)">{{ t('desktopAdmin.editor.loadVersion') }}</button>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -354,10 +368,19 @@ const editing = ref<api.DesktopSkill | null>(null)
 const form = reactive<api.DesktopSkillInput>(emptyForm())
 const skillMD = ref('')
 const saving = ref(false)
+const revisions = ref<api.DesktopSkillRevision[]>([])
+
+/** Puts an earlier version into the form; it goes live only when saved (as a new version). */
+function loadRevision(r: api.DesktopSkillRevision) {
+  const { id: _id, version: _v, created_at: _c, updated_at: _u, status: _s, ...rest } = r.snapshot
+  Object.assign(form, rest)
+  appStore.showSuccess(t('desktopAdmin.editor.loaded', { version: r.version }))
+}
 
 async function openEditor(s: api.DesktopSkill | null) {
   editing.value = s
   skillMD.value = ''
+  revisions.value = []
   Object.assign(form, emptyForm())
   if (s) {
     const { id: _id, version: _v, created_at: _c, updated_at: _u, ...rest } = s
@@ -365,6 +388,10 @@ async function openEditor(s: api.DesktopSkill | null) {
     api
       .getSkill(s.id)
       .then((r) => (skillMD.value = r.skill_md))
+      .catch(() => {})
+    api
+      .listRevisions(s.id)
+      .then((r) => (revisions.value = r))
       .catch(() => {})
   }
   editorOpen.value = true

@@ -55,7 +55,7 @@ export class CodexClient {
     await invoke('engine_stop')
     await invoke('engine_start')
     const init = await this.request<InitializeResult>('initialize', {
-      clientInfo: { name: 'hivegpt_desktop', title: 'HiveGPT 桌面助手', version: '0.2.0' },
+      clientInfo: { name: 'hivegpt_desktop', title: 'HiveGPT 桌面助手', version: '0.2.1' },
       capabilities: null
     })
     await this.notify('initialized')

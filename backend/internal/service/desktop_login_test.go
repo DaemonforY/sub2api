@@ -120,7 +120,7 @@ func TestDesktopLogin_ApproveIssuesKeyInLongestOpenAISubscription(t *testing.T) 
 	keys := &fakeDesktopKeys{}
 	svc, store := newDesktopTestService(subs, keys)
 
-	started, err := svc.Start(ctx, testDeviceID, "  张三的\x00笔记本#1  ")
+	started, err := svc.Start(ctx, testDeviceID, "  张三的\x00笔记本#1  ", testComputerIP)
 	require.NoError(t, err)
 	require.Equal(t, "/desktop-login?t="+started.TicketID, started.LoginPath)
 	require.Len(t, started.DeviceCode, 64)
@@ -132,14 +132,14 @@ func TestDesktopLogin_ApproveIssuesKeyInLongestOpenAISubscription(t *testing.T) 
 	_, err = svc.Poll(ctx, started.TicketID, strings.Repeat("0", 64))
 	require.ErrorIs(t, err, ErrDesktopLoginBadCode)
 
-	info, err := svc.Info(ctx, started.TicketID)
+	info, err := svc.Info(ctx, started.TicketID, testPhoneIP)
 	require.NoError(t, err)
 	require.Equal(t, "张三的笔记本1", info.DeviceName)
 
-	status, err := svc.Decide(ctx, started.TicketID, 42, true)
+	status, err := svc.Decide(ctx, started.TicketID, 42, true, testPhoneIP, false)
 	require.NoError(t, err)
 	require.Equal(t, DesktopLoginStatusApproved, status)
-	_, err = svc.Decide(ctx, started.TicketID, 43, true)
+	_, err = svc.Decide(ctx, started.TicketID, 43, true, testPhoneIP, false)
 	require.ErrorIs(t, err, ErrDesktopLoginNotPending)
 
 	res, err = svc.Poll(ctx, started.TicketID, started.DeviceCode)
@@ -170,9 +170,9 @@ func TestDesktopLogin_ReusesDeviceKeyAndMovesIt(t *testing.T) {
 	subs := []UserSubscription{{GroupID: 8, ExpiresAt: time.Now().Add(time.Hour), Group: &Group{ID: 8, Name: "Codex-轻量版", Platform: PlatformOpenAI}}}
 	svc, _ := newDesktopTestService(subs, keys)
 
-	started, err := svc.Start(ctx, testDeviceID, "MacBook")
+	started, err := svc.Start(ctx, testDeviceID, "MacBook", testComputerIP)
 	require.NoError(t, err)
-	_, err = svc.Decide(ctx, started.TicketID, 42, true)
+	_, err = svc.Decide(ctx, started.TicketID, 42, true, testPhoneIP, false)
 	require.NoError(t, err)
 	res, err := svc.Poll(ctx, started.TicketID, started.DeviceCode)
 	require.NoError(t, err)
@@ -188,9 +188,9 @@ func TestDesktopLogin_NoSubscriptionUsesPayAsYouGo(t *testing.T) {
 	ctx := context.Background()
 	keys := &fakeDesktopKeys{}
 	svc, _ := newDesktopTestService(nil, keys)
-	started, err := svc.Start(ctx, testDeviceID, "")
+	started, err := svc.Start(ctx, testDeviceID, "", testComputerIP)
 	require.NoError(t, err)
-	_, err = svc.Decide(ctx, started.TicketID, 42, true)
+	_, err = svc.Decide(ctx, started.TicketID, 42, true, testPhoneIP, false)
 	require.NoError(t, err)
 	res, err := svc.Poll(ctx, started.TicketID, started.DeviceCode)
 	require.NoError(t, err)
@@ -202,14 +202,14 @@ func TestDesktopLogin_RejectAndBadInput(t *testing.T) {
 	ctx := context.Background()
 	svc, _ := newDesktopTestService(nil, &fakeDesktopKeys{})
 
-	_, err := svc.Start(ctx, "bad id!", "x")
+	_, err := svc.Start(ctx, "bad id!", "x", testComputerIP)
 	require.ErrorIs(t, err, ErrDesktopLoginBadDevice)
-	_, err = svc.Info(ctx, "not-a-ticket")
+	_, err = svc.Info(ctx, "not-a-ticket", testPhoneIP)
 	require.ErrorIs(t, err, ErrDesktopLoginNotFound)
 
-	started, err := svc.Start(ctx, testDeviceID, "PC")
+	started, err := svc.Start(ctx, testDeviceID, "PC", testComputerIP)
 	require.NoError(t, err)
-	status, err := svc.Decide(ctx, started.TicketID, 42, false)
+	status, err := svc.Decide(ctx, started.TicketID, 42, false, testPhoneIP, false)
 	require.NoError(t, err)
 	require.Equal(t, DesktopLoginStatusRejected, status)
 	res, err := svc.Poll(ctx, started.TicketID, started.DeviceCode)
@@ -220,9 +220,54 @@ func TestDesktopLogin_RejectAndBadInput(t *testing.T) {
 func TestDesktopLogin_ExpiredTicketCannotBeSaved(t *testing.T) {
 	ctx := context.Background()
 	svc, _ := newDesktopTestService(nil, &fakeDesktopKeys{})
-	started, err := svc.Start(ctx, testDeviceID, "PC")
+	started, err := svc.Start(ctx, testDeviceID, "PC", testComputerIP)
 	require.NoError(t, err)
 	svc.now = func() time.Time { return time.Now().Add(desktopLoginTicketTTL + time.Second) }
-	_, err = svc.Decide(ctx, started.TicketID, 42, true)
+	_, err = svc.Decide(ctx, started.TicketID, 42, true, testPhoneIP, false)
 	require.ErrorIs(t, err, ErrDesktopLoginNotFound)
+}
+
+// The computer and the phone on the same home network (one /24), as in a normal sign-in.
+const (
+	testComputerIP = "198.51.100.7"
+	testPhoneIP    = "198.51.100.23"
+)
+
+func TestDesktopLogin_OtherNetworkNeedsConfirmNearby(t *testing.T) {
+	svc, _ := newDesktopTestService(nil, &fakeDesktopKeys{})
+	ctx := context.Background()
+	// A phishing QR: the computer asks from somewhere else entirely.
+	started, err := svc.Start(ctx, testDeviceID, "HiveGPT 官方验证", "203.0.113.50")
+	require.NoError(t, err)
+
+	info, err := svc.Info(ctx, started.TicketID, testPhoneIP)
+	require.NoError(t, err)
+	require.False(t, info.SameNetwork)
+	require.Equal(t, "203.0.113.*", info.ComputerNetwork)
+	require.Equal(t, "未命名电脑", info.DeviceName, "names posing as HiveGPT / an official check are replaced")
+
+	_, err = svc.Decide(ctx, started.TicketID, 42, true, testPhoneIP, false)
+	require.ErrorIs(t, err, ErrDesktopLoginNotNearby)
+	// Rejecting never needs the confirmation.
+	status, err := svc.Decide(ctx, started.TicketID, 42, false, testPhoneIP, false)
+	require.NoError(t, err)
+	require.Equal(t, DesktopLoginStatusRejected, status)
+
+	// Phone on mobile data, computer on Wi-Fi: allowed once the user confirms it is in front of them.
+	started, err = svc.Start(ctx, testDeviceID, "MacBook", "203.0.113.50")
+	require.NoError(t, err)
+	status, err = svc.Decide(ctx, started.TicketID, 42, true, testPhoneIP, true)
+	require.NoError(t, err)
+	require.Equal(t, DesktopLoginStatusApproved, status)
+}
+
+func TestDesktopNetworkHelpers(t *testing.T) {
+	require.True(t, desktopSameNetwork("198.51.100.7", "198.51.100.200"))
+	require.False(t, desktopSameNetwork("198.51.100.7", "198.51.101.7"))
+	require.False(t, desktopSameNetwork("", ""), "unknown addresses never count as the same network")
+	require.True(t, desktopSameNetwork("2001:db8:1:2::1", "2001:db8:1:ffff::9"))
+	require.Equal(t, "2001:db8:1::*", desktopMaskedNetwork("2001:db8:1:2::1"))
+	require.Equal(t, "", desktopMaskedNetwork("not an ip"))
+	require.Equal(t, "MacBook Pro", cleanDeviceName("MacBook Pro"))
+	require.Equal(t, "未命名电脑", cleanDeviceName("hivegpt客服"))
 }

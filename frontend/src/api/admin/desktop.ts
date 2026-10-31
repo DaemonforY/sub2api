@@ -90,6 +90,24 @@ export async function setSkillStatus(id: number, status: DesktopSkillStatus): Pr
   await apiClient.post(`${BASE}/skills/${id}/status`, { status })
 }
 
+export interface DesktopSkillRevision {
+  id: number
+  skill_id: number
+  version: number
+  /** What replaced this version: update / status / delete. */
+  action: 'update' | 'status' | 'delete'
+  actor_id: number
+  actor_email: string
+  snapshot: DesktopSkill
+  created_at: string
+}
+
+/** Earlier versions of a skill, newest first (the last 50). */
+export async function listRevisions(id: number): Promise<DesktopSkillRevision[]> {
+  const { data } = await apiClient.get(`${BASE}/skills/${id}/revisions`)
+  return data.items
+}
+
 export async function deleteSkill(id: number): Promise<void> {
   await apiClient.delete(`${BASE}/skills/${id}`)
 }

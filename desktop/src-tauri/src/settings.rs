@@ -1,8 +1,10 @@
 //! Where the app talks to and the device key. The key lives in the system credential store
 //! (Windows Credential Manager / macOS Keychain), never in a plain file.
 //!
-//! The key normally comes from the WeChat sign-in (login.rs). Developers can paste one on the setup
-//! screen or set HIVEGPT_API_KEY / HIVEGPT_BASE_URL in the environment.
+//! The key normally comes from the WeChat sign-in (login.rs). In debug builds developers can paste one
+//! on the setup screen or set HIVEGPT_API_KEY / HIVEGPT_BASE_URL in the environment. Release builds
+//! ignore both variables, so something that only changes the user's environment can't point the app
+//! at another server (which would then serve it skills) or swap its key.
 
 use std::path::PathBuf;
 
@@ -14,10 +16,17 @@ const KEYRING_SERVICE: &str = "cn.hivegpt.desktop";
 const KEYRING_USER: &str = "device-key";
 const DEFAULT_BASE_URL: &str = "https://hivegpt.cn";
 
+/// A development override, read only in debug builds.
+fn dev_env(name: &str) -> Option<String> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
+    std::env::var(name).ok().map(|v| v.trim().to_string()).filter(|v| !v.is_empty())
+}
+
 pub fn base_url() -> String {
-    std::env::var("HIVEGPT_BASE_URL")
-        .ok()
-        .map(|s| s.trim().trim_end_matches('/').to_string())
+    dev_env("HIVEGPT_BASE_URL")
+        .map(|s| s.trim_end_matches('/').to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| DEFAULT_BASE_URL.to_string())
 }
@@ -27,10 +36,8 @@ fn entry() -> Result<keyring::Entry, String> {
 }
 
 pub fn api_key() -> Result<Option<String>, String> {
-    if let Ok(k) = std::env::var("HIVEGPT_API_KEY") {
-        if !k.trim().is_empty() {
-            return Ok(Some(k.trim().to_string()));
-        }
+    if let Some(k) = dev_env("HIVEGPT_API_KEY") {
+        return Ok(Some(k));
     }
     match entry()?.get_password() {
         Ok(k) => Ok(Some(k)),

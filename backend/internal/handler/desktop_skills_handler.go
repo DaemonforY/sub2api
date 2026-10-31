@@ -120,7 +120,17 @@ func (h *DesktopHandler) AdminDeleteSkill(c *gin.Context) {
 	if !ok {
 		return
 	}
-	h.respond(c, gin.H{"ok": true}, h.skills.Delete(c.Request.Context(), id))
+	h.respond(c, gin.H{"ok": true}, h.skills.Delete(c.Request.Context(), id, shihuaAdminID(c)))
+}
+
+// AdminSkillRevisions GET /admin/desktop/skills/:id/revisions — earlier versions, newest first.
+func (h *DesktopHandler) AdminSkillRevisions(c *gin.Context) {
+	id, ok := shihuaPathID(c, service.ErrDesktopSkillNotFound)
+	if !ok {
+		return
+	}
+	revs, err := h.skills.Revisions(c.Request.Context(), id)
+	h.respond(c, gin.H{"items": revs}, err)
 }
 
 // AdminOverview GET /admin/desktop/overview?days=30 — devices, funnel, per-template results.

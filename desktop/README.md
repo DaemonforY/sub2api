@@ -8,12 +8,13 @@ This folder is a separate pnpm project. It is not part of the web frontend build
 
 1. **Engine.** On first run it downloads the pinned `@openai/codex` platform build (`src-tauri/src/engine.rs`, version `CODEX_VERSION`).
    - Source: npmmirror, falling back to the Tencent and Huawei npm mirrors.
-   - Check: the tarball is verified against the registry's sha512 `integrity`.
+   - Check: the tarball must match a sha512 pinned per platform in `engine.rs` (taken from registry.npmjs.org, cross-checked with npmmirror). A mirror listing another hash is skipped. Update the hashes together with `CODEX_VERSION`.
    - Location: unpacked into the app data dir under `engine/<version>/`.
 2. **Sign-in.** The app signs in with WeChat, device-authorization style (`src-tauri/src/login.rs`, server side `backend/internal/service/desktop_login.go`):
    - The app calls `POST /api/v1/auth/desktop/start` and shows a QR of `<site>/desktop-login?t=<ticket>`.
    - The user scans it in WeChat, signs in on the site with the normal web login (sign-up included) and taps 确认登录. That page is `frontend/src/views/user/DesktopLoginView.vue`.
    - The app polls `POST /api/v1/auth/desktop/poll` with a secret device code that never leaves the Rust side. On approval it receives this device's key, 「桌面助手 · <电脑名> #<id>」.
+   - Anti-phishing: the phone page shows the computer's network (last part hidden) and whether it is the phone's network (same IP, IPv4 /24 or IPv6 /48). On another network, the server refuses to approve unless the user ticks 「这台电脑就在我面前」. Device names posing as HiveGPT or an official check are replaced with 未命名电脑.
    - The key goes into the user's longest-running OpenAI subscription group (the Codex trial counts), otherwise the pay-as-you-go group. Signing in again on the same computer reuses and re-enables that key.
    - The key is stored in the system credential store. The account name and group are kept in `account.json`.
    - Debug builds still offer 「开发用：粘贴 Key」.
@@ -55,7 +56,7 @@ pnpm install
 pnpm tauri dev
 ```
 
-For development you can skip the key form: `HIVEGPT_API_KEY=sk-… pnpm tauri dev`. `HIVEGPT_BASE_URL` points it at another sub2api.
+For development you can skip the key form: `HIVEGPT_API_KEY=sk-… pnpm tauri dev`. `HIVEGPT_BASE_URL` points it at another sub2api. Both are read only by debug builds; release builds always use hivegpt.cn and the key from the credential store.
 
 Debug-build switches:
 - `HIVEGPT_DEV_PROMPT`: finish setup and send this prompt.
@@ -69,7 +70,6 @@ Checks: `pnpm typecheck` (Vue) and `cargo build` in `src-tauri/` (Rust 1.80+). W
 
 ## Not done yet
 
-- **`GET /api/v1/desktop/version`**, to serve the engine version and per-platform hashes. Today the hash comes from the same mirror as the file, so it catches corruption, not a malicious mirror.
 - Auto-update, server-delivered skills (phase 2 B), scheduled tasks (phase 2 C).
 - **Testing on a real Windows PC.** `.github/workflows/desktop-build.yml` builds the installer: NSIS, per-user, about 5 MB, artifact `hivegpt-desktop-windows-x64`. It runs on `desktop/**` changes on main and on `feat/desktop-*`, or by hand. The installer has not been run on Windows yet. On Windows the app runs Codex's one-time unelevated sandbox setup when it connects.
 - **Code signing** for Windows and macOS.

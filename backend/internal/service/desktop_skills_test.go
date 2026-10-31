@@ -44,7 +44,10 @@ func (m *memDesktopSkills) UpdateDesktopSkill(context.Context, *DesktopSkill, in
 func (m *memDesktopSkills) SetDesktopSkillStatus(context.Context, int64, string, int64) error {
 	return nil
 }
-func (m *memDesktopSkills) DeleteDesktopSkill(context.Context, int64) error { return nil }
+func (m *memDesktopSkills) DeleteDesktopSkill(context.Context, int64, int64) error { return nil }
+func (m *memDesktopSkills) ListDesktopSkillRevisions(context.Context, int64, int) ([]DesktopSkillRevision, error) {
+	return nil, nil
+}
 func (m *memDesktopSkills) DesktopOverview(_ context.Context, since time.Time, prefix string) (*DesktopOverview, error) {
 	return &DesktopOverview{}, nil
 }

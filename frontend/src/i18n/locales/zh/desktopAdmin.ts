@@ -59,7 +59,12 @@ export default {
       instructions: '技能做法（SKILL.md 正文，Markdown）',
       instructionsHint: '写给 Codex 看的详细做法：步骤、输出文件放哪、格式要求、要提醒用户核对什么。留空就用上面的提示词。',
       preview: '用户电脑上收到的 SKILL.md（保存前的版本）',
-      saved: '已保存'
+      saved: '已保存',
+      history: '历史版本（{n}）',
+      noHistory: '还没有改动记录。每次保存、上下架和删除前的版本都会留在这里。',
+      replacedBy: { update: '被编辑替换', status: '上下架前', delete: '删除前' },
+      loadVersion: '载入这个版本',
+      loaded: '已把 v{version} 载入表单，点「保存」后生效'
     }
   }
 }

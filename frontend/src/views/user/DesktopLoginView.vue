@@ -17,6 +17,10 @@
         <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600 dark:bg-emerald-900/30">✓</div>
         <p class="mt-3 font-medium text-gray-900 dark:text-white">{{ t('desktopLogin.approved') }}</p>
         <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{ t('desktopLogin.approvedHint') }}</p>
+        <p class="mt-4 text-xs leading-5 text-gray-500 dark:text-dark-400" data-testid="desktop-login-not-me">
+          {{ t('desktopLogin.approvedNotMe', { device: info?.device_name ?? '' }) }}
+          <router-link to="/keys" class="text-primary-600 underline dark:text-primary-400">{{ t('desktopLogin.goKeys') }}</router-link>
+        </p>
       </div>
 
       <div v-else-if="outcome === 'rejected'" class="mt-6 py-6 text-center" data-testid="desktop-login-rejected">
@@ -37,12 +41,34 @@
           {{ t('desktopLogin.asking', { device: info.device_name }) }}
         </p>
         <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">{{ t('desktopLogin.explain') }}</p>
+        <div
+          class="mt-4 rounded-xl border p-3 text-sm leading-6"
+          :class="
+            info.same_network
+              ? 'border-gray-200 bg-gray-50 text-gray-600 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300'
+              : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200'
+          "
+          data-testid="desktop-login-network"
+        >
+          <p>{{ t('desktopLogin.network', { network: info.computer_network || t('desktopLogin.unknownNetwork'), ago: agoText }) }}</p>
+          <p class="mt-1">{{ info.same_network ? t('desktopLogin.sameNetwork') : t('desktopLogin.otherNetwork') }}</p>
+          <label v-if="!info.same_network" class="mt-2 flex items-start gap-2 font-medium">
+            <input v-model="nearby" type="checkbox" class="mt-1" data-testid="desktop-login-nearby" />
+            <span>{{ t('desktopLogin.confirmNearby') }}</span>
+          </label>
+        </div>
+        <p class="mt-3 text-xs leading-5 text-red-600 dark:text-red-400" data-testid="desktop-login-phishing">{{ t('desktopLogin.phishing') }}</p>
         <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-dark-400">{{ t('desktopLogin.notYou') }}</p>
         <div class="mt-6 flex gap-3">
           <button class="btn btn-secondary flex-1" :disabled="submitting" data-testid="desktop-login-reject" @click="decide(false)">
             {{ t('desktopLogin.reject') }}
           </button>
-          <button class="btn btn-primary flex-1" :disabled="submitting" data-testid="desktop-login-approve" @click="decide(true)">
+          <button
+            class="btn btn-primary flex-1"
+            :disabled="submitting || (!info.same_network && !nearby)"
+            data-testid="desktop-login-approve"
+            @click="decide(true)"
+          >
             {{ t('desktopLogin.approve') }}
           </button>
         </div>
@@ -76,6 +102,13 @@ const submitting = ref(false)
 const info = ref<DesktopLoginInfo | null>(null)
 const message = ref('')
 const outcome = ref<'' | 'approved' | 'rejected'>('')
+/** 「这台电脑就在我面前」, required when the computer is on another network. */
+const nearby = ref(false)
+
+const agoText = computed(() => {
+  const s = info.value?.started_ago ?? 0
+  return s < 60 ? t('desktopLogin.justNow') : t('desktopLogin.minutesAgo', { n: Math.floor(s / 60) })
+})
 
 onMounted(async () => {
   if (!/^[a-f0-9]{32}$/.test(ticketId)) {
@@ -97,7 +130,7 @@ onMounted(async () => {
 async function decide(approve: boolean) {
   submitting.value = true
   try {
-    const res = await decideDesktopLogin(ticketId, approve)
+    const res = await decideDesktopLogin(ticketId, approve, approve && nearby.value)
     outcome.value = res.status === 'approved' ? 'approved' : 'rejected'
   } catch (err) {
     message.value = extractApiErrorMessage(err, t('desktopLogin.loadFailed'))

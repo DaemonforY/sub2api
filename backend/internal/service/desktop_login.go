@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"net"
 	"regexp"
 	"sort"
 	"strings"
@@ -28,6 +29,11 @@ import (
 //     placed in the user's OpenAI subscription group (trial or paid) or else the pay-as-you-go group.
 //
 // Someone who only sees the QR can approve it for their own account, but cannot poll for the key.
+//
+// Phishing (someone sends the victim *their own* computer's QR) is made harder: the page compares the
+// network the computer asked from with the phone's, and approving a computer on another network needs
+// an explicit 「这台电脑就在我面前」 (checked here, not just in the page). Device names that pose as
+// HiveGPT or an official check are replaced.
 
 const (
 	DesktopLoginStatusPending  = "pending"
@@ -56,6 +62,10 @@ var (
 	ErrDesktopLoginBadDevice  = infraerrors.BadRequest("DESKTOP_LOGIN_BAD_DEVICE", "设备信息不完整，请重启桌面助手后重试（Invalid device id）")
 	ErrDesktopLoginBadCode    = infraerrors.NotFound("DESKTOP_LOGIN_BAD_CODE", "登录请求不存在或不属于这台电脑，请刷新二维码（Device code does not match）")
 	ErrDesktopLoginNotPending = infraerrors.Conflict("DESKTOP_LOGIN_NOT_PENDING", "这个登录请求已经处理过了，请回到电脑上查看（Sign-in request already handled）")
+	ErrDesktopLoginNotNearby  = infraerrors.BadRequest("DESKTOP_LOGIN_CONFIRM_NEARBY", "这台电脑和你的手机不在同一个网络，请确认电脑就在你面前、是你自己在登录（Confirm the computer is in front of you）")
+
+	// Names that pose as HiveGPT or an official check, to make a phishing QR look trustworthy.
+	desktopNameImpersonation = regexp.MustCompile(`(?i)hive\s*gpt|官方|客服|验证|认证|审核|安全中心|管理员|领取|福利|奖励|红包|中奖|退款`)
 )
 
 // DesktopLoginStore is the Redis subset the flow needs (the 公众号 login store provides it).
@@ -104,6 +114,8 @@ type desktopTicket struct {
 	Status         string `json:"status"`
 	UserID         int64  `json:"user_id,omitempty"`
 	CreatedAt      int64  `json:"created_at"`
+	// RequestIP is where the computer asked from (for the same-network check; never shown in full).
+	RequestIP string `json:"request_ip,omitempty"`
 }
 
 type DesktopLoginStarted struct {
@@ -118,6 +130,13 @@ type DesktopLoginInfo struct {
 	DeviceName string `json:"device_name"`
 	Status     string `json:"status"`
 	ExpiresIn  int    `json:"expires_in"`
+	// SameNetwork: the computer asked from the phone's network (same IP, IPv4 /24 or IPv6 /48).
+	// When false, approving needs confirm_nearby.
+	SameNetwork bool `json:"same_network"`
+	// ComputerNetwork is the computer's address with the last part hidden, e.g. 203.0.113.*.
+	ComputerNetwork string `json:"computer_network"`
+	// StartedAgo is how many seconds ago the computer asked.
+	StartedAgo int `json:"started_ago"`
 }
 
 type DesktopLoginPollResult struct {
@@ -156,7 +175,39 @@ func cleanDeviceName(name string) string {
 	if len(out) == 0 {
 		return "我的电脑"
 	}
+	if desktopNameImpersonation.MatchString(string(out)) {
+		return "未命名电脑"
+	}
 	return string(out)
+}
+
+// desktopNetwork is the part of an address that identifies the network: IPv4 /24, IPv6 /48.
+func desktopNetwork(ip string) string {
+	parsed := net.ParseIP(strings.TrimSpace(ip))
+	if parsed == nil {
+		return ""
+	}
+	if v4 := parsed.To4(); v4 != nil {
+		return net.IPv4(v4[0], v4[1], v4[2], 0).String()
+	}
+	return parsed.Mask(net.CIDRMask(48, 128)).String()
+}
+
+func desktopSameNetwork(a, b string) bool {
+	na, nb := desktopNetwork(a), desktopNetwork(b)
+	return na != "" && na == nb
+}
+
+// desktopMaskedNetwork shows where a computer is without its full address: 203.0.113.* / 2001:db8:1::*.
+func desktopMaskedNetwork(ip string) string {
+	n := desktopNetwork(ip)
+	if n == "" {
+		return ""
+	}
+	if strings.Contains(n, ":") {
+		return strings.TrimSuffix(n, "::") + "::*"
+	}
+	return strings.TrimSuffix(n, ".0") + ".*"
 }
 
 func desktopKeyTag(deviceID string) string {
@@ -167,7 +218,7 @@ func desktopKeyTag(deviceID string) string {
 	return " #" + id
 }
 
-func (s *DesktopLoginService) Start(ctx context.Context, deviceID, deviceName string) (*DesktopLoginStarted, error) {
+func (s *DesktopLoginService) Start(ctx context.Context, deviceID, deviceName, requestIP string) (*DesktopLoginStarted, error) {
 	if !desktopDeviceIDPattern.MatchString(deviceID) {
 		return nil, ErrDesktopLoginBadDevice
 	}
@@ -185,6 +236,7 @@ func (s *DesktopLoginService) Start(ctx context.Context, deviceID, deviceName st
 		DeviceName:     cleanDeviceName(deviceName),
 		Status:         DesktopLoginStatusPending,
 		CreatedAt:      s.now().Unix(),
+		RequestIP:      strings.TrimSpace(requestIP),
 	}
 	if err := s.save(ctx, ticketID, t); err != nil {
 		return nil, err
@@ -236,8 +288,8 @@ func (s *DesktopLoginService) expiresIn(t *desktopTicket) int {
 	return int(left.Seconds())
 }
 
-// Info is what the signed-in phone page shows before the user confirms.
-func (s *DesktopLoginService) Info(ctx context.Context, ticketID string) (*DesktopLoginInfo, error) {
+// Info is what the signed-in phone page shows before the user confirms; viewerIP is the phone's.
+func (s *DesktopLoginService) Info(ctx context.Context, ticketID, viewerIP string) (*DesktopLoginInfo, error) {
 	t, err := s.load(ctx, ticketID)
 	if err != nil {
 		return nil, err
@@ -245,11 +297,20 @@ func (s *DesktopLoginService) Info(ctx context.Context, ticketID string) (*Deskt
 	if t == nil {
 		return nil, ErrDesktopLoginNotFound
 	}
-	return &DesktopLoginInfo{DeviceName: t.DeviceName, Status: t.Status, ExpiresIn: s.expiresIn(t)}, nil
+	ago := int(s.now().Sub(time.Unix(t.CreatedAt, 0)).Seconds())
+	if ago < 0 {
+		ago = 0
+	}
+	return &DesktopLoginInfo{
+		DeviceName: t.DeviceName, Status: t.Status, ExpiresIn: s.expiresIn(t),
+		SameNetwork: desktopSameNetwork(t.RequestIP, viewerIP), ComputerNetwork: desktopMaskedNetwork(t.RequestIP),
+		StartedAgo: ago,
+	}, nil
 }
 
-// Decide records the signed-in user's answer for a pending ticket.
-func (s *DesktopLoginService) Decide(ctx context.Context, ticketID string, userID int64, approve bool) (string, error) {
+// Decide records the signed-in user's answer for a pending ticket. Approving a computer that asked
+// from another network than the phone's (viewerIP) needs confirmedNearby.
+func (s *DesktopLoginService) Decide(ctx context.Context, ticketID string, userID int64, approve bool, viewerIP string, confirmedNearby bool) (string, error) {
 	t, err := s.load(ctx, ticketID)
 	if err != nil {
 		return "", err
@@ -259,6 +320,9 @@ func (s *DesktopLoginService) Decide(ctx context.Context, ticketID string, userI
 	}
 	if t.Status != DesktopLoginStatusPending {
 		return "", ErrDesktopLoginNotPending
+	}
+	if approve && !confirmedNearby && !desktopSameNetwork(t.RequestIP, viewerIP) {
+		return "", ErrDesktopLoginNotNearby
 	}
 	if approve {
 		t.Status = DesktopLoginStatusApproved

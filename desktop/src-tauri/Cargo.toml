@@ -1,6 +1,6 @@
 [package]
 name = "hivegpt-desktop"
-version = "0.2.0"
+version = "0.2.1"
 description = "HiveGPT 桌面助手"
 edition = "2021"
 

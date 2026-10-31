@@ -66,10 +66,32 @@ func TestDesktopSkillRepository(t *testing.T) {
 	}
 	require.True(t, found)
 
-	require.NoError(t, repo.DeleteDesktopSkill(ctx, id))
+	t.Cleanup(func() {
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM desktop_skill_revisions WHERE skill_id = $1`, id)
+	})
+	require.NoError(t, repo.DeleteDesktopSkill(ctx, id, 0))
 	_, err = repo.GetDesktopSkill(ctx, id)
 	require.ErrorIs(t, err, service.ErrDesktopSkillNotFound)
-	require.ErrorIs(t, repo.DeleteDesktopSkill(ctx, id), service.ErrDesktopSkillNotFound)
+	require.ErrorIs(t, repo.DeleteDesktopSkill(ctx, id, 0), service.ErrDesktopSkillNotFound)
+
+	// Every change kept the version it replaced, newest first; they survive the delete.
+	revs, err := repo.ListDesktopSkillRevisions(ctx, id, 50)
+	require.NoError(t, err)
+	require.Len(t, revs, 3)
+	require.Equal(t, "delete", revs[0].Action)
+	require.Equal(t, 3, revs[0].Version)
+	require.Equal(t, service.DesktopSkillPublished, revs[0].Snapshot.Status)
+	require.Equal(t, "status", revs[1].Action)
+	require.Equal(t, "update", revs[2].Action)
+	require.Equal(t, 1, revs[2].Version)
+	require.Equal(t, "测试技能", revs[2].Snapshot.Title, "the update revision holds the title before the edit")
+	require.Equal(t, "做点什么", revs[2].Snapshot.Prompt)
+
+	// A failed change (unknown id) keeps nothing.
+	require.ErrorIs(t, repo.UpdateDesktopSkill(ctx, &service.DesktopSkill{ID: id, Slug: tag + "-x", Title: "x"}, 0), service.ErrDesktopSkillNotFound)
+	revs, err = repo.ListDesktopSkillRevisions(ctx, id, 50)
+	require.NoError(t, err)
+	require.Len(t, revs, 3)
 	require.ErrorIs(t, repo.SetDesktopSkillStatus(ctx, id, service.DesktopSkillHidden, 0), service.ErrDesktopSkillNotFound)
 }
 

@@ -10,6 +10,12 @@ export interface DesktopLoginInfo {
   device_name: string
   status: DesktopLoginStatus
   expires_in: number
+  /** The computer asked from this phone's network (same IP, IPv4 /24 or IPv6 /48). */
+  same_network: boolean
+  /** The computer's address with the last part hidden, e.g. 203.0.113.*. */
+  computer_network: string
+  /** Seconds since the computer asked. */
+  started_ago: number
 }
 
 export async function getDesktopLogin(ticketId: string): Promise<DesktopLoginInfo> {
@@ -17,10 +23,16 @@ export async function getDesktopLogin(ticketId: string): Promise<DesktopLoginInf
   return data
 }
 
-export async function decideDesktopLogin(ticketId: string, approve: boolean): Promise<{ status: DesktopLoginStatus }> {
+/** confirmNearby: 「这台电脑就在我面前」, required by the server when the networks differ. */
+export async function decideDesktopLogin(
+  ticketId: string,
+  approve: boolean,
+  confirmNearby = false
+): Promise<{ status: DesktopLoginStatus }> {
   const { data } = await apiClient.post<{ status: DesktopLoginStatus }>('/desktop/login/decide', {
     ticket_id: ticketId,
-    approve
+    approve,
+    confirm_nearby: confirmNearby
   })
   return data
 }

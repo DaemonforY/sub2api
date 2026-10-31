@@ -3,6 +3,7 @@ package handler
 import (
 	"strings"
 
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -33,7 +34,7 @@ func (h *DesktopHandler) Start(c *gin.Context) {
 		response.ErrorFrom(c, service.ErrDesktopLoginBadDevice)
 		return
 	}
-	started, err := h.login.Start(c.Request.Context(), strings.TrimSpace(req.DeviceID), req.DeviceName)
+	started, err := h.login.Start(c.Request.Context(), strings.TrimSpace(req.DeviceID), req.DeviceName, ip.GetSecurityClientIP(c, false))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -67,7 +68,7 @@ func (h *DesktopHandler) Poll(c *gin.Context) {
 // Info shows the signed-in phone which computer is asking.
 // GET /api/v1/desktop/login?t=
 func (h *DesktopHandler) Info(c *gin.Context) {
-	info, err := h.login.Info(c.Request.Context(), strings.TrimSpace(c.Query("t")))
+	info, err := h.login.Info(c.Request.Context(), strings.TrimSpace(c.Query("t")), ip.GetSecurityClientIP(c, false))
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -78,6 +79,8 @@ func (h *DesktopHandler) Info(c *gin.Context) {
 type desktopDecideRequest struct {
 	TicketID string `json:"ticket_id" binding:"required"`
 	Approve  bool   `json:"approve"`
+	// ConfirmNearby: the user ticked 「这台电脑就在我面前」 (needed when the networks differ).
+	ConfirmNearby bool `json:"confirm_nearby"`
 }
 
 // Decide approves or rejects the request for the signed-in user.
@@ -93,7 +96,7 @@ func (h *DesktopHandler) Decide(c *gin.Context) {
 		response.ErrorFrom(c, service.ErrDesktopLoginNotFound)
 		return
 	}
-	status, err := h.login.Decide(c.Request.Context(), strings.TrimSpace(req.TicketID), subject.UserID, req.Approve)
+	status, err := h.login.Decide(c.Request.Context(), strings.TrimSpace(req.TicketID), subject.UserID, req.Approve, ip.GetSecurityClientIP(c, false), req.ConfirmNearby)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return

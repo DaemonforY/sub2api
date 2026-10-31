@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -76,32 +77,80 @@ RETURNING id`,
 	return id, err
 }
 
+// withRevision runs change in a transaction after copying the skill's current row into
+// desktop_skill_revisions (action = what replaces it). No row → ErrDesktopSkillNotFound, nothing kept.
+func (r *desktopSkillRepository) withRevision(ctx context.Context, id int64, action string, adminID int64, change func(tx *sql.Tx) (sql.Result, error)) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, `
+INSERT INTO desktop_skill_revisions (skill_id, version, action, actor_id, snapshot)
+SELECT id, version, $2, NULLIF($3, 0), to_jsonb(s) FROM desktop_skills s WHERE id = $1`, id, action, adminID)
+	if err := desktopSkillOneRow(res, err); err != nil {
+		return err
+	}
+	res, err = change(tx)
+	if isUniqueViolation(err) {
+		return service.ErrDesktopSkillSlugUsed
+	}
+	if err := desktopSkillOneRow(res, err); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *desktopSkillRepository) ListDesktopSkillRevisions(ctx context.Context, skillID int64, limit int) ([]service.DesktopSkillRevision, error) {
+	rows, err := r.db.QueryContext(ctx, `
+SELECT rv.id, rv.skill_id, rv.version, rv.action, COALESCE(rv.actor_id, 0), COALESCE(u.email, ''), rv.snapshot, rv.created_at
+FROM desktop_skill_revisions rv LEFT JOIN users u ON u.id = rv.actor_id
+WHERE rv.skill_id = $1 ORDER BY rv.id DESC LIMIT $2`, skillID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	out := []service.DesktopSkillRevision{}
+	for rows.Next() {
+		var rv service.DesktopSkillRevision
+		var snap []byte
+		if err := rows.Scan(&rv.ID, &rv.SkillID, &rv.Version, &rv.Action, &rv.ActorID, &rv.ActorEmail, &snap, &rv.CreatedAt); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(snap, &rv.Snapshot); err != nil {
+			return nil, err
+		}
+		out = append(out, rv)
+	}
+	return out, rows.Err()
+}
+
 func (r *desktopSkillRepository) UpdateDesktopSkill(ctx context.Context, s *service.DesktopSkill, adminID int64) error {
 	// Status is changed only through SetDesktopSkillStatus; an empty status here keeps the current one.
-	res, err := r.db.ExecContext(ctx, `
+	return r.withRevision(ctx, s.ID, "update", adminID, func(tx *sql.Tx) (sql.Result, error) {
+		return tx.ExecContext(ctx, `
 UPDATE desktop_skills SET slug = $2, title = $3, icon = $4, summary = $5, prepare = $6, prompt = $7,
     sample_prompt = $8, instructions = $9, needs_office = $10, sort_order = $11,
     status = COALESCE(NULLIF($12, ''), status), version = version + 1, updated_by = NULLIF($13, 0), updated_at = NOW()
 WHERE id = $1`,
-		s.ID, s.Slug, s.Title, s.Icon, s.Summary, s.Prepare, s.Prompt, s.SamplePrompt, s.Instructions, s.NeedsOffice,
-		s.SortOrder, s.Status, adminID)
-	if isUniqueViolation(err) {
-		return service.ErrDesktopSkillSlugUsed
-	}
-	return desktopSkillOneRow(res, err)
+			s.ID, s.Slug, s.Title, s.Icon, s.Summary, s.Prepare, s.Prompt, s.SamplePrompt, s.Instructions, s.NeedsOffice,
+			s.SortOrder, s.Status, adminID)
+	})
 }
 
 func (r *desktopSkillRepository) SetDesktopSkillStatus(ctx context.Context, id int64, status string, adminID int64) error {
 	// The app only compares versions, so a status change bumps it too (a re-published skill is re-sent).
-	res, err := r.db.ExecContext(ctx, `
+	return r.withRevision(ctx, id, "status", adminID, func(tx *sql.Tx) (sql.Result, error) {
+		return tx.ExecContext(ctx, `
 UPDATE desktop_skills SET status = $2, version = version + 1, updated_by = NULLIF($3, 0), updated_at = NOW()
 WHERE id = $1`, id, status, adminID)
-	return desktopSkillOneRow(res, err)
+	})
 }
 
-func (r *desktopSkillRepository) DeleteDesktopSkill(ctx context.Context, id int64) error {
-	res, err := r.db.ExecContext(ctx, `DELETE FROM desktop_skills WHERE id = $1`, id)
-	return desktopSkillOneRow(res, err)
+func (r *desktopSkillRepository) DeleteDesktopSkill(ctx context.Context, id int64, adminID int64) error {
+	return r.withRevision(ctx, id, "delete", adminID, func(tx *sql.Tx) (sql.Result, error) {
+		return tx.ExecContext(ctx, `DELETE FROM desktop_skills WHERE id = $1`, id)
+	})
 }
 
 func desktopSkillOneRow(res sql.Result, err error) error {

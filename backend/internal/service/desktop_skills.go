@@ -59,6 +59,18 @@ type DesktopSkill struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// DesktopSkillRevision is a skill as it was before a change (Snapshot holds the whole row).
+type DesktopSkillRevision struct {
+	ID         int64        `json:"id"`
+	SkillID    int64        `json:"skill_id"`
+	Version    int          `json:"version"`
+	Action     string       `json:"action"` // update / status / delete: what replaced this version
+	ActorID    int64        `json:"actor_id"`
+	ActorEmail string       `json:"actor_email"`
+	Snapshot   DesktopSkill `json:"snapshot"`
+	CreatedAt  time.Time    `json:"created_at"`
+}
+
 // DesktopSkillForApp is what the app receives: the card plus the ready-made SKILL.md.
 type DesktopSkillForApp struct {
 	Slug         string `json:"slug"`
@@ -136,7 +148,9 @@ type DesktopSkillRepository interface {
 	// UpdateDesktopSkill bumps version; ErrDesktopSkillNotFound / ErrDesktopSkillSlugUsed as above.
 	UpdateDesktopSkill(ctx context.Context, s *DesktopSkill, adminID int64) error
 	SetDesktopSkillStatus(ctx context.Context, id int64, status string, adminID int64) error
-	DeleteDesktopSkill(ctx context.Context, id int64) error
+	// Update / status / delete keep the row as it was in desktop_skill_revisions first.
+	DeleteDesktopSkill(ctx context.Context, id int64, adminID int64) error
+	ListDesktopSkillRevisions(ctx context.Context, skillID int64, limit int) ([]DesktopSkillRevision, error)
 	DesktopOverview(ctx context.Context, since time.Time, keyNamePrefix string) (*DesktopOverview, error)
 }
 
@@ -206,8 +220,13 @@ func (s *DesktopSkillService) SetStatus(ctx context.Context, id int64, status st
 	return s.repo.SetDesktopSkillStatus(ctx, id, status, adminID)
 }
 
-func (s *DesktopSkillService) Delete(ctx context.Context, id int64) error {
-	return s.repo.DeleteDesktopSkill(ctx, id)
+func (s *DesktopSkillService) Delete(ctx context.Context, id int64, adminID int64) error {
+	return s.repo.DeleteDesktopSkill(ctx, id, adminID)
+}
+
+// Revisions lists the last 50 earlier versions of a skill, newest first.
+func (s *DesktopSkillService) Revisions(ctx context.Context, id int64) ([]DesktopSkillRevision, error) {
+	return s.repo.ListDesktopSkillRevisions(ctx, id, 50)
 }
 
 // Overview covers the last `days` days (1–90, default 30).

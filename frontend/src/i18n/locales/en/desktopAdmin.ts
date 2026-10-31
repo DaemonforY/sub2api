@@ -59,7 +59,12 @@ export default {
       instructions: 'How to do it (SKILL.md body, Markdown)',
       instructionsHint: 'Detailed steps for Codex: what to do, where outputs go, formats, what the user should double-check. Empty = use the prompt above.',
       preview: 'SKILL.md the computers receive (as last saved)',
-      saved: 'Saved'
+      saved: 'Saved',
+      history: 'Earlier versions ({n})',
+      noHistory: 'No changes yet. The version before every save, publish / hide and delete is kept here.',
+      replacedBy: { update: 'before an edit', status: 'before publish / hide', delete: 'before delete' },
+      loadVersion: 'Load this version',
+      loaded: 'Loaded v{version} into the form — save to make it live'
     }
   }
 }

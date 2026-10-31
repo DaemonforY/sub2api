@@ -1436,4 +1436,5 @@ func registerDesktopAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	g.PUT("/skills/:id", d.AdminUpdateSkill)
 	g.DELETE("/skills/:id", d.AdminDeleteSkill)
 	g.POST("/skills/:id/status", d.AdminSetSkillStatus)
+	g.GET("/skills/:id/revisions", d.AdminSkillRevisions)
 }
