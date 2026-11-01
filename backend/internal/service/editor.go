@@ -358,6 +358,68 @@ func (s *EditorService) WechatDraft(ctx context.Context, in EditorDraftInput) (s
 	return r.MediaID, nil
 }
 
+// EditorNewspicInput is a 贴图 (图片消息) draft: up to 20 permanent-material pictures, the first is
+// the cover; the body is plain text.
+type EditorNewspicInput struct {
+	EditorCredentials
+	Title              string   `json:"title"`
+	Content            string   `json:"content"`
+	ImageMediaIDs      []string `json:"image_media_ids"`
+	NeedOpenComment    bool     `json:"need_open_comment"`
+	OnlyFansCanComment bool     `json:"only_fans_can_comment"`
+}
+
+const (
+	editorNewspicMaxImages  = 20
+	editorNewspicMaxTitle   = 32
+	editorNewspicMaxContent = 20000
+)
+
+// WechatNewspic creates a 贴图 draft (article_type newspic) and returns its media_id.
+func (s *EditorService) WechatNewspic(ctx context.Context, in EditorNewspicInput) (string, error) {
+	title, content := strings.TrimSpace(in.Title), strings.TrimSpace(in.Content)
+	if title == "" || utf8.RuneCountInString(title) > editorNewspicMaxTitle {
+		return "", editorErr("EDITOR_DRAFT", fmt.Sprintf("贴图标题 1–%d 字（Title 1–%d characters）", editorNewspicMaxTitle, editorNewspicMaxTitle))
+	}
+	if utf8.RuneCountInString(content) > editorNewspicMaxContent {
+		return "", editorErr("EDITOR_WECHAT_TOO_LONG", "正文太长了，请删减后再试（Content too long）")
+	}
+	ids := []map[string]string{}
+	for _, id := range in.ImageMediaIDs {
+		if id = strings.TrimSpace(id); id != "" {
+			ids = append(ids, map[string]string{"image_media_id": id})
+		}
+	}
+	if len(ids) == 0 || len(ids) > editorNewspicMaxImages {
+		return "", editorErr("EDITOR_DRAFT", fmt.Sprintf("贴图要有 1–%d 张图片（1–%d pictures）", editorNewspicMaxImages, editorNewspicMaxImages))
+	}
+	b2i := func(b bool) int {
+		if b {
+			return 1
+		}
+		return 0
+	}
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(map[string]any{"articles": []map[string]any{{
+		"article_type": "newspic", "title": title, "content": content,
+		"image_info":        map[string]any{"image_list": ids},
+		"need_open_comment": b2i(in.NeedOpenComment), "only_fans_can_comment": b2i(in.OnlyFansCanComment),
+	}}}); err != nil {
+		return "", err
+	}
+	body := buf.Bytes()
+	r, err := s.withToken(ctx, in.EditorCredentials, func(token string) (*wechatReply, error) {
+		var out wechatReply
+		return &out, s.wechatJSON(ctx, "/cgi-bin/draft/add", token, body, &out)
+	})
+	if err != nil {
+		return "", err
+	}
+	return r.MediaID, nil
+}
+
 // ---------------------------------------------------------------------------------------------
 // Importing an article
 

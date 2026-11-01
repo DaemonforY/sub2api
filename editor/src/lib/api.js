@@ -273,3 +273,88 @@ export async function fetchArticleImage(id, n) {
   if (!res.ok) throw await errorFrom(res);
   return res.blob();
 }
+
+// --- 贴图（图片消息）草稿 --------------------------------------------------------------------------
+
+/** A 贴图 draft from permanent-material pictures (first is the cover) and a plain-text body. */
+export async function wechatNewspic(account, { title, content, imageMediaIds, openComment = false }) {
+  const res = await api('/editor/wechat/newspic', {
+    method: 'POST',
+    json: { appid: account.appid, secret: account.secret, title, content, image_media_ids: imageMediaIds, need_open_comment: openComment }
+  });
+  track('editor_newspic_push');
+  return res;
+}
+
+// --- AI 做贴图（后台任务：选诗 → 方案 → 封面 → 分镜 → 自检，暂时只对管理员开放） ---------------------
+
+/** {styles:[{id,name,text}], default_panels, max_panels, covers, image_price?}; 403 TIETU_ADMIN for non-admins. */
+export function tietuConfig(keyId) {
+  return api(`/editor/tietu/config${keyId ? `?key_id=${encodeURIComponent(keyId)}` : ''}`);
+}
+
+export function listTietu() {
+  return api('/editor/tietu');
+}
+
+export async function createTietu(body) {
+  const res = await api('/editor/tietu', { method: 'POST', json: body });
+  track('editor_tietu_create', { theme: !!body.theme, mode: body.mode });
+  return res;
+}
+
+export function getTietu(id) {
+  return api(`/editor/tietu/${id}`);
+}
+
+export function tietuPick(id, index) {
+  return api(`/editor/tietu/${id}/pick`, { method: 'POST', json: { index } });
+}
+
+/** {feedback} redoes the plan; {plan, confirm: true} confirms it and starts the covers. */
+export function tietuPlan(id, body) {
+  return api(`/editor/tietu/${id}/plan`, { method: 'POST', json: body });
+}
+
+/** {pick: 1..3} goes on with that cover; {redraw: true, note} draws three new ones. */
+export function tietuCover(id, body) {
+  return api(`/editor/tietu/${id}/cover`, { method: 'POST', json: body });
+}
+
+export function tietuRedraw(id, name, note) {
+  return api(`/editor/tietu/${id}/redraw`, { method: 'POST', json: { name, note } });
+}
+
+export function tietuSavePost(id, title, body) {
+  return api(`/editor/tietu/${id}/post`, { method: 'PUT', json: { title, body } });
+}
+
+export function retryTietu(id) {
+  return api(`/editor/tietu/${id}/retry`, { method: 'POST', json: {} });
+}
+
+export function cancelTietu(id) {
+  return api(`/editor/tietu/${id}/cancel`, { method: 'POST', json: {} });
+}
+
+export async function tietuPushed(id) {
+  const res = await api(`/editor/tietu/${id}/pushed`, { method: 'POST', json: {} });
+  track('editor_tietu_pushed');
+  return res;
+}
+
+export function deleteTietu(id) {
+  return api(`/editor/tietu/${id}`, { method: 'DELETE' });
+}
+
+/** One picture (c1..c3 cover candidates, p1..p8 panels) as a Blob. */
+export async function fetchTietuImage(id, name) {
+  let res;
+  try {
+    res = await fetch(`/api/v1/editor/tietu/${id}/images/${name}`, { headers: authHeaders(), cache: 'no-cache' });
+  } catch {
+    throw new ApiError('网络连接失败，请稍后再试', 0);
+  }
+  if (!res.ok) throw await errorFrom(res);
+  return res.blob();
+}

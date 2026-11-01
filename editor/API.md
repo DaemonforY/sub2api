@@ -30,6 +30,10 @@
 ```
 → `{"media_id":"草稿的 media_id"}`。草稿在公众号后台「内容与互动 → 草稿箱」里。
 
+### POST /wechat/newspic
+贴图（图片消息）草稿：`{"appid":"wx...","secret":"...","title":"标题（≤32 字）","content":"纯文本正文","image_media_ids":["永久素材 media_id", ...],"need_open_comment":true}`
+→ `{"media_id":"草稿的 media_id"}`。图片先用 `/wechat/upload`（`kind=cover`，永久素材）上传，最多 20 张，第一张是封面。
+
 ## 导入公众号文章
 
 ### POST /article/import
@@ -95,3 +99,24 @@ markdown 里配图写成 `![说明](img:N)`，N 从 1 开始，对应 images 里
 
 ### GET /articles/:id/images/:n
 图片本身（JPEG，正文图 ≤ 900KB）。前端带 Authorization 取 Blob，存进 IndexedDB 换成 `img://` 链接。
+
+## AI 做贴图（后台任务，暂时只对管理员开放，用用户自己的 Key 计费）
+
+输入一首诗（或一个主题让 AI 推荐），服务器核对原文（诗词库 + 维基文库，异文取通行写法），构思方案（连环画或主画面 + 局部特写、
+带时代细节的细节清单、每张一个「找一找」）给用户确认；用户挑封面后，以封面为参考图画出整组图，再用看图模型逐张自检
+（题字、多余文字、时代错误、叙事顺序、找一找、小图是否看得清），写好标题和正文。装框成 3:4 和推送草稿箱在浏览器里做。
+非管理员调用返回 403 `TIETU_ADMIN`。每人同时 1 条在跑，保存 30 天。
+
+状态：`suggesting` 挑诗中 → `suggest_ready` 待选诗 →（或直接）`planning` 构思中 → `plan_ready` 待确认方案 → `covering` 画封面中
+→ `cover_ready` 待选封面 → `drawing` 画图中 → `checking` 自检中 → `done`；出错 `failed`、停止 `canceled`。
+
+- `GET /tietu/config?key_id=7` → `{styles:[{id,name,text}],default_panels,max_panels,covers,image_price?}`
+- `GET /tietu` → 最近 30 条（不含方案和图片）
+- `POST /tietu` `{"key_id":7,"input":"篇名（可带作者）或主题","theme":false,"mode":"auto|series|single","panels":6,"style":"xinzhongshi|qinglv|gongbi|custom","style_text":"","notes":""}`
+- `GET /tietu/:id` → `{id,status,title,error,brief,suggestions,poem:{title,author,dynasty,text,sources,variants,agreed,note},plan,covers:[{name,n,status,check}],cover_pick,panels:[...],post:{title,body},events,...}`
+- `POST /tietu/:id/pick` `{"index":0}`：选推荐的诗（`suggest_ready`）
+- `POST /tietu/:id/plan` `{"plan":{...可选，改过的方案},"feedback":"意见"}` 重做；`{"plan":{...},"confirm":true}` 确认并画封面
+- `POST /tietu/:id/cover` `{"pick":1}` 用这张继续；`{"redraw":true,"note":"意见"}` 重画三张
+- `POST /tietu/:id/redraw` `{"name":"p2","note":"意见"}`：`done` 后重画一张分镜并重新自检
+- `PUT /tietu/:id/post` `{"title","body"}` · `POST /tietu/:id/retry` · `POST /tietu/:id/cancel` · `POST /tietu/:id/pushed` · `DELETE /tietu/:id`
+- `GET /tietu/:id/images/:name`：`c1..c3` 封面候选、`p1..p8` 分镜（JPEG，`Cache-Control: no-cache`，重画后同名）

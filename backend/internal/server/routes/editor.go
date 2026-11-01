@@ -28,6 +28,7 @@ func RegisterEditorRoutes(
 		g.POST("/wechat/check", panelRateLimiter.Heavy(), h.Editor.WechatCheck)
 		g.POST("/wechat/upload", h.Editor.WechatUpload)
 		g.POST("/wechat/draft", panelRateLimiter.Heavy(), h.Editor.WechatDraft)
+		g.POST("/wechat/newspic", panelRateLimiter.Heavy(), h.Editor.WechatNewspic)
 		g.POST("/article/import", panelRateLimiter.Heavy(), h.Editor.ImportArticle)
 		g.GET("/image", h.Editor.Image)
 		g.POST("/ai/text", panelRateLimiter.Heavy(), h.Editor.AIText)
@@ -45,6 +46,23 @@ func RegisterEditorRoutes(
 		a.POST("/:id/pushed", h.Editor.ArticlePushed)
 		a.DELETE("/:id", h.Editor.ArticleDelete)
 		a.GET("/:id/images/:n", h.Editor.ArticleImage)
+
+		// AI 做贴图 (admins only for now): poem → plan → covers → panels → check, on the user's own key.
+		t := g.Group("/tietu")
+		t.GET("/config", h.Editor.TietuConfig)
+		t.GET("", h.Editor.TietuList)
+		t.POST("", panelRateLimiter.Heavy(), h.Editor.TietuCreate)
+		t.GET("/:id", h.Editor.TietuGet)
+		t.POST("/:id/pick", panelRateLimiter.Heavy(), h.Editor.TietuPick)
+		t.POST("/:id/plan", panelRateLimiter.Heavy(), h.Editor.TietuPlan)
+		t.POST("/:id/cover", panelRateLimiter.Heavy(), h.Editor.TietuCover)
+		t.POST("/:id/redraw", panelRateLimiter.Heavy(), h.Editor.TietuRedraw)
+		t.PUT("/:id/post", h.Editor.TietuPost)
+		t.POST("/:id/retry", panelRateLimiter.Heavy(), h.Editor.TietuRetry)
+		t.POST("/:id/cancel", h.Editor.TietuCancel)
+		t.POST("/:id/pushed", h.Editor.TietuPushed)
+		t.DELETE("/:id", h.Editor.TietuDelete)
+		t.GET("/:id/images/:name", h.Editor.TietuImage)
 	}
 }
 

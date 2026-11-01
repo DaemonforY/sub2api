@@ -18,10 +18,11 @@ import (
 type EditorHandler struct {
 	svc      *service.EditorService
 	articles *service.ArticleAgentService // AI 写文章 (editor_article_handler.go)
+	tietu    *service.TietuService        // AI 做贴图 (editor_tietu_handler.go)
 }
 
-func NewEditorHandler(svc *service.EditorService, articles *service.ArticleAgentService) *EditorHandler {
-	return &EditorHandler{svc: svc, articles: articles}
+func NewEditorHandler(svc *service.EditorService, articles *service.ArticleAgentService, tietu *service.TietuService) *EditorHandler {
+	return &EditorHandler{svc: svc, articles: articles, tietu: tietu}
 }
 
 const editorUploadMax = 10<<20 + 1<<20
@@ -74,6 +75,19 @@ func (h *EditorHandler) WechatDraft(c *gin.Context) {
 		return
 	}
 	id, err := h.svc.WechatDraft(c.Request.Context(), in)
+	learnReply(c, gin.H{"media_id": id}, err)
+}
+
+// WechatNewspic POST /editor/wechat/newspic — a 贴图 draft from permanent-material pictures.
+func (h *EditorHandler) WechatNewspic(c *gin.Context) {
+	if _, ok := requireAuth(c); !ok {
+		return
+	}
+	var in service.EditorNewspicInput
+	if !bindLearn(c, &in) {
+		return
+	}
+	id, err := h.svc.WechatNewspic(c.Request.Context(), in)
 	learnReply(c, gin.H{"media_id": id}, err)
 }
 

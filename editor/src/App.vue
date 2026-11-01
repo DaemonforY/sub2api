@@ -10,6 +10,7 @@
       <nav class="header-links">
         <button class="header-link" type="button" @click="openImport">导入文章</button>
         <button class="header-link highlight" type="button" @click="toggleArticles">AI 写文章</button>
+        <button v-if="isAdmin" class="header-link highlight" type="button" @click="toggleTietu">AI 做贴图</button>
         <button class="header-link" type="button" @click="toggleAiPanel">AI 助手</button>
         <button class="header-link" type="button" @click="showSettings = true">设置</button>
         <a class="header-link" :href="tutorialUrl" target="_blank" rel="noopener">使用教程</a>
@@ -328,6 +329,7 @@
   <!-- AI 助手 -->
   <AiPanel :open="showAiPanel" @close="showAiPanel = false" @open-settings="showSettings = true" />
   <ArticleAgent :open="showArticles" @close="showArticles = false" @open="openArticles" @open-settings="showSettings = true" />
+  <TietuAgent v-if="isAdmin" :open="showTietu" @close="showTietu = false" @open-settings="showSettings = true" />
 
   <!-- 弹窗 -->
   <SettingsDialog v-if="showSettings" @close="showSettings = false" />
@@ -374,11 +376,12 @@ import ImportDialog from './components/ImportDialog.vue';
 import DraftDialog from './components/DraftDialog.vue';
 import AiPanel from './components/AiPanel.vue';
 import ArticleAgent from './components/ArticleAgent.vue';
+import TietuAgent from './components/TietuAgent.vue';
 
 const WELCOME_KEY = 'editor_welcome_done';
 
 export default {
-  components: { SettingsDialog, ImportDialog, DraftDialog, AiPanel, ArticleAgent },
+  components: { SettingsDialog, ImportDialog, DraftDialog, AiPanel, ArticleAgent, TietuAgent },
 
   // 子组件（设置 / 导入 / 草稿箱 / AI 助手）通过 inject('editor') 使用编辑器的状态和方法
   provide() {
@@ -398,6 +401,7 @@ export default {
       showDraft: false,
       showAiPanel: false,
       showArticles: false,              // AI 写文章面板
+      showTietu: false,                 // AI 做贴图面板（暂时只对管理员开放）
       draftAuto: false,                 // 草稿箱弹窗打开后直接发送（AI 写文章的「一键推送」）
       agentArticleId: null,             // 编辑器里是哪篇 AI 文章（推送后回报给服务器）
       showWelcome: !localStorage.getItem(WELCOME_KEY),
@@ -521,6 +525,10 @@ export default {
   },
 
   computed: {
+    /** AI 做贴图 is admins-only for now (the server checks too). */
+    isAdmin() {
+      return !!(this.auth.loggedIn && this.auth.user && this.auth.user.role === 'admin');
+    },
     accountLabel() {
       const u = this.auth.user;
       return (u && (u.username || u.email)) || '已登录';
@@ -625,6 +633,17 @@ export default {
       if (this.showAiPanel) {
         this.showHistoryPanel = false;
         this.showArticles = false;
+        this.showTietu = false;
+      }
+    },
+
+    toggleTietu() {
+      this.refreshAuth();
+      this.showTietu = !this.showTietu;
+      if (this.showTietu) {
+        this.showAiPanel = false;
+        this.showArticles = false;
+        this.showHistoryPanel = false;
       }
     },
 
@@ -636,6 +655,7 @@ export default {
     openArticles() {
       this.refreshAuth();
       this.showArticles = true;
+      this.showTietu = false;
       this.showAiPanel = false;
       this.showHistoryPanel = false;
     },
