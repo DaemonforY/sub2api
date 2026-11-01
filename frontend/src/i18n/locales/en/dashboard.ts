@@ -153,7 +153,10 @@ export default {
         otherPaste: 'Click Copy, paste it into the window and press Enter:',
         waitDone: 'Wait until it says it is done, then follow the next steps it prints: these are command-line tools, so they won\'t show up in the Start menu. Type codex (or claude) in the window to use them, or codex app to install the desktop app.',
         keyWarning: 'The command and the installer contain this key, so don\'t share them.',
-        restore: 'To go back to your previous configs:'
+        restore: 'To go back to your previous configs:',
+        fixTitle: 'Codex stopped working after a restart, or CC Switch switched it to another provider? One-click fix',
+        fixDescription:
+          'Open a window as above and run this line. It only removes the OPENAI_API_KEY another provider left in auth.json and points the provider at the top of config.toml back to HiveGPT. Nothing is reinstalled, conversation history is untouched, and the files are backed up first. If you use CC Switch, also select HiveGPT for Codex in CC Switch ("Import to CCS" in the key list), or it may switch back at the next boot.'
       },
       chatClients: {
         title: 'Import into a chat app',

@@ -4,6 +4,7 @@
 #   curl -fsSL https://hivegpt.cn/install.sh | bash
 #   curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY=sk-xxx bash
 #   curl -fsSL https://hivegpt.cn/install.sh | bash -s -- --restore      # 恢复原配置
+#   curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY=sk-xxx bash -s -- --fix  # Codex 被 CC Switch 改回去后修复
 #   curl -fsSL https://hivegpt.cn/install.sh | bash -s -- --tools=codex  # 只配 Codex
 #
 # 这个脚本只负责准备 Node.js（没有 22+ 版本就从国内镜像下载免安装版到 ~/.hivegpt/node，

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   installBase,
+  oneClickFixCommand,
   oneClickInstallCommand,
   oneClickRestoreCommand,
   supportsOneClickInstall,
@@ -17,6 +18,18 @@ describe('oneClickInstall', () => {
     )
     expect(oneClickRestoreCommand('unix', 'https://hivegpt.cn')).toBe('curl -fsSL https://hivegpt.cn/install.sh | bash -s -- --restore')
     expect(oneClickRestoreCommand('windows', 'https://hivegpt.cn')).toBe("$env:HIVEGPT_RESTORE='1'; irm https://hivegpt.cn/install.ps1 | iex")
+  })
+
+  it('builds the Codex fix command with the key', () => {
+    expect(oneClickFixCommand('unix', 'https://hivegpt.cn/v1', 'sk-abc')).toBe(
+      "curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='sk-abc' bash -s -- --fix"
+    )
+    expect(oneClickFixCommand('windows', 'https://hivegpt.cn', 'sk-abc')).toBe(
+      "$env:HIVEGPT_FIX='1'; $env:HIVEGPT_KEY='sk-abc'; irm https://hivegpt.cn/install.ps1 | iex"
+    )
+    expect(oneClickFixCommand('unix', 'https://api.example.com', 'sk-x')).toBe(
+      "curl -fsSL https://api.example.com/install.sh | HIVEGPT_KEY='sk-x' HIVEGPT_BASE_URL='https://api.example.com' bash -s -- --fix"
+    )
   })
 
   it('passes another origin to the script', () => {

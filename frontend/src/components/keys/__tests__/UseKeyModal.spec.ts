@@ -968,4 +968,17 @@ describe('UseKeyModal one-click install', () => {
     expect(mountModal('openai').find('[data-testid="use-key-one-click-install"]').exists()).toBe(true)
     expect(mountModal('gemini').find('[data-testid="use-key-one-click-install"]').exists()).toBe(false)
   })
+
+  it('offers the Codex fix command to OpenAI keys only', async () => {
+    const wrapper = mountModal('openai')
+    await wrapper.get('[data-testid="one-click-os-mac"]').trigger('click')
+    expect(wrapper.get('[data-testid="one-click-codex-fix"]').get('[data-testid="one-click-fix-command"]').text()).toBe(
+      "curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='sk-one-click' bash -s -- --fix"
+    )
+    // The install command keeps its own test id next to the fix line.
+    expect(wrapper.get('[data-testid="one-click-command"]').text()).toBe(
+      "curl -fsSL https://hivegpt.cn/install.sh | HIVEGPT_KEY='sk-one-click' bash"
+    )
+    expect(mountModal('anthropic').find('[data-testid="one-click-codex-fix"]').exists()).toBe(false)
+  })
 })

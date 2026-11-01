@@ -50,6 +50,7 @@
           :api-key="apiKey"
           :base-url="baseUrl || ''"
           source="use-key"
+          :show-codex-fix="platform !== 'anthropic'"
           @used="markGuideStep('copied')"
         />
 

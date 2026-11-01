@@ -4,6 +4,7 @@
 #   irm https://hivegpt.cn/install.ps1 | iex
 #   $env:HIVEGPT_KEY='sk-xxx'; irm https://hivegpt.cn/install.ps1 | iex
 #   $env:HIVEGPT_RESTORE='1'; irm https://hivegpt.cn/install.ps1 | iex     # 恢复原配置
+#   $env:HIVEGPT_FIX='1'; $env:HIVEGPT_KEY='sk-xxx'; irm https://hivegpt.cn/install.ps1 | iex  # Codex 被 CC Switch 改回去后修复
 #   $env:HIVEGPT_TOOLS='codex'; irm https://hivegpt.cn/install.ps1 | iex   # 只配 Codex
 #
 # 这个脚本只负责准备 Node.js（没有 22+ 版本就从国内镜像下载免安装版到 %USERPROFILE%\.hivegpt\node，
@@ -89,5 +90,6 @@
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item Env:HIVEGPT_KEY -ErrorAction SilentlyContinue
     Remove-Item Env:HIVEGPT_RESTORE -ErrorAction SilentlyContinue
+    Remove-Item Env:HIVEGPT_FIX -ErrorAction SilentlyContinue
   }
 }

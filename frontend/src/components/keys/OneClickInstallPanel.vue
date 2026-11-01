@@ -58,6 +58,13 @@
       </ol>
     </details>
 
+    <!-- CC Switch writes its own provider back into ~/.codex (often at boot); this puts Codex back on the key. -->
+    <details v-if="showCodexFix" class="mt-2 text-xs text-gray-500 dark:text-gray-400" data-testid="one-click-codex-fix">
+      <summary class="cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">{{ t('keys.useKeyModal.oneClick.fixTitle') }}</summary>
+      <p class="mt-2 leading-5 text-gray-600 dark:text-dark-300">{{ t('keys.useKeyModal.oneClick.fixDescription') }}</p>
+      <CommandLine class="mt-1.5" name="one-click-fix" :command="fixCommand" :copied="fixCopied" @copy="copyFixCommand" />
+    </details>
+
     <p class="mt-2 text-xs leading-5 text-gray-500 dark:text-gray-400">
       {{ t('keys.useKeyModal.oneClick.keyWarning') }}
       {{ t('keys.useKeyModal.oneClick.restore') }}
@@ -72,6 +79,7 @@ import { useI18n } from 'vue-i18n'
 import { useClipboard } from '@/composables/useClipboard'
 import { detectDesktopOS, downloadTextFile, type DesktopOS } from '@/utils/codexStarterConfig'
 import {
+  oneClickFixCommand,
   oneClickInstallCommand,
   oneClickRestoreCommand,
   windowsInstallerScript,
@@ -79,7 +87,7 @@ import {
 } from '@/utils/oneClickInstall'
 import { track } from '@/utils/analytics'
 
-const props = defineProps<{ apiKey: string; baseUrl: string; source: string }>()
+const props = defineProps<{ apiKey: string; baseUrl: string; source: string; showCodexFix?: boolean }>()
 const emit = defineEmits<{ (e: 'used'): void }>()
 
 const { t } = useI18n()
@@ -92,9 +100,11 @@ const OS_TABS: { id: DesktopOS; label: string }[] = [
 ]
 const os = ref<DesktopOS>(detectDesktopOS(typeof navigator === 'undefined' ? '' : navigator.userAgent))
 const copied = ref(false)
+const fixCopied = ref(false)
 
 const base = computed(() => props.baseUrl || window.location.origin)
 const command = computed(() => oneClickInstallCommand(os.value === 'windows' ? 'windows' : 'unix', base.value, props.apiKey))
+const fixCommand = computed(() => oneClickFixCommand(os.value === 'windows' ? 'windows' : 'unix', base.value, props.apiKey))
 const restoreCommand = computed(() => oneClickRestoreCommand(os.value === 'windows' ? 'windows' : 'unix', base.value))
 const windowsScript = computed(() => windowsInstallerScript(base.value, props.apiKey))
 
@@ -113,20 +123,27 @@ async function copyCommand(): Promise<void> {
   setTimeout(() => (copied.value = false), 2000)
 }
 
+async function copyFixCommand(): Promise<void> {
+  if (!(await copyToClipboard(fixCommand.value, t('keys.copied')))) return
+  track('key_config_copied', { client: 'one-click-fix', os: os.value, source: props.source })
+  fixCopied.value = true
+  setTimeout(() => (fixCopied.value = false), 2000)
+}
+
 const CommandLine = defineComponent({
-  props: { command: { type: String, required: true }, copied: Boolean },
+  props: { command: { type: String, required: true }, copied: Boolean, name: { type: String, default: 'one-click' } },
   emits: ['copy'],
   setup(p, { emit: emitCopy }) {
     return () =>
       h('div', { class: 'flex items-stretch gap-2' }, [
         h('code', {
           class: 'min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-md bg-gray-900 px-3 py-2 font-mono text-xs text-gray-100',
-          'data-testid': 'one-click-command'
+          'data-testid': `${p.name}-command`
         }, p.command),
         h('button', {
           type: 'button',
           class: 'btn btn-primary btn-sm flex-shrink-0',
-          'data-testid': 'one-click-copy',
+          'data-testid': `${p.name}-copy`,
           onClick: () => emitCopy('copy')
         }, p.copied ? t('keys.useKeyModal.copied') : t('keys.useKeyModal.copy'))
       ])

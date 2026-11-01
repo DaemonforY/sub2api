@@ -153,7 +153,10 @@ export default {
         otherPaste: '点「复制」，在窗口里粘贴，再按回车：',
         waitDone: '等它显示「全部完成」，再照着窗口最后的「下一步」做：装好的是命令行工具，在开始菜单里搜不到，要在窗口里输入 codex（或 claude）来用；想要有界面的桌面版，在窗口里输入 codex app。',
         keyWarning: '命令和安装程序里都带着这个密钥，不要发给别人。',
-        restore: '想换回原来的配置：'
+        restore: '想换回原来的配置：',
+        fixTitle: '重启电脑后 Codex 又连不上，或被 CC Switch 改回了别的供应商？一键修复',
+        fixDescription:
+          '打开窗口的方法同上，粘贴运行下面这行：它只去掉 auth.json 里别的供应商留下的 OPENAI_API_KEY，把 config.toml 开头的供应商改回 HiveGPT；不重装、不动历史对话，改前会备份。装了 CC Switch 的话，还要在 CC Switch 的 Codex 里选中 HiveGPT（密钥列表点「导入到 CCS」），否则下次开机可能又被改回去。'
       },
       chatClients: {
         title: '一键导入对话客户端',

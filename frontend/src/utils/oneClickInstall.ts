@@ -53,6 +53,24 @@ export function oneClickRestoreCommand(os: InstallOS, baseUrl: string): string {
   return `curl -fsSL ${base}/install.sh | ${custom ? `HIVEGPT_BASE_URL=${shellQuote(base)} ` : ''}bash -s -- --restore`
 }
 
+/**
+ * Puts Codex back on this key after CC Switch (or another switcher) rewrote ~/.codex — usually when
+ * it starts with the computer: drops OPENAI_API_KEY from auth.json and resets the provider at the
+ * top of config.toml. Installs nothing.
+ */
+export function oneClickFixCommand(os: InstallOS, baseUrl: string, apiKey: string): string {
+  const base = installBase(baseUrl) || DEFAULT_INSTALL_BASE
+  const custom = base !== DEFAULT_INSTALL_BASE
+  if (os === 'windows') {
+    const env = [`$env:HIVEGPT_FIX='1'`, `$env:HIVEGPT_KEY=${psQuote(apiKey)}`]
+    if (custom) env.push(`$env:HIVEGPT_BASE_URL=${psQuote(base)}`)
+    return `${env.join('; ')}; irm ${base}/install.ps1 | iex`
+  }
+  const env = [`HIVEGPT_KEY=${shellQuote(apiKey)}`]
+  if (custom) env.push(`HIVEGPT_BASE_URL=${shellQuote(base)}`)
+  return `curl -fsSL ${base}/install.sh | ${env.join(' ')} bash -s -- --fix`
+}
+
 export const WINDOWS_INSTALLER_NAME = 'HiveGPT一键安装.cmd'
 
 /**

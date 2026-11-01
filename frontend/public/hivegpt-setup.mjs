@@ -2,9 +2,9 @@
 // HiveGPT 一键安装与配置 — Claude Code / Claude 桌面 App / Codex CLI / Codex App
 //
 // 由 install.sh（macOS / Linux）或 install.ps1（Windows）下载并用 Node 22+ 运行，也可以直接：
-//   node hivegpt-setup.mjs [--tools=claude|codex|all] [--yes] [--no-install] [--restore]
+//   node hivegpt-setup.mjs [--tools=claude|codex|all] [--yes] [--no-install] [--restore] [--fix]
 // 环境变量：HIVEGPT_KEY、HIVEGPT_BASE_URL、HIVEGPT_TOOLS、HIVEGPT_YES=1、HIVEGPT_NO_INSTALL=1、
-//           HIVEGPT_RESTORE=1、HIVEGPT_NPM_REGISTRY、HIVEGPT_HOME
+//           HIVEGPT_RESTORE=1、HIVEGPT_FIX=1、HIVEGPT_NPM_REGISTRY、HIVEGPT_HOME
 //
 // 原则：
 // - 所有下载走国内镜像（npmmirror → 腾讯云 → 华为云），不访问 GitHub / claude.ai / openai.com。
@@ -915,25 +915,76 @@ function codexReasoningEffort(catalog, slug) {
   return efforts.find((e) => e !== 'none') || null
 }
 
+const codexHome = () => process.env.CODEX_HOME || path.join(HOME, '.codex')
+
+/** A top-level `name = "value"` in config.toml (before the first [table]), or null. */
+function codexTopLevelString(text, name) {
+  const top = text.replace(/\r\n/g, '\n').split(/^\s*\[/m)[0]
+  return top.match(new RegExp(`^\\s*${name}\\s*=\\s*"([^"]*)"`, 'm'))?.[1] ?? null
+}
+
+/** The key an earlier run wrote into [model_providers.OpenAI], if CC Switch hasn't replaced the file since. */
+function codexConfiguredKey() {
+  const configPath = path.join(codexHome(), 'config.toml')
+  if (!isFile(configPath)) return ''
+  const block = readText(configPath).replace(/\r\n/g, '\n').split(/^(?=\s*\[)/m).find((s) => /^\s*\[\s*model_providers\s*\.\s*"?OpenAI"?\s*\]/.test(s))
+  return block?.match(/^\s*experimental_bearer_token\s*=\s*"([^"]+)"/m)?.[1] || ''
+}
+
 async function setupCodex(key, modelIds) {
   step('配置 Codex 命令行 / Codex App')
   ensureCli({ name: 'codex', pkg: '@openai/codex', extraDirs: [NPM_BIN, '/opt/homebrew/bin', '/usr/local/bin'], minVersion: MIN_CODEX_VERSION })
+  await writeCodexConfig(key, modelIds)
+  info('如果 Codex App 或 IDE 扩展正开着，请完全退出后重新打开，再新建一个任务，配置才会生效。')
+}
 
-  const codexHome = process.env.CODEX_HOME || path.join(HOME, '.codex')
-  const configPath = path.join(codexHome, 'config.toml')
+/**
+ * --fix: after CC Switch (or another switcher) has written its own provider back — typically when
+ * it starts with the computer — drop the OPENAI_API_KEY it left in auth.json and point the top of
+ * config.toml at HiveGPT again. Nothing is installed; projects, MCP, plugins and other tables stay.
+ */
+async function fixCodex(key, modelIds) {
+  step('修复 Codex 配置')
+  const authPath = path.join(codexHome(), 'auth.json')
+  if (isFile(authPath)) {
+    const auth = readJson(authPath, {})
+    if (auth && typeof auth === 'object' && !Array.isArray(auth) && Object.hasOwn(auth, 'OPENAI_API_KEY')) {
+      backupFile(authPath)
+      delete auth.OPENAI_API_KEY
+      writeJson(authPath, auth, 0o600)
+      ok(`已从 ${authPath} 去掉 OPENAI_API_KEY${Object.keys(auth).length ? `，其余内容（${Object.keys(auth).join('、')}）保留` : ''}`)
+    } else {
+      ok('auth.json 里没有 OPENAI_API_KEY，不用改')
+    }
+  }
+  await writeCodexConfig(key, modelIds, { keepModel: true })
+  if (exists(path.join(HOME, '.cc-switch'))) {
+    warn('检测到 CC Switch：它启动时会把自己保存的供应商配置整份写回 ~/.codex，下次开机可能又被改掉。')
+    warn('根治：在「API 密钥」页点这个密钥的「导入到 CCS」，到 CC Switch 的 Codex 里选中 HiveGPT；不用 CC Switch 的话，在它的设置里关掉「开机自启」或直接卸载。')
+  }
+  info('完全退出 Codex App 后重新打开（命令行重新运行 codex），新建一个任务就会走 HiveGPT。')
+}
+
+async function writeCodexConfig(key, modelIds, { keepModel = false } = {}) {
+  const configPath = path.join(codexHome(), 'config.toml')
+  const existing = exists(configPath) ? readText(configPath) : ''
   const catalog = await fetchCodexCatalog(key)
-  const model = pickCodexModel(catalog, modelIds)
+  // --fix keeps the model the user picked, as long as the group still has it.
+  const pool = catalog?.models?.length ? catalog.models.map((m) => m?.slug).filter(Boolean) : modelIds
+  const current = keepModel ? codexTopLevelString(existing, 'model') : null
+  const model = current && pool.includes(current) ? current : pickCodexModel(catalog, modelIds)
   const topLines = ['model_provider = "OpenAI"', `model = ${tomlString(model)}`, `review_model = ${tomlString(model)}`]
-  const effort = codexReasoningEffort(catalog, model)
+  const supportedEfforts = ((catalog?.models || []).find((m) => m?.slug === model)?.supported_reasoning_levels || []).map((l) => l?.effort)
+  const currentEffort = model === current ? codexTopLevelString(existing, 'model_reasoning_effort') : null
+  const effort = currentEffort && supportedEfforts.includes(currentEffort) ? currentEffort : codexReasoningEffort(catalog, model)
   if (effort) topLines.push(`model_reasoning_effort = ${tomlString(effort)}`)
   if (catalog) {
-    const catalogPath = path.join(codexHome, 'codex-models.json')
+    const catalogPath = path.join(codexHome(), 'codex-models.json')
     backupFile(catalogPath)
     writeJson(catalogPath, catalog)
     topLines.push(`model_catalog_json = ${tomlString(catalogPath)}`)
     ok(`已下载模型目录（${catalog.models.length} 个模型）到 ${catalogPath}`)
   }
-  const existing = exists(configPath) ? readText(configPath) : ''
   if (!/^\s*disable_response_storage\s*=/m.test(existing)) topLines.push('disable_response_storage = true')
   if (!/^\s*network_access\s*=/m.test(existing)) topLines.push('network_access = "enabled"')
   if (IS_WIN && !/^\s*windows_wsl_setup_acknowledged\s*=/m.test(existing)) topLines.push('windows_wsl_setup_acknowledged = true')
@@ -950,18 +1001,22 @@ async function setupCodex(key, modelIds) {
   backupFile(configPath)
   writeFileSafe(configPath, updateCodexToml(existing, topLines, providerBlock), 0o600)
   ok(`已写入 ${configPath}（模型 ${model}${previousProvider && previousProvider !== 'OpenAI' ? `，原来用的是 ${previousProvider}，那段配置保留未删` : ''}）`)
-  if (isFile(path.join(codexHome, 'auth.json'))) {
+  if (!keepModel && isFile(path.join(codexHome(), 'auth.json'))) {
     info('auth.json（ChatGPT 账号登录 / 旧 Key）保留未动：现在走 HiveGPT，想切回 ChatGPT 账号运行 --restore 即可。')
   }
-  info('如果 Codex App 或 IDE 扩展正开着，请完全退出后重新打开，再新建一个任务，配置才会生效。')
 }
 
 // ---------- main ----------
 
 function parseArgs(argv) {
-  const opts = { tools: process.env.HIVEGPT_TOOLS || '', restore: truthy(process.env.HIVEGPT_RESTORE) || /^\d{4}-/.test(process.env.HIVEGPT_RESTORE || '') }
+  const opts = {
+    tools: process.env.HIVEGPT_TOOLS || '',
+    restore: truthy(process.env.HIVEGPT_RESTORE) || /^\d{4}-/.test(process.env.HIVEGPT_RESTORE || ''),
+    fix: truthy(process.env.HIVEGPT_FIX)
+  }
   for (const arg of argv) {
     if (arg === '--restore') opts.restore = true
+    else if (arg === '--fix') opts.fix = true
     else if (arg === '--yes' || arg === '-y') process.env.HIVEGPT_YES = '1'
     else if (arg === '--no-install') process.env.HIVEGPT_NO_INSTALL = '1'
     else if (arg.startsWith('--tools=')) opts.tools = arg.slice(8)
@@ -978,6 +1033,8 @@ function printHelp() {
   --yes                      不提问，全部用推荐选项
   --no-install               只写配置，不安装 Claude Code / Codex
   --restore                  恢复到最近一次运行之前的配置
+  --fix                      Codex 被 CC Switch 等工具改回别的供应商后修复：去掉 auth.json 里的
+                             OPENAI_API_KEY，把 config.toml 开头的供应商改回 HiveGPT，不安装任何东西
 
 环境变量：HIVEGPT_KEY、HIVEGPT_BASE_URL（默认 https://hivegpt.cn）、HIVEGPT_NPM_REGISTRY`)
 }
@@ -992,6 +1049,10 @@ async function main() {
   // A key that came with the command (the site's copy button or the Windows installer) means
   // "just do it": no questions, the recommended tools are set up.
   const keyFromCommand = Boolean(key)
+  if (!key && opts.fix) {
+    key = codexConfiguredKey()
+    if (key) info(`使用 Codex 配置里原有的 Key ${maskKey(key)}`)
+  }
   if (!key) {
     if (!process.stdin.isTTY) fail('没有拿到 Key。请设置 HIVEGPT_KEY 环境变量后重新运行（在「API 密钥」页点「使用密钥」可复制带 Key 的命令）。')
     key = (await readLine(`请粘贴你的 HiveGPT Key（在 ${BASE}/keys 复制，输入时显示为 *）: `, { secret: true })).trim()
@@ -1005,6 +1066,15 @@ async function main() {
   const hasClaude = modelIds.some((id) => /^claude-/i.test(id))
   const hasGpt = modelIds.some((id) => /^(gpt-|codex-|o\d)/i.test(id))
   const recommended = hasClaude && !hasGpt ? 'claude' : hasGpt && !hasClaude ? 'codex' : 'all'
+
+  if (opts.fix) {
+    if (!hasGpt) fail('这个 Key 的分组没有 GPT 模型，Codex 用不了它，没有改动任何文件。请换一个 GPT 分组的 Key 再运行修复。')
+    await fixCodex(key, modelIds)
+    console.log('')
+    if (manifest.entries.length) info(`改动前的文件已备份到 ${backupDir}，想撤销这次修复可以加 --restore 运行。`)
+    ok(bold('修复完成！'))
+    return
+  }
 
   let tools = String(opts.tools || '').toLowerCase()
   if (!['claude', 'codex', 'all'].includes(tools) && keyFromCommand) {
