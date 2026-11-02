@@ -415,6 +415,55 @@ func ProvideOpenAICodexVersionSyncService(
 	return svc
 }
 
+// ProvideOpenAIModelAutoSyncService creates and starts OpenAIModelAutoSyncService:
+// OpenAI 新发布的 Codex 模型有价格、上游也已开通时，自动加进 API Key 账号的模型白名单，
+// 并给运维告警收件人发邮件。设置项 openai_model_auto_sync_enabled=false 可关闭。
+func ProvideOpenAIModelAutoSyncService(
+	accountRepo AccountRepository,
+	gateway *OpenAIGatewayService,
+	pricing *PricingService,
+	settingRepo SettingRepository,
+	ops *OpsService,
+	email *EmailService,
+) *OpenAIModelAutoSyncService {
+	persist := func(ctx context.Context, account *Account, credentials map[string]any) error {
+		return persistAccountCredentials(ctx, accountRepo, account, credentials)
+	}
+	var catalog openAIModelAutoSyncCatalog
+	if gateway != nil {
+		catalog = gateway
+	}
+	var pricer openAIModelAutoSyncPricing
+	if pricing != nil {
+		pricer = pricing
+	}
+	svc := NewOpenAIModelAutoSyncService(accountRepo, persist, catalog, pricer, settingRepo,
+		opsAlertEmailNotifier(ops, email, "service.openai_model_auto_sync"), openAIModelAutoSyncInterval)
+	svc.Start()
+	return svc
+}
+
+// opsAlertEmailNotifier 把一封邮件发给运维告警收件人（后台「运维 → 邮件通知」里配置的告警收件人）。
+func opsAlertEmailNotifier(ops *OpsService, email *EmailService, component string) func(ctx context.Context, subject, body string) {
+	if ops == nil || email == nil {
+		return nil
+	}
+	return func(ctx context.Context, subject, body string) {
+		cfg, err := ops.GetEmailNotificationConfig(ctx)
+		if err != nil || cfg == nil || !cfg.Alert.Enabled || len(cfg.Alert.Recipients) == 0 {
+			logger.LegacyPrintf(component, "no ops alert recipients, %q not sent", subject)
+			return
+		}
+		for _, to := range cfg.Alert.Recipients {
+			if addr := strings.TrimSpace(to); addr != "" {
+				if err := email.SendEmail(ctx, addr, subject, body); err != nil {
+					logger.LegacyPrintf(component, "mail to %s failed: %v", addr, err)
+				}
+			}
+		}
+	}
+}
+
 // ProvideProxyExpiryService creates and starts ProxyExpiryService.
 func ProvideProxyExpiryService(proxyRepo ProxyRepository) *ProxyExpiryService {
 	svc := NewProxyExpiryService(proxyRepo, time.Minute)
@@ -1222,6 +1271,7 @@ var ProviderSet = wire.NewSet(
 	wire.Bind(new(GrokOAuthReconciler), new(*TokenRefreshService)),
 	ProvideAccountExpiryService,
 	ProvideOpenAICodexVersionSyncService,
+	ProvideOpenAIModelAutoSyncService,
 	ProvideProxyExpiryService,
 	ProvideSubscriptionExpiryService,
 	ProvideTimingWheelService,
