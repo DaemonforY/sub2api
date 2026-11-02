@@ -26,6 +26,16 @@ describe('useModelWhitelist', () => {
     ]))
   })
 
+  it('openai 模型列表和预设包含 GPT-6.1 Terra 及 GPT-6 系列', () => {
+    const models = getModelsByPlatform('openai')
+    for (const id of ['gpt-6.1-sol', 'gpt-6.1-terra', 'gpt-6-sol', 'gpt-6-luna']) {
+      expect(models).toContain(id)
+    }
+    expect(getPresetMappingsByPlatform('openai')).toContainEqual(
+      expect.objectContaining({ label: 'GPT-6.1 Terra', from: 'gpt-6.1-terra', to: 'gpt-6.1-terra' })
+    )
+  })
+
   it('openai 模型列表不再暴露已下线的 ChatGPT 登录 Codex 模型', () => {
     const models = getModelsByPlatform('openai')
 

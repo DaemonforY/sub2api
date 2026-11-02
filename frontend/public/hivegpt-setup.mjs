@@ -897,7 +897,7 @@ function updateCodexToml(text, topLines, providerBlock) {
 }
 
 // Codex's own picker order (its bundled catalog's priority, 0.163). gpt-5.5 is deprecated upstream.
-const CODEX_MODEL_PREFERENCE = ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']
+const CODEX_MODEL_PREFERENCE = ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6.1-terra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']
 
 function pickCodexModel(catalog, modelIds) {
   const slugs = (catalog?.models || []).map((m) => (typeof m?.slug === 'string' ? m.slug.trim() : '')).filter(Boolean)

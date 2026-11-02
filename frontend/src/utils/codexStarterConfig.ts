@@ -9,9 +9,9 @@ export type DesktopOS = 'windows' | 'mac' | 'linux'
 
 /**
  * Codex's default model for OpenAI-type groups, in Codex's own picker order (the priority in its
- * bundled catalog, 0.163). gpt-5.5 is deprecated upstream. hivegpt-setup.mjs keeps the same list.
+ * bundled catalog, 0.166). gpt-5.5 is deprecated upstream. hivegpt-setup.mjs keeps the same list.
  */
-export const CODEX_MODEL_PREFERENCE = ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']
+export const CODEX_MODEL_PREFERENCE = ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6.1-terra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna']
 export const CODEX_DEFAULT_MODEL = CODEX_MODEL_PREFERENCE[0]
 
 /** The preferred model a group's catalog offers, else its first GPT model, else its first model. */

@@ -25,6 +25,7 @@ describe('pickCodexDefaultModel', () => {
   it("follows Codex's order through what the group's catalog has", () => {
     expect(pickCodexDefaultModel(['gpt-5.5', 'gpt-6-luna', 'gpt-6.1-sol'])).toBe('gpt-6.1-sol')
     expect(pickCodexDefaultModel(['gpt-5.5', 'gpt-6-luna'])).toBe('gpt-6-luna')
+    expect(pickCodexDefaultModel(['gpt-6-luna', 'gpt-6.1-terra'])).toBe('gpt-6.1-terra')
     expect(pickCodexDefaultModel(['claude-opus-4-8', 'gpt-5.5'])).toBe('gpt-5.5')
     expect(pickCodexDefaultModel(['deepseek-v4-pro'])).toBe('deepseek-v4-pro')
     expect(pickCodexDefaultModel([])).toBe('gpt-6.1-sol')
