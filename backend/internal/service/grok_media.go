@@ -575,8 +575,10 @@ func ExtractGrokVideoBillingFromStatusBody(statusBody []byte, pending *GrokVideo
 			durationSeconds = pending.VideoDurationSeconds
 		}
 	}
-	if model == "" {
-		// Official default video model family when status omits model.
+	if model == "" && pending != nil {
+		// Official default video model family when status omits model. Without a
+		// create-time snapshot leave it empty: the handler merges the snapshot later
+		// (third-party upstreams such as muse2api never send a model in status).
 		model = "grok-imagine-video"
 	}
 	if billingModel == "" {
@@ -717,6 +719,10 @@ func (s *OpenAIGatewayService) ForwardGrokMedia(
 			}
 		}
 	}
+	if account.IsGrokVideoMuse2APICompat() &&
+		(endpoint == GrokMediaEndpointVideosGenerations || endpoint == GrokMediaEndpointVideoStatus) {
+		respBody = normalizeMuse2APIVideoBody(respBody)
+	}
 	if endpoint == GrokMediaEndpointVideoStatus {
 		respBody = rewriteGrokMediaVideoContentURLs(
 			respBody,
@@ -813,13 +819,31 @@ func (s *OpenAIGatewayService) forwardGrokMediaVideoContent(
 		return nil, err
 	}
 
-	contentURL, err := grokMediaSignedVideoContentURL(statusBody, requestID)
+	var contentURL string
+	signedContent := false
+	if account.IsGrokVideoMuse2APICompat() {
+		// muse2api 的结果在它自己的 /v1/media 下：按账号上游地址补全，带账号密钥去取。
+		statusBody = normalizeMuse2APIVideoBody(statusBody)
+		if !IsGrokVideoStatusBillable(statusBody) {
+			SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
+			if c != nil {
+				c.JSON(http.StatusConflict, gin.H{"error": gin.H{
+					"type":    "invalid_request_error",
+					"message": "视频还没有生成好，请先查询任务状态，status 为 done 后再下载（video is not ready yet）",
+				}})
+			}
+			return &OpenAIForwardResult{Duration: time.Since(startTime)}, nil
+		}
+		contentURL, err = muse2APIVideoContentURL(account, statusBody)
+	} else {
+		contentURL, err = grokMediaSignedVideoContentURL(statusBody, requestID)
+		signedContent = contentURL != ""
+	}
 	if err != nil {
 		SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())
 		return nil, err
 	}
-	signedContent := contentURL != ""
-	if !signedContent {
+	if contentURL == "" {
 		contentURL, err = buildGrokMediaURL(account, s.cfg, GrokMediaEndpointVideoContent, requestID)
 		if err != nil {
 			SetOpsLatencyMs(c, OpsUpstreamLatencyMsKey, time.Since(upstreamStart).Milliseconds())

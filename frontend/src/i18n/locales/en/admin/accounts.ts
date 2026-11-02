@@ -833,6 +833,10 @@ export default {
         invalidValue: 'Invalid header value (control characters are not allowed; max length 8192)',
         tooManyEntries: 'Too many header override entries (max 64)'
       },
+      grokVideoMuse2API: {
+        label: 'muse2api video compatibility',
+        desc: 'Turn on when the upstream is muse2api (a Muse web video proxy): its task status and result URLs are converted to the xAI shape, videos are billed on completion and downloaded through the gateway without exposing the upstream. Leave off for real xAI accounts.'
+      },
       grokCustomBaseUrl: {
         title: 'Custom Upstream URL',
         hint: 'When enabled, account traffic (chat/media/probes) is forwarded to the specified address. OAuth authorization and token refresh are unaffected and stay on the official endpoints.',

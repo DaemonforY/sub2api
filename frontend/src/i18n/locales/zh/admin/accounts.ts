@@ -903,6 +903,10 @@ export default {
         invalidValue: '请求头值不合法（不允许控制字符，长度不超过 8192）',
         tooManyEntries: '请求头覆写条目过多（最多 64 条）'
       },
+      grokVideoMuse2API: {
+        label: 'muse2api 视频兼容',
+        desc: '上游是 muse2api（Muse 网页视频反代）时打开：把它的任务状态和结果地址改写成 xAI 格式，视频完成后才计费，结果经网关下载，不暴露上游地址。普通 xAI 账号不要打开。'
+      },
       grokCustomBaseUrl: {
         title: '自定义上游地址',
         hint: '开启后账号流量（对话/媒体/探测）改发指定地址；OAuth 授权与令牌刷新不受影响，仍走官方端点。',

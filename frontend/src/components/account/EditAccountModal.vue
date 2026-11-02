@@ -1729,6 +1729,37 @@
         </div>
       </div>
 
+      <!-- Grok API Key 上游是 muse2api（Muse 网页视频反代）：改写任务状态与结果地址 -->
+      <div
+        v-if="account?.platform === 'grok' && account?.type === 'apikey'"
+        class="border-t border-gray-200 pt-4 dark:border-dark-600"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="input-label mb-0">{{ t('admin.accounts.grokVideoMuse2API.label') }}</label>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.grokVideoMuse2API.desc') }}
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="edit-grok-video-muse2api-toggle"
+            @click="grokVideoMuse2APICompat = !grokVideoMuse2APICompat"
+            :class="[
+              'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
+              grokVideoMuse2APICompat ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+            ]"
+          >
+            <span
+              :class="[
+                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                grokVideoMuse2APICompat ? 'translate-x-5' : 'translate-x-0'
+              ]"
+            />
+          </button>
+        </div>
+      </div>
+
       <!-- OpenAI Codex hosted image_generation bridge policy -->
       <div
         v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
@@ -3356,6 +3387,7 @@ const openaiPassthroughEnabled = ref(false)
 const openaiFlattenNamespacesEnabled = ref(false)
 // OpenAI API Key 账号：发往上游的请求体用 zstd 压缩，缺省关闭
 const openaiRequestZstdEnabled = ref(false)
+const grokVideoMuse2APICompat = ref(false)
 const openAILongContextBillingEnabled = ref(false)
 // OpenAI 订阅档位（Plus/Pro/Free）手动覆盖值,存于 credentials.plan_type;'' 表示清空/自动识别
 const editPlanType = ref<string>('')
@@ -4013,6 +4045,10 @@ const syncFormFromAccount = (newAccount: Account | null) => {
     )
   }
 
+  grokVideoMuse2APICompat.value =
+    newAccount.platform === 'grok' &&
+    newAccount.type === 'apikey' &&
+    newAccount.extra?.grok_video_muse2api_compat === true
   // Load Grok OAuth custom upstream URL state（存储的官方地址视同未定制）
   grokOAuthCustomBaseUrlEnabled.value = false
   grokOAuthBaseUrl.value = ''
@@ -5152,6 +5188,18 @@ const handleSubmit = async () => {
         newExtra.allow_overages = true
       } else {
         delete newExtra.allow_overages
+      }
+      updatePayload.extra = newExtra
+    }
+
+    // Grok API Key：上游是 muse2api 时打开视频状态/结果地址兼容（缺省即关闭，不写 false）
+    if (props.account.platform === 'grok' && props.account.type === 'apikey') {
+      const currentExtra = (updatePayload.extra as Record<string, unknown>) || (props.account.extra as Record<string, unknown>) || {}
+      const newExtra: Record<string, unknown> = { ...currentExtra }
+      if (grokVideoMuse2APICompat.value) {
+        newExtra.grok_video_muse2api_compat = true
+      } else {
+        delete newExtra.grok_video_muse2api_compat
       }
       updatePayload.extra = newExtra
     }
