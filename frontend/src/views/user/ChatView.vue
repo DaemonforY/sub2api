@@ -101,6 +101,7 @@
             <option v-for="m in models" :key="m" :value="m">{{ m }}</option>
           </select>
           <span v-else-if="mode === 'image'" class="rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600 dark:bg-dark-800 dark:text-dark-300">gpt-image-2</span>
+          <span v-else-if="mode === 'video'" class="rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600 dark:bg-dark-800 dark:text-dark-300">muse-video</span>
           <span v-else-if="modelsLoading" class="text-xs text-gray-400">{{ t('chat.loadingModels') }}</span>
         </div>
         <button
@@ -135,8 +136,8 @@
           <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-violet-600 text-white shadow-lg shadow-primary-500/20">
             <Icon name="sparkles" size="lg" />
           </div>
-          <h1 class="text-2xl font-semibold">{{ mode === 'image' ? t('chat.drawHello') : t('chat.hello') }}</h1>
-          <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">{{ mode === 'image' ? t('chat.drawHelloHint') : t('chat.helloHint') }}</p>
+          <h1 class="text-2xl font-semibold">{{ mode === 'image' ? t('chat.drawHello') : mode === 'video' ? t('chat.videoHello') : t('chat.hello') }}</h1>
+          <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">{{ mode === 'image' ? t('chat.drawHelloHint') : mode === 'video' ? t('chat.videoHelloHint') : t('chat.helloHint') }}</p>
           <div v-if="mode === 'text'" class="mt-6 flex flex-wrap justify-center gap-2">
             <button
               v-for="r in CHAT_ROLES.slice(1, 7)"
@@ -197,13 +198,14 @@
           ref="composer"
           v-model:mode="mode"
           v-model:image-size="imageSize"
+          v-model:video-aspect="videoAspect"
           :busy="busy"
           :can-draw="canDraw"
           :disabled="!keyId || (mode === 'text' && !model) || running"
           @send="(p) => send(p)"
           @stop="stop"
         />
-        <p class="mt-1.5 text-center text-[11px] text-gray-400">{{ t('chat.footer') }}</p>
+        <p class="mt-1.5 text-center text-[11px] text-gray-400">{{ mode === 'video' ? t('chat.videoFooter') : t('chat.footer') }}</p>
       </div>
     </main>
 
@@ -266,8 +268,9 @@ const running = ref(false)
 /** System prompt of a new chat (before it is saved). */
 const draftSystemPrompt = ref('')
 
-const mode = ref<'text' | 'image'>('text')
+const mode = ref<'text' | 'image' | 'video'>('text')
 const imageSize = ref('1024x1024')
+const videoAspect = ref('9:16')
 const busy = ref(false)
 let controller: AbortController | null = null
 
@@ -284,6 +287,9 @@ const composer = ref<InstanceType<typeof ChatComposer>>()
 
 const selectedKey = computed(() => keys.value.find((k) => k.id === keyId.value) || null)
 const canDraw = computed(() => !!selectedKey.value?.can_draw)
+const canVideo = computed(() => !!selectedKey.value?.can_video)
+/** The last key used for chat/画图, to come back to after 视频 (a video key does only videos). */
+let lastChatKeyId = 0
 const systemPrompt = computed(() => (conv.value ? conv.value.system_prompt : draftSystemPrompt.value))
 const currentRole = computed(() => {
   const p = systemPrompt.value
@@ -291,7 +297,13 @@ const currentRole = computed(() => {
   if (preset) return { icon: preset.icon, label: preset.id === 'general' ? t('chat.role') : t(`chat.roles.${preset.id}`) }
   return { icon: '🎭', label: t('chat.customRole') }
 })
-const examples = computed(() => (mode.value === 'image' ? [t('chat.drawEx1'), t('chat.drawEx2'), t('chat.drawEx3'), t('chat.drawEx4')] : [t('chat.ex1'), t('chat.ex2'), t('chat.ex3'), t('chat.ex4')]))
+const examples = computed(() =>
+  mode.value === 'image'
+    ? [t('chat.drawEx1'), t('chat.drawEx2'), t('chat.drawEx3'), t('chat.drawEx4')]
+    : mode.value === 'video'
+      ? [t('chat.videoEx1'), t('chat.videoEx2'), t('chat.videoEx3'), t('chat.videoEx4')]
+      : [t('chat.ex1'), t('chat.ex2'), t('chat.ex3'), t('chat.ex4')]
+)
 
 // Sidebar sections: pinned, today, yesterday, this week, earlier.
 const sections = computed(() => {
@@ -358,8 +370,41 @@ async function loadModels(id: number, prefer = '') {
 watch(keyId, (id) => {
   if (!id) return
   localStorage.setItem('chat:key', String(id))
-  if (!canDraw.value && mode.value === 'image') mode.value = 'text'
+  if (canVideo.value) {
+    // A Muse video key makes only videos.
+    if (mode.value !== 'video') mode.value = 'video'
+  } else {
+    lastChatKeyId = id
+    if (mode.value === 'video' || (!canDraw.value && mode.value === 'image')) mode.value = 'text'
+  }
   void loadModels(id)
+})
+
+/** Picks a key that can do this kind of turn; false (with a hint) when the user has none. */
+function useKeyFor(kind: 'text' | 'image' | 'video'): boolean {
+  if (kind === 'video') {
+    if (canVideo.value) return true
+    const v = keys.value.find((k) => k.can_video)
+    if (!v) {
+      appStore.showInfo(t('chat.videoNeedsCard'))
+      return false
+    }
+    keyId.value = v.id
+    return true
+  }
+  if (!canVideo.value) return true
+  const k = keys.value.find((x) => x.id === lastChatKeyId && !x.can_video) || keys.value.find((x) => !x.can_video && (kind !== 'image' || x.can_draw))
+  if (!k) {
+    appStore.showInfo(t('chat.videoKeyOnly'))
+    return false
+  }
+  keyId.value = k.id
+  return true
+}
+
+// Switching to 视频 moves to the user's video key, and back to the chat key when leaving it.
+watch(mode, (m, old) => {
+  if (!useKeyFor(m)) mode.value = old
 })
 
 watch(model, (m) => {
@@ -518,7 +563,7 @@ watch(
   }
 )
 
-function tempMessage(role: 'user' | 'assistant', kind: 'text' | 'image', content = '', files: string[] = []): ChatMessage {
+function tempMessage(role: 'user' | 'assistant', kind: 'text' | 'image' | 'video', content = '', files: string[] = []): ChatMessage {
   return {
     id: -Math.floor(Math.random() * 1e9) - 1,
     conversation_id: conv.value?.id || 0,
@@ -534,13 +579,17 @@ function tempMessage(role: 'user' | 'assistant', kind: 'text' | 'image', content
 interface TurnOptions {
   regenerate?: boolean
   editId?: number
-  kind?: 'text' | 'image'
+  kind?: 'text' | 'image' | 'video'
 }
 
 async function send(payload: { content: string; files: string[] }, opts: TurnOptions = {}) {
   if (busy.value || running.value) return
   const kind = opts.kind || mode.value
   if (!keyId.value) return appStore.showError(t('chat.pickKey'))
+  // Regenerating or editing an earlier turn may need the other kind of key.
+  const keyBefore = keyId.value
+  if (!useKeyFor(kind)) return
+  if (keyId.value !== keyBefore && kind === 'text') await loadModels(keyId.value!)
   if (kind === 'text' && !model.value) return appStore.showError(t('chat.pickModel'))
   if (kind === 'image' && !canDraw.value) return appStore.showError(t('chat.drawNeedsGpt'))
 
@@ -603,6 +652,7 @@ async function send(payload: { content: string; files: string[] }, opts: TurnOpt
         content: payload.content,
         files: payload.files,
         image_size: imageSize.value,
+        video_aspect: videoAspect.value,
         regenerate: opts.regenerate,
         edit_id: opts.editId
       },
@@ -642,10 +692,10 @@ async function send(payload: { content: string; files: string[] }, opts: TurnOpt
         appStore.showError(errMsg(err, t('chat.sendFailed')))
       }
     } else if (aborted) {
-      if (reply.kind === 'image') {
-        // The picture is still being made on the server.
+      if (reply.kind === 'image' || reply.kind === 'video') {
+        // The picture or video is still being made on the server.
         running.value = true
-        appStore.showInfo(t('chat.drawContinues'))
+        appStore.showInfo(reply.kind === 'video' ? t('chat.videoContinues') : t('chat.drawContinues'))
         pollTimer = setTimeout(() => openConversation(c!.id, true), 4000)
       } else {
         reply.status = 'stopped'

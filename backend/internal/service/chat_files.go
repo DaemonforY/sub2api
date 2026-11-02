@@ -21,7 +21,9 @@ import (
 // They are private: the page fetches them through the API, which checks the owner.
 
 const (
-	ChatFileMaxBytes  = 20 << 20
+	ChatFileMaxBytes = 20 << 20
+	// ChatVideoMaxBytes caps a generated video saved into a conversation (Muse clips are 3–15 MB).
+	ChatVideoMaxBytes = 100 << 20
 	chatFileMaxPixels = 40_000_000
 	// The page shows pictures as JPEG previews: a drawn 1536×1024 PNG is 2–3 MB, which took 11 s
 	// to reach a user in China; its preview is about a tenth of that.
@@ -32,7 +34,7 @@ const (
 
 var (
 	chatFileExt  = map[string]string{"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif"}
-	chatFileName = regexp.MustCompile(`^[0-9a-f]{32}\.(png|jpg|webp|gif)$`)
+	chatFileName = regexp.MustCompile(`^[0-9a-f]{32}\.(png|jpg|webp|gif|mp4)$`)
 
 	ErrChatFileInvalid  = infraerrors.BadRequest("CHAT_FILE_TYPE", "只支持 PNG、JPG、WebP、GIF 图片（Unsupported image）")
 	ErrChatFileTooLarge = infraerrors.BadRequest("CHAT_FILE_TOO_LARGE", "图片太大了，请换一张 20MB 以内的（Image too large）")
@@ -76,23 +78,49 @@ func (s *ChatFileStore) Save(data []byte) (*chatStored, error) {
 	if cfg.Width*cfg.Height > chatFileMaxPixels {
 		return nil, ErrChatFileTooLarge
 	}
+	name, err := s.write(ext, data)
+	if err != nil {
+		return nil, err
+	}
+	return &chatStored{Name: name, Mime: mime, Width: cfg.Width, Height: cfg.Height}, nil
+}
+
+// SaveVideo stores a generated MP4 (视频 mode). Users can't upload videos; only the server saves them.
+func (s *ChatFileStore) SaveVideo(data []byte) (*chatStored, error) {
+	if len(data) == 0 || http.DetectContentType(data) != "video/mp4" {
+		return nil, fmt.Errorf("generated video is not an mp4")
+	}
+	if len(data) > ChatVideoMaxBytes {
+		return nil, fmt.Errorf("generated video is too large: %d bytes", len(data))
+	}
+	name, err := s.write("mp4", data)
+	if err != nil {
+		return nil, err
+	}
+	return &chatStored{Name: name, Mime: "video/mp4"}, nil
+}
+
+// IsChatVideoFile tells a stored video from a picture by its name.
+func IsChatVideoFile(name string) bool { return strings.HasSuffix(name, ".mp4") }
+
+func (s *ChatFileStore) write(ext string, data []byte) (string, error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
-		return nil, err
+		return "", err
 	}
 	name := hex.EncodeToString(b[:]) + "." + ext
 	if err := os.MkdirAll(s.dir, 0o755); err != nil {
-		return nil, fmt.Errorf("create chat dir: %w", err)
+		return "", fmt.Errorf("create chat dir: %w", err)
 	}
 	tmp := filepath.Join(s.dir, "."+name+".tmp")
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return nil, fmt.Errorf("write chat file: %w", err)
+		return "", fmt.Errorf("write chat file: %w", err)
 	}
 	if err := os.Rename(tmp, filepath.Join(s.dir, name)); err != nil {
 		_ = os.Remove(tmp)
-		return nil, fmt.Errorf("write chat file: %w", err)
+		return "", fmt.Errorf("write chat file: %w", err)
 	}
-	return &chatStored{Name: name, Mime: mime, Width: cfg.Width, Height: cfg.Height}, nil
+	return name, nil
 }
 
 func (s *ChatFileStore) path(name string) (string, bool) {

@@ -23,7 +23,8 @@ import (
 // AI 对话 (/chat): a web chat page for users who want a ChatGPT-style conversation instead of a
 // client app. Every model call goes through this site's own gateway on a key the user picked, so
 // usage, billing and the key's limits work as for any API call. Conversations are kept on the
-// server; pictures (uploaded, or drawn in 画图 mode) are files under the chat media dir.
+// server; pictures (uploaded, or drawn in 画图 mode) and videos (视频 mode) are files under the chat
+// media dir.
 
 const (
 	chatTitleMax          = 40
@@ -38,11 +39,16 @@ const (
 	chatContextImageTurns = 4     // user messages whose pictures are sent again
 	chatTextTimeout       = 10 * time.Minute
 	chatImageTimeout      = 6 * time.Minute
+	chatVideoTimeout      = 20 * time.Minute
+	chatVideoPollEvery    = 5 * time.Second
 	chatModelsCacheTTL    = 5 * time.Minute
 	chatAnthropicMaxOut   = 16384
 	chatImageModel        = "gpt-image-2"
-	chatUserAgent         = "hivegpt-chat/1"
-	chatUnsentFileTTL     = 24 * time.Hour
+	// chatVideoModel: 视频 mode runs on Muse (muse2api behind a Grok API-key account); the
+	// 「Muse 视频」 group is the only Grok group, so a Grok key means a video key.
+	chatVideoModel    = "muse-video"
+	chatUserAgent     = "hivegpt-chat/1"
+	chatUnsentFileTTL = 24 * time.Hour
 )
 
 const (
@@ -50,6 +56,7 @@ const (
 	ChatRoleAssistant = "assistant"
 	ChatKindText      = "text"
 	ChatKindImage     = "image"
+	ChatKindVideo     = "video"
 	ChatStatusPending = "pending"
 	ChatStatusDone    = "done"
 	ChatStatusStopped = "stopped"
@@ -70,14 +77,20 @@ var (
 	ErrChatConvFull      = infraerrors.BadRequest("CHAT_CONVERSATION_FULL", "这个对话太长了，请新建一个对话继续（Conversation too long）")
 	ErrChatNoDraw        = infraerrors.BadRequest("CHAT_DRAW_UNSUPPORTED", "画图要用 GPT 分组（OpenAI）的 Key，请在上方换一个 Key（Images need an OpenAI group key）")
 	ErrChatImageSize     = infraerrors.BadRequest("CHAT_IMAGE_SIZE", "图片尺寸不支持（Invalid image size）")
+	ErrChatNoVideo       = infraerrors.BadRequest("CHAT_VIDEO_UNSUPPORTED", "生成视频要用「Muse 视频」分组的 Key：先到「购买」开通 Muse 视频月卡，再到「API 密钥」新建一个选这个分组的 Key（Videos need a Muse video key）")
+	ErrChatVideoAspect   = infraerrors.BadRequest("CHAT_VIDEO_ASPECT", "视频画幅只支持竖屏 9:16 或横屏 16:9（Invalid video aspect ratio）")
+	ErrChatVideoRefs     = infraerrors.BadRequest("CHAT_VIDEO_REFS", "生成视频最多带 1 张图片，它会作为视频的开头画面（One reference image at most）")
+	ErrChatVideoKeyOnly  = infraerrors.BadRequest("CHAT_VIDEO_KEY_ONLY", "「Muse 视频」分组的 Key 只能生成视频：聊天请换一个 GPT 分组的 Key，或切到「视频」（This key only makes videos）")
+	ErrChatVideoAsRef    = infraerrors.BadRequest("CHAT_VIDEO_AS_REFERENCE", "视频不能当作参考图发送，请换成图片（Videos can't be attached）")
 	ErrChatUploadLimit   = infraerrors.TooManyRequests("CHAT_UPLOAD_LIMIT", fmt.Sprintf("今天上传的图片已达 %d 张，明天再来（Daily upload limit）", chatUploadsPerDay))
 	ErrChatNothingToRedo = infraerrors.BadRequest("CHAT_NOTHING_TO_REGENERATE", "没有可以重新生成的消息（Nothing to regenerate）")
 	ErrChatBusy          = infraerrors.Conflict("CHAT_BUSY", "上一条还在生成，请等它结束或先点停止（A reply is still running）")
 )
 
 var (
-	chatModelRe    = regexp.MustCompile(`^[A-Za-z0-9._:/@+\-\[\]]{1,100}$`)
-	chatImageSizes = map[string]bool{"1024x1024": true, "1536x1024": true, "1024x1536": true, "auto": true}
+	chatModelRe      = regexp.MustCompile(`^[A-Za-z0-9._:/@+\-\[\]]{1,100}$`)
+	chatImageSizes   = map[string]bool{"1024x1024": true, "1536x1024": true, "1024x1536": true, "auto": true}
+	chatVideoAspects = map[string]bool{"9:16": true, "16:9": true}
 	// Ids in a /v1/models list that are not chat models.
 	chatNonChatModelRe = regexp.MustCompile(`(?i)(image|embedding|tts|whisper|dall-e|sora|moderation|transcribe|realtime|audio|veo|imagen|-video|search-preview)`)
 )
@@ -159,6 +172,7 @@ type ChatService struct {
 	gatewayURL string
 	client     *http.Client
 	now        func() time.Time
+	videoPoll  time.Duration // how often a video task is polled
 
 	mu      sync.Mutex
 	running map[int64]bool // conversations with a reply being written
@@ -172,7 +186,7 @@ type chatModelsEntry struct {
 
 func NewChatService(repo ChatRepository, keys APIKeyRepository, files *ChatFileStore, gatewayURL string) *ChatService {
 	return &ChatService{repo: repo, keys: keys, files: files, gatewayURL: strings.TrimRight(gatewayURL, "/"),
-		client: &http.Client{}, now: time.Now, running: map[int64]bool{}, models: map[int64]chatModelsEntry{}}
+		client: &http.Client{}, now: time.Now, videoPoll: chatVideoPollEvery, running: map[int64]bool{}, models: map[int64]chatModelsEntry{}}
 }
 
 func (s *ChatService) Files() *ChatFileStore { return s.files }
@@ -188,6 +202,8 @@ type ChatKeyOption struct {
 	Rate     float64 `json:"rate"`
 	// CanDraw: the group is OpenAI, so 画图 (gpt-image-2) works on it.
 	CanDraw bool `json:"can_draw"`
+	// CanVideo: the group is the Muse video group, so 视频 works on it.
+	CanVideo bool `json:"can_video"`
 }
 
 func chatKeyUsable(k *APIKey) error {
@@ -205,6 +221,8 @@ func chatKeyUsable(k *APIKey) error {
 
 func chatCanDraw(k *APIKey) bool { return k.Group != nil && k.Group.Platform == PlatformOpenAI }
 
+func chatCanVideo(k *APIKey) bool { return k.Group != nil && k.Group.Platform == PlatformGrok }
+
 func (s *ChatService) Keys(ctx context.Context, userID int64) ([]ChatKeyOption, error) {
 	out := []ChatKeyOption{}
 	keys, _, err := s.keys.ListByUserID(ctx, userID, pagination.PaginationParams{Page: 1, PageSize: 100}, APIKeyListFilters{})
@@ -217,7 +235,7 @@ func (s *ChatService) Keys(ctx context.Context, userID int64) ([]ChatKeyOption, 
 			continue
 		}
 		out = append(out, ChatKeyOption{ID: k.ID, Name: k.Name, Group: k.Group.Name, Platform: k.Group.Platform,
-			Rate: k.Group.RateMultiplier, CanDraw: chatCanDraw(k)})
+			Rate: k.Group.RateMultiplier, CanDraw: chatCanDraw(k), CanVideo: chatCanVideo(k)})
 	}
 	return out, nil
 }
@@ -238,8 +256,9 @@ func (s *ChatService) ownKey(ctx context.Context, userID, keyID int64) (*APIKey,
 
 // ChatModels is what the page offers for a key: the group's chat models, and whether it can draw.
 type ChatModels struct {
-	Models  []string `json:"models"`
-	CanDraw bool     `json:"can_draw"`
+	Models   []string `json:"models"`
+	CanDraw  bool     `json:"can_draw"`
+	CanVideo bool     `json:"can_video"`
 }
 
 // Models lists the chat models of the key's group, as the gateway's /v1/models reports them.
@@ -248,7 +267,12 @@ func (s *ChatService) Models(ctx context.Context, userID, keyID int64) (*ChatMod
 	if err != nil {
 		return nil, err
 	}
-	out := &ChatModels{CanDraw: chatCanDraw(k)}
+	out := &ChatModels{CanDraw: chatCanDraw(k), CanVideo: chatCanVideo(k)}
+	if out.CanVideo {
+		// The video group has no chat models; skip asking the gateway.
+		out.Models = []string{}
+		return out, nil
+	}
 	s.mu.Lock()
 	if e, ok := s.models[keyID]; ok && s.now().Sub(e.at) < chatModelsCacheTTL {
 		s.mu.Unlock()
@@ -509,6 +533,9 @@ func (s *ChatService) attachable(ctx context.Context, userID int64, names []stri
 			continue
 		}
 		seen[name] = true
+		if IsChatVideoFile(name) {
+			return nil, ErrChatVideoAsRef
+		}
 		f, err := s.repo.GetFile(ctx, name)
 		if err != nil {
 			return nil, err
@@ -539,14 +566,16 @@ func (s *ChatService) attachable(ctx context.Context, userID int64, names []stri
 // as references). Regenerate answers the last question again; EditID replaces that question of the
 // user's (and everything after it) with this one.
 type ChatSendInput struct {
-	KeyID      int64    `json:"key_id"`
-	Model      string   `json:"model"`
-	Mode       string   `json:"mode"`
-	Content    string   `json:"content"`
-	Files      []string `json:"files"`
-	ImageSize  string   `json:"image_size"`
-	Regenerate bool     `json:"regenerate"`
-	EditID     int64    `json:"edit_id"`
+	KeyID     int64    `json:"key_id"`
+	Model     string   `json:"model"`
+	Mode      string   `json:"mode"`
+	Content   string   `json:"content"`
+	Files     []string `json:"files"`
+	ImageSize string   `json:"image_size"`
+	// VideoAspect is 9:16 or 16:9 (视频 mode).
+	VideoAspect string `json:"video_aspect"`
+	Regenerate  bool   `json:"regenerate"`
+	EditID      int64  `json:"edit_id"`
 }
 
 // ChatEvent is one server-sent event of a turn.
@@ -586,7 +615,7 @@ func (s *ChatService) Send(ctx context.Context, userID, convID int64, in ChatSen
 		return err
 	}
 	mode := in.Mode
-	if mode != ChatKindImage {
+	if mode != ChatKindImage && mode != ChatKindVideo {
 		mode = ChatKindText
 	}
 	key, err := s.ownKey(ctx, userID, in.KeyID)
@@ -605,6 +634,22 @@ func (s *ChatService) Send(ctx context.Context, userID, convID int64, in ChatSen
 			return ErrChatImageSize
 		}
 		model = chatImageModel
+	} else if mode == ChatKindVideo {
+		if !chatCanVideo(key) {
+			return ErrChatNoVideo
+		}
+		if in.VideoAspect == "" {
+			in.VideoAspect = "9:16"
+		}
+		if !chatVideoAspects[in.VideoAspect] {
+			return ErrChatVideoAspect
+		}
+		if len(in.Files) > 1 {
+			return ErrChatVideoRefs
+		}
+		model = chatVideoModel
+	} else if chatCanVideo(key) {
+		return ErrChatVideoKeyOnly
 	} else if !chatModelRe.MatchString(model) {
 		return ErrChatModel
 	}
@@ -624,6 +669,16 @@ func (s *ChatService) Send(ctx context.Context, userID, convID int64, in ChatSen
 			return ErrChatNoDraw
 		}
 	}
+	if user.Kind == ChatKindVideo && mode != ChatKindVideo {
+		mode = ChatKindVideo
+		model = chatVideoModel
+		if !chatCanVideo(key) {
+			return ErrChatNoVideo
+		}
+		if !chatVideoAspects[in.VideoAspect] {
+			in.VideoAspect = "9:16"
+		}
+	}
 	if conv.Title == "" {
 		conv.Title = chatAutoTitle(user.Content, user.Kind)
 	}
@@ -640,9 +695,12 @@ func (s *ChatService) Send(ctx context.Context, userID, convID int64, in ChatSen
 	}
 	// From here on the turn is saved; failures are reported on the reply.
 	_ = emit(ChatEvent{User: user, Assistant: reply, Conversation: conv})
-	if mode == ChatKindImage {
+	switch mode {
+	case ChatKindImage:
 		s.draw(ctx, key.Key, conv, user, reply, in.ImageSize, emit)
-	} else {
+	case ChatKindVideo:
+		s.video(ctx, key.Key, conv, user, reply, in.VideoAspect, emit)
+	default:
 		s.answer(ctx, key, conv, reply, emit)
 	}
 	return nil
@@ -680,7 +738,7 @@ func (s *ChatService) prepareQuestion(ctx context.Context, userID int64, conv *C
 	if len(in.Files) > chatFilesPerMessage {
 		return nil, ErrChatTooManyFiles
 	}
-	if content == "" && (mode == ChatKindImage || len(in.Files) == 0) {
+	if content == "" && (mode == ChatKindImage || mode == ChatKindVideo || len(in.Files) == 0) {
 		return nil, ErrChatEmpty
 	}
 	keep := map[string]bool{}
@@ -737,8 +795,11 @@ func chatAutoTitle(content, kind string) string {
 	if t == "" {
 		t = "图片对话"
 	}
-	if kind == ChatKindImage {
+	switch kind {
+	case ChatKindImage:
 		t = "画图：" + t
+	case ChatKindVideo:
+		t = "视频：" + t
 	}
 	return chatCut(t, 24)
 }
@@ -860,6 +921,13 @@ func (s *ChatService) buildContext(conv *ChatConversation, msgs []ChatMessage, r
 				}
 			}
 		}
+		if m.Kind == ChatKindVideo {
+			if m.Role == ChatRoleUser {
+				text = "（请求生成视频）" + text
+			} else {
+				text = "（已按要求生成视频）"
+			}
+		}
 		if m.Role == ChatRoleAssistant {
 			out = append(out, map[string]any{"role": "assistant", "content": text})
 			continue
@@ -907,6 +975,44 @@ func (s *ChatService) draw(ctx context.Context, key string, conv *ChatConversati
 		if err == nil {
 			reply.Files = []string{f.Name}
 			err = s.repo.AttachFiles(runCtx, reply.ID, reply.Files)
+		}
+	}
+	if err != nil {
+		reply.Status, reply.Error = ChatStatusError, chatErrText(err)
+		s.finish(reply)
+		_ = emit(ChatEvent{Error: reply.Error, Done: reply})
+		return
+	}
+	reply.Status = ChatStatusDone
+	s.finish(reply)
+	_ = emit(ChatEvent{Done: reply})
+}
+
+// video makes a clip with Muse: the task is created and polled through the gateway on the user's
+// key (billing happens there, on completion, against the Muse video monthly card), and the MP4 is
+// saved into the conversation. Like a picture it is finished and saved even if the page goes away.
+func (s *ChatService) video(ctx context.Context, key string, conv *ChatConversation, user, reply *ChatMessage, aspect string, emit func(ChatEvent) error) {
+	runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), chatVideoTimeout)
+	defer cancel()
+	firstFrame := ""
+	if len(user.Files) > 0 {
+		firstFrame = s.files.DataURL(user.Files[0])
+	}
+	data, err := s.gatewayVideo(runCtx, key, user.Content, aspect, firstFrame)
+	if err == nil {
+		var stored *chatStored
+		stored, err = s.files.SaveVideo(data)
+		if err != nil {
+			logger.LegacyPrintf("service.chat", "save video failed: message_id=%d err=%v", reply.ID, err)
+			err = chatFailed("视频保存失败")
+		} else {
+			f := &ChatFile{Name: stored.Name, UserID: conv.UserID, Mime: stored.Mime, Size: len(data)}
+			if err = s.repo.CreateFile(runCtx, f); err != nil {
+				s.files.Remove(stored.Name)
+			} else {
+				reply.Files = []string{f.Name}
+				err = s.repo.AttachFiles(runCtx, reply.ID, reply.Files)
+			}
 		}
 	}
 	if err != nil {

@@ -19,7 +19,8 @@
       </div>
     </div>
     <div v-else-if="message.content" class="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-tr-md bg-primary-600 px-4 py-2.5 text-[15px] leading-relaxed text-white">
-      <span v-if="message.kind === 'image'" class="mr-1 rounded bg-white/20 px-1.5 py-0.5 text-[11px]">{{ t('chat.drawTag') }}</span>{{ message.content }}
+      <span v-if="message.kind === 'image'" class="mr-1 rounded bg-white/20 px-1.5 py-0.5 text-[11px]">{{ t('chat.drawTag') }}</span>
+      <span v-else-if="message.kind === 'video'" class="mr-1 rounded bg-white/20 px-1.5 py-0.5 text-[11px]">{{ t('chat.videoTag') }}</span>{{ message.content }}
     </div>
     <div v-if="!editing && !busy" class="mt-1 flex gap-1 opacity-0 transition group-hover:opacity-100 max-sm:opacity-100">
       <button type="button" class="chat-act" :title="t('chat.copy')" @click="copy(message.content)"><Icon name="copy" size="sm" /></button>
@@ -62,6 +63,21 @@
         </div>
       </template>
 
+      <!-- 视频 -->
+      <template v-else-if="message.kind === 'video'">
+        <div v-if="message.status === 'pending'" class="flex h-64 w-64 max-w-full flex-col items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 text-sm text-gray-500 dark:from-dark-800 dark:to-dark-700 dark:text-dark-400" data-testid="chat-video-pending">
+          <span class="h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></span>
+          {{ t('chat.videoMaking') }}
+          <span class="px-6 text-center text-xs text-gray-400">{{ t('chat.videoMakingHint') }}</span>
+        </div>
+        <div v-for="f in message.files" :key="f" class="w-full max-w-md">
+          <ChatVideo :name="f" placeholder-class="h-64 w-64 max-w-full" @loaded="loaded[f] = true; $emit('media')" />
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button v-if="loaded[f]" type="button" class="chat-pill" @click="download(f)"><Icon name="download" size="xs" />{{ t('chat.download') }}</button>
+          </div>
+        </div>
+      </template>
+
       <!-- 文字 -->
       <template v-else>
         <div v-if="message.content" ref="mdBox" class="chat-md break-words text-[15px] leading-relaxed text-gray-800 dark:text-dark-100" @click="onMdClick" v-html="html"></div>
@@ -93,6 +109,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { fileURL, type ChatMessage } from '@/api/chat'
 import { useAppStore } from '@/stores/app'
 import ChatImage from './ChatImage.vue'
+import ChatVideo from './ChatVideo.vue'
 import { renderChatMarkdown } from './chatMarkdown'
 import 'highlight.js/styles/github-dark.css'
 

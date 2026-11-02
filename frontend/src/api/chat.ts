@@ -13,11 +13,14 @@ export interface ChatKey {
   rate: number
   /** The group is OpenAI, so 画图 works on it. */
   can_draw: boolean
+  /** The group is the Muse video group, so 视频 works on it (and only that). */
+  can_video: boolean
 }
 
 export interface ChatModels {
   models: string[]
   can_draw: boolean
+  can_video: boolean
 }
 
 export interface ChatConversation {
@@ -37,7 +40,7 @@ export interface ChatMessage {
   id: number
   conversation_id: number
   role: 'user' | 'assistant'
-  kind: 'text' | 'image'
+  kind: 'text' | 'image' | 'video'
   content: string
   reasoning?: string
   files: string[]
@@ -65,10 +68,12 @@ export interface ChatUploaded {
 export interface ChatSendInput {
   key_id: number
   model: string
-  mode: 'text' | 'image'
+  mode: 'text' | 'image' | 'video'
   content?: string
   files?: string[]
   image_size?: string
+  /** 视频 mode: 9:16 (portrait) or 16:9. */
+  video_aspect?: string
   regenerate?: boolean
   edit_id?: number
 }

@@ -27,7 +27,7 @@
       v-model="text"
       rows="1"
       class="block max-h-52 w-full resize-none border-0 bg-transparent px-4 pb-1 pt-3.5 text-[15px] leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-dark-50"
-      :placeholder="mode === 'image' ? t('chat.drawPlaceholder') : t('chat.placeholder')"
+      :placeholder="mode === 'image' ? t('chat.drawPlaceholder') : mode === 'video' ? t('chat.videoPlaceholder') : t('chat.placeholder')"
       data-testid="chat-input"
       @input="autosize"
       @keydown.enter="onEnter"
@@ -52,6 +52,9 @@
         >
           {{ t('chat.modeImage') }}
         </button>
+        <button type="button" class="mode-btn" :class="mode === 'video' ? 'mode-on' : ''" data-testid="chat-mode-video" @click="setMode('video')">
+          {{ t('chat.modeVideo') }}
+        </button>
       </div>
       <select
         v-if="mode === 'image'"
@@ -63,6 +66,16 @@
         <option value="1024x1024">{{ t('chat.sizeSquare') }}</option>
         <option value="1536x1024">{{ t('chat.sizeLandscape') }}</option>
         <option value="1024x1536">{{ t('chat.sizePortrait') }}</option>
+      </select>
+      <select
+        v-if="mode === 'video'"
+        :value="videoAspect"
+        class="rounded-full border-0 bg-gray-100 py-1 pl-3 pr-7 text-xs text-gray-600 focus:ring-1 focus:ring-primary-400 dark:bg-dark-800 dark:text-dark-300"
+        data-testid="chat-video-aspect"
+        @change="$emit('update:videoAspect', ($event.target as HTMLSelectElement).value)"
+      >
+        <option value="9:16">{{ t('chat.videoPortrait') }}</option>
+        <option value="16:9">{{ t('chat.videoLandscape') }}</option>
       </select>
       <div class="flex-1"></div>
       <button
@@ -100,21 +113,24 @@ import { fileURL, uploadFile } from '@/api/chat'
 const props = defineProps<{
   busy: boolean
   canDraw: boolean
-  mode: 'text' | 'image'
+  mode: 'text' | 'image' | 'video'
   imageSize: string
+  videoAspect: string
   /** No key or model yet. */
   disabled?: boolean
 }>()
 const emit = defineEmits<{
   (e: 'send', payload: { content: string; files: string[] }): void
   (e: 'stop'): void
-  (e: 'update:mode', mode: 'text' | 'image'): void
+  (e: 'update:mode', mode: 'text' | 'image' | 'video'): void
   (e: 'update:imageSize', size: string): void
+  (e: 'update:videoAspect', aspect: string): void
 }>()
 
 const { t } = useI18n()
 const appStore = useAppStore()
-const maxFiles = 4
+// A video takes one picture, as its opening frame.
+const maxFiles = computed(() => (props.mode === 'video' ? 1 : 4))
 const maxEdge = 2048
 
 interface Attachment {
@@ -137,7 +153,8 @@ const canSend = computed(
   () => !props.disabled && !uploading.value && (text.value.trim() !== '' || (props.mode === 'text' && attachments.value.length > 0))
 )
 
-function setMode(m: 'text' | 'image') {
+// 视频 is always offered: the page switches to the user's Muse video key, or explains how to get one.
+function setMode(m: 'text' | 'image' | 'video') {
   if (m === 'image' && !props.canDraw) {
     appStore.showInfo(t('chat.drawNeedsGpt'))
     return
@@ -185,7 +202,7 @@ function focus() {
 }
 
 function addExisting(name: string) {
-  if (attachments.value.length >= maxFiles || attachments.value.some((a) => a.name === name)) return
+  if (attachments.value.length >= maxFiles.value || attachments.value.some((a) => a.name === name)) return
   const a: Attachment = { key: ++seq, name, preview: '', uploading: false, ownPreview: false }
   attachments.value.push(a)
   fileURL(name)
@@ -230,8 +247,8 @@ async function shrink(file: File): Promise<Blob> {
 async function addFiles(files: File[]) {
   const images = files.filter((f) => f.type.startsWith('image/'))
   if (!images.length) return
-  const room = maxFiles - attachments.value.length
-  if (images.length > room) appStore.showInfo(t('chat.maxImages', { n: maxFiles }))
+  const room = maxFiles.value - attachments.value.length
+  if (images.length > room) appStore.showInfo(t('chat.maxImages', { n: maxFiles.value }))
   for (const file of images.slice(0, Math.max(0, room))) {
     const a: Attachment = { key: ++seq, name: '', preview: URL.createObjectURL(file), uploading: true, ownPreview: true }
     attachments.value.push(a)
@@ -281,7 +298,7 @@ defineExpose({ clear, restore, focus, addExisting, setText: (s: string) => ((tex
   @apply flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 disabled:opacity-40 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-100;
 }
 .mode-btn {
-  @apply rounded-full px-3 py-1 text-gray-500 transition dark:text-dark-400;
+  @apply whitespace-nowrap rounded-full px-3 py-1 text-gray-500 transition max-sm:px-2.5 dark:text-dark-400;
 }
 .mode-on {
   @apply bg-white text-gray-900 shadow-sm dark:bg-dark-600 dark:text-white;
