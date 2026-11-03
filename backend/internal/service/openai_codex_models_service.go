@@ -491,7 +491,7 @@ func newConfiguredCodexModelDescriptor(modelID string) configuredCodexModelDescr
 			if isOpenAIGPT56Model(modelID) {
 				descriptor.MaxContextWindow = configuredCodexGPT56MaxContext
 			}
-			if isOpenAIGPT6AstraModel(modelID) {
+			if isOpenAIGPT6FamilyModel(modelID) {
 				descriptor.ContextWindow = configuredCodexGPT6AstraContext
 				descriptor.MaxContextWindow = configuredCodexGPT6AstraContext
 			}
@@ -596,7 +596,7 @@ func configuredCodexGPTReasoningLevels(modelID string) []configuredCodexReasonin
 		{Effort: "xhigh", Description: "Extra-high reasoning depth for difficult tasks"},
 	}
 	normalized := getNormalizedCodexModel(modelID)
-	if isOpenAIGPT56Model(modelID) || isOpenAIGPT6AstraModel(modelID) {
+	if isOpenAIGPT56Model(modelID) || isOpenAIGPT6FamilyModel(modelID) {
 		levels = append(levels, configuredCodexReasoningLevel{
 			Effort:      "max",
 			Description: "Maximum reasoning depth for complex tasks",
@@ -621,12 +621,12 @@ func isOpenAICodexGPTModel(modelID string) bool {
 
 func isOpenAICodexReasoningGPTModel(modelID string) bool {
 	normalized := canonicalizeOpenAIModelAliasSpelling(modelID)
-	return isOpenAIGPT6AstraModel(normalized) || strings.HasPrefix(normalized, "gpt-5")
+	return isOpenAIGPT6FamilyModel(normalized) || strings.HasPrefix(normalized, "gpt-5")
 }
 
 func isOpenAICodexImageInputModel(modelID string) bool {
 	normalized := canonicalizeOpenAIModelAliasSpelling(modelID)
-	return isOpenAIGPT6AstraModel(normalized) ||
+	return isOpenAIGPT6FamilyModel(normalized) ||
 		strings.HasPrefix(normalized, "gpt-5") ||
 		strings.HasPrefix(normalized, "gpt-4o") ||
 		strings.HasPrefix(normalized, "gpt-4.1") ||

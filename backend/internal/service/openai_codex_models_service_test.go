@@ -372,6 +372,23 @@ func TestNewConfiguredCodexModelDescriptorUsesProviderMetadataAndSafeFallback(t 
 	require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, effortsFromConfiguredCodexLevels(gpt6.SupportedReasoningLevels))
 	require.Equal(t, int64(1_050_000), gpt6.ContextWindow)
 
+	// The newer GPT-6 models are reasoning models too. Before 2026-11 they fell through to the
+	// "none"-only fallback, Codex sent effort none, and gpt-6.1-sol rejected it.
+	for _, id := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "openai/gpt-6.1-sol"} {
+		d := newConfiguredCodexModelDescriptor(id)
+		require.NotNil(t, d.DefaultReasoningLevel, id)
+		require.Equal(t, "medium", *d.DefaultReasoningLevel, id)
+		require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, effortsFromConfiguredCodexLevels(d.SupportedReasoningLevels), id)
+		require.Equal(t, int64(1_050_000), d.ContextWindow, id)
+		require.True(t, isOpenAICodexReasoningGPTModel(id), id)
+		require.True(t, isOpenAICodexImageInputModel(id), id)
+		require.True(t, supportsOpenAIReasoningEffortMax(id), id)
+		require.Equal(t, "max", normalizeOpenAIReasoningEffortForModel("max", id), id)
+	}
+	require.False(t, isOpenAIGPT6FamilyModel("gpt-60"))
+	require.False(t, isOpenAIGPT6FamilyModel("gpt-5.6-sol"))
+	require.True(t, isOpenAIGPT6FamilyModel("gpt-6-astra-2026-09-01"))
+
 	gpt55 := newConfiguredCodexModelDescriptor("gpt-5.5")
 	require.Equal(t, "GPT-5.5", gpt55.DisplayName)
 	require.NotNil(t, gpt55.DefaultReasoningLevel)

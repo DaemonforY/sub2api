@@ -128,6 +128,14 @@ func isOpenAIGPT56Model(model string) bool {
 
 // isOpenAIGPT6AstraModel reports GPT-6 Astra and dated/provider-prefixed variants.
 // The public "gpt-6" alias routes to Astra; unrelated GPT-6 families stay excluded.
+// isOpenAIGPT6FamilyModel matches every GPT-6 model (gpt-6, gpt-6-astra/sol/luna, gpt-6.1-sol/terra,
+// dated snapshots). They are all reasoning models with low–max effort, image input and a 1.05M
+// context (models.dev, 2026-11); only some also accept "none", so the catalog doesn't offer it.
+func isOpenAIGPT6FamilyModel(model string) bool {
+	normalized := canonicalizeOpenAIModelAliasSpelling(model)
+	return normalized == "gpt-6" || strings.HasPrefix(normalized, "gpt-6-") || strings.HasPrefix(normalized, "gpt-6.")
+}
+
 func isOpenAIGPT6AstraModel(model string) bool {
 	normalized := canonicalizeOpenAIModelAliasSpelling(model)
 	return normalized == "gpt-6" || normalized == "gpt-6-astra" || strings.HasPrefix(normalized, "gpt-6-astra-")
