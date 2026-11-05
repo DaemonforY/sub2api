@@ -34,6 +34,7 @@ func TestOpenAIImagesResponsesDriverAndImageModels(t *testing.T) {
 						body, err := buildOpenAIImagesResponsesRequest(parsed, model)
 						require.NoError(t, err)
 						require.Equal(t, driver, gjson.GetBytes(body, "model").String())
+						require.False(t, gjson.GetBytes(body, "reasoning").Exists(), "ChatGPT image generation rejects any reasoning effort as 'Complexity'")
 						require.Equal(t, model, gjson.GetBytes(body, "tools.0.model").String())
 						require.Equal(t, quality, gjson.GetBytes(body, "tools.0.quality").String())
 						require.Equal(t, "1536x864", gjson.GetBytes(body, "tools.0.size").String())

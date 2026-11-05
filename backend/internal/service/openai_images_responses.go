@@ -442,7 +442,11 @@ func buildOpenAIImagesResponsesRequest(parsed *OpenAIImagesRequest, toolModel st
 		return nil, fmt.Errorf("image input is required")
 	}
 
-	req := []byte(`{"instructions":"","stream":true,"reasoning":{"effort":"medium","summary":"auto"},"parallel_tool_calls":true,"include":["reasoning.encrypted_content"],"model":"","store":false,"tool_choice":{"type":"image_generation"}}`)
+	// No "reasoning" block: since 2026-11-05 ChatGPT-account image generation
+	// reads the driver's reasoning.effort as the image "complexity" and rejects
+	// every value for gpt-image-2 / 2.5 ("Complexity 'medium' is not supported
+	// for this image model"); the same request without reasoning succeeds.
+	req := []byte(`{"instructions":"","stream":true,"parallel_tool_calls":true,"model":"","store":false,"tool_choice":{"type":"image_generation"}}`)
 	req, _ = sjson.SetBytes(req, "model", openAIImagesResponsesMainModelValue())
 	req, _ = sjson.SetBytes(req, "instructions", openAIImagesVerbatimPromptInstructions)
 
