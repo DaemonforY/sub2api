@@ -95,6 +95,9 @@ func (e *OpenAIImagesUpstreamError) clientMessage() string {
 		if e.isSafetyRejection() {
 			return openAIImagesSafetyMessage(trimmed)
 		}
+		if msg := openAIImagesUnsupportedFormatMessage(trimmed); msg != "" {
+			return msg
+		}
 		return trimmed
 	}
 	if trimmed := strings.TrimSpace(e.Code); trimmed != "" {
@@ -159,6 +162,24 @@ func openAIImagesSafetyMessage(upstream string) string {
 	}
 	return "图片没有生成：触发了 OpenAI 的内容安全审核，" + what +
 		"请换一种说法再试（去掉暴露、性感、暴力等字眼，避免真实人物和未成年人）；本次请求未扣费（" + upstream + "）"
+}
+
+// openAIImagesUnsupportedFormatMessage explains in Chinese that the channel's image model cannot
+// produce the requested animated GIF / SVG output (e.g. ChatGPT-account generation answers
+// "GIF output is not enabled for the model 'gpt-image-2-codex'"). Empty when it does not apply.
+func openAIImagesUnsupportedFormatMessage(upstream string) string {
+	lower := strings.ToLower(upstream)
+	if !strings.Contains(lower, "not enabled for the model") && !strings.Contains(lower, "not supported for the model") {
+		return ""
+	}
+	switch {
+	case strings.Contains(lower, "gif"):
+		return "当前通道的画图模型暂不支持生成 GIF 动图，请把输出格式改回 PNG/JPEG 等静态图片再试；本次请求未扣费（" + upstream + "）"
+	case strings.Contains(lower, "svg"):
+		return "当前通道的画图模型暂不支持生成 SVG 矢量图，请把输出格式改回 PNG/JPEG 等静态图片再试；本次请求未扣费（" + upstream + "）"
+	default:
+		return ""
+	}
 }
 
 // IsOpenAIImagesRetryableUpstreamError reports whether an Images error is an
@@ -490,6 +511,12 @@ func buildOpenAIImagesResponsesRequest(parsed *OpenAIImagesRequest, toolModel st
 	}
 	if parsed.PartialImages != nil {
 		tool, _ = sjson.SetBytes(tool, "partial_images", *parsed.PartialImages)
+	}
+	if parsed.FrameCount != nil {
+		tool, _ = sjson.SetBytes(tool, "frame_count", *parsed.FrameCount)
+	}
+	if parsed.FrameDurationMS != nil {
+		tool, _ = sjson.SetBytes(tool, "frame_duration_ms", *parsed.FrameDurationMS)
 	}
 
 	maskImageURL := strings.TrimSpace(parsed.MaskImageURL)

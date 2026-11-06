@@ -33,6 +33,9 @@ services:
       # 提示词库图片中转：raw.githubusercontent.com / pbs.twimg.com / youmind 等图床在国内无法访问，
       # 开启后经本机 /img-proxy/ 转发（仅限固定白名单域名，缓存 7 天），会占用本机出网流量。设为 off 关闭。
       - IMAGE_PROXY=${CANVAS_IMAGE_PROXY:-on}
+      # 生图设置里的「GIF 动图」输出格式（GPT Image 2.6）。上游画图模型支持 GIF 后设为 on；
+      # 2026-11-06 ChatGPT 账号通道仍返回 "GIF output is not enabled"，默认关闭。
+      - IMAGE_GIF_OUTPUT=${CANVAS_IMAGE_GIF_OUTPUT:-off}
       # 可选统计（留空即关闭）
       - ANALYTICS_GA4_ID=${ANALYTICS_GA4_ID:-}
       - ANALYTICS_BAIDU_ID=${ANALYTICS_BAIDU_ID:-}
