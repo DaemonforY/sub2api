@@ -33,6 +33,11 @@ func TestDefaultModelsIncludeGPTImage25(t *testing.T) {
 	require.Contains(t, DefaultModelIDs(), "gpt-image-2.5-sunburst")
 }
 
+func TestDefaultModelsIncludeGPTImage26(t *testing.T) {
+	require.Contains(t, DefaultModelIDs(), "gpt-image-2.6-flare")
+	require.Contains(t, DefaultModelIDs(), "gpt-image-2.6-sunburst")
+}
+
 func TestDefaultModelsIncludeGPT61TerraAndGPT6Family(t *testing.T) {
 	ids := DefaultModelIDs()
 	for _, id := range []string{"gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna"} {
