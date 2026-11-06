@@ -944,3 +944,30 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 		require.Equal(t, int64(1), cache.getCalls.Load())
 	})
 }
+
+func TestGetListedModels_OpenAIUnmappedAccountAddsDefaultCatalog(t *testing.T) {
+	groupID := int64(2)
+	mapped := Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Credentials: map[string]any{
+		"model_mapping": map[string]any{"gpt-6.1-sol": "gpt-6.1-sol", "gpt-5.4-mini": "gpt-5.6-luna"},
+	}}
+	unmapped := Account{ID: 10, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Credentials: map[string]any{}}
+
+	svc := &GatewayService{
+		accountRepo:        &modelsListAccountRepoStub{byGroup: map[int64][]Account{groupID: {mapped, unmapped}}},
+		modelsListCache:    gocache.New(time.Minute, time.Minute),
+		modelsListCacheTTL: time.Minute,
+	}
+	listed := svc.GetListedModels(context.Background(), &groupID, PlatformOpenAI)
+	require.Contains(t, listed, "gpt-6.1-sol")
+	require.Contains(t, listed, "gpt-5.4-mini")
+	require.Contains(t, listed, "gpt-image-2.6-flare", "the unmapped account serves the default catalog")
+	require.Contains(t, listed, "gpt-image-2.6-sunburst")
+	// Composite aggregation keeps administrator-configured models only (served from cache).
+	require.Equal(t, []string{"gpt-5.4-mini", "gpt-6.1-sol"}, svc.GetAvailableModels(context.Background(), &groupID, PlatformOpenAI))
+
+	onlyMapped := &GatewayService{accountRepo: &modelsListAccountRepoStub{byGroup: map[int64][]Account{groupID: {mapped}}}}
+	require.Equal(t, []string{"gpt-5.4-mini", "gpt-6.1-sol"}, onlyMapped.GetListedModels(context.Background(), &groupID, PlatformOpenAI))
+
+	onlyUnmapped := &GatewayService{accountRepo: &modelsListAccountRepoStub{byGroup: map[int64][]Account{groupID: {unmapped}}}}
+	require.Empty(t, onlyUnmapped.GetListedModels(context.Background(), &groupID, PlatformOpenAI), "no mapping anywhere keeps the handler default")
+}

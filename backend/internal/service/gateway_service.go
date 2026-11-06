@@ -21,6 +21,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/cespare/xxhash/v2"
@@ -1384,17 +1385,63 @@ func (s *GatewayService) DoGrokNativeResponsesJSON(ctx context.Context, account 
 	return respBytes, nil
 }
 
+// availableModelsEntry is the cached per group/platform model list.
+// unrestrictedOpenAI records that an eligible OpenAI account has no
+// model_mapping and therefore serves every model.
+type availableModelsEntry struct {
+	models             []string
+	unrestrictedOpenAI bool
+}
+
 func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64, platform string) []string {
+	return cloneStringSlice(s.loadAvailableModels(ctx, groupID, platform).models)
+}
+
+// GetListedModels returns the model list a plain (non-composite) group shows
+// on /v1/models. It is GetAvailableModels plus, for OpenAI groups that mix
+// mapped accounts with an unmapped one, the default OpenAI catalog: the
+// unmapped account serves those models, so a sibling's whitelist must not hide
+// them (e.g. new image models the mapped account lacks). Composite groups keep
+// using GetAvailableModels, which lists administrator-configured models only.
+func (s *GatewayService) GetListedModels(ctx context.Context, groupID *int64, platform string) []string {
+	entry := s.loadAvailableModels(ctx, groupID, platform)
+	if len(entry.models) == 0 || !entry.unrestrictedOpenAI {
+		return cloneStringSlice(entry.models)
+	}
+	modelSet := make(map[string]struct{}, len(entry.models))
+	for _, model := range entry.models {
+		modelSet[model] = struct{}{}
+	}
+	for _, model := range openai.DefaultModelIDs() {
+		modelSet[model] = struct{}{}
+	}
+	models := make([]string, 0, len(modelSet))
+	for model := range modelSet {
+		models = append(models, model)
+	}
+	sort.Strings(models)
+	return models
+}
+
+func (s *GatewayService) loadAvailableModels(ctx context.Context, groupID *int64, platform string) availableModelsEntry {
 	cacheKey := modelsListCacheKey(groupID, platform)
 	if s.modelsListCache != nil {
 		if cached, found := s.modelsListCache.Get(cacheKey); found {
-			if models, ok := cached.([]string); ok {
+			if entry, ok := cached.(availableModelsEntry); ok {
 				modelsListCacheHitTotal.Add(1)
-				return cloneStringSlice(models)
+				return entry
 			}
 		}
 	}
 	modelsListCacheMissTotal.Add(1)
+
+	store := func(entry availableModelsEntry) availableModelsEntry {
+		if s.modelsListCache != nil {
+			s.modelsListCache.Set(cacheKey, entry, s.modelsListCacheTTL)
+			modelsListCacheStoreTotal.Add(1)
+		}
+		return entry
+	}
 
 	var accounts []Account
 	var err error
@@ -1406,7 +1453,7 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	}
 
 	if err != nil || len(accounts) == 0 {
-		return nil
+		return availableModelsEntry{}
 	}
 
 	// Filter by platform if specified
@@ -1423,17 +1470,14 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	// Collect unique models from all accounts
 	modelSet := make(map[string]struct{})
 	hasAnyMapping := false
+	unrestrictedOpenAI := false
 
 	for _, acc := range accounts {
 		// Passthrough routing accepts models independently of model_mapping. A stale
 		// mapping on any eligible passthrough account therefore cannot define the
 		// public whitelist; return nil so the handler uses its default model set.
 		if platform == PlatformOpenAI && acc.IsOpenAIPassthroughEnabled() {
-			if s.modelsListCache != nil {
-				s.modelsListCache.Set(cacheKey, []string(nil), s.modelsListCacheTTL)
-				modelsListCacheStoreTotal.Add(1)
-			}
-			return nil
+			return store(availableModelsEntry{})
 		}
 
 		mapping := acc.GetModelMapping()
@@ -1442,16 +1486,14 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 			for model := range mapping {
 				modelSet[model] = struct{}{}
 			}
+		} else if platform == PlatformOpenAI {
+			unrestrictedOpenAI = true
 		}
 	}
 
 	// If no account has model_mapping, return nil (use default)
 	if !hasAnyMapping {
-		if s.modelsListCache != nil {
-			s.modelsListCache.Set(cacheKey, []string(nil), s.modelsListCacheTTL)
-			modelsListCacheStoreTotal.Add(1)
-		}
-		return nil
+		return store(availableModelsEntry{})
 	}
 
 	// Convert to slice
@@ -1461,11 +1503,7 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	}
 	sort.Strings(models)
 
-	if s.modelsListCache != nil {
-		s.modelsListCache.Set(cacheKey, cloneStringSlice(models), s.modelsListCacheTTL)
-		modelsListCacheStoreTotal.Add(1)
-	}
-	return cloneStringSlice(models)
+	return store(availableModelsEntry{models: models, unrestrictedOpenAI: unrestrictedOpenAI})
 }
 
 func (s *GatewayService) resolveCompositeModelOwnership(ctx context.Context, groupID int64, model string) (CompositeModelOwnership, error) {
