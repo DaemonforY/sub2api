@@ -272,6 +272,12 @@ func (s *OpenAIGatewayService) shouldFailoverOpenAIUpstreamResponse(statusCode i
 	return isOpenAITransientProcessingError(statusCode, upstreamMsg, upstreamBody)
 }
 
+// IsOpenAIModelNotFoundErrorBody reports whether an upstream error body says the requested model
+// doesn't exist or isn't available there (e.g. a ChatGPT account asked for an unreleased model).
+func IsOpenAIModelNotFoundErrorBody(respBody []byte) bool {
+	return len(respBody) > 0 && isOpenAICompatibleModelNotFoundBody(respBody)
+}
+
 // isOpenAICompatibleModelNotFoundBody: an OpenAI-compatible upstream says the model doesn't exist
 // (code model_not_found, or "unknown model" / "model not found" / ... in the message).
 func isOpenAICompatibleModelNotFoundBody(respBody []byte) bool {

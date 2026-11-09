@@ -1588,6 +1588,11 @@ func (h *OpenAIGatewayHandler) handleAnthropicFailoverExhausted(c *gin.Context, 
 		h.anthropicStreamingAwareError(c, status, "api_error", failoverErr.ClientMessage, streamStarted)
 		return
 	}
+	if failoverErr != nil && service.IsOpenAIModelNotFoundErrorBody(failoverErr.ResponseBody) {
+		h.anthropicStreamingAwareError(c, http.StatusNotFound, "not_found_error",
+			upstreamModelNotFoundMessage(c.GetString(opsModelKey)), streamStarted)
+		return
+	}
 	status, errType, errMsg := h.mapUpstreamError(failoverErr.StatusCode)
 	h.anthropicStreamingAwareError(c, status, errType, errMsg, streamStarted)
 }
@@ -3365,6 +3370,13 @@ func (h *OpenAIGatewayHandler) handleFailoverExhausted(c *gin.Context, failoverE
 	// 记录原始上游状态码，以便 ops 错误日志捕获真实的上游错误
 	upstreamMsg := service.ExtractUpstreamErrorMessage(responseBody)
 	service.SetOpsUpstreamError(c, statusCode, upstreamMsg, "")
+
+	// 上游说模型不存在（未开放的新模型、名字写错）：重试没用，告诉用户检查模型名
+	if service.IsOpenAIModelNotFoundErrorBody(responseBody) {
+		h.handleStreamingAwareErrorWithCode(c, http.StatusNotFound, "invalid_request_error", "model_not_found",
+			upstreamModelNotFoundMessage(c.GetString(opsModelKey)), streamStarted, false)
+		return
+	}
 
 	// 使用默认的错误映射
 	status, errType, errMsg := h.mapUpstreamError(statusCode)

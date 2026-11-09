@@ -1,6 +1,11 @@
 package handler
 
-import "github.com/Wei-Shaw/sub2api/internal/service"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/Wei-Shaw/sub2api/internal/service"
+)
 
 // Client-visible texts for gateway-side failures. End users read these in their client, so the
 // Chinese part says what happened and what to do; the original English stays in parentheses because
@@ -20,6 +25,16 @@ const (
 	msgHostedWebSearchFailed   = "联网搜索工具（web_search）在当前分组暂时不可用：请去掉 tools 里的 web_search 后重试；需要最新信息时，可以先自己搜索，再把结果放进提示词；本次请求未扣费（Hosted web_search tool failed upstream）"
 	msgBillingNoBalance        = "账户余额不足，请到 " + service.RechargeURL + " 充值后重试，或改用订阅分组的 Key；本次请求未扣费（insufficient balance）"
 )
+
+// upstreamModelNotFoundMessage: the upstream says the requested model doesn't exist (not released
+// yet, or a typo). Retrying won't help, so it says to check the name instead of "retry later".
+func upstreamModelNotFoundMessage(model string) string {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return "上游暂不支持这个模型（可能还没开放，或模型名写错了），请检查模型名，或换用 /v1/models 列表里的模型；本次请求未扣费（The requested model does not exist or is not available upstream）"
+	}
+	return fmt.Sprintf("上游暂不支持模型 %q（可能还没开放，或模型名写错了），请检查模型名，或换用 /v1/models 列表里的模型；本次请求未扣费（Model %q does not exist or is not available upstream）", model, model)
+}
 
 func concurrencyLimitMessage(slotType string) string {
 	who := "当前账号"
