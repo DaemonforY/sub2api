@@ -26,3 +26,11 @@ func TestDefaultModelsListsClaudeFable52First(t *testing.T) {
 	require.Equal(t, "Claude Fable 5.2", DefaultModels[0].DisplayName)
 	require.Equal(t, "2026-11-09T00:00:00Z", DefaultModels[0].CreatedAt)
 }
+
+func TestDefaultModelsListsClaude55Family(t *testing.T) {
+	t.Parallel()
+
+	ids := DefaultModelIDs()
+	require.Contains(t, ids, "claude-opus-5-5")
+	require.Contains(t, ids, "claude-sonnet-5-5")
+}
