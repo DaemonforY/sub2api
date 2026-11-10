@@ -230,6 +230,23 @@ func isClaudeFable51Model(model string) bool {
 	return false
 }
 
+// isClaudeFableVersion matches claude-fable-<v> / claude-mythos-<v> (dash or dot form), with or
+// without a provider prefix or date suffix, but not a longer version (5-2 must not match 5-20).
+func isClaudeFableVersion(model, dashed, dotted string) bool {
+	for _, family := range []string{"fable-", "mythos-"} {
+		for _, version := range []string{dashed, dotted} {
+			marker := family + version
+			if at := strings.Index(model, marker); at >= 0 {
+				after := at + len(marker)
+				if after == len(model) || model[after] < '0' || model[after] > '9' {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func defaultMaxReasoningEffortMultiplier(model string) *float64 {
 	if !isClaudeFable51Model(model) {
 		return nil
@@ -414,6 +431,17 @@ func (s *BillingService) initFallbackPricing() {
 		CacheCreation5mPrice:       12.5e-6,
 		CacheCreation1hPrice:       20e-6,
 		CacheReadPricePerToken:     0.25e-6,
+		SupportsCacheBreakdown:     true,
+	}
+	// Claude Fable 5.2 / Mythos 5.2 (2026-11-09): $8 / $40 per MTok, cache writes
+	// 1.25× (5m) / 2× (1h) of input, cache reads $0.20.
+	s.fallbackPrices["claude-fable-5-2"] = &ModelPricing{
+		InputPricePerToken:         8e-6,
+		OutputPricePerToken:        40e-6,
+		CacheCreationPricePerToken: 10e-6,
+		CacheCreation5mPrice:       10e-6,
+		CacheCreation1hPrice:       16e-6,
+		CacheReadPricePerToken:     0.2e-6,
 		SupportsCacheBreakdown:     true,
 	}
 
@@ -853,11 +881,15 @@ func (s *BillingService) initFallbackPricing() {
 func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	modelLower := strings.ToLower(model)
 
-	// 按模型系列匹配
-	if isClaudeFable51Model(modelLower) {
+	// 按模型系列匹配。Mythos 与同版本 Fable 同价（同一模型、不同防护级别）。
+	if isClaudeFableVersion(modelLower, "5-2", "5.2") {
+		return s.fallbackPrices["claude-fable-5-2"]
+	}
+	if isClaudeFable51Model(modelLower) || isClaudeFableVersion(modelLower, "5-1", "5.1") {
 		return s.fallbackPrices["claude-fable-5-1"]
 	}
-	if strings.Contains(modelLower, "fable-5") || strings.Contains(modelLower, "fable5") {
+	if strings.Contains(modelLower, "fable-5") || strings.Contains(modelLower, "fable5") ||
+		strings.Contains(modelLower, "mythos-5") || strings.Contains(modelLower, "mythos5") {
 		return s.fallbackPrices["claude-fable-5"]
 	}
 	if strings.Contains(modelLower, "opus") {

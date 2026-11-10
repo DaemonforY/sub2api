@@ -18,3 +18,11 @@ func TestDefaultModelsContainsClaudeFable51(t *testing.T) {
 	}
 	t.Fatal("claude-fable-5-1 missing from DefaultModels")
 }
+
+func TestDefaultModelsListsClaudeFable52First(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "claude-fable-5-2", DefaultModels[0].ID)
+	require.Equal(t, "Claude Fable 5.2", DefaultModels[0].DisplayName)
+	require.Equal(t, "2026-11-09T00:00:00Z", DefaultModels[0].CreatedAt)
+}
