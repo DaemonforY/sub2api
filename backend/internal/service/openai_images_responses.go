@@ -729,6 +729,48 @@ func openAIImagesUpstreamErrorFromSSEPayload(payload []byte) *OpenAIImagesUpstre
 	}
 }
 
+// openAIImagesFailedCallErrorFromPayload returns the error of an
+// image_generation_call that finished with status "failed". Since 2026-11 the
+// ChatGPT backend reports safety blocks this way (output_item.done with
+// error.code moderation_blocked) instead of response.failed, and the driver
+// model may then retry the call itself. Callers only use it once the whole
+// response produced no image, so a later successful call still wins.
+func openAIImagesFailedCallErrorFromPayload(payload []byte) *OpenAIImagesUpstreamError {
+	if !gjson.ValidBytes(payload) {
+		return nil
+	}
+	fromItem := func(item gjson.Result) *OpenAIImagesUpstreamError {
+		if item.Get("type").String() != "image_generation_call" || item.Get("status").String() != "failed" {
+			return nil
+		}
+		return openAIImagesUpstreamErrorFromGJSON(item.Get("error"), "")
+	}
+	switch gjson.GetBytes(payload, "type").String() {
+	case "response.output_item.done":
+		return fromItem(gjson.GetBytes(payload, "item"))
+	case "response.completed":
+		var found *OpenAIImagesUpstreamError
+		gjson.GetBytes(payload, "response.output").ForEach(func(_, item gjson.Result) bool {
+			found = fromItem(item)
+			return found == nil
+		})
+		return found
+	}
+	return nil
+}
+
+// extractOpenAIImagesFailedCallError scans a buffered SSE body for the last
+// failed image_generation_call error.
+func extractOpenAIImagesFailedCallError(body []byte) *OpenAIImagesUpstreamError {
+	var last *OpenAIImagesUpstreamError
+	forEachOpenAISSEDataPayload(string(body), func(payload []byte) {
+		if err := openAIImagesFailedCallErrorFromPayload(payload); err != nil {
+			last = err
+		}
+	})
+	return last
+}
+
 // extractOpenAIImagesModelText collects textual terminal output from an image
 // request. A text response is evidence that the image tool did not produce an
 // image; its semantics still need classification before choosing a client error.
@@ -1460,6 +1502,13 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthNonStreamingResponse(
 			}
 			return OpenAIUsage{}, 0, nil, upstreamErr
 		}
+		if failedCallErr := extractOpenAIImagesFailedCallError(body); failedCallErr != nil {
+			setOpsUpstreamError(c, failedCallErr.clientStatusCode(), failedCallErr.clientMessage(), "")
+			if !IsOpenAIImagesRetryableUpstreamError(failedCallErr) {
+				writeOpenAIImagesUpstreamErrorResponse(c, failedCallErr)
+			}
+			return OpenAIUsage{}, 0, nil, failedCallErr
+		}
 		if textFallbackErr := openAIImagesTextFallbackError(body); textFallbackErr != nil {
 			setOpsUpstreamError(c, textFallbackErr.clientStatusCode(), textFallbackErr.clientMessage(), summarizeOpenAIImagesNoOutputBody(body))
 			if !IsOpenAIImagesRetryableUpstreamError(textFallbackErr) {
@@ -1542,6 +1591,7 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthStreamingResponse(
 	lastDownstreamWriteAt := time.Now()
 	var sseData openAISSEDataAccumulator
 	var processDataErr error
+	var failedCallErr *OpenAIImagesUpstreamError
 	processDataDone := false
 	writerSizeBeforeResponse := OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c)
 
@@ -1588,6 +1638,10 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthStreamingResponse(
 			)
 			s.tryWriteOpenAIImagesStreamEvent(c, flusher, &clientDisconnected, &lastDownstreamWriteAt, eventName, payload)
 		case "response.output_item.done":
+			if failedErr := openAIImagesFailedCallErrorFromPayload(dataBytes); failedErr != nil {
+				failedCallErr = failedErr
+				return
+			}
 			img, itemID, ok, extractErr := extractOpenAIImageFromResponsesOutputItemDone(dataBytes)
 			if extractErr != nil {
 				s.tryWriteOpenAIImagesStreamEvent(c, flusher, &clientDisconnected, &lastDownstreamWriteAt, "error", buildOpenAIImagesStreamErrorBody(extractErr.Error()))
@@ -1630,6 +1684,19 @@ func (s *OpenAIGatewayService) handleOpenAIImagesOAuthStreamingResponse(
 			}
 			reconcileOpenAIResponsesImageResultSizes(finalResults, nil)
 			if len(finalResults) == 0 {
+				if failedErr := openAIImagesFailedCallErrorFromPayload(dataBytes); failedErr != nil {
+					failedCallErr = failedErr
+				}
+				if failedCallErr != nil {
+					retryable := IsOpenAIImagesRetryableUpstreamError(failedCallErr)
+					setOpsUpstreamError(c, failedCallErr.clientStatusCode(), failedCallErr.clientMessage(), "")
+					if !retryable && !clientDisconnected {
+						s.tryWriteOpenAIImagesStreamEvent(c, flusher, &clientDisconnected, &lastDownstreamWriteAt, "error", buildOpenAIImagesStreamErrorBodyFromUpstream(failedCallErr))
+					}
+					processDataErr = failedCallErr
+					processDataDone = true
+					return
+				}
 				textFallbackErr := openAIImagesTextFallbackErrorForText(fallbackText.String())
 				if textFallbackErr == nil {
 					textFallbackErr = openAIImagesTextFallbackError(dataBytes)
