@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>水墨流体 · 用手指写一池墨 | HiveGPT 小游戏</title>
+<meta name="description" content="水墨流体：在宣纸上用手指搅动一池真实流动的墨，看它晕染、沉淀、干透。描红写字闯关，或在自由模式里随手作一幅水墨，存为图片分享。HiveGPT 小游戏，打开即玩。">
+<meta name="theme-color" content="#efe8d8">
+<link rel="icon" href="/favicon-32.png">
+<style>
+:root{
+  --ink:#1c1a17;--ink2:rgba(28,26,23,.62);--ink3:rgba(28,26,23,.38);--line:rgba(28,26,23,.26);
+  --red:#b3311e;--paper:#efe8d8;--paper2:rgba(242,236,222,.72);
+  --font:"Kaiti SC","STKaiti","KaiTi","KaiTi_GB2312","BiauKai","Songti SC","STSong","Noto Serif SC","Noto Serif CJK SC","Source Han Serif SC","PingFang SC",serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);overscroll-behavior:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+body{position:fixed;inset:0;font-family:var(--font);color:var(--ink)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#ui{position:fixed;inset:0;pointer-events:none;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#ui button,#ui a,#ui .pe{pointer-events:auto}
+button{font-family:inherit;color:inherit;touch-action:manipulation}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hide{display:none!important}
+.btn{font-size:17px;letter-spacing:.32em;text-indent:.32em;padding:.62em 1.3em;min-width:7.2em;background:var(--paper2);
+  border:1px solid var(--line);border-radius:2px;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.btn:hover{border-color:var(--ink2)}
+.btn.primary{background:var(--ink);color:#f4eddd;border-color:var(--ink)}
+.btn.primary:hover{background:#000}
+.sbtn{font-size:14px;letter-spacing:.18em;padding:.45em .8em .45em .95em;background:var(--paper2);border:1px solid var(--line);border-radius:2px;cursor:pointer;white-space:nowrap}
+.sbtn:hover{border-color:var(--ink2)}
+.sbtn.on{background:var(--ink);color:#f4eddd;border-color:var(--ink)}
+.sbtn.red.on{background:var(--red);border-color:var(--red)}
+.back-games{position:absolute;left:calc(14px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));
+  font-size:14px;color:var(--ink2);text-decoration:none;letter-spacing:.1em;padding:6px 4px}
+.back-games:hover{color:var(--ink)}
+
+/* title */
+#title{position:absolute;left:0;right:0;top:var(--sub-top,46%);display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 18px;transition:opacity .5s}
+#title .sub{font-size:clamp(16px,4.4vw,21px);letter-spacing:.24em;text-indent:.24em;margin:0 0 6px;color:var(--ink)}
+#title .sub2{font-size:13px;letter-spacing:.3em;text-indent:.3em;color:var(--ink3);margin:0 0 26px}
+#title .btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+#title .levels{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap;justify-content:center;max-width:420px}
+.lv{width:38px;height:44px;border:1px solid var(--line);background:var(--paper2);border-radius:2px;cursor:pointer;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:18px;line-height:1;padding:0}
+.lv small{font-size:10px;color:var(--ink3);margin-top:4px;letter-spacing:0}
+.lv.done{border-color:rgba(179,49,30,.55)}
+.lv.done::after{content:"";position:absolute;right:3px;top:3px;width:6px;height:6px;background:var(--red);border-radius:1px}
+.lv:disabled{opacity:.32;cursor:default}
+#title .hint{margin-top:22px;font-size:13px;color:var(--ink3);letter-spacing:.24em;text-indent:.24em;animation:breath 2.6s ease-in-out infinite}
+@keyframes breath{0%,100%{opacity:.45}50%{opacity:1}}
+#title .hint.gone{animation:none;opacity:0;transition:opacity .8s}
+
+/* hud */
+#hud .top{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 0 calc(12px + env(safe-area-inset-left));
+  display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+#hud .ttl{text-align:center;flex:1;min-width:0;pointer-events:none}
+#lvName{font-size:clamp(17px,4.6vw,21px);letter-spacing:.2em;text-indent:.2em}
+#lvTip{font-size:12.5px;color:var(--ink2);letter-spacing:.12em;margin-top:4px;min-height:1.2em}
+#timer{min-width:64px;text-align:right;font-size:17px;letter-spacing:.08em;padding-top:6px;font-variant-numeric:tabular-nums;font-family:"Songti SC","STSong",var(--font)}
+#prog{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;pointer-events:none}
+#prog .bar{position:relative;width:min(240px,52vw);height:3px;background:rgba(28,26,23,.12)}
+#prog .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink);transition:width .45s}
+#prog .bar b{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--red)}
+#progTxt{font-size:13px;color:var(--ink2);min-width:4.6em;font-variant-numeric:tabular-nums}
+#hud .bottom{position:absolute;left:0;right:0;bottom:0;padding:0 10px calc(12px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.seg{display:flex;gap:0}
+.seg .sbtn:first-child{border-right:none}
+
+/* result */
+#result{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,16px);opacity:0;transition:opacity .5s,transform .5s;
+  width:min(92vw,420px);background:rgba(242,236,222,.9);border:1px solid var(--line);padding:18px 18px 16px;text-align:center;
+  box-shadow:0 10px 30px rgba(40,30,15,.12)}
+#result.show{opacity:1;transform:translate(-50%,0)}
+#rTitle{font-size:21px;letter-spacing:.24em;text-indent:.24em}
+#rLine{margin-top:8px;font-size:15px;color:var(--ink2);letter-spacing:.08em}
+#rBest{margin-top:4px;font-size:12.5px;color:var(--red);min-height:1.1em;letter-spacing:.1em}
+#result .r-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+#result .btn{min-width:0;font-size:15px;padding:.55em 1em}
+
+/* save view */
+#saveView{position:fixed;inset:0;background:rgba(239,232,216,.94);display:flex;align-items:center;justify-content:center;pointer-events:auto;z-index:5;padding:20px}
+#saveView .in{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:100%;max-height:100%}
+#svImg{max-width:min(92vw,900px);max-height:68vh;box-shadow:0 8px 28px rgba(40,30,15,.18);background:#fff;-webkit-touch-callout:default;pointer-events:auto}
+#saveView p{margin:0;font-size:14px;color:var(--ink2);letter-spacing:.14em}
+#saveView .row{display:flex;gap:10px}
+#saveView a.btn{text-decoration:none;color:#f4eddd;display:inline-block;text-align:center}
+
+#stampAnim{position:absolute;pointer-events:none;opacity:0;transform-origin:50% 50%}
+#stampAnim.drop{animation:stampDrop .34s cubic-bezier(.5,0,.9,.5) forwards}
+#stampAnim.fade{opacity:0!important;transition:opacity .6s}
+@keyframes stampDrop{0%{opacity:0;transform:scale(1.7) rotate(-6deg)}60%{opacity:.95}100%{opacity:1;transform:scale(1) rotate(0)}}
+#toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:16px;letter-spacing:.14em;color:var(--ink);
+  background:rgba(242,236,222,.92);border:1px solid var(--line);padding:12px 18px;opacity:0;transition:opacity .4s;max-width:86vw;text-align:center}
+#toast.show{opacity:1}
+@media (max-width:420px){
+  .btn{font-size:16px;min-width:6.4em}
+  .sbtn{font-size:13px;padding:.42em .62em .42em .75em;letter-spacing:.12em}
+  #hud .bottom{gap:6px}
+  #title .levels{gap:6px}
+  .lv{width:34px;height:42px;font-size:17px}
+  #result .btn{font-size:14px;padding:.5em .75em;letter-spacing:.14em;text-indent:.14em}
+}
+@media (prefers-reduced-motion: reduce){#title .hint{animation:none;opacity:.8}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="宣纸画布：用手指或鼠标拖动来搅动墨"></canvas>
+<div id="ui">
+  <a class="back-games" id="backGames" href="/games">← 小游戏</a>
+  <section id="title">
+    <h1 class="vh">水墨流体</h1>
+    <p class="sub">用手指搅动一池墨，把字写出来</p>
+    <p class="sub2">墨分五色 · 浓淡干湿焦</p>
+    <div class="btns">
+      <button class="btn primary" data-act="start" id="startBtn">开始</button>
+      <button class="btn" data-act="free">自由模式</button>
+    </div>
+    <div class="levels" id="levels"></div>
+    <div class="hint" id="hint">轻触纸面 · 搅动这池墨</div>
+  </section>
+  <section id="hud" class="hide">
+    <div class="top">
+      <button class="sbtn" data-act="home">← 返回</button>
+      <div class="ttl">
+        <div id="lvName"></div>
+        <div id="lvTip"></div>
+        <div id="prog"><div class="bar"><i id="progFill"></i><b id="progGoal"></b></div><span id="progTxt">0%</span></div>
+      </div>
+      <div id="timer">0:00</div>
+    </div>
+    <div class="bottom">
+      <span class="seg free-only"><button class="sbtn on" data-act="inkBlack" id="inkBlack">墨</button><button class="sbtn red" data-act="inkRed" id="inkRed">朱</button></span>
+      <button class="sbtn level-only" data-act="restart">重来</button>
+      <button class="sbtn" data-act="clear">清空</button>
+      <button class="sbtn" data-act="save">存为图片</button>
+      <button class="sbtn" data-act="sound" id="sndBtn" aria-label="声音开关">有声</button>
+    </div>
+  </section>
+  <section id="result" class="hide">
+    <div id="rTitle"></div>
+    <div id="rLine"></div>
+    <div id="rBest"></div>
+    <div class="r-btns">
+      <button class="btn primary" data-act="next" id="nextBtn">下一关</button>
+      <button class="btn" data-act="save">存为图片</button>
+      <button class="btn" data-act="restart">再写一次</button>
+    </div>
+  </section>
+  <canvas id="stampAnim" width="10" height="10"></canvas>
+  <div id="toast"></div>
+</div>
+<div id="saveView" class="hide">
+  <div class="in">
+    <img id="svImg" alt="水墨流体作品">
+    <p>长按图片保存，或</p>
+    <div class="row">
+      <a class="btn primary" id="svDl" download="水墨流体.png">下载图片</a>
+      <button class="btn" data-act="closeSave">关闭</button>
+    </div>
+  </div>
+</div>
+<noscript><p style="position:fixed;top:40%;width:100%;text-align:center">水墨流体需要开启 JavaScript</p></noscript>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>

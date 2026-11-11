@@ -78,6 +78,14 @@ const GAMES: { key: string; to?: string; href?: string; minutes: number; images:
     cover: 'bg-gradient-to-br from-violet-950 via-indigo-900 to-fuchsia-900'
   },
   {
+    key: 'ink',
+    href: '/games-play/ink/',
+    minutes: 5,
+    images: ['/games-media/ink/cover.webp'],
+    emoji: '',
+    cover: ''
+  },
+  {
     key: 'fps',
     href: '/games-play/hivegpt-3a/',
     minutes: 10,
