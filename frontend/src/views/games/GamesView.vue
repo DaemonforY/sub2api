@@ -10,10 +10,11 @@
       </section>
 
       <div class="mt-8 grid gap-5 sm:grid-cols-2">
-        <RouterLink
+        <component
+          :is="g.href ? 'a' : RouterLink"
           v-for="g in GAMES"
           :key="g.key"
-          :to="g.to"
+          v-bind="g.href ? { href: g.href } : { to: g.to }"
           class="group overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md dark:border-dark-700 dark:bg-dark-900 dark:hover:border-primary-500/50"
           :data-testid="`game-${g.key}`"
         >
@@ -30,7 +31,7 @@
             <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-dark-300">{{ t(`games.list.${g.key}.desc`) }}</p>
             <span class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary-600 dark:text-primary-400">{{ t('games.play') }} →</span>
           </div>
-        </RouterLink>
+        </component>
 
         <div class="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-300 p-8 text-center dark:border-dark-700 sm:col-span-2">
           <div class="text-3xl">🧩</div>
@@ -49,6 +50,7 @@
 // 小游戏 (/games): the list of small games and tests. Each game is its own route.
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RouterLink } from 'vue-router'
 import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import PlazaNavBar from '@/components/modelPlaza/PlazaNavBar.vue'
 import PageShareButton from '@/components/share/PageShareButton.vue'
@@ -65,7 +67,16 @@ function askForGame() {
   assistant.value?.openWith(t('games.askDraft'))
 }
 
-const GAMES = [
+// A game with `href` is a static page under public/games-play/ (its own HTML, not an SPA route).
+const GAMES: { key: string; to?: string; href?: string; minutes: number; images: string[]; emoji: string; cover: string }[] = [
+  {
+    key: 'fps',
+    href: '/games-play/hivegpt-3a/',
+    minutes: 10,
+    images: ['/games-media/hivegpt-3a/cover.webp'],
+    emoji: '',
+    cover: ''
+  },
   {
     key: 'abti',
     to: '/games/abti',
@@ -78,7 +89,7 @@ const GAMES = [
     key: 'style',
     to: '/style',
     minutes: 5,
-    images: [] as string[],
+    images: [],
     emoji: '✍️',
     cover: 'bg-gradient-to-br from-amber-100 via-orange-100 to-rose-100 dark:from-amber-500/10 dark:via-orange-500/10 dark:to-rose-500/10'
   }

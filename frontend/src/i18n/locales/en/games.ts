@@ -10,6 +10,7 @@ export default {
     askDraft: 'I would like a game where ',
     share: { brand: 'HiveGPT Games', title: 'AI games, a few minutes a round', cta: 'Scan to play' },
     list: {
+      fps: { title: 'HiveGPT 3A · Harbour breakout', desc: 'A browser first-person shooter written from scratch by AI: cut three relays, break the lockdown, reach the boat. Keyboard, touch or gamepad.', tag: 'FPS' },
       abti: { title: 'ABTI · AI worker personality test', desc: '31 questions over 15 dimensions: what kind of worker are you in the AI era?', tag: 'Personality' },
       style: { title: 'Find your writing style', desc: 'Paste a few of your articles and see your rhythm, catchphrases and AI flavour.', tag: 'Writing' }
     },

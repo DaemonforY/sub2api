@@ -1,7 +1,7 @@
 export default {
   games: {
     title: '小游戏',
-    subtitle: '几分钟玩一局，测完还能生成分享卡片发朋友圈。',
+    subtitle: '几分钟玩一局：AI 写的射击游戏、人格测试、写作风格测试，测完还能生成分享卡片发朋友圈。',
     play: '开始玩',
     minutes: '约 {n} 分钟',
     soon: '更多小游戏正在做',
@@ -10,6 +10,7 @@ export default {
     askDraft: '我想玩一个这样的小游戏：',
     share: { brand: 'HiveGPT 小游戏', title: '几分钟一局的 AI 小游戏', cta: '扫码一起来玩' },
     list: {
+      fps: { title: 'HiveGPT 3A大作 · 港区突围', desc: 'AI 从零写出来的网页第一人称射击：切断三处中继、突破封锁、登船撤离。电脑、手机、手柄都能玩。', tag: 'FPS 射击' },
       abti: { title: 'ABTI · AI 打工人格测试', desc: '31 道题、15 个维度，测出你在 AI 时代是哪种打工人。', tag: '人格测试' },
       style: { title: '测测你的写作风格', desc: '贴几篇你写的文章，看看你的句子节奏、口头禅和 AI 味。', tag: '写作' }
     },
