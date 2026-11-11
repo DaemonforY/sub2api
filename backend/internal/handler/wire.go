@@ -247,6 +247,7 @@ func ProvideHandlers(
 	shihuaHandler *ShihuaHandler,
 	materialHandler *MaterialHandler,
 	inspirationHandler *InspirationHandler,
+	gameCraftHandler *GameCraftHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -307,6 +308,7 @@ func ProvideHandlers(
 		Shihua:              shihuaHandler,
 		Material:            materialHandler,
 		Inspiration:         inspirationHandler,
+		GameCraft:           gameCraftHandler,
 	}
 }
 
@@ -357,6 +359,7 @@ var ProviderSet = wire.NewSet(
 	NewShihuaHandler,
 	NewMaterialHandler,
 	NewInspirationHandler,
+	NewGameCraftHandler,
 	NewCanvasCloudHandler,
 	NewCommunityHandler,
 	NewCourseHandler,

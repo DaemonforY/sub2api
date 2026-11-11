@@ -70,6 +70,14 @@ function askForGame() {
 // A game with `href` is a static page under public/games-play/ (its own HTML, not an SPA route).
 const GAMES: { key: string; to?: string; href?: string; minutes: number; images: string[]; emoji: string; cover: string }[] = [
   {
+    key: 'craft',
+    to: '/games/craft',
+    minutes: 10,
+    images: [],
+    emoji: '🪙💧🔥',
+    cover: 'bg-gradient-to-br from-violet-950 via-indigo-900 to-fuchsia-900'
+  },
+  {
     key: 'fps',
     href: '/games-play/hivegpt-3a/',
     minutes: 10,

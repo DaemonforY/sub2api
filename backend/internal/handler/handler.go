@@ -116,6 +116,8 @@ type Handlers struct {
 	Material *MaterialHandler
 	// Inspiration is the 灵感库 (admin).
 	Inspiration *InspirationHandler
+	// GameCraft is 小游戏「AI 万物合成」.
+	GameCraft *GameCraftHandler
 }
 
 // BuildInfo contains build-time information

@@ -1,7 +1,7 @@
 export default {
   games: {
     title: '小游戏',
-    subtitle: '几分钟玩一局：AI 写的射击游戏、人格测试、写作风格测试，测完还能生成分享卡片发朋友圈。',
+    subtitle: '几分钟玩一局：AI 当场造物的万物合成、AI 写的射击游戏、人格测试，玩完还能生成分享卡片发朋友圈。',
     play: '开始玩',
     minutes: '约 {n} 分钟',
     soon: '更多小游戏正在做',
@@ -10,9 +10,37 @@ export default {
     askDraft: '我想玩一个这样的小游戏：',
     share: { brand: 'HiveGPT 小游戏', title: '几分钟一局的 AI 小游戏', cta: '扫码一起来玩' },
     list: {
+      ink: { title: '水墨流体', desc: '手指一搅，一池墨在宣纸上晕开。把墨引进字的轮廓里，写出一个字。', tag: '水墨' },
+      craft: { title: 'AI 万物合成', desc: '从金木水火土开始，拖两个东西合在一起，AI 当场造出新东西。第一个合出来的人会被全站记住。', tag: 'AI 创造' },
       fps: { title: 'HiveGPT 3A大作 · 港区突围', desc: 'AI 从零写出来的网页第一人称射击：切断三处中继、突破封锁、登船撤离。电脑、手机、手柄都能玩。', tag: 'FPS 射击' },
       abti: { title: 'ABTI · AI 打工人格测试', desc: '31 道题、15 个维度，测出你在 AI 时代是哪种打工人。', tag: '人格测试' },
       style: { title: '测测你的写作风格', desc: '贴几篇你写的文章，看看你的句子节奏、口头禅和 AI 味。', tag: '写作' }
+    },
+    craft: {
+      title: 'AI 万物合成',
+      tagline: '从金木水火土出发，把两个东西拖到一起，AI 当场造出新东西',
+      siteTotal: '全站已发现 {n} 种',
+      mine: '我收集了 {n} 种',
+      latest: '最新发现',
+      hint: '把一个元素拖到另一个上面，看看会合成出什么；双击复制，拖回右边删除',
+      hintTouch: '拖一个元素压到另一个上面，就能合成；点下方元素放到桌上',
+      clear: '清空桌面',
+      search: '在 {n} 种元素里找',
+      shelfNote: '拖或点元素放到桌上；★ 是你在全站第一个合成出来的。',
+      reset: '重新开始',
+      resetConfirm: '清空你收集的所有元素，回到金木水火土？',
+      thinking1: '造物引擎推演中…',
+      thinking2: '这个组合还没人试过…',
+      thinking3: '正在给新东西起名字…',
+      thinking4: '快好了，它马上诞生…',
+      newForYou: '新收集：{e} {n}',
+      failed: '合成失败，再试一次',
+      firstKicker: '全站首个发现',
+      firstNo: '全站第 {n} 号元素，由你首次合成',
+      share: '生成分享卡片',
+      keepGoing: '继续合成',
+      shareTitle: '我在「AI 万物合成」里全站第一个合成出了 {e} {n}',
+      shareCta: '扫码来合成你的第一个发现'
     },
     abti: {
       title: 'ABTI · AI 打工人格测试',

@@ -176,6 +176,7 @@ func registerRoutes(
 	routes.RegisterStyleRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterAssistantRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterPoemsRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
+	routes.RegisterGamesRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterTutorRoutes(v1, h, jwtAuth, settingService, panelRateLimiter)
 	routes.RegisterAnalyticsRoutes(v1, h, optionalJWTAuth, redisClient)
 	routes.RegisterDesktopPublicRoutes(v1, h, redisClient)

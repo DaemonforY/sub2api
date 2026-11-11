@@ -1318,6 +1318,7 @@ var ProviderSet = wire.NewSet(
 	ProvideShihuaService,
 	ProvideMaterialService,
 	ProvideInspirationService,
+	NewGameCraftService,
 	ProvideSiteHostingService,
 	ProvideVideoService,
 	ProvideCanvasSessionService,
