@@ -10,12 +10,14 @@ export default {
     askDraft: 'I would like a game where ',
     share: { brand: 'HiveGPT Games', title: 'AI games, a few minutes a round', cta: 'Scan to play' },
     list: {
+      planet: { title: 'Hive Planet', desc: 'Fly a little bee round a tiny sleeping planet. Pass through the golden rings and the flower fields open; six islands wake one by one and the music grows with them. (Game text is in Chinese.)', tag: 'Flying' },
       ink: { title: 'Ink in water', desc: 'Stir a pool of ink with your finger and watch it bleed into rice paper; guide it into a character.', tag: 'Ink' },
       craft: { title: 'AI Infinite Alchemy', desc: 'Start from metal, wood, water, fire and earth; drag two together and the AI invents something new. The first maker is remembered site-wide.', tag: 'AI' },
       fps: { title: 'HiveGPT 3A · Harbour breakout', desc: 'A browser first-person shooter written from scratch by AI: cut three relays, break the lockdown, reach the boat. Keyboard, touch or gamepad.', tag: 'FPS' },
       abti: { title: 'ABTI · AI worker personality test', desc: '31 questions over 15 dimensions: what kind of worker are you in the AI era?', tag: 'Personality' },
       style: { title: 'Find your writing style', desc: 'Paste a few of your articles and see your rhythm, catchphrases and AI flavour.', tag: 'Writing' }
     },
+    planet: { title: 'Hive Planet' },
     craft: {
       title: 'AI Infinite Alchemy',
       tagline: 'Start from the five elements, drag two together and the AI invents the result',

@@ -328,6 +328,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: 'AI 万物合成', titleKey: 'games.craft.title' }
   },
   {
+    path: '/games/planet',
+    name: 'GamePlanet',
+    component: () => import('@/views/games/PlanetView.vue'),
+    meta: { requiresAuth: false, title: '蜂巢星球', titleKey: 'games.planet.title' }
+  },
+  {
     path: '/games/abti/:code([A-Za-z0-9]{4})?',
     name: 'GameAbti',
     component: () => import('@/views/games/AbtiView.vue'),
