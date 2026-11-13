@@ -35,7 +35,8 @@ test-backend:
 
 test-frontend:
 	@pnpm --dir frontend run lint:check
-	@pnpm --dir frontend run typecheck
+	@# vue-tsc needs about 3 GB for this project; Node's default heap on CI is about 2 GB
+	@NODE_OPTIONS=--max-old-space-size=4096 pnpm --dir frontend run typecheck
 	@$(MAKE) test-frontend-critical
 
 test-frontend-critical:
