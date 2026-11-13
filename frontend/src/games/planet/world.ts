@@ -63,6 +63,11 @@ export interface Orb {
   alt: number
   taken: boolean
   phase: number
+  /** where it grows; a magnet may pull it away before it is taken */
+  homeN: THREE.Vector3
+  homeAlt: number
+  /** world time at which a taken grain grows back */
+  back: number
 }
 
 interface Landmark {
@@ -191,7 +196,7 @@ function flowerGeometry(): THREE.BufferGeometry {
   return merged(parts)
 }
 
-function beamMaterial(color: THREE.ColorRepresentation, strength: number, additive = true): THREE.ShaderMaterial {
+export function beamMaterial(color: THREE.ColorRepresentation, strength: number, additive = true): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: strength }, uTime: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -284,6 +289,11 @@ export class World {
     out.region = bi
     out.d = best
     return out
+  }
+
+  /** Seconds the planet has been running. */
+  get now(): number {
+    return this.time
   }
 
   /** Ground or water height under a point. */
@@ -757,7 +767,7 @@ export class World {
   private buildOrbs(): void {
     const n = new THREE.Vector3()
     const add = (alt: number): void => {
-      this.orbs.push({ n: n.clone(), alt, taken: false, phase: this.rnd() * 6.283 })
+      this.orbs.push({ n: n.clone(), alt, taken: false, phase: this.rnd() * 6.283, homeN: n.clone(), homeAlt: alt, back: 0 })
     }
     for (let r = 0; r < REGIONS.length; r++) {
       const ps = this.patches.filter((p) => p.region === r)
@@ -1025,9 +1035,14 @@ export class World {
       bm.uniforms.uTime.value = this.time
     }
 
-    // pollen bobbing
+    // pollen bobbing; a grain that was taken grows back after a while
     for (let i = 0; i < this.orbs.length; i++) {
       const o = this.orbs[i]
+      if (o.taken && this.time >= o.back) {
+        o.taken = false
+        o.n.copy(o.homeN)
+        o.alt = o.homeAlt
+      }
       const sc = o.taken ? 0 : 1 + Math.sin(this.time * 3 + o.phase) * 0.14
       const h = R + o.alt + Math.sin(this.time * 1.8 + o.phase) * 0.3
       this.m.makeScale(sc, sc, sc)

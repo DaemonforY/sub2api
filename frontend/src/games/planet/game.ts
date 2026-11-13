@@ -5,6 +5,7 @@ import { PlanetAudio } from './audio'
 import { makeBee, Sparks, type Bee } from './fx'
 import { Life } from './life'
 import { clamp, damp, lerp, smoothstep } from './noise'
+import { GATES, medalFor, Races } from './race'
 import { PATCHES_PER_REGION, R, REGIONS, World, type Patch } from './world'
 
 export type Phase = 'title' | 'fly' | 'finale'
@@ -17,11 +18,25 @@ export interface HudState {
   /** the six flower fields of that island */
   fields: boolean[]
   awake: boolean[]
+  /** pollen the bee is carrying; it turns into honey at the hive */
   pollen: number
-  /** direction of the next flower field: radians, 0 ahead, positive to the right */
+  honey: number
+  /** honey level 0..4, and what the next one takes and gives */
+  level: number
+  levelFrom: number
+  levelNeed: number
+  levelName: string
+  /** direction of the next flower field or race hoop: radians, 0 ahead, positive to the right */
   arrow: number
   arrowDist: number
   arrowLabel: string
+  /** the way home, shown while carrying pollen */
+  hiveArrow: number
+  hiveDist: number
+  /** the lap being flown, if any */
+  race: { seconds: number; passed: number; total: number; gold: number; silver: number; best: number } | null
+  /** best medal per island: 0 none, 1 bronze, 2 silver, 3 gold */
+  medals: number[]
 }
 
 export interface PlanetEvents {
@@ -35,12 +50,26 @@ const SAVE_KEY = 'hg_planet_v1'
 interface Save {
   fields: boolean[]
   pollen: number
+  honey: number
+  gathered: number
   seconds: number
   done: boolean
+  best: number[]
 }
+
+/** Honey levels: how much honey each takes in all, and what it unlocks. */
+const LEVELS = [
+  { need: 20, name: '花粉磁铁', desc: '附近的花粉会自己飞过来' },
+  { need: 50, name: '彩虹尾迹', desc: '身后拖出一道彩虹' },
+  { need: 90, name: '疾风', desc: '加速飞得更快' },
+  { need: 150, name: '金蜂', desc: '全身发出金光' }
+]
+const MEDALS = ['完成', '铜牌', '银牌', '金牌']
+const PRIZES = [5, 10, 20, 30]
 
 const CRUISE = 22
 const BOOST = 39
+const GALE = 47
 const SLOW = 13
 const GOLD = new THREE.Color('#ffd76a')
 const WHITE = new THREE.Color('#fff7d6')
@@ -55,6 +84,8 @@ export class PlanetGame {
   private readonly sparks = new Sparks()
   private readonly audio = new PlanetAudio()
   private readonly shadow: THREE.Mesh
+  private readonly halo: THREE.Mesh
+  private readonly races: Races
 
   // the bee: where it is on the sphere, which way it faces, how high
   private readonly n = new THREE.Vector3()
@@ -82,6 +113,15 @@ export class PlanetGame {
   private time = 0
   private flown = 0
   private pollen = 0
+  private honey = 0
+  private gathered = 0
+  private lv = 0
+  private hinted = false
+  private atHive = false
+  private readonly hue = new THREE.Color()
+  /** a test pilot for setting medal times; never on for players */
+  private bot: { boost: boolean } | null = null
+  private lastLap = 0
   private hudT = 0
   private trailT = 0
   private fireT = 0
@@ -106,6 +146,34 @@ export class PlanetGame {
     this.renderer.toneMappingExposure = 1.05
     this.scene.add(this.world.group)
     this.scene.add(this.life.group)
+    this.races = new Races(this.world, {
+      started: (r) => {
+        this.audio.raceStart()
+        this.events.toast(`${REGIONS[r].name} · 竞速开始`, '沿着金色的环飞一圈，回到起点', false)
+      },
+      gate: (_r, passed) => {
+        this.audio.gate(passed)
+        this.puff(GOLD, 14)
+      },
+      finished: (r, seconds, medal, record) => {
+        this.lastLap = seconds
+        const prize = PRIZES[medal]
+        this.pollen += prize
+        this.gathered += prize
+        this.audio.fanfare(medal)
+        this.puff(WHITE, 60)
+        const course = this.races.courses[r]
+        const next = medal === 3 ? '' : ` · ${MEDALS[medal + 1]}要 ${(medal === 2 ? course.gold : medal === 1 ? course.silver : course.bronze).toFixed(1)} 秒内`
+        this.events.toast(`${MEDALS[medal]} · ${seconds.toFixed(1)} 秒`, `${record ? '新纪录 · ' : ''}花粉 +${prize}${next}`, true)
+        this.save()
+      },
+      expired: () => {
+        this.lastLap = -1
+        this.audio.fanfare(0)
+        this.events.toast('超时了', '再穿一次青色光环重新开始', false)
+      }
+    })
+    this.scene.add(this.races.group)
     this.load()
     this.scene.add(this.bee.root)
     this.scene.add(this.sparks.points)
@@ -116,6 +184,12 @@ export class PlanetGame {
     this.shadow.matrixAutoUpdate = false
     this.shadow.renderOrder = 2
     this.scene.add(this.shadow)
+    this.halo = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(1.05, 2),
+      new THREE.MeshBasicMaterial({ color: '#ffc21a', transparent: true, opacity: 0.2, depthWrite: false, toneMapped: false })
+    )
+    this.halo.visible = false
+    this.bee.model.add(this.halo)
 
     // start above the hive island, heading for its first flower field
     // start off the hive island's shore, facing its first flower field, with the hive beyond
@@ -221,6 +295,15 @@ export class PlanetGame {
       steer = clamp(steer, -1, 1)
       pitch = clamp(pitch, -1, 1)
       this.flown += dt
+      const aim = this.bot ? this.races.target() : null
+      if (this.bot && aim) {
+        const turn = this.bearing(aim.n)
+        steer = clamp(turn * 2.6, -1, 1)
+        pitch = clamp((aim.alt - this.alt) * 0.45, -1, 1)
+        boost = this.bot.boost && Math.abs(turn) < 0.3
+        // a hoop that cannot be reached at this speed: slow down and come round tighter
+        slow = Math.abs(turn) > 0.9
+      }
     } else if (this.phase === 'finale') {
       steer = 0.22
     }
@@ -228,7 +311,7 @@ export class PlanetGame {
     const go = this.phase === 'title' ? 0 : this.phase === 'fly' ? smoothstep(0.5, 1, this.blendRaw) : 1
 
     this.turn = lerp(this.turn, steer * 1.55, damp(5.5, dt))
-    this.speed = lerp(this.speed, (boost ? BOOST : slow ? SLOW : CRUISE) * go, damp(boost ? 3 : 1.6, dt))
+    this.speed = lerp(this.speed, (boost ? (this.lv >= 3 ? GALE : BOOST) : slow ? SLOW : CRUISE) * go, damp(boost ? 3 : 1.6, dt))
     this.vAlt = lerp(this.vAlt, pitch * 12, damp(4.5, dt))
     this.hover = clamp(this.hover + this.vAlt * dt, 4.2, 30)
     if ((this.hover <= 4.2 && this.vAlt < 0) || (this.hover >= 30 && this.vAlt > 0)) this.vAlt *= 0.8
@@ -259,7 +342,12 @@ export class PlanetGame {
 
     if (flying && this.blendRaw > 0.9) {
       this.checkFields()
-      this.checkPollen()
+      this.checkPollen(dt)
+      this.races.update(dt, this.bee.root.position, this.world.awake)
+      // pollen is handed over on arriving at the hive, not grain by grain while circling it
+      const atHive = this.n.dot(this.world.centers[0]) > Math.cos(13 / R)
+      if (atHive && !this.atHive && this.pollen > 0) this.deliver()
+      this.atHive = atHive
     }
     this.runPending()
     this.trail(dt, boost)
@@ -291,6 +379,8 @@ export class PlanetGame {
       w.rotation.z = side * (0.28 + Math.sin(this.time * 58 + back * 0.9) * 0.62)
     }
     this.bee.root.visible = this.blendRaw > 0.25
+    this.halo.visible = this.lv >= 4
+    this.halo.scale.setScalar(1 + Math.sin(this.time * 4) * 0.08)
 
     // a soft shadow on the ground tells you how high you are
     const gap = this.alt - ground
@@ -374,7 +464,7 @@ export class PlanetGame {
         this.audio.wake()
         const count = this.world.awake.filter(Boolean).length
         this.audio.setLevel(count)
-        this.events.toast(`${REGIONS[p.region].name}醒了`, count < REGIONS.length ? `还有 ${REGIONS.length - count} 座岛在睡` : '整颗星球都醒了', true)
+        this.events.toast(`${REGIONS[p.region].name}醒了`, count < REGIONS.length ? `还有 ${REGIONS.length - count} 座岛在睡 · 青色光环是竞速起点` : '整颗星球都醒了', true)
         this.burstAt(this.world.centers[p.region], col, 160)
         if (count === REGIONS.length && !this.finished) {
           this.finished = true
@@ -383,7 +473,7 @@ export class PlanetGame {
             run: () => {
               this.phase = 'finale'
               this.save()
-              this.events.finale({ seconds: Math.round(this.flown), pollen: this.pollen })
+              this.events.finale({ seconds: Math.round(this.flown), pollen: this.gathered })
             }
           })
         }
@@ -399,13 +489,73 @@ export class PlanetGame {
     }
   }
 
-  private checkPollen(): void {
+  /** Which way a point lies from the bee's nose: radians, 0 ahead, positive to the right. */
+  private bearing(n: THREE.Vector3): number {
+    this.a.copy(n).addScaledVector(this.n, -n.dot(this.n))
+    this.b.crossVectors(this.fwd, this.n)
+    return Math.atan2(this.a.dot(this.b), this.a.dot(this.fwd))
+  }
+
+  /** A puff of sparks round the bee. */
+  private puff(col: THREE.Color, count: number): void {
+    for (let i = 0; i < count; i++) {
+      this.b.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(5 + Math.random() * 9)
+      this.b.addScaledVector(this.fwd, this.speed * 0.6)
+      this.sparks.emit(this.bee.root.position, this.b, col, 0.3 + Math.random() * 0.4, 0.5 + Math.random() * 0.5)
+    }
+  }
+
+  /** Over the hive: the pollen the bee carries becomes honey, and enough honey is a new level. */
+  private deliver(): void {
+    const before = this.lv
+    const load = this.pollen
+    this.honey += load
+    this.pollen = 0
+    this.lv = LEVELS.filter((l) => this.honey >= l.need).length
+    this.audio.deliver(this.lv > before)
+    // the pollen streams down into the hive
+    const hive = this.world.centers[0]
+    this.c.copy(hive).multiplyScalar(R + this.world.ground(hive) + 9)
+    for (let i = 0; i < Math.min(90, 20 + load * 2); i++) {
+      this.a.copy(this.bee.root.position)
+      this.b.copy(this.c).sub(this.a).multiplyScalar(1.6 + Math.random() * 1.2)
+      this.b.x += (Math.random() - 0.5) * 9
+      this.b.y += (Math.random() - 0.5) * 9
+      this.b.z += (Math.random() - 0.5) * 9
+      this.sparks.emit(this.a, this.b, i % 4 ? GOLD : WHITE, 0.3 + Math.random() * 0.4, 0.5 + Math.random() * 0.5)
+    }
+    if (this.lv > before) {
+      const got = LEVELS[this.lv - 1]
+      this.events.toast(`蜂蜜 ${this.lv} 级 · ${got.name}`, got.desc, true)
+      this.burstAt(hive, GOLD, 120)
+    } else {
+      const next = LEVELS[this.lv]
+      this.events.toast(`酿了 ${load} 份蜂蜜`, next ? `再要 ${next.need - this.honey} 份解锁「${next.name}」` : '蜂巢已经满了', false)
+    }
+    this.save()
+  }
+
+  private checkPollen(dt: number): void {
     const lim = Math.cos(3.1 / R)
+    const pull = Math.cos(11 / R)
     for (const o of this.world.orbs) {
-      if (o.taken || o.n.dot(this.n) < lim || Math.abs(o.alt - this.alt) > 4) continue
+      if (o.taken) continue
+      const d = o.n.dot(this.n)
+      // with the magnet, grains nearby fly to the bee
+      if (this.lv >= 1 && d > pull && Math.abs(o.alt - this.alt) < 12) {
+        o.n.lerp(this.n, damp(5, dt)).normalize()
+        o.alt = lerp(o.alt, this.alt, damp(5, dt))
+      }
+      if (d < lim || Math.abs(o.alt - this.alt) > 4) continue
       o.taken = true
+      o.back = this.world.now + 45
       this.pollen++
-      if (this.pollen % 10 === 0) this.save()
+      this.gathered++
+      if (this.gathered % 10 === 0) this.save()
+      if (!this.hinted && this.honey === 0 && this.pollen >= 8) {
+        this.hinted = true
+        this.events.toast('把花粉带回蜂巢', '酿成蜂蜜，能学会新本领', false)
+      }
       this.audio.note()
       const base = this.a.copy(o.n).multiplyScalar(R + o.alt)
       for (let i = 0; i < 9; i++) {
@@ -425,6 +575,11 @@ export class PlanetGame {
       if (!Array.isArray(s.fields) || s.fields.length !== this.world.patches.length) return
       this.world.restore(s.fields.map(Boolean))
       this.pollen = Number(s.pollen) || 0
+      this.honey = Number(s.honey) || 0
+      this.gathered = Number(s.gathered) || this.pollen + this.honey
+      this.lv = LEVELS.filter((l) => this.honey >= l.need).length
+      this.hinted = this.honey > 0
+      if (Array.isArray(s.best)) s.best.slice(0, this.races.best.length).forEach((b, i) => (this.races.best[i] = Number(b) || 0))
       this.flown = Number(s.seconds) || 0
       this.finished = !!s.done && this.world.awake.every(Boolean)
     } catch {
@@ -434,7 +589,15 @@ export class PlanetGame {
 
   private save(): void {
     try {
-      const s: Save = { fields: this.world.patches.map((p) => p.bloomed), pollen: this.pollen, seconds: Math.round(this.flown), done: this.finished }
+      const s: Save = {
+        fields: this.world.patches.map((p) => p.bloomed),
+        pollen: this.pollen,
+        honey: this.honey,
+        gathered: this.gathered,
+        seconds: Math.round(this.flown),
+        done: this.finished,
+        best: [...this.races.best]
+      }
       window.localStorage.setItem(SAVE_KEY, JSON.stringify(s))
     } catch {
       // private mode or a full store: play on without saving
@@ -475,7 +638,9 @@ export class PlanetGame {
       this.a.y += (Math.random() - 0.5) * 0.5
       this.a.z += (Math.random() - 0.5) * 0.5
       this.b.copy(this.fwd).multiplyScalar(this.speed * 0.55).addScaledVector(this.n, -1.4)
-      this.sparks.emit(this.a, this.b, boost ? WHITE : GOLD, boost ? 0.3 : 0.2, boost ? 0.55 : 0.4)
+      // honey level 2: the trail runs through the rainbow
+      const col = this.lv >= 2 ? this.hue.setHSL((this.time * 0.55) % 1, 0.95, 0.62) : boost ? WHITE : GOLD
+      this.sparks.emit(this.a, this.b, col, (boost ? 0.3 : 0.2) * (this.lv >= 2 ? 1.5 : 1), boost ? 0.55 : this.lv >= 2 ? 0.6 : 0.4)
     }
   }
 
@@ -510,13 +675,20 @@ export class PlanetGame {
     let arrow = 0
     let dist = 0
     let label = ''
-    if (best) {
-      this.a.copy(best.n).addScaledVector(this.n, -best.n.dot(this.n))
-      this.b.crossVectors(this.fwd, this.n)
-      arrow = Math.atan2(this.a.dot(this.b), this.a.dot(this.fwd))
+    const gate = this.races.target()
+    if (gate) {
+      // during a lap the arrow leads to the next hoop
+      arrow = this.bearing(gate.n)
+      dist = Math.acos(clamp(gate.n.dot(this.n), -1, 1)) * R
+      label = this.races.passed >= GATES ? '终点' : '下一个环'
+    } else if (best) {
+      arrow = this.bearing(best.n)
       dist = Math.acos(clamp(bestDot, -1, 1)) * R
       label = local ? '花田' : REGIONS[best.region].name
     }
+    const hive = this.world.centers[0]
+    const course = this.races.active >= 0 ? this.races.courses[this.races.active] : null
+    const nextLevel = LEVELS[this.lv]
     this.events.hud({
       phase: this.phase,
       region: over ? REGIONS[region].name : '',
@@ -524,9 +696,20 @@ export class PlanetGame {
       fields,
       awake: [...this.world.awake],
       pollen: this.pollen,
+      honey: this.honey,
+      level: this.lv,
+      levelFrom: this.lv ? LEVELS[this.lv - 1].need : 0,
+      levelNeed: nextLevel ? nextLevel.need : 0,
+      levelName: nextLevel ? nextLevel.name : '',
       arrow,
       arrowDist: dist,
-      arrowLabel: label
+      arrowLabel: label,
+      hiveArrow: this.bearing(hive),
+      hiveDist: Math.acos(clamp(hive.dot(this.n), -1, 1)) * R,
+      race: course
+        ? { seconds: this.races.clock, passed: this.races.passed, total: GATES, gold: course.gold, silver: course.silver, best: this.races.best[this.races.active] }
+        : null,
+      medals: this.races.best.map((b, i) => medalFor(this.races.courses[i], b))
     })
   }
 
@@ -549,6 +732,44 @@ export class PlanetGame {
     this.base = this.world.ground(this.n)
     this.alt = this.base + this.hover
     this.camReady = false
+  }
+
+  /** Fly one lap of an island's race on autopilot and return the time (-1 if it ran out). */
+  debugRace(region: number, boost: boolean): number {
+    this.world.awake[region] = true
+    this.races.abandon()
+    const gates = this.races.courses[region].gates
+    const g0 = gates[0]
+    this.a.copy(gates[GATES - 1].n).addScaledVector(g0.n, -g0.n.dot(gates[GATES - 1].n)).normalize()
+    this.n.copy(g0.n).addScaledVector(this.a, 20 / R).normalize()
+    this.fwd.copy(g0.n).addScaledVector(this.n, -g0.n.dot(this.n)).normalize()
+    this.base = this.world.clearance(this.n)
+    this.hover = clamp(g0.alt - this.base, 4.2, 30)
+    this.speed = boost ? BOOST : CRUISE
+    this.camReady = false
+    const keep = this.races.best[region]
+    this.lastLap = 0
+    // let the restart cooldown run out, then head through the start hoop
+    for (let i = 0; i < 60 * 4 && this.races.active < 0; i++) {
+      if (i === 200) this.debugGotoGate(region)
+      this.step(1 / 60)
+    }
+    this.bot = { boost }
+    for (let i = 0; i < 60 * 200 && this.lastLap === 0; i++) this.step(1 / 60)
+    this.bot = null
+    this.races.best[region] = keep
+    this.renderer.render(this.scene, this.camera)
+    return this.lastLap
+  }
+
+  private debugGotoGate(region: number): void {
+    const gates = this.races.courses[region].gates
+    const g0 = gates[0]
+    this.a.copy(gates[GATES - 1].n).addScaledVector(g0.n, -g0.n.dot(gates[GATES - 1].n)).normalize()
+    this.n.copy(g0.n).addScaledVector(this.a, 12 / R).normalize()
+    this.fwd.copy(g0.n).addScaledVector(this.n, -g0.n.dot(this.n)).normalize()
+    this.base = this.world.clearance(this.n)
+    this.hover = clamp(g0.alt - this.base, 4.2, 30)
   }
 
   debugWake(region: number): void {

@@ -339,6 +339,38 @@ export class PlanetAudio {
     this.step++
   }
 
+  /** A race hoop: each one a step higher. */
+  gate(index: number): void {
+    this.chime(SCALE[2 + (index % 10)] + 12, 0.16, 0, 0.9)
+  }
+
+  raceStart(): void {
+    this.chime(79, 0.2, 0, 0.6)
+    this.chime(84, 0.22, 0.12, 1.2)
+  }
+
+  /** The end of a lap: the better the medal, the longer the flourish. 0 = no medal. */
+  fanfare(medal: number): void {
+    if (medal === 0) {
+      this.chime(72, 0.16, 0, 1)
+      this.chime(67, 0.16, 0.18, 1.4)
+      return
+    }
+    const run = [72, 76, 79, 84, 88, 91].slice(0, 3 + medal)
+    run.forEach((m, k) => this.chime(m, 0.2, k * 0.09, 2.2))
+    this.chime(run[run.length - 1] + 12, 0.14, run.length * 0.09 + 0.1, 3)
+  }
+
+  /** Pollen poured into the hive; a longer peal when it fills a honey level. */
+  deliver(levelUp: boolean): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    for (let k = 0; k < 6; k++) this.pluck(SCALE[5 + k] + 12, 0.07, ctx.currentTime + k * 0.05, 0.5, 'triangle')
+    if (!levelUp) return
+    const peal = [60, 64, 67, 72, 76, 79, 84]
+    peal.forEach((m, k) => this.chime(m, 0.2, 0.35 + k * 0.1, 3))
+  }
+
   /** A flower field opening: a rising run, higher for each field already open on the island. */
   bloom(done: number): void {
     const ctx = this.ctx

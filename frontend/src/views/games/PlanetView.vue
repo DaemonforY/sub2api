@@ -42,6 +42,19 @@
           <i v-for="(f, i) in hud.fields" :key="i" :class="{ on: f }"></i>
         </div>
         <div class="planet-pollen">花粉 {{ hud.pollen }}</div>
+        <div class="planet-honey" :title="hud.levelName ? `下一级：${hud.levelName}` : '蜂蜜已满级'">
+          <span>🍯 蜂蜜 {{ hud.level }} 级</span>
+          <i v-if="hud.levelNeed"><b :style="{ width: `${honeyPct}%` }"></b></i>
+          <em v-if="hud.levelNeed">{{ hud.honey }}/{{ hud.levelNeed }} · {{ hud.levelName }}</em>
+          <em v-else>满级</em>
+        </div>
+      </div>
+
+      <div v-if="hud.race" class="planet-race">
+        <strong>{{ hud.race.seconds.toFixed(1) }}<small>秒</small></strong>
+        <span>环 {{ Math.min(hud.race.passed, hud.race.total) }}/{{ hud.race.total }}</span>
+        <span>金牌 {{ hud.race.gold.toFixed(1) }} · 银牌 {{ hud.race.silver.toFixed(1) }}</span>
+        <span v-if="hud.race.best">最好 {{ hud.race.best.toFixed(1) }}</span>
       </div>
 
       <div class="planet-hud planet-hud-tr">
@@ -52,14 +65,20 @@
 
       <div class="planet-hud planet-hud-bl">
         <div class="planet-islands">
-          <i v-for="(a, i) in hud.awake" :key="i" :class="{ on: a }" :style="{ '--c': islandColors[i] }" :title="islandNames[i]"></i>
+          <i v-for="(a, i) in hud.awake" :key="i" :class="[{ on: a }, `medal-${hud.medals[i] || 0}`]" :style="{ '--c': islandColors[i] }" :title="islandNames[i]"></i>
         </div>
         <span>{{ awakeCount }}/{{ hud.awake.length }} 座岛醒了</span>
       </div>
 
-      <div v-if="hud.arrowLabel" class="planet-compass">
-        <span class="planet-arrow" :style="{ transform: `rotate(${hud.arrow}rad)` }">▲</span>
-        <span>{{ hud.arrowLabel }} · {{ Math.round(hud.arrowDist) }} 米</span>
+      <div class="planet-compass-row">
+        <div v-if="hud.arrowLabel" class="planet-compass">
+          <span class="planet-arrow" :style="{ transform: `rotate(${hud.arrow}rad)` }">▲</span>
+          <span>{{ hud.arrowLabel }} · {{ Math.round(hud.arrowDist) }} 米</span>
+        </div>
+        <div v-if="hud.pollen > 0 && !hud.race" class="planet-compass hive">
+          <span class="planet-arrow" :style="{ transform: `rotate(${hud.hiveArrow}rad)` }">▲</span>
+          <span>🍯 蜂巢 · {{ Math.round(hud.hiveDist) }} 米</span>
+        </div>
       </div>
 
       <Transition name="planet-fade">
@@ -128,9 +147,18 @@ const hud = ref<HudState>({
   fields: [],
   awake: [false, false, false, false, false, false],
   pollen: 0,
+  honey: 0,
+  level: 0,
+  levelFrom: 0,
+  levelNeed: 20,
+  levelName: '',
   arrow: 0,
   arrowDist: 0,
-  arrowLabel: ''
+  arrowLabel: '',
+  hiveArrow: 0,
+  hiveDist: 0,
+  race: null,
+  medals: [0, 0, 0, 0, 0, 0]
 })
 const stats = reactive({ seconds: 0, pollen: 0 })
 const resume = reactive({ fields: 0, islands: 0, done: false })
@@ -141,6 +169,11 @@ let keysTimer = 0
 
 const fieldsDone = computed(() => hud.value.fields.filter(Boolean).length)
 const awakeCount = computed(() => hud.value.awake.filter(Boolean).length)
+const honeyPct = computed(() => {
+  const h = hud.value
+  const span = h.levelNeed - h.levelFrom
+  return span > 0 ? Math.max(0, Math.min(100, ((h.honey - h.levelFrom) / span) * 100)) : 100
+})
 const clock = computed(() => {
   const m = Math.floor(stats.seconds / 60)
   const s = stats.seconds % 60
@@ -501,12 +534,88 @@ kbd {
   text-align: right;
   color: rgba(255, 255, 255, 0.85);
 }
-.planet-compass {
+.planet-honey {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: #ffe6a8;
+}
+.planet-honey i {
+  display: block;
+  width: 128px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+.planet-honey b {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ffd957, #ff9d2e);
+  transition: width 0.5s ease;
+}
+.planet-honey em {
+  font-style: normal;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.planet-race {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 243, 255, 0.5);
+  background: rgba(10, 14, 34, 0.5);
+  backdrop-filter: blur(8px);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.planet-race strong {
+  font: 800 26px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #6ef3ff;
+  min-width: 78px;
+  text-align: right;
+}
+.planet-race small {
+  margin-left: 3px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.planet-islands i.medal-1 {
+  outline: 2px solid #c98a52;
+  outline-offset: 1px;
+}
+.planet-islands i.medal-2 {
+  outline: 2px solid #d9e2ec;
+  outline-offset: 1px;
+}
+.planet-islands i.medal-3 {
+  outline: 2px solid #ffd23f;
+  outline-offset: 1px;
+}
+.planet-compass-row {
   position: absolute;
   left: 50%;
   bottom: 22px;
   z-index: 2;
   transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+.planet-compass.hive {
+  border-color: rgba(255, 201, 87, 0.55);
+}
+.planet-compass {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -643,8 +752,19 @@ kbd {
   .planet-region {
     font-size: 18px;
   }
-  .planet-compass {
+  .planet-compass-row {
     bottom: 64px;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .planet-race {
+    top: 62px;
+    gap: 8px;
+    padding: 6px 14px;
+  }
+  .planet-race span:nth-of-type(2) {
+    display: none;
   }
   .planet-hud-bl span {
     display: none;
