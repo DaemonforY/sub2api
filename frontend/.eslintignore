@@ -10,6 +10,8 @@ dist/
 ../backend/internal/web/dist/
 # 课本诗画互动版：esbuild 打包的产物（源码在 promo/textbook-poems/demo）
 public/shihua-play/
+# 小游戏的独立静态页（3A大作、水墨流体）：浏览器直接加载的脚本，不走本项目的 TS/Vue 规范
+public/games-play/
 
 # 忽略缓存
 .cache/
