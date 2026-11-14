@@ -140,6 +140,7 @@ export default {
       drawText: '在 HiveGPT 无限画布或生图工作台创作，主题不限。',
       submitTitle: '投稿参赛',
       submitText: '上传图片或直接选画布里发布的作品，每人最多 {n} 件，审核通过后展示。',
+      submitTextOpen: '上传图片或直接选画布里发布的作品，每人最多 {n} 件，投稿后马上展示。',
       shareTitle: '邀请朋友点赞',
       shareText: '每件作品都有拉票海报和链接，朋友注册后每人有 {n} 个赞。'
     },

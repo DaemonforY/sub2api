@@ -25,7 +25,7 @@ func TestBuildAutoContest(t *testing.T) {
 	require.Equal(t, 5, c.VotesPerUser)
 	require.Equal(t, 5, c.MinVotesForPrize)
 	require.Equal(t, 0, c.MinAccountAgeHours)
-	require.True(t, c.RequireReview)
+	require.False(t, c.RequireReview, "entries go live at once; admins disqualify afterwards")
 	require.Len(t, c.Prizes, 1)
 	require.Equal(t, ContestPrizeCustom, c.Prizes[0].Type)
 

@@ -97,7 +97,7 @@ func DefaultContestAutoTemplate() ContestAutoTemplate {
 	return ContestAutoTemplate{
 		TitleTemplate: "{month} 月 AI 画图赛",
 		Description:   "用 AI 画一张图来投稿，主题不限。每月 1 日开始，月底按点赞数排名，第一名获得 1 个月 ¥120 月度订阅。",
-		Rules: "1. 投稿须是在本站用 AI 生成的作品，每人最多投 3 件，审核通过后展示。\n" +
+		Rules: "1. 投稿须是在本站用 AI 生成的作品，每人最多投 3 件，投稿后直接展示，不合规的作品会被取消。\n" +
 			"2. 注册用户每人 5 个赞，同一作品只能点 1 个，不能给自己点。\n" +
 			"3. 点赞截止时按赞数排名，赞数相同时先达到的优先；至少 5 个有效赞才能获奖。\n" +
 			"4. 刷票的作品取消资格。结果公示 3 天，无异议后发奖。",
@@ -107,7 +107,7 @@ func DefaultContestAutoTemplate() ContestAutoTemplate {
 		RemindDays:         1,
 		MaxEntriesPerUser:  3,
 		VotesPerUser:       5,
-		RequireReview:      true,
+		RequireReview:      false, // models already moderate images; admins disqualify the odd bad entry afterwards
 		MinAccountAgeHours: 0,
 		OnePrizePerUser:    true,
 		MinVotesForPrize:   5,

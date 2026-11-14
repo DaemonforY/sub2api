@@ -524,7 +524,7 @@ const milestones = computed(() => contestMilestones(contest.value, nowTick.value
 const nextMilestone = computed(() => milestones.value.find((m) => !m.done)?.key || '')
 const howto = computed(() => [
   { icon: '🎨', title: t('contests.howto.drawTitle'), text: t('contests.howto.drawText') },
-  { icon: '📤', title: t('contests.howto.submitTitle'), text: t('contests.howto.submitText', { n: contest.value.max_entries_per_user }) },
+  { icon: '📤', title: t('contests.howto.submitTitle'), text: t(contest.value.require_review ? 'contests.howto.submitText' : 'contests.howto.submitTextOpen', { n: contest.value.max_entries_per_user }) },
   { icon: '📣', title: t('contests.howto.shareTitle'), text: t('contests.howto.shareText', { n: contest.value.votes_per_user }) }
 ])
 const ideas = computed(() => [1, 2, 3, 4, 5, 6].map((i) => t(`contests.noEntries.idea${i}`)))

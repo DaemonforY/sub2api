@@ -140,6 +140,7 @@ export default {
       drawText: 'Create it on the HiveGPT canvas or in the image workbench. Any theme.',
       submitTitle: 'Enter it',
       submitText: 'Upload a picture or pick a work you published on the canvas, up to {n} per person, shown once approved.',
+      submitTextOpen: 'Upload a picture or pick a work you published on the canvas, up to {n} per person, shown right away.',
       shareTitle: 'Ask friends to vote',
       shareText: 'Every entry has a poster and a link. Signed-up friends get {n} votes each.'
     },
