@@ -155,7 +155,7 @@ export class IslandGame {
         if (!on) this.cb.net('host-left', {})
       },
       msg: (m) => this.guestMsg(m),
-      error: (c) => this.cb.net('error', { error: c }),
+      error: (c) => (c === 'host_left' ? this.cb.net('host-left', {}) : this.cb.net('error', { error: c })),
       closed: () => this.cb.net('host-left', {})
     }, relayBase(), devLag())
   }

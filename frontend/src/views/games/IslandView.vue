@@ -76,7 +76,7 @@
         <template v-else>
           <p class="isl-panel-sub">房间 {{ net.code }}</p>
           <p class="isl-status" :class="{ ok: net.status === 'waiting' }">
-            {{ net.status === 'connecting' ? '正在加入…' : '✅ 已加入，等房主开始…' }}
+            {{ net.status === 'connecting' ? '正在加入…' : net.status === 'host-left' ? '房主离开了，这个房间结束了。' : '✅ 已加入，等房主开始…' }}
           </p>
         </template>
         <p v-if="net.error" class="isl-error">{{ net.error }}</p>
@@ -256,6 +256,7 @@ const ERRORS: Record<string, string> = {
   bad_game: '房间码不是这个游戏的。',
   too_big: '网络消息太大，连接断开了。',
   rate: '网络消息太频繁，连接断开了。',
+  host_left: '房主已经离开，这个房间结束了。',
   closed: '和服务器的连接断开了，稍后再试。'
 }
 
