@@ -17,6 +17,10 @@ func RegisterGamesRoutes(
 	settingService *service.SettingService,
 	panelRateLimiter *middleware.PanelRateLimiter,
 ) {
+	// 联机双排 relay shared by the co-op games (no login; capped per IP and site-wide in the handler).
+	rooms := handler.NewGameRoomHandler()
+	v1.GET("/games/rooms/ws", panelRateLimiter.PublicIP(), rooms.ServeWS)
+
 	if h.GameCraft == nil {
 		return
 	}
