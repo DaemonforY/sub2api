@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -17,6 +18,61 @@ import (
 // openAITransportErrorTempUnschedDuration is how long an account is temporarily
 // unscheduled after a durable transport failure (matches tokenRefreshTempUnschedDuration).
 const openAITransportErrorTempUnschedDuration = 10 * time.Minute
+
+// A durable-looking transport error only cools the account down once it repeats:
+// openAITransportStrikeThreshold failures within openAITransportStrikeWindow.
+//
+// Motivating incident (2026-11-17 20:23): a static-IP HTTP proxy answered a single
+// request with 407 Proxy Authentication Required and worked again right after.
+// That one 407 took the group's only Codex account out for 10 minutes and every
+// request in the group failed with "no available accounts". A proxy whose
+// credentials really expired fails on every request, so it reaches the threshold
+// on the next attempt and is still evicted almost immediately.
+const (
+	openAITransportStrikeThreshold = 2
+	openAITransportStrikeWindow    = 2 * time.Minute
+)
+
+// openAITransportStrikeTracker remembers recent durable transport failures per
+// account. The zero value is ready to use. It is per process: the gateway runs as
+// a single instance, and in a multi-instance deployment each instance simply needs
+// its own repeat before it cools the account down.
+type openAITransportStrikeTracker struct {
+	mu      sync.Mutex
+	strikes map[int64][]time.Time
+}
+
+// record adds a failure for accountID at now and reports whether the account has
+// reached the threshold within the window. Reaching it clears the account's
+// history so the next cooldown again needs a fresh repeat.
+func (t *openAITransportStrikeTracker) record(accountID int64, now time.Time) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.strikes == nil {
+		t.strikes = make(map[int64][]time.Time)
+	}
+	cutoff := now.Add(-openAITransportStrikeWindow)
+	for id, times := range t.strikes {
+		kept := times[:0]
+		for _, at := range times {
+			if at.After(cutoff) {
+				kept = append(kept, at)
+			}
+		}
+		if len(kept) == 0 {
+			delete(t.strikes, id)
+		} else {
+			t.strikes[id] = kept
+		}
+	}
+	times := append(t.strikes[accountID], now)
+	if len(times) >= openAITransportStrikeThreshold {
+		delete(t.strikes, accountID)
+		return true
+	}
+	t.strikes[accountID] = times
+	return false
+}
 
 // openAITransportFailoverBody is the OpenAI-format error body attached to the
 // failover error for a transport-level failure. Kept identical to the legacy
@@ -95,8 +151,9 @@ func classifyUpstreamTransportError(err error) upstreamTransportErrorClass {
 // (Do/DoWithTLS returned a non-HTTP error: proxy/DNS/TCP/TLS). It:
 //  1. records the failure in Ops error logs (status 0, kind=request_error);
 //  2. for durable faults (expired/rejected proxy creds, dead proxy, DNS/routing)
-//     temporarily unschedules the account (DB + in-memory) and logs a stable
-//     warn event that alert rules can key on;
+//     that repeat within openAITransportStrikeWindow, temporarily unschedules the
+//     account (DB + in-memory) and logs a stable warn event that alert rules can
+//     key on; a first, isolated one only logs openai.account_transport_error_strike;
 //  3. returns an error that is *UpstreamFailoverError (so the handler fails over
 //     to a healthy account) for all non-canceled errors, or a plain error for
 //     context.Canceled (client gone — no failover, no eviction).
@@ -138,7 +195,17 @@ func (s *OpenAIGatewayService) handleOpenAIUpstreamTransportError(ctx context.Co
 	}
 
 	if classifyUpstreamTransportError(err).Persistent {
-		s.tempUnscheduleOpenAITransportError(ctx, account, safeErr)
+		if s.transportStrikes.record(account.ID, time.Now()) {
+			s.tempUnscheduleOpenAITransportError(ctx, account, safeErr)
+		} else {
+			logger.L().With(zap.String("component", "service.openai_gateway")).Warn(
+				"openai.account_transport_error_strike",
+				zap.Int64("account_id", account.ID),
+				zap.String("account_name", account.Name),
+				zap.String("platform", account.Platform),
+				zap.String("reason", safeErr),
+			)
+		}
 	}
 
 	return &UpstreamFailoverError{

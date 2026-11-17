@@ -495,6 +495,9 @@ type OpenAIGatewayService struct {
 	// 剥离跨账号回带（openai_codex_turn_state.go）。
 	openaiCodexTurnStateOrigins sync.Map
 	openaiCodexTurnStateWrites  atomic.Uint64
+	// transportStrikes counts recent durable proxy/network failures per account;
+	// the account is only cooled down once they repeat (openai_upstream_transport_error.go).
+	transportStrikes openAITransportStrikeTracker
 
 	// contentLog receives captured request content (请求内容日志); nil-safe.
 	contentLog ContentLogRecorder

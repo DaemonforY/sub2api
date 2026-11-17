@@ -74,11 +74,20 @@ func TestHandleOpenAIUpstreamTransportError_PersistentEvictsAndFailsOver(t *test
 		ProxyID:  &proxyID,
 		Proxy:    &Proxy{ID: proxyID, Name: "wldsg82-ipv6-10060"},
 	}
-	c, rec := newOpenAITransportErrTestContext()
+	proxyErr := errors.New(`Post "https://chatgpt.com/backend-api/codex/responses": socks connect tcp 85.255.176.68:12324->chatgpt.com:443: username/password authentication failed`)
 
+	// First failure: fail over, but a single blip must not take the account out.
+	c1, _ := newOpenAITransportErrTestContext()
+	firstErr := svc.handleOpenAIUpstreamTransportError(context.Background(), c1, account, proxyErr, false)
+	var firstFO *UpstreamFailoverError
+	require.True(t, errors.As(firstErr, &firstFO), "persistent error must return *UpstreamFailoverError")
+	require.Empty(t, repo.tempUnschedCalls, "one isolated proxy failure must not cool the account down")
+	require.False(t, svc.isOpenAIAccountRuntimeBlocked(account))
+
+	// Second failure within the window: now it is durable.
+	c, rec := newOpenAITransportErrTestContext()
 	before := time.Now()
-	retErr := svc.handleOpenAIUpstreamTransportError(context.Background(), c, account,
-		errors.New(`Post "https://chatgpt.com/backend-api/codex/responses": socks connect tcp 85.255.176.68:12324->chatgpt.com:443: username/password authentication failed`), false)
+	retErr := svc.handleOpenAIUpstreamTransportError(context.Background(), c, account, proxyErr, false)
 	after := time.Now()
 
 	// Failover error (handler will switch accounts), not a direct response.
@@ -86,7 +95,7 @@ func TestHandleOpenAIUpstreamTransportError_PersistentEvictsAndFailsOver(t *test
 	require.True(t, errors.As(retErr, &fo), "persistent error must return *UpstreamFailoverError")
 	require.Equal(t, http.StatusBadGateway, fo.StatusCode)
 
-	// Persistent → account temporarily unscheduled for ~10min, reason carries cause.
+	// Repeated persistent failure → account temporarily unscheduled for ~10min, reason carries cause.
 	require.Len(t, repo.tempUnschedCalls, 1)
 	require.Equal(t, int64(4627), repo.tempUnschedCalls[0].accountID)
 	require.Contains(t, repo.tempUnschedCalls[0].reason, "authentication failed")
@@ -107,6 +116,27 @@ func TestHandleOpenAIUpstreamTransportError_PersistentEvictsAndFailsOver(t *test
 	require.NotNil(t, events[0].ProxyID)
 	require.Equal(t, proxyID, *events[0].ProxyID)
 	require.Equal(t, "wldsg82-ipv6-10060", events[0].ProxyName)
+}
+
+// Strikes only add up within the window and per account; reaching the threshold
+// resets the count so the next cooldown needs a fresh repeat.
+func TestOpenAITransportStrikeTracker_WindowAndReset(t *testing.T) {
+	var tr openAITransportStrikeTracker
+	t0 := time.Date(2026, 11, 17, 20, 23, 15, 0, time.UTC)
+
+	require.False(t, tr.record(10, t0))
+	// Another account's failure does not count toward account 10.
+	require.False(t, tr.record(1, t0.Add(time.Second)))
+	// Repeat after the window: the old strike has expired.
+	require.False(t, tr.record(10, t0.Add(openAITransportStrikeWindow+time.Second)))
+	// Repeat inside the window: threshold reached.
+	require.True(t, tr.record(10, t0.Add(openAITransportStrikeWindow+30*time.Second)))
+	// Count was reset, so the next one starts over.
+	require.False(t, tr.record(10, t0.Add(openAITransportStrikeWindow+40*time.Second)))
+	// Expired entries of other accounts are pruned.
+	tr.record(99, t0.Add(10*openAITransportStrikeWindow))
+	_, stale := tr.strikes[1]
+	require.False(t, stale)
 }
 
 // A transient blip should fail over but must NOT evict the account.
