@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>苏绣打字机</title>
+<style>
+  :root{
+    --paper:rgba(247,241,228,.86); --ink:#3b2a1e; --ink2:#7a604a; --line:rgba(90,62,40,.35);
+    --accent:#8e2a2e;
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:#2a1d14}
+  body{font-family:"Songti SC","STSong","SimSun","Noto Serif SC",serif;color:var(--ink)}
+  #stage{position:fixed;inset:0;overflow:hidden;touch-action:none}
+  #bg{position:absolute;opacity:0;transition:opacity 1.2s;user-select:none;pointer-events:none}
+  body.ready #bg{opacity:1}
+  body.live #bg{opacity:0}
+  #scene,#air,#dance{pointer-events:none}
+  #dance{display:none}
+  .bgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px}
+  .bd{border:1px solid var(--line);background:rgba(255,255,255,.45);border-radius:2px;padding:2px 0 1px;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;font:inherit;font-size:10px;color:var(--ink2)}
+  .bd svg{width:28px;height:28px}
+  .bd.on{border-color:var(--accent);background:rgba(255,255,255,.85);color:var(--accent)}
+  #panel{max-height:calc(100vh - 44px);overflow-y:auto}
+  .bgrid{grid-template-columns:repeat(7,1fr)}
+  .bd svg{width:24px;height:24px}
+  .chip.play{flex:1;padding:6px 0;font-size:14px;letter-spacing:.2em;background:var(--accent);color:#fbf3e2;border-color:var(--accent)}
+  .menuBtn{margin-left:auto;border:1px solid var(--line);background:transparent;font:inherit;font-size:11px;letter-spacing:.2em;
+           padding:2px 8px;cursor:pointer;color:var(--ink2);border-radius:2px}
+  .menuBtn:hover{color:var(--accent);border-color:var(--accent)}
+  #menu{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+        background:radial-gradient(ellipse at center,rgba(30,20,12,.15),rgba(30,20,12,.55));backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+        transition:opacity .5s}
+  body:not(.menu) #menu{opacity:0;pointer-events:none}
+  body.menu #panel,body.menu #tip,body.menu #hint{opacity:0;pointer-events:none}
+  #menu .card{position:relative;background:var(--paper);border:1px solid var(--line);box-shadow:0 20px 60px rgba(20,10,4,.45);
+              padding:34px 40px 30px;text-align:center;min-width:min(560px,92vw)}
+  #menu .card::before{content:"";position:absolute;inset:8px;border:1px solid rgba(142,42,46,.35);pointer-events:none}
+  #menu .seal{position:absolute;right:26px;top:24px;width:34px;height:34px;background:var(--accent);color:#fbf3e2;
+              font-size:20px;line-height:34px;border-radius:3px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.3)}
+  #menu h2{margin:0;font-family:"STKaiti","Kaiti SC","KaiTi","Songti SC",serif;font-size:54px;font-weight:600;letter-spacing:.2em;color:var(--ink)}
+  #menu .sub{margin:6px 0 24px;font-size:13px;letter-spacing:.5em;color:var(--ink2)}
+  #menu .opts{display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
+  .opt{position:relative;width:220px;border:1px solid var(--line);background:rgba(255,255,255,.5);cursor:pointer;font:inherit;color:var(--ink);
+       padding:16px 12px 14px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .2s,box-shadow .2s,border-color .2s}
+  .opt:hover,.opt:focus-visible{transform:translateY(-3px);box-shadow:0 10px 24px rgba(40,20,10,.18);border-color:var(--accent);outline:none}
+  .opt .ico{height:110px;display:flex;align-items:center;justify-content:center}
+  .opt .ico svg{width:104px;height:104px}
+  .opt .ico img{height:110px}
+  .opt b{font-size:20px;letter-spacing:.3em;font-weight:600}
+  .opt .desc{font-size:12px;line-height:1.8;color:var(--ink2);letter-spacing:.15em}
+  .opt kbd{position:absolute;left:8px;top:6px;font:11px "Songti SC",serif;color:var(--ink2);opacity:.7}
+  #result{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;background:var(--paper);border:1px solid var(--line);
+          box-shadow:0 12px 40px rgba(30,18,8,.35);padding:22px 26px 18px;text-align:center;backdrop-filter:blur(8px);min-width:300px}
+  #result .grade{font-size:46px;letter-spacing:.3em;color:var(--accent);margin-bottom:6px;font-weight:600}
+  #result .stat{font-size:13px;line-height:1.9;color:var(--ink2);margin-bottom:14px}
+  #result .stat b{color:var(--ink);font-size:15px}
+  #result .row{justify-content:center}
+  #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #ime{position:absolute;left:0;top:0;width:30px;height:30px;opacity:0;border:0;padding:0;margin:0;
+       resize:none;outline:none;font-size:16px;z-index:5;caret-color:transparent;background:transparent;color:transparent}
+  #hint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:4;
+        font-size:20px;letter-spacing:.6em;color:rgba(80,58,40,.38);transition:opacity .8s;writing-mode:vertical-rl}
+
+  #panel{position:fixed;left:22px;top:22px;z-index:6;width:250px;background:var(--paper);
+         backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+         border:1px solid var(--line);border-radius:3px;box-shadow:0 8px 30px rgba(30,18,8,.25);
+         padding:14px 14px 12px;user-select:none}
+  #panel h1{margin:0 0 10px;font-size:15px;font-weight:600;letter-spacing:.35em;display:flex;align-items:center;gap:8px}
+  #panel h1 i{display:inline-block;width:14px;height:14px;background:var(--accent);border-radius:2px;
+              box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+  .tabs{display:flex;border:1px solid var(--line);border-radius:2px;overflow:hidden;margin-bottom:12px}
+  .tab{flex:1;border:0;background:transparent;font:inherit;font-size:14px;padding:5px 0;cursor:pointer;color:var(--ink2);letter-spacing:.2em}
+  .tab+.tab{border-left:1px solid var(--line)}
+  .tab.on{background:var(--ink);color:#f5eedf}
+  .lbl{font-size:11px;color:var(--ink2);letter-spacing:.25em;margin:8px 0 5px}
+  .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .sw{width:20px;height:20px;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.25);padding:0}
+  .sw.on{outline:2px solid var(--ink);outline-offset:2px}
+  .chip{border:1px solid var(--line);background:transparent;font:inherit;font-size:12px;padding:3px 10px;border-radius:2px;cursor:pointer;color:var(--ink)}
+  .chip.on{background:var(--ink);color:#f5eedf;border-color:var(--ink)}
+  .cats{display:flex;flex-wrap:wrap;gap:2px 3px;margin-bottom:8px}
+  .cat{border:0;background:transparent;font:inherit;font-size:13px;padding:2px 3px;cursor:pointer;color:var(--ink2);border-bottom:1px solid transparent}
+  .cat.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .mo{border:1px solid var(--line);background:rgba(255,255,255,.45);border-radius:2px;padding:4px 2px 2px;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;font:inherit;font-size:11px;color:var(--ink2)}
+  .mo svg{width:56px;height:56px}
+  .mo.on{border-color:var(--accent);background:rgba(255,255,255,.8);color:var(--accent)}
+  input[type=range]{width:100%;accent-color:var(--ink)}
+  .sel{font-size:11px;color:var(--accent);margin:8px 0 0;letter-spacing:.1em}
+  .chip:disabled{opacity:.4;cursor:default}
+  #rotV{color:var(--ink);letter-spacing:0}
+  .foot{display:flex;gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+  .foot .chip{flex:1}
+  #tip{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:6;font-size:12px;letter-spacing:.2em;
+       color:rgba(250,244,230,.9);background:rgba(40,26,16,.45);padding:5px 14px;border-radius:2px;white-space:nowrap;pointer-events:none}
+  @media (max-width:640px){ #panel{left:8px;top:8px;width:200px;padding:10px} #tip{display:none} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <img id="bg" alt="">
+  <canvas id="scene"></canvas>
+  <canvas id="gl"></canvas>
+  <canvas id="dance"></canvas>
+  <canvas id="air"></canvas>
+  <canvas id="fx"></canvas>
+  <textarea id="ime" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+</div>
+<div id="hint">敲下键盘　一针一线绣出来</div>
+
+<div id="panel">
+  <h1><i></i><span id="appTitle">苏绣</span><button class="menuBtn" id="menuBtn">菜单</button></h1>
+  <div class="tabs">
+    <button class="tab" data-mode="text">字</button>
+    <button class="tab" data-mode="draw">画</button>
+    <button class="tab" data-mode="motif">纹</button>
+    <button class="tab" data-mode="dance">舞</button>
+  </div>
+
+  <div class="pane" data-mode="text">
+    <div class="lbl">字　号</div>
+    <div class="row">
+      <button class="chip fs" data-c="80">小</button>
+      <button class="chip fs on" data-c="108">中</button>
+      <button class="chip fs" data-c="140">大</button>
+      <button class="chip fs" data-c="184">特大</button>
+    </div>
+    <div class="lbl">排　版</div>
+    <div class="row">
+      <button class="chip" id="autoBtn">自动排版</button>
+      <button class="chip on" id="flowBtn">靠右顺排</button>
+    </div>
+  </div>
+
+  <div class="pane" data-mode="draw">
+    <div class="lbl">笔　粗　细</div>
+    <div class="row">
+      <button class="chip bw" data-w="6">细</button>
+      <button class="chip bw on" data-w="12">中</button>
+      <button class="chip bw" data-w="22">粗</button>
+      <button class="chip bw" data-w="38">阔</button>
+    </div>
+  </div>
+
+  <div class="pane" data-mode="motif">
+    <div class="lbl">纹　样</div>
+    <div class="cats" id="catTabs"></div>
+    <div class="grid" id="motifGrid"></div>
+    <div class="sel" id="selHint"></div>
+    <div class="lbl">大　小</div>
+    <input type="range" id="sizeR" min="60" max="900" value="300">
+    <div class="lbl">角　度　<span id="rotV">0°</span></div>
+    <input type="range" id="rotR" min="-180" max="180" value="0" step="1">
+    <div class="row" style="margin-top:6px">
+      <button class="chip" id="fxBtn">⇋ 左右翻</button>
+      <button class="chip" id="fyBtn">⇅ 上下翻</button>
+      <button class="chip" id="rot0Btn">摆正</button>
+    </div>
+    <div class="row" style="margin-top:6px"><button class="chip" id="delBtn">删掉选中的纹样</button></div>
+  </div>
+
+  <div class="pane" data-mode="dance">
+    <div class="lbl">人　物</div>
+    <div class="row" id="whoRow"></div>
+    <div class="lbl">曲　目</div>
+    <div class="row" id="songRow"></div>
+    <div class="lbl">难　度</div>
+    <div class="row">
+      <button class="chip diff on" data-d="轻松">轻松</button>
+      <button class="chip diff" data-d="标准">标准</button>
+    </div>
+    <div class="lbl">绣　边</div>
+    <div class="bgrid" id="borderGrid"></div>
+    <div class="lbl">校　准　<span id="calV">0 毫秒</span></div>
+    <input type="range" id="calR" min="-200" max="200" value="0" step="5">
+    <div class="sel">红绣球从左边滚来按 F，青花绣球从右边滚来按 J。踩准一拍，绷边绣上一份纹样。</div>
+    <div class="row" style="margin-top:10px"><button class="chip play" id="playBtn">开　演（空格）</button></div>
+  </div>
+
+  <div class="lbl">丝　线</div>
+  <div class="row" id="palRow"></div>
+  <div class="lbl">绢　色</div>
+  <div class="row" id="fabRow"></div>
+
+  <div class="foot">
+    <button class="chip" id="undoBtn">拆掉上一处</button>
+    <button class="chip" id="clearBtn">换一块绢</button>
+  </div>
+</div>
+<div id="tip"></div>
+<div id="menu">
+  <div class="card">
+    <div class="seal">苏</div>
+    <h2>苏　绣</h2>
+    <p class="sub">姑苏绣阁　一针一线</p>
+    <div class="opts">
+      <button class="opt" data-go="craft">
+        <span class="ico" id="icoCraft"></span>
+        <b>刺　绣</b>
+        <span class="desc">敲字成绣　随手作画<br>落针纹样　自由摆布</span>
+        <kbd>1</kbd>
+      </button>
+      <button class="opt" data-go="game">
+        <span class="ico"><img id="icoGame" alt=""></span>
+        <b>绣　舞</b>
+        <span class="desc">随曲击绣球　伶人起舞<br>一拍一针　绣成花环</span>
+        <kbd>2</kbd>
+      </button>
+    </div>
+  </div>
+</div>
+<div id="result" hidden>
+  <div class="grade"></div>
+  <div class="stat"></div>
+  <div class="row">
+    <button class="chip" id="againBtn">再来一曲</button>
+    <button class="chip" id="keepBtn">留下这幅梅花环</button>
+    <button class="chip" id="backBtn">回到原来的绣面</button>
+  </div>
+</div>
+
+<script src="js/01.js"></script>
+<script src="js/02.js"></script>
+<script src="js/03.js"></script>
+<script src="js/04.js"></script>
+<script src="js/05.js"></script>
+<script src="js/06.js"></script>
+<script src="js/07.js"></script>
+<script src="js/08.js"></script>
+<script src="js/09.js"></script>
+<script src="js/10.js"></script>
+<script src="js/11.js"></script>
+<script src="js/12.js"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 export default {
   games: {
     title: 'Games',
-    subtitle: 'A few minutes a round, then turn your result into a share card.',
+    subtitle: 'A few minutes a round, free, no sign-in: 90s arcade-style co-op with a friend, Chinese crafts you learn by playing (Suzhou embroidery, mortise-and-tenon joinery), plus shooters, 3D flight and AI crafting.',
     play: 'Play',
     credit: 'By {author} · MIT licensed',
     minutes: 'About {n} min',
@@ -9,6 +9,15 @@ export default {
     soonDesc: 'What would you like to play? Tell the assistant; the most wanted ones come first.',
     ask: 'Tell the assistant',
     askDraft: 'I would like a game where ',
+    stats: '{n} games · free · no sign-in',
+    all: 'All',
+    badges: { new: 'New', newLong: 'New', duo: '2P', pc: 'Best on PC' },
+    cats: {
+      coop: { title: 'Co-op', desc: '90s arcade memories: two players on one screen, or online with a room code' },
+      guofeng: { title: 'Chinese crafts', desc: 'Embroidery, joinery and ink, learned by playing' },
+      action: { title: 'Action', desc: 'Run-and-gun, 3D flight, a first-person breakout' },
+      ai: { title: 'AI fun', desc: 'AI crafting, a personality test, your writing style' }
+    },
     share: { brand: 'HiveGPT Games', title: 'AI games, a few minutes a round', cta: 'Scan to play' },
     list: {
       rustedcannon: { title: 'Rusted Cannon', desc: 'An open-source pixel-art run-and-gun: one mercenary, three missions, a scrap-iron vehicle, POWs to rescue, grenades and three multi-phase bosses. Keyboard or touch.', tag: 'Run and gun' },
@@ -20,6 +29,8 @@ export default {
       fps: { title: 'HiveGPT 3A · Harbour breakout', desc: 'A browser first-person shooter written from scratch by AI: cut three relays, break the lockdown, reach the boat. Keyboard, touch or gamepad.', tag: 'FPS' },
       abti: { title: 'ABTI · AI worker personality test', desc: '31 questions over 15 dimensions: what kind of worker are you in the AI era?', tag: 'Personality' },
       cotton: { title: 'Cotton Candy Clash', desc: 'An original two-player arcade arena in the spirit of the 90s: wrap homework books, alarm clocks and mosquitoes in candy floss, then kick the balls to bowl them over in chains. Share a keyboard or play online with a room code; touch a fallen partner to revive them. (Game text is in Chinese.)', tag: 'Co-op arcade' },
+      sunyu: { title: 'Sun Yu · Wood Joints', desc: 'One wooden box, three eras, twenty mortise-and-tenon joints. Take each joint apart and put it back in 3D while a carpenter family story unfolds. (Game text is in Chinese.)', tag: 'Joinery · story puzzle' },
+      suxiu: { title: 'Suzhou Embroidery Typewriter', desc: 'Type and each character is stitched onto silk, thread by thread; draw and place patterns too. In the dance mode, hit F and J to the music. (Game text is in Chinese.)', tag: 'Embroidery · typing & rhythm' },
       style: { title: 'Find your writing style', desc: 'Paste a few of your articles and see your rhythm, catchphrases and AI flavour.', tag: 'Writing' }
     },
     picks: {

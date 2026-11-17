@@ -1,0 +1,1 @@
+window.R = p => (window.__ASSETS && window.__ASSETS[p]) || p;   // 单文件版里图片和声音从嵌入数据取
