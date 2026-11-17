@@ -3,7 +3,9 @@ export interface CodexModelsManifestResult {
   modelCount: number
 }
 
-const DEFAULT_CODEX_CLIENT_VERSION = '0.147.0'
+// Codex shows only the models in a downloaded catalog, so keep this at a recent release:
+// 0.147 left out the whole gpt-6 family.
+const DEFAULT_CODEX_CLIENT_VERSION = '0.169.0'
 
 function normalizeCodexBaseUrl(baseUrl: string): string {
   const fallback = typeof window !== 'undefined' ? window.location.origin : ''

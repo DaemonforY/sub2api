@@ -35,7 +35,11 @@ const NPM_REGISTRIES = unique([
   'https://mirrors.cloud.tencent.com/npm/',
   'https://repo.huaweicloud.com/repository/npm/'
 ])
-const CODEX_CLIENT_VERSION = '0.147.0'
+// The catalog is written to codex-models.json and Codex shows only what is in it, so a version
+// older than the installed Codex hides newer models (0.147 had no gpt-6 family, 2026-11-17).
+// Floor = a recent Codex release; a newer installed Codex wins.
+const CODEX_CLIENT_VERSION_FLOOR = '0.169.0'
+let codexClientVersion = CODEX_CLIENT_VERSION_FLOOR
 const MIN_CODEX_VERSION = '0.130.0'
 const DESKTOP_PROFILE_NAME = 'HiveGPT'
 const RC_MARK_BEGIN = '# >>> HiveGPT >>>'
@@ -280,7 +284,7 @@ async function fetchModels(key) {
 
 async function fetchCodexCatalog(key) {
   try {
-    const res = await httpGet(`${BASE}/v1/models?client_version=${CODEX_CLIENT_VERSION}`, {
+    const res = await httpGet(`${BASE}/v1/models?client_version=${codexClientVersion}`, {
       Authorization: `Bearer ${key}`,
       Accept: 'application/json'
     })
@@ -933,7 +937,9 @@ function codexConfiguredKey() {
 
 async function setupCodex(key, modelIds) {
   step('配置 Codex 命令行 / Codex App')
-  ensureCli({ name: 'codex', pkg: '@openai/codex', extraDirs: [NPM_BIN, '/opt/homebrew/bin', '/usr/local/bin'], minVersion: MIN_CODEX_VERSION })
+  const codexBin = ensureCli({ name: 'codex', pkg: '@openai/codex', extraDirs: [NPM_BIN, '/opt/homebrew/bin', '/usr/local/bin'], minVersion: MIN_CODEX_VERSION })
+  const installed = codexBin ? commandVersion(codexBin) : null
+  if (installed && compareVersions(installed, codexClientVersion) > 0) codexClientVersion = installed
   await writeCodexConfig(key, modelIds)
   info('如果 Codex App 或 IDE 扩展正开着，请完全退出后重新打开，再新建一个任务，配置才会生效。')
 }
