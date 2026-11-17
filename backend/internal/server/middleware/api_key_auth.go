@@ -294,8 +294,13 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 						status = 429
 					}
 					msg := subscriptionLimitMessage(validateErr, subscription, apiKey.Group)
-					if billingRoute.Enabled(c.Request.Context()) {
+					smartBilling := billingRoute.Enabled(c.Request.Context())
+					if smartBilling {
 						msg = smartBillingLimitMessage(msg)
+					}
+					if status == http.StatusTooManyRequests && isCodexClientRequest(c) &&
+						abortWithCodexUsageLimit(c, validateErr, subscription, apiKey.Group, msg, smartBilling) {
+						return
 					}
 					AbortWithError(c, status, code, msg)
 					return

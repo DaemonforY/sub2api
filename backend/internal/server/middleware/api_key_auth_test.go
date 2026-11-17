@@ -267,7 +267,80 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 
 		require.Equal(t, http.StatusTooManyRequests, w.Code)
 		require.Contains(t, w.Body.String(), "USAGE_LIMIT_EXCEEDED")
+		require.NotContains(t, w.Body.String(), codexUsageLimitType)
+		require.Empty(t, w.Header().Get(codexPromoMessageHeader))
 	})
+
+	t.Run("codex_client_gets_usage_limit_reached", func(t *testing.T) {
+		cfg := &config.Config{RunMode: config.RunModeStandard}
+		apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+
+		now := time.Now()
+		sub := &service.UserSubscription{
+			ID:               55,
+			UserID:           user.ID,
+			GroupID:          group.ID,
+			Status:           service.SubscriptionStatusActive,
+			ExpiresAt:        now.Add(24 * time.Hour),
+			DailyWindowStart: &now,
+			DailyUsageUSD:    1.25,
+		}
+		subscriptionRepo := &stubUserSubscriptionRepo{
+			getActive: func(ctx context.Context, userID, groupID int64) (*service.UserSubscription, error) {
+				clone := *sub
+				return &clone, nil
+			},
+		}
+		subscriptionService := service.NewSubscriptionService(nil, subscriptionRepo, nil, nil, cfg)
+		router := newAuthTestRouter(apiKeyService, subscriptionService, cfg)
+
+		for _, tc := range []struct{ name, ua, originator string }{
+			{"desktop_ua", "Codex Desktop/0.169.0-alpha.11.1 (Mac OS 26.6.2; arm64) unknown (Codex Desktop; 26.1111.21308)", ""},
+			{"cli_ua", "codex_cli_rs/0.142.3 (Mac OS 26.4.0; arm64) iTerm.app/3.6.6", ""},
+			{"originator_only", "", "codex_cli_rs"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+				req.Header.Set("Authorization", "Bearer "+apiKey.Key)
+				if tc.ua != "" {
+					req.Header.Set("User-Agent", tc.ua)
+				}
+				if tc.originator != "" {
+					req.Header.Set("originator", tc.originator)
+				}
+				router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusTooManyRequests, w.Code)
+				var resp codexUsageLimitResponse
+				require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+				require.Equal(t, usageLimitExceededCode, resp.Code)
+				require.Equal(t, codexUsageLimitType, resp.Error.Type)
+				require.Equal(t, usageLimitExceededCode, resp.Error.Code)
+				require.Contains(t, resp.Error.Message, "订阅今日额度已用完")
+				require.Contains(t, resp.Error.Message, "daily usage limit exceeded")
+				require.Equal(t, resp.Message, resp.Error.Message)
+				require.Equal(t, 24*60, resp.Error.LimitWindowMinutes)
+				require.NotNil(t, resp.Error.ResetsAt)
+				require.Equal(t, sub.DailyResetTime().Unix(), *resp.Error.ResetsAt)
+				require.NotContains(t, w.Body.String(), "plan_type")
+				require.Equal(t, "Your HiveGPT plan's daily quota is used up ($1.25 of $1.00). Use a pay-as-you-go key now",
+					w.Header().Get(codexPromoMessageHeader))
+			})
+		}
+	})
+}
+
+func TestCodexUsageLimitPromoIsASCII(t *testing.T) {
+	limit := 350.0
+	for _, smart := range []bool{false, true} {
+		promo := codexUsageLimitPromo("weekly", 351.5, &limit, smart)
+		for _, r := range promo {
+			require.Less(t, r, rune(0x80), "promo must be ASCII for Codex header parsing: %q", promo)
+		}
+	}
+	require.Equal(t, "Your HiveGPT plan's monthly quota is used up. Top up at "+service.RechargeURL+" and this key continues on balance",
+		codexUsageLimitPromo("monthly", 0, nil, true))
 }
 
 func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
