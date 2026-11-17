@@ -17,6 +17,16 @@ export default {
       abti: { title: 'ABTI · AI 打工人格测试', desc: '31 道题、15 个维度，测出你在 AI 时代是哪种打工人。', tag: '人格测试' },
       style: { title: '测测你的写作风格', desc: '贴几篇你写的文章，看看你的句子节奏、口头禅和 AI 味。', tag: '写作' }
     },
+    picks: {
+      title: '站外精选',
+      desc: '别人用 AI 做的好作品，点开会跳到作者自己的网站玩，版权归原作者。',
+      by: '作者 {author}',
+      open: '去作者网站玩',
+      list: {
+        wusuo: { title: '雾锁山门', author: '歸藏', tag: '3D 仙侠动作', desc: '歸藏用 AI 一个下午做出的网页 3D 仙侠动作游戏：三段连招、闪避弹反、御剑、万剑归宗，Boss 有二阶段和配音。电脑手机都能玩，首次加载约 33 MB。' },
+        fly: { title: '像素战斗机', author: 'Dash（UI8）', tag: '像素飞行', desc: '用「精灵堆叠」把像素画堆成 3D 的战斗机，在群岛和云层间穿行。点击翻滚，按住喷射加速，从浪尖一路爬到高空；适合用电脑打开。' }
+      }
+    },
     planet: { title: '蜂巢星球' },
     craft: {
       title: 'AI 万物合成',

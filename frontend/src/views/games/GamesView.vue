@@ -40,6 +40,34 @@
           <button v-if="assistant?.enabled" type="button" class="btn btn-secondary mt-4" data-testid="games-ask" @click="askForGame">💬 {{ t('games.ask') }}</button>
         </div>
       </div>
+
+      <!-- 站外精选: other people's work we link to (never re-hosted); they open in a new tab on the author's site. -->
+      <section class="mt-14" data-testid="games-picks">
+        <h2 class="text-xl font-bold text-gray-950 dark:text-white">✨ {{ t('games.picks.title') }}</h2>
+        <p class="mt-1 text-sm text-gray-600 dark:text-dark-300">{{ t('games.picks.desc') }}</p>
+        <div class="mt-5 grid gap-5 sm:grid-cols-2">
+          <a
+            v-for="p in PICKS"
+            :key="p.key"
+            :href="p.href"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-md dark:border-dark-700 dark:bg-dark-900 dark:hover:border-primary-500/50"
+            :data-testid="`pick-${p.key}`"
+          >
+            <div class="h-44 overflow-hidden"><img :src="p.image" alt="" class="h-full w-full object-cover" loading="lazy" /></div>
+            <div class="p-5">
+              <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="rounded-full bg-gray-100 px-2.5 py-0.5 font-semibold text-gray-700 dark:bg-dark-700 dark:text-dark-200">{{ t(`games.picks.list.${p.key}.tag`) }}</span>
+                <span class="text-gray-500 dark:text-dark-400">{{ t('games.picks.by', { author: t(`games.picks.list.${p.key}.author`) }) }}</span>
+              </div>
+              <h3 class="mt-2 text-lg font-bold text-gray-950 group-hover:text-primary-700 dark:text-white dark:group-hover:text-primary-300">{{ t(`games.picks.list.${p.key}.title`) }}</h3>
+              <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-dark-300">{{ t(`games.picks.list.${p.key}.desc`) }}</p>
+              <span class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary-600 dark:text-primary-400">{{ t('games.picks.open') }} ↗</span>
+            </div>
+          </a>
+        </div>
+      </section>
     </main>
 
     <HomeAssistant ref="assistant" :site-name="siteName" />
@@ -117,6 +145,13 @@ const GAMES: { key: string; to?: string; href?: string; minutes: number; images:
     emoji: '✍️',
     cover: 'bg-gradient-to-br from-amber-100 via-orange-100 to-rose-100 dark:from-amber-500/10 dark:via-orange-500/10 dark:to-rose-500/10'
   }
+]
+
+// Other people's browser games, linked on the author's own site. Their licenses don't allow re-hosting
+// (雾锁山门's source says so; the UI8 Forge demo has no license), so only the cover lives here.
+const PICKS: { key: string; href: string; image: string }[] = [
+  { key: 'wusuo', href: 'https://op7418.github.io/guizang-game-skill/', image: '/games-media/wusuo/cover.webp' },
+  { key: 'fly', href: 'https://remix.ui8.ai/fly', image: '/games-media/fly/cover.webp' }
 ]
 
 const shareInput = computed<ShareCardInput>(() => ({

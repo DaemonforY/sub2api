@@ -17,6 +17,16 @@ export default {
       abti: { title: 'ABTI · AI worker personality test', desc: '31 questions over 15 dimensions: what kind of worker are you in the AI era?', tag: 'Personality' },
       style: { title: 'Find your writing style', desc: 'Paste a few of your articles and see your rhythm, catchphrases and AI flavour.', tag: 'Writing' }
     },
+    picks: {
+      title: 'Picks from elsewhere',
+      desc: 'Great AI-made games by other people. They open on the author\'s own site; all rights stay with the authors.',
+      by: 'by {author}',
+      open: 'Play on the author\'s site',
+      list: {
+        wusuo: { title: 'Mist-Locked Gate', author: 'Guizang', tag: '3D action', desc: 'A browser 3D xianxia action game Guizang made with AI in an afternoon: combos, dodge and parry, sword flight and a two-phase voiced boss. Desktop or phone; about 33 MB to load.' },
+        fly: { title: 'Pixel fighter', author: 'Dash (UI8)', tag: 'Pixel flight', desc: 'A pixel-art fighter jet built by sprite stacking, flying over islands and clouds. Click to roll, hold to boost, climb from the wavetops to high altitude. Best on a computer.' }
+      }
+    },
     planet: { title: 'Hive Planet' },
     craft: {
       title: 'AI Infinite Alchemy',
