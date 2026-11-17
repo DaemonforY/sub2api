@@ -27,6 +27,7 @@
         <h2>游戏结束</h2>
         <p>{{ scoreLine }}</p>
         <GameLeaderboard game="hutu" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="3" class="hutu-board" />
+        <GameResultCardButton :build="hutuCard" btn-class="hutu-btn ghost" />
         <template v-if="hud.mode !== 'guest'">
           <button class="hutu-btn" data-testid="hutu-continue" @click="continueGame">从 {{ hud.levelId }} 接着玩（分数减半）</button>
         </template>
@@ -40,7 +41,8 @@
         <h2>元宵灯会，照常开张！</h2>
         <p>{{ scoreLine }}</p>
         <GameLeaderboard game="hutu" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="3" class="hutu-board" />
-        <button class="hutu-btn" @click="toTitle">回到标题</button>
+        <GameResultCardButton :build="hutuCard" btn-class="hutu-btn" />
+        <button class="hutu-btn ghost" @click="toTitle">回到标题</button>
         <RouterLink to="/games" class="hutu-link">看看别的小游戏</RouterLink>
       </div>
 
@@ -139,6 +141,8 @@ import { LEVELS } from '@/games/hutu/levels'
 import { track } from '@/utils/analytics'
 import GameAccountBar from '@/components/games/GameAccountBar.vue'
 import GameLeaderboard from '@/components/games/GameLeaderboard.vue'
+import GameResultCardButton from '@/components/games/GameResultCardButton.vue'
+import type { ResultCardInput } from '@/games/resultCard'
 import { useGameAccount } from '@/composables/useGameAccount'
 
 const route = useRoute()
@@ -188,6 +192,42 @@ function describeRun(d: Record<string, unknown>): string {
   const mode = d.mode === 'solo' ? '单人' : d.mode === 'local' ? '同屏双人' : '在线双排'
   return d.level ? `${mode} · ${String(d.level)}` : mode
 }
+// 战绩图: honour title by how far the run got (8 levels, a boss at 1-4 and 2-4).
+function hutuCard(): ResultCardInput {
+  const h = hud.value
+  const won = h?.phase === 'won'
+  const idx = Math.max(0, LEVELS.findIndex((l) => l.id === h?.levelId))
+  const done = won ? LEVELS.length : idx
+  const honor = won
+    ? '年灯守护者'
+    : done >= 7
+      ? '年兽宫门前的勇士'
+      : done >= 5
+        ? '灯火古镇巡夜人'
+        : done >= 4
+          ? '泥大王克星'
+          : done >= 2
+            ? '竹林村跑酷王'
+            : done >= 1
+              ? '顶箱子小能手'
+              : '刚出村的小老虎'
+  const scores = h?.scores ?? [0]
+  return {
+    game: 'hutu',
+    title: '虎兔大冒险',
+    art: '/games-media/hutu/title.webp',
+    deep: '#2a1018',
+    accent: '#ffd23f',
+    kicker: won ? '年灯找回来了！元宵灯会照常开张' : '这一局',
+    honor,
+    score: teamScore.value,
+    meta: `${won ? '通关 8 关' : `闯到 ${h?.levelId ?? ''} ${h?.levelName ?? ''}`} · ${describeRun(runDetail.value).split(' · ')[0]}`,
+    players: scores.length > 1 ? [{ name: '虎妞', score: Math.floor(scores[0]), color: '#ff8a3d' }, { name: '兔宝', score: Math.floor(scores[1]), color: '#9fd3ff' }] : undefined,
+    progress: { done, total: LEVELS.length },
+    challenge: '你能闯到第几关？'
+  }
+}
+
 async function syncProgress(): Promise<void> {
   const merged = await account.syncSave<{ best: number; reached: number }>('hutu:v1', (a, b) => ({
     best: Math.max(Number(a?.best) || 0, Number(b?.best) || 0),

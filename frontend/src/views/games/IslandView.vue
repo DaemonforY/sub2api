@@ -143,6 +143,7 @@
           <h2>冒险失败</h2>
           <p class="isl-panel-sub">倒在了「{{ stageNames[info.stage] }}」。从上一个旗子接着来？（分数减半）</p>
           <GameLeaderboard game="island" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="3" />
+          <GameResultCardButton :build="islandCard" btn-class="isl-btn wide" />
           <button v-if="mode !== 'guest'" class="isl-btn primary wide" data-testid="island-continue" @click="doContinue">继续冒险</button>
           <p v-else class="isl-status">等房主决定要不要继续…</p>
           <button class="isl-btn wide" @click="leave">回到标题</button>
@@ -161,6 +162,7 @@
             </div>
           </div>
           <GameLeaderboard game="island" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="5" />
+          <GameResultCardButton :build="islandCard" btn-class="isl-btn wide" />
           <button class="isl-btn primary wide" @click="leave">再玩一次</button>
           <RouterLink to="/games" class="isl-link">看看别的小游戏</RouterLink>
         </div>
@@ -214,6 +216,8 @@ import type { IslandGame, Mode, NetStatus } from '@/games/island/game'
 import { track } from '@/utils/analytics'
 import GameAccountBar from '@/components/games/GameAccountBar.vue'
 import GameLeaderboard from '@/components/games/GameLeaderboard.vue'
+import GameResultCardButton from '@/components/games/GameResultCardButton.vue'
+import type { ResultCardInput } from '@/games/resultCard'
 
 const KEYART = '/games-media/island/keyart.webp'
 const stageNames = ['浪花海滩', '雨林深处', '熔岩火山']
@@ -239,6 +243,31 @@ const runDetail = computed(() => ({ mode: mode.value ?? 'solo', stage: info.stag
 function describeRun(d: Record<string, unknown>): string {
   const m = d.mode === 'solo' ? '单人' : d.mode === 'local2' ? '同屏双人' : '联机双排'
   return d.done ? `${m} · 通关` : `${m} · 第 ${Number(d.stage) || 1} 关`
+}
+// 战绩图: honour title by the furthest stage (beach, jungle, volcano).
+function islandCard(): ResultCardInput {
+  const done = phase.value === 'ending' ? 3 : info.stage
+  const honor = done >= 3 ? '椰风岛守护者' : info.stage >= 2 ? '火山勇者' : info.stage >= 1 ? '雨林探险家' : '浪花海滩新手'
+  return {
+    game: 'island',
+    title: '椰风岛大冒险',
+    art: '/games-media/island/keyart.webp',
+    focusX: 0.55,
+    deep: '#06303a',
+    accent: '#ffd166',
+    kicker: done >= 3 ? '三块太阳果碎片合在一起了！' : '这一局',
+    honor,
+    score: teamScore.value,
+    meta: `${done >= 3 ? '通关三关' : `倒在了「${stageNames[info.stage]}」`} · ${describeRun(runDetail.value).split(' · ')[0]}`,
+    players: info.twoP
+      ? [
+          { name: heroNames[0], score: Math.floor(info.scores[0]), color: '#ff6b4a' },
+          { name: heroNames[1], score: Math.floor(info.scores[1]), color: '#ffb3d9' }
+        ]
+      : undefined,
+    progress: { done, total: 3 },
+    challenge: '你能抢回太阳果吗？'
+  }
 }
 const banner = ref<{ id: number; kicker: string; title: string } | null>(null)
 const paused = ref(false)

@@ -416,8 +416,23 @@ async function shareCard(): Promise<void> {
   if (!f || !g) return
   sharing.value = true
   try {
-    const { drawResultCard } = await import('@/games/cotton/card')
-    const url = await drawResultCard({ ...f, honor: honor.value, sprites: g.renderer.sprites, keyart: `${MEDIA}keyart.webp`, link: `${location.origin}/games/cotton` })
+    const { drawGameResultCard } = await import('@/games/resultCard')
+    const kids = f.kids.map((k, i) => ({ k, i })).filter(({ k }) => k.on)
+    const url = await drawGameResultCard({
+      game: 'cotton',
+      title: '棉花糖大作战',
+      art: `${MEDIA}keyart.webp`,
+      focusX: 0.4,
+      deep: '#15102e',
+      accent: '#ff9ed2',
+      kicker: f.won ? '暑假保住了！' : '这一局',
+      honor: honor.value,
+      score: f.score,
+      meta: `打到第 ${f.reached} 层 · ${minutes.value} · ${modeName(f.mode)}`,
+      players: kids.length > 1 ? kids.map(({ k, i }) => ({ name: KIDS[i].replace(/^\dP /, ''), score: k.score, color: i === 0 ? '#ff7eb6' : '#6ec1ff' })) : undefined,
+      progress: { done: f.won ? FLOORS.length : Math.max(0, f.reached - 1), total: FLOORS.length },
+      challenge: '你能打到第几层？'
+    })
     cardUrl.value = url
     if (!isTouch) {
       const a = document.createElement('a')
