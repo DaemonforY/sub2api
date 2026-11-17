@@ -166,8 +166,7 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: backendUrl,
           changeOrigin: true,
-          // game rooms (/api/v1/games/rooms/ws) are WebSockets
-          ws: true
+          ws: true // 小游戏联机双排 relay: /api/v1/games/rooms/ws
         },
         '/v1': {
           target: backendUrl,
