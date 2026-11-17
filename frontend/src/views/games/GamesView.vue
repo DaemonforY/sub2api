@@ -121,6 +121,14 @@ const GAMES: { key: string; to?: string; href?: string; minutes: number; images:
     cover: ''
   },
   {
+    key: 'island',
+    to: '/games/island',
+    minutes: 15,
+    images: ['/games-media/island/cover.webp'],
+    emoji: '',
+    cover: ''
+  },
+  {
     key: 'rustedcannon',
     href: '/games-play/rusted-cannon/',
     minutes: 15,

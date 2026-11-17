@@ -13,7 +13,8 @@ export default {
     list: {
       rustedcannon: { title: 'Rusted Cannon', desc: 'An open-source pixel-art run-and-gun: one mercenary, three missions, a scrap-iron vehicle, POWs to rescue, grenades and three multi-phase bosses. Keyboard or touch.', tag: 'Run and gun' },
       hutu: { title: 'Tiger & Bunny Dash', desc: 'Two kids in tiger and bunny hats run, jump, bump boxes and stomp critters through eight levels of a bamboo village and a lantern-lit old town. Two players on one keyboard, or open a room and play online together. (Game text is in Chinese.)', tag: 'Platformer · 2P co-op' },
-    planet: { title: 'Hive Planet', desc: 'Fly a little bee round a tiny sleeping planet. Pass through the golden rings and the flower fields open; six islands wake one by one and the music grows with them. (Game text is in Chinese.)', tag: 'Flying' },
+      island: { title: 'Coco Breeze Island', desc: 'An original pixel-art co-op platformer: eat fruit to keep your energy up, crack giant clams for boomerangs and boards, and beat a boss on the beach, in the jungle and in the volcano. Two players on one keyboard or online with a room code. (Game text is in Chinese.)', tag: 'Co-op platformer' },
+      planet: { title: 'Hive Planet', desc: 'Fly a little bee round a tiny sleeping planet. Pass through the golden rings and the flower fields open; six islands wake one by one and the music grows with them. (Game text is in Chinese.)', tag: 'Flying' },
       ink: { title: 'Ink in water', desc: 'Stir a pool of ink with your finger and watch it bleed into rice paper; guide it into a character.', tag: 'Ink' },
       craft: { title: 'AI Infinite Alchemy', desc: 'Start from metal, wood, water, fire and earth; drag two together and the AI invents something new. The first maker is remembered site-wide.', tag: 'AI' },
       fps: { title: 'HiveGPT 3A · Harbour breakout', desc: 'A browser first-person shooter written from scratch by AI: cut three relays, break the lockdown, reach the boat. Keyboard, touch or gamepad.', tag: 'FPS' },
@@ -34,6 +35,7 @@ export default {
     hutu: { title: 'Tiger & Bunny Dash' },
     planet: { title: 'Hive Planet' },
     cotton: { title: 'Cotton Candy Clash' },
+    island: { title: 'Coco Breeze Island' },
     craft: {
       title: 'AI Infinite Alchemy',
       tagline: 'Start from the five elements, drag two together and the AI invents the result',
