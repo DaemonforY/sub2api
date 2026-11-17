@@ -129,6 +129,14 @@ const GAMES: { key: string; to?: string; href?: string; minutes: number; images:
     cover: ''
   },
   {
+    key: 'cotton',
+    to: '/games/cotton',
+    minutes: 15,
+    images: ['/games-media/cotton/cover.webp'],
+    emoji: '',
+    cover: ''
+  },
+  {
     key: 'rustedcannon',
     href: '/games-play/rusted-cannon/',
     minutes: 15,
@@ -174,14 +182,6 @@ const GAMES: { key: string; to?: string; href?: string; minutes: number; images:
     to: '/games/abti',
     minutes: 3,
     images: ['prom', 'boss', 'fish', 'humn'].map((c) => `/games-media/abti/${c}.webp`),
-    emoji: '',
-    cover: ''
-  },
-  {
-    key: 'cotton',
-    to: '/games/cotton',
-    minutes: 15,
-    images: ['/games-media/cotton/cover.webp'],
     emoji: '',
     cover: ''
   },
