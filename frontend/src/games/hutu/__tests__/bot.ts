@@ -61,14 +61,14 @@ function progress(w: World): number {
 
 function alive(w: World): boolean {
   const p = w.players[0]
-  return p.st !== 'dead' && p.st !== 'out' && w.phase !== 'dead' && w.phase !== 'over'
+  return p.st !== 'dead' && p.st !== 'out' && w.phase !== 'dead' && w.phase !== 'over' && w.phase !== 'intro'
 }
 
 /**
  * Try to finish level `idx`. Returns the furthest x reached and whether it got to the end.
  * `budget` caps simulated steps.
  */
-export function playLevel(idx: number, budget = 400000): { done: boolean; best: number; steps: number; trace: string[] } {
+export function playLevel(idx: number, budget = 400000, bell = true): { done: boolean; best: number; steps: number; trace: string[] } {
   const w = new World({ players: 1, lives: 99 })
   w.restartFrom(idx)
   while (w.phase === 'intro') w.tick([0])
@@ -87,7 +87,7 @@ export function playLevel(idx: number, budget = 400000): { done: boolean; best: 
       restore(w, node.s)
       let ok = true
       for (const b of a.frames) {
-        w.players[0].bell = 9999
+        if (bell) w.players[0].bell = 9999
         w.tick([b])
         w.events.length = 0
         steps++

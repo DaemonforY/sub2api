@@ -356,14 +356,18 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  image-rendering: pixelated;
-  opacity: 0.55;
+  opacity: 0.9;
 }
 .hutu-title-inner {
   position: relative;
   max-width: 640px;
   margin: auto;
-  padding: 28px 20px;
+  padding: 24px 22px;
+  border: 2px solid rgba(43, 27, 46, 0.9);
+  border-radius: 14px;
+  background: rgba(18, 10, 24, 0.7);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   text-align: center;
   text-shadow: 0 2px 0 #2b1b2e;
 }
@@ -563,6 +567,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.touch .hutu-corner {
+  top: 34px;
+  opacity: 0.75;
 }
 .hutu-icon {
   width: 34px;
