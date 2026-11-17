@@ -24,7 +24,7 @@ import {
 
 export const GAME_SLUG = 'cotton'
 
-export type RoomError = 'not_found' | 'room_full' | 'bad_game' | 'too_big' | 'rate' | 'closed' | 'network'
+export type RoomError = 'not_found' | 'room_full' | 'bad_game' | 'too_big' | 'rate' | 'host_left' | 'closed' | 'network'
 
 export interface RoomHooks {
   room(code: string, seat: number): void

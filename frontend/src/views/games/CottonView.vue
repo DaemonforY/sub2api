@@ -67,7 +67,7 @@
       <div class="cc-title-shade"></div>
       <div class="cc-card cc-lobby cc-raise">
         <template v-if="ui.room?.status === 'error' || ui.room?.status === 'closed'">
-          <h2>{{ ui.room?.error === 'closed' ? '房间已关闭' : '连不上房间' }}</h2>
+          <h2>{{ ui.room?.error === 'host_left' ? '房间已关闭' : '连不上房间' }}</h2>
           <p class="cc-err">{{ roomError(ui.room?.error || '') }}</p>
           <button class="cc-btn" @click="backToTitle">回到标题</button>
         </template>
@@ -313,8 +313,10 @@ function roomError(code: string): string {
       return '这个房间已经有两个人了（Room is full）'
     case 'rate':
       return '操作太频繁，稍等几秒再试（Too many requests）'
+    case 'host_left':
+      return '房主离开了，房间已关闭（Host left）'
     case 'closed':
-      return '房主离开了，房间已关闭（Room closed）'
+      return '和联机服务器的连接断了，回到标题再进一次房间（Connection closed）'
     case 'bad_game':
     case 'too_big':
       return '连接出错了，刷新页面再试（Bad request）'
