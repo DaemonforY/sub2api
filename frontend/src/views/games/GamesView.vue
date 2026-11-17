@@ -162,6 +162,14 @@ const GAMES: { key: string; to?: string; href?: string; minutes: number; images:
     cover: ''
   },
   {
+    key: 'cotton',
+    to: '/games/cotton',
+    minutes: 15,
+    images: ['/games-media/cotton/cover.webp'],
+    emoji: '',
+    cover: ''
+  },
+  {
     key: 'style',
     to: '/style',
     minutes: 5,

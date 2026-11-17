@@ -17,6 +17,7 @@ export default {
       craft: { title: 'AI Infinite Alchemy', desc: 'Start from metal, wood, water, fire and earth; drag two together and the AI invents something new. The first maker is remembered site-wide.', tag: 'AI' },
       fps: { title: 'HiveGPT 3A · Harbour breakout', desc: 'A browser first-person shooter written from scratch by AI: cut three relays, break the lockdown, reach the boat. Keyboard, touch or gamepad.', tag: 'FPS' },
       abti: { title: 'ABTI · AI worker personality test', desc: '31 questions over 15 dimensions: what kind of worker are you in the AI era?', tag: 'Personality' },
+      cotton: { title: 'Cotton Candy Clash', desc: 'An original two-player arcade arena in the spirit of the 90s: wrap homework books, alarm clocks and mosquitoes in candy floss, then kick the balls to bowl them over in chains. Share a keyboard or play online with a room code; touch a fallen partner to revive them. (Game text is in Chinese.)', tag: 'Co-op arcade' },
       style: { title: 'Find your writing style', desc: 'Paste a few of your articles and see your rhythm, catchphrases and AI flavour.', tag: 'Writing' }
     },
     picks: {
@@ -30,6 +31,7 @@ export default {
       }
     },
     planet: { title: 'Hive Planet' },
+    cotton: { title: 'Cotton Candy Clash' },
     craft: {
       title: 'AI Infinite Alchemy',
       tagline: 'Start from the five elements, drag two together and the AI invents the result',
