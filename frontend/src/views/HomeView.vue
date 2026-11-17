@@ -190,6 +190,24 @@
           </template>
         </div>
       </nav>
+      <!-- Phones: the header has no room for the links above, so they scroll in a row under it. -->
+      <div class="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 text-xs sm:-mx-6 sm:px-6 [scrollbar-width:none] md:hidden [&::-webkit-scrollbar]:hidden" data-testid="home-nav-links-mobile">
+        <a
+          v-for="link in mobileNavLinks"
+          :key="link.key"
+          :href="link.href"
+          v-bind="link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}"
+          :class="[
+            'shrink-0 whitespace-nowrap rounded-full border px-3 py-1 font-medium transition-colors',
+            link.key === 'games'
+              ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-200'
+              : 'border-gray-200 bg-white/80 text-gray-600 dark:border-dark-700 dark:bg-dark-900/60 dark:text-dark-300'
+          ]"
+          @click="trackCta(`nav-m-${link.key}`)"
+        >
+          {{ link.key === 'games' ? '🎮 ' : '' }}{{ t(`home.v3.nav.${link.key}`) }}
+        </a>
+      </div>
     </header>
 
     <!-- Main Content: the motion screens are always dark; the rest follows the theme -->
@@ -456,6 +474,8 @@ const navLinks = [
   { key: 'games', href: '/games', external: false },
   { key: 'pricing', href: '/pricing', external: false }
 ]
+// Phones keep AI 对话 in the header, so their link row starts with 小游戏 where it can't scroll out of sight.
+const mobileNavLinks = [...navLinks.filter((l) => l.key === 'games'), ...navLinks.filter((l) => l.key !== 'games' && l.key !== 'chat')]
 
 // Live numbers: what the sign-up credit buys and how many requests the site has served.
 const pricing = ref<PublicPricing | null>(null)
