@@ -10,7 +10,7 @@ import type { PState } from './physics'
 import type { Ent, Ev, Phase, Player, PState2 } from './world'
 import type { PlayerAnim } from './types'
 
-export type RelayError = 'not_found' | 'room_full' | 'bad_game' | 'too_big' | 'rate' | 'closed' | 'network'
+export type RelayError = 'not_found' | 'room_full' | 'bad_game' | 'too_big' | 'rate' | 'host_left' | 'closed' | 'network'
 
 export interface RoomHandlers {
   onRoom(code: string, seat: number): void

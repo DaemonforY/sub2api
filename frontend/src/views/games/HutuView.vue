@@ -182,6 +182,8 @@ const errorText = computed(() => {
       return '房间已经满了（两个人正在玩）'
     case 'rate':
       return '操作太频繁了，稍等几秒再试'
+    case 'host_left':
+      return '房主离开了，这一局结束了'
     case 'closed':
       return net.seat === 1 ? '房主离开了，这一局结束了' : '连接断开了'
     case 'bad_game':
