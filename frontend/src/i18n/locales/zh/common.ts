@@ -208,6 +208,7 @@ export default {
     auditLogs: '操作日志',
     requestLogs: '请求日志',
     contests: '活动',
+    games: '小游戏',
     contestAdmin: '活动管理',
     promptLibraryAdmin: '提示词库',
     imageToolsAdmin: '图片工具',

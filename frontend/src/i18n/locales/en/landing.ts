@@ -174,6 +174,7 @@ export default {
         write: 'Write',
         code: 'Code',
         works: 'Gallery',
+        games: 'Games',
         pricing: 'Pricing',
         signupTag: '+${amount}'
       },

@@ -208,6 +208,7 @@ export default {
     auditLogs: 'Audit Logs',
     requestLogs: 'Request Logs',
     contests: 'Contests',
+    games: 'Games',
     contestAdmin: 'Contests',
     promptLibraryAdmin: 'Prompt library',
     imageToolsAdmin: 'Image tools',

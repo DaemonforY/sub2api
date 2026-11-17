@@ -453,6 +453,7 @@ const navLinks = [
   { key: 'write', href: '/editor/?utm_source=home&utm_medium=nav', external: false },
   { key: 'code', href: '/learn/codex/hivegpt?utm_source=home&utm_medium=nav', external: false },
   { key: 'works', href: canvasLink('nav-explore', '/explore'), external: true },
+  { key: 'games', href: '/games', external: false },
   { key: 'pricing', href: '/pricing', external: false }
 ]
 

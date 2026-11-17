@@ -174,6 +174,7 @@ export default {
         write: '写作',
         code: '编程',
         works: '作品',
+        games: '小游戏',
         pricing: '价格',
         signupTag: '送${amount}'
       },
