@@ -67,7 +67,7 @@
       <div class="cc-title-shade"></div>
       <div class="cc-card cc-lobby cc-raise">
         <template v-if="ui.room?.status === 'error' || ui.room?.status === 'closed'">
-          <h2>连不上房间</h2>
+          <h2>{{ ui.room?.error === 'closed' ? '房间已关闭' : '连不上房间' }}</h2>
           <p class="cc-err">{{ roomError(ui.room?.error || '') }}</p>
           <button class="cc-btn" @click="backToTitle">回到标题</button>
         </template>
@@ -173,7 +173,8 @@
         </ol>
         <div class="cc-final-btns">
           <button class="cc-btn cc-btn-main" data-testid="cotton-share" :disabled="sharing" @click="shareCard">{{ sharing ? '生成中…' : '生成战绩图' }}</button>
-          <button class="cc-btn" @click="playAgain">再来一局</button>
+          <button v-if="final.mode !== 'guest'" class="cc-btn" @click="playAgain">再来一局</button>
+          <span v-else class="cc-wait">等房主开下一局…</span>
           <RouterLink to="/games" class="cc-btn">别的小游戏</RouterLink>
         </div>
         <img v-if="cardUrl" :src="cardUrl" class="cc-card-img" alt="战绩图" />
@@ -249,7 +250,8 @@ const ui = ref<Ui>({
   ],
   room: null,
   ping: 0,
-  notice: ''
+  notice: '',
+  round: 0
 })
 
 const bossFloor = computed(() => !!FLOORS[ui.value.floor]?.boss)
@@ -363,8 +365,11 @@ function playAgain(): void {
   const mode = final.value?.mode
   final.value = null
   cardUrl.value = ''
-  if (mode === 'host') hostRoom()
-  else if (mode === 'guest') backToTitle()
+  if (mode === 'host') {
+    // same room, same friend: just go again
+    if (ui.value.room?.status === 'open') game.value?.hostStart()
+    else hostRoom()
+  } else if (mode === 'guest') backToTitle()
   else startLocal(mode === 'duo' ? 'duo' : 'solo')
 }
 
@@ -429,6 +434,11 @@ onMounted(async () => {
     canvas,
     {
       ui: (u) => {
+        // an online guest leaves the final screen when the host starts another run
+        if (final.value && u.mode === 'guest' && u.round !== ui.value.round) {
+          final.value = null
+          cardUrl.value = ''
+        }
         ui.value = u
         if (u.notice) showToast(u.notice)
       },
@@ -941,6 +951,10 @@ kbd {
   min-width: 140px;
   margin-top: 0;
 }
+.cc-wait {
+  align-self: center;
+  color: #c8b6f5;
+}
 .cc-card-img {
   display: block;
   width: 100%;
@@ -970,7 +984,7 @@ kbd {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 14px 14px;
+  padding: 0 12px calc(14px + env(safe-area-inset-bottom));
   pointer-events: none;
 }
 .cc-touch button {
@@ -984,13 +998,13 @@ kbd {
 }
 .cc-pad {
   display: grid;
-  grid-template-columns: 64px 64px 64px;
+  grid-template-columns: 58px 58px 58px;
   gap: 6px;
   align-items: end;
 }
 .cc-pad button {
-  width: 64px;
-  height: 64px;
+  width: 58px;
+  height: 58px;
   font-size: 22px;
 }
 .cc-act {
@@ -999,8 +1013,8 @@ kbd {
   align-items: flex-end;
 }
 .cc-act button {
-  width: 76px;
-  height: 76px;
+  width: 70px;
+  height: 70px;
   font-size: 17px;
 }
 .cc-act .k-fire {

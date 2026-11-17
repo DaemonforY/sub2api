@@ -123,11 +123,15 @@ export class Renderer {
     const ch = this.display.clientHeight
     this.display.width = Math.round(cw * dpr)
     this.display.height = Math.round(ch * dpr)
-    let scale = Math.min(this.display.width / W, this.display.height / H)
+    // keep a strip at the top for the page's buttons (sound, pause, room code)
+    const top = Math.round(46 * dpr)
+    let scale = Math.min(this.display.width / W, (this.display.height - top) / H)
     if (scale >= 3) scale = Math.floor(scale)
     this.view.scale = scale
     this.view.x = Math.round((this.display.width - W * scale) / 2)
-    this.view.y = Math.round((this.display.height - H * scale) / 2)
+    this.view.y = top + Math.round((this.display.height - top - H * scale) / 2)
+    // tall phone screens: picture at the top, the touch pad gets the space below
+    if (this.display.height > this.display.width * 1.3) this.view.y = Math.min(this.view.y, Math.round(56 * dpr))
   }
 
   // ------------------------------------------------------------ effects from events

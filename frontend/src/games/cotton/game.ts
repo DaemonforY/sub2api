@@ -62,6 +62,8 @@ export interface Ui {
   ping: number
   /** a short line for the page to toast */
   notice: string
+  /** goes up each time a new run starts (an online guest uses it to leave the final screen) */
+  round: number
 }
 
 export interface Hooks {
@@ -106,6 +108,7 @@ export class CottonGame {
   private uiKey = ''
   private uiTick = 0
   private finished = false
+  private round = 0
   // host
   private guestReport: GuestReport | null = null
   private guestFires = 0
@@ -194,7 +197,8 @@ export class CottonGame {
     this.guestFires = 0
     this.guestReport = null
     this.renderer.hitstop = 0
-    this.room.send({ t: 'go' })
+    this.round++
+    this.room.send({ t: 'go', round: this.round })
     this.pushUi(true)
   }
 
@@ -288,7 +292,7 @@ export class CottonGame {
               this.s.players[1].remote = true
               this.guestFires = 0
               this.guestReport = null
-              this.room?.send({ t: 'go' })
+              this.room?.send({ t: 'go', round: this.round })
             }
           } else {
             this.notice = this.s ? `队友掉线了，用房间码 ${this.roomUi.code} 可以重新加入` : '队友离开了房间'
@@ -301,16 +305,28 @@ export class CottonGame {
         if (!this.roomUi) return
         this.roomUi.status = 'error'
         this.roomUi.error = code
-        this.pushUi(true)
+        this.lostRoom()
       },
       message: (msg: Record<string, unknown>) => this.onMessage(msg),
       closed: () => {
         if (!this.roomUi) return
         this.roomUi.status = 'closed'
         this.roomUi.error = 'closed'
-        this.pushUi(true)
+        this.lostRoom()
       }
     }
+  }
+
+  /** the room is gone: a guest goes back to the lobby card with the reason, a host plays on alone */
+  private lostRoom(): void {
+    if (this.mode === 'guest') {
+      this.screen = 'lobby'
+      this.view = null
+    } else if (this.mode === 'host' && this.s && this.screen === 'play') {
+      this.notice = '联机断开了，你可以接着一个人玩'
+      if (this.s.players[1].on) leavePlayer(this.s, 1)
+    }
+    this.pushUi(true)
   }
 
   private leaveRoom(): void {
@@ -336,7 +352,7 @@ export class CottonGame {
       if (t === 'g') this.guestReport = msg as unknown as GuestReport
       else if (t === 'cont') this.continueRun()
       else if (t === 'end') this.endRun()
-      else if (t === 'hello' && this.s) this.room?.send({ t: 'go' })
+      else if (t === 'hello' && this.s) this.room?.send({ t: 'go', round: this.round })
       return
     }
     if (this.mode === 'guest') {
@@ -353,6 +369,17 @@ export class CottonGame {
         }
       } else if (t === 'go') {
         this.finished = false
+        if (typeof msg.round === 'number' && msg.round !== this.round) {
+          // the host started a new run: drop the old picture
+          this.round = msg.round
+          this.snaps = []
+          this.pending = []
+          this.predicted = []
+          this.me = null
+          this.shadow = null
+          this.view = null
+          this.pushUi(true)
+        }
         if (this.screen !== 'play') {
           this.screen = 'play'
           this.pushUi(true)
@@ -646,13 +673,14 @@ export class CottonGame {
       kids: [kid(st?.players[0]), kid(st?.players[1])],
       room: this.roomUi ? { ...this.roomUi } : null,
       ping: this.ping,
-      notice: this.notice
+      notice: this.notice,
+      round: this.round
     }
   }
 
   private pushUi(force: boolean): void {
     const u = this.snapshotUi()
-    const key = JSON.stringify([u.screen, u.mode, u.paused, u.phase, u.phase === 'over' || u.phase === 'won' ? Math.min(u.phaseT, 90) : 0, u.floor, u.result, u.room, u.notice, u.kids, Math.round(u.ping / 20)])
+    const key = JSON.stringify([u.screen, u.mode, u.paused, u.phase, u.phase === 'over' || u.phase === 'won' ? Math.min(u.phaseT, 90) : 0, u.floor, u.result, u.room, u.notice, u.kids, Math.round(u.ping / 20), u.round])
     if (!force && key === this.uiKey) return
     this.uiKey = key
     this.hooks.ui(u)
