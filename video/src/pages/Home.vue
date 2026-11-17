@@ -176,7 +176,7 @@ const cloneOn = ref(false)
 const mode = ref(route.query.mode === 'motion' ? 'motion' : prefs.mode || 'film')
 const prompt = ref(typeof route.query.prompt === 'string' ? route.query.prompt : '')
 const ratio = ref(prefs.ratio || '16:9')
-const model = ref(prefs.model || 'gpt-5.5')
+const model = ref(prefs.model || 'gpt-6.1-sol')
 const voice = ref(prefs.voice || 'zh-CN-XiaoxiaoNeural')
 const length = ref(prefs.length || 'standard')
 const seconds = ref(prefs.seconds || 8)
@@ -238,7 +238,7 @@ const modelOptions = computed(() => {
     const what = mode.value === 'motion' ? '一个动画' : (lengthOptions.find((o) => o.value === length.value)?.label || '一个视频').replace(/^约\s*/, '')
     return siteModels.value.map((m) => ({ value: m.id, label: m.name, hint: [m.note, `${what}约 ${costText(runCost(m.id))}`].filter(Boolean).join(' · ') }))
   }
-  const list = models.value.length ? [...models.value] : ['gpt-5.5']
+  const list = models.value.length ? [...models.value] : ['gpt-6.1-sol']
   if (!list.includes(model.value)) list.unshift(model.value)
   return list.map((m) => ({ value: m, label: m }))
 })
@@ -271,7 +271,7 @@ const lengthOptions = [
 ]
 // What a run usually costs from the balance, in dollars, from prod usage (first run up to the last
 // scene, 2026-10-14..28): Claude is billed at 3× and writes ~3× the code, so a 1-minute film is
-// $4–7 against GPT-5.5's ~$0.8, and the $2 sign-up credit stops a Claude film halfway.
+// $4–7 against GPT's ~$0.8, and the $2 sign-up credit stops a Claude film halfway.
 const RUN_COST = {
   claude: { short: [3, 5], standard: [4, 7], long: [8, 11], motion: [0.5, 1.5] },
   other: { short: [0.5, 1], standard: [0.7, 1], long: [1, 2], motion: [0.1, 0.3] }
@@ -285,10 +285,10 @@ const balance = computed(() => Number(session.me?.balance ?? 0))
 const cost = computed(() => runCost(model.value))
 // The cheaper model to offer instead: the first non-Claude one on the site.
 const cheapModel = computed(() => {
-  const list = siteModels.value.length ? siteModels.value : [{ id: 'gpt-5.5', name: 'GPT-5.5' }]
+  const list = siteModels.value.length ? siteModels.value : [{ id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol' }]
   return list.find((m) => !m.id.startsWith('claude')) || null
 })
-const cheapCost = computed(() => runCost(cheapModel.value?.id || 'gpt-5.5'))
+const cheapCost = computed(() => runCost(cheapModel.value?.id || 'gpt-6.1-sol'))
 const lowBalanceTip = computed(() => !!session.me && model.value.startsWith('claude') && balance.value < cost.value.hi)
 // Pictures as material (uploaded while the user writes; the create request sends their tokens).
 const images = ref([])

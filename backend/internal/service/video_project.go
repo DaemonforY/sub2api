@@ -42,7 +42,7 @@ var (
 	ErrVideoBusy         = infraerrors.Conflict("VIDEO_BUSY", "AI 正在处理这个作品，请等它完成或先停止（The agent is still working）")
 	ErrVideoTooMany      = infraerrors.TooManyRequests("VIDEO_TOO_MANY", "同时进行的生成已达 2 个，请等其中一个完成后再试（Two generations are already running）")
 	ErrVideoSilentVoice  = infraerrors.BadRequest("VIDEO_SILENT_VOICE", "无配音的作品没有旁白，不能换音色；想要配音请新建作品时选一个音色（A film without narration has no voice to change）")
-	ErrVideoBalance      = infraerrors.Forbidden("VIDEO_BALANCE", "余额不足，AI 没法继续做了。请到 hivegpt.cn 充值后点「继续生成」，已经做好的部分会保留；也可以换成更便宜的 GPT-5.5（Insufficient balance）")
+	ErrVideoBalance      = infraerrors.Forbidden("VIDEO_BALANCE", "余额不足，AI 没法继续做了。请到 hivegpt.cn 充值后点「继续生成」，已经做好的部分会保留；也可以换成更便宜的 GPT 模型（Insufficient balance）")
 	ErrVideoKey          = infraerrors.Unauthorized("VIDEO_KEY", "请先用 HiveGPT 账号登录（Sign in with your HiveGPT account）")
 	ErrVideoPaidVoiceOff = infraerrors.BadRequest("VIDEO_PAID_VOICE_OFF", "付费配音（豆包语音）暂未开通，请换一个免费音色后点「继续生成」（Paid voices are not available）")
 	ErrVideoNotReady     = infraerrors.BadRequest("VIDEO_NOT_READY", "作品还没生成完成，完成后才能发布（Finish the video before publishing）")
