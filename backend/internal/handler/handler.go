@@ -118,6 +118,8 @@ type Handlers struct {
 	Inspiration *InspirationHandler
 	// GameCraft is 小游戏「AI 万物合成」.
 	GameCraft *GameCraftHandler
+	// GameProgress is 小游戏可选登录: cloud saves and leaderboards.
+	GameProgress *GameProgressHandler
 }
 
 // BuildInfo contains build-time information

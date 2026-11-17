@@ -101,6 +101,7 @@ var ProviderSet = wire.NewSet(
 	NewDesktopSkillRepository,
 	NewInspirationRepository,
 	NewGameCraftRepository,
+	NewGameProgressRepository,
 	NewArticleProjectRepository,
 	NewTietuProjectRepository,
 	NewTutorRepository,

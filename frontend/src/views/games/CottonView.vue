@@ -19,6 +19,7 @@
             <button type="button" @click="panel = 'help'">怎么玩</button>
             <button type="button" @click="panel = 'rank'">排行榜</button>
           </div>
+          <GameAccountBar game="cotton" />
         </div>
         <div v-else-if="panel === 'online'" class="cc-card">
           <h2>联机双排</h2>
@@ -48,7 +49,8 @@
           <button type="button" class="cc-link" @click="panel = 'menu'">返回</button>
         </div>
         <div v-else-if="panel === 'rank'" class="cc-card">
-          <h2>本机排行榜</h2>
+          <GameLeaderboard game="cotton" :score="0" :describe="describeRun" :limit="10" />
+          <h2 class="cc-local-title">本机排行榜</h2>
           <ol v-if="ranks.length" class="cc-rank">
             <li v-for="(r, i) in ranks" :key="i">
               <span class="n">{{ i + 1 }}</span><b>{{ r.score.toLocaleString() }}</b><span>第 {{ r.floor }} 层</span><span>{{ modeName(r.mode) }}</span><span class="d">{{ r.date }}</span>
@@ -171,6 +173,7 @@
             <span class="n">{{ i + 1 }}</span><b>{{ r.score.toLocaleString() }}</b><span>第 {{ r.floor }} 层</span><span>{{ modeName(r.mode) }}</span><span class="d">{{ r.date }}</span>
           </li>
         </ol>
+        <GameLeaderboard game="cotton" :score="final.score" :detail="{ mode: final.mode ?? 'solo', floor: final.reached }" :describe="describeRun" />
         <div class="cc-final-btns">
           <button class="cc-btn cc-btn-main" data-testid="cotton-share" :disabled="sharing" @click="shareCard">{{ sharing ? '生成中…' : '生成战绩图' }}</button>
           <button v-if="final.mode !== 'guest'" class="cc-btn" @click="playAgain">再来一局</button>
@@ -194,6 +197,8 @@ import { useRoute, useRouter } from 'vue-router'
 import type { CottonGame, Mode, Ui } from '@/games/cotton/game'
 import { FLOORS } from '@/games/cotton/levels'
 import { track } from '@/utils/analytics'
+import GameAccountBar from '@/components/games/GameAccountBar.vue'
+import GameLeaderboard from '@/components/games/GameLeaderboard.vue'
 
 const MEDIA = '/games-media/cotton/'
 const KIDS = ['1P 小满', '2P 阿豆']
@@ -274,6 +279,11 @@ function honorFor(f: Final | null): string {
   if (cleared >= 3) return '卧室保卫者'
   if (cleared >= 1) return '熬夜小能手'
   return '暑假刚开始'
+}
+
+// 小游戏可选登录: rows on the site-wide board say how far the run got and how it was played.
+function describeRun(d: Record<string, unknown>): string {
+  return `第 ${Number(d.floor) || 0} 层 · ${modeName((d.mode as Mode) ?? null)}`
 }
 
 function modeName(m: Mode | null): string {
@@ -883,6 +893,10 @@ kbd {
 }
 .kid-1 b {
   color: #6aa8ff;
+}
+.cc-local-title {
+  margin-top: 14px !important;
+  font-size: 16px !important;
 }
 .cc-final-wrap {
   overflow-y: auto;

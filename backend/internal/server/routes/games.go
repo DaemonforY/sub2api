@@ -21,6 +21,21 @@ func RegisterGamesRoutes(
 	rooms := handler.NewGameRoomHandler()
 	v1.GET("/games/rooms/ws", panelRateLimiter.PublicIP(), rooms.ServeWS)
 
+	// 小游戏可选登录: cloud saves and scores need a signed-in user (checked in the handler); the
+	// leaderboard is public and marks the viewer's own row when signed in.
+	if h.GameProgress != nil {
+		p := v1.Group("/games/progress/:game")
+		p.Use(panelRateLimiter.PublicIP())
+		p.Use(gin.HandlerFunc(optionalJWT))
+		p.Use(middleware.BackendModeUserGuard(settingService))
+		{
+			p.GET("/save", h.GameProgress.GetSave)
+			p.PUT("/save", h.GameProgress.PutSave)
+			p.POST("/score", h.GameProgress.SubmitScore)
+			p.GET("/leaderboard", h.GameProgress.Leaderboard)
+		}
+	}
+
 	if h.GameCraft == nil {
 		return
 	}

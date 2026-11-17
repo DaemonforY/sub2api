@@ -26,6 +26,7 @@
       <div v-if="screen === 'game' && hud && hud.phase === 'over'" class="hutu-modal">
         <h2>游戏结束</h2>
         <p>{{ scoreLine }}</p>
+        <GameLeaderboard game="hutu" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="3" class="hutu-board" />
         <template v-if="hud.mode !== 'guest'">
           <button class="hutu-btn" data-testid="hutu-continue" @click="continueGame">从 {{ hud.levelId }} 接着玩（分数减半）</button>
         </template>
@@ -38,6 +39,7 @@
         <p class="hutu-kicker">年灯找回来了</p>
         <h2>元宵灯会，照常开张！</h2>
         <p>{{ scoreLine }}</p>
+        <GameLeaderboard game="hutu" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="3" class="hutu-board" />
         <button class="hutu-btn" @click="toTitle">回到标题</button>
         <RouterLink to="/games" class="hutu-link">看看别的小游戏</RouterLink>
       </div>
@@ -72,6 +74,7 @@
           <span class="hutu-dim">（单人）</span>
         </div>
         <p v-if="saved.best" class="hutu-dim">最高分 {{ saved.best }}</p>
+        <GameAccountBar game="hutu" has-save />
         <div class="hutu-keys">
           <p><b>P1 虎妞</b> A D 移动 · S 蹲 · J 跳 · K 跑 / 喷火</p>
           <p><b>P2 兔宝</b> ← → 移动 · ↓ 蹲 · 小键盘 1 跳 · 2 跑 / 喷火（笔记本用 . 和 /）</p>
@@ -129,11 +132,14 @@
 <script setup lang="ts">
 // 虎兔大冒险 (/games/hutu): an original two-player co-op platformer. The game itself lives in
 // src/games/hutu; this view is the title screen, online lobby, overlays and touch buttons.
-import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import type { HutuGame, Hud, NetStatus } from '@/games/hutu/game'
 import { LEVELS } from '@/games/hutu/levels'
 import { track } from '@/utils/analytics'
+import GameAccountBar from '@/components/games/GameAccountBar.vue'
+import GameLeaderboard from '@/components/games/GameLeaderboard.vue'
+import { useGameAccount } from '@/composables/useGameAccount'
 
 const route = useRoute()
 const router = useRouter()
@@ -173,6 +179,31 @@ const scoreLine = computed(() => {
   if (!h) return ''
   return h.scores.length > 1 ? `虎妞 ${h.scores[0]} 分 · 兔宝 ${h.scores[1]} 分` : `得分 ${h.scores[0]}`
 })
+
+// 小游戏可选登录: the team's score goes on the site-wide board; progress (best, furthest level) syncs.
+const account = useGameAccount('hutu')
+const teamScore = computed(() => (hud.value ? hud.value.scores.reduce((n, x) => n + Math.floor(x), 0) : 0))
+const runDetail = computed(() => ({ mode: hud.value?.mode ?? 'solo', level: hud.value?.levelId ?? '' }))
+function describeRun(d: Record<string, unknown>): string {
+  const mode = d.mode === 'solo' ? '单人' : d.mode === 'local' ? '同屏双人' : '在线双排'
+  return d.level ? `${mode} · ${String(d.level)}` : mode
+}
+async function syncProgress(): Promise<void> {
+  const merged = await account.syncSave<{ best: number; reached: number }>('hutu:v1', (a, b) => ({
+    best: Math.max(Number(a?.best) || 0, Number(b?.best) || 0),
+    reached: Math.max(Number(a?.reached) || 0, Number(b?.reached) || 0)
+  }))
+  if (merged) {
+    const { loadSave } = await import('@/games/hutu/game')
+    Object.assign(saved, loadSave())
+  }
+}
+watch(
+  () => hud.value?.phase,
+  (p) => {
+    if (p === 'clear' || p === 'over' || p === 'won') void syncProgress()
+  }
+)
 
 const errorText = computed(() => {
   switch (net.error) {
@@ -302,6 +333,7 @@ onMounted(async () => {
   window.addEventListener('resize', onResize)
   const { loadSave } = await import('@/games/hutu/game')
   Object.assign(saved, loadSave())
+  void syncProgress()
   const room = typeof route.query.room === 'string' ? route.query.room : ''
   if (room) {
     joinCode.value = room.toUpperCase()
@@ -513,16 +545,21 @@ onBeforeUnmount(() => {
 .hutu-modal {
   position: absolute;
   inset: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   gap: 6px;
   text-align: center;
   text-shadow: 0 2px 0 #2b1b2e;
 }
 .hutu-card {
   background: #120a18;
+}
+.hutu-board {
+  width: min(360px, 92%);
+  text-shadow: none;
 }
 .hutu-card h2 {
   font-size: clamp(24px, 5vw, 44px);

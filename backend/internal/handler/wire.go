@@ -248,6 +248,7 @@ func ProvideHandlers(
 	materialHandler *MaterialHandler,
 	inspirationHandler *InspirationHandler,
 	gameCraftHandler *GameCraftHandler,
+	gameProgressHandler *GameProgressHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.OpenAIQuotaAutoResetService,
@@ -309,6 +310,7 @@ func ProvideHandlers(
 		Material:            materialHandler,
 		Inspiration:         inspirationHandler,
 		GameCraft:           gameCraftHandler,
+		GameProgress:        gameProgressHandler,
 	}
 }
 
@@ -360,6 +362,7 @@ var ProviderSet = wire.NewSet(
 	NewMaterialHandler,
 	NewInspirationHandler,
 	NewGameCraftHandler,
+	NewGameProgressHandler,
 	NewCanvasCloudHandler,
 	NewCommunityHandler,
 	NewCourseHandler,

@@ -19,6 +19,7 @@
             <button class="isl-btn" :disabled="!ready" data-testid="island-local2" @click="startLocal2">同屏双人</button>
             <button class="isl-btn online" :disabled="!ready" data-testid="island-online" @click="openLobby">联机双排</button>
           </div>
+          <GameAccountBar game="island" />
           <div v-if="!isTouch" class="isl-keys">
             <div>
               <b>P1 阿浪</b><span><kbd>A</kbd><kbd>D</kbd> 跑</span><span><kbd>W</kbd>/<kbd>K</kbd> 跳</span><span><kbd>J</kbd> 扔</span>
@@ -141,6 +142,7 @@
         <div class="isl-panel">
           <h2>冒险失败</h2>
           <p class="isl-panel-sub">倒在了「{{ stageNames[info.stage] }}」。从上一个旗子接着来？（分数减半）</p>
+          <GameLeaderboard game="island" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="3" />
           <button v-if="mode !== 'guest'" class="isl-btn primary wide" data-testid="island-continue" @click="doContinue">继续冒险</button>
           <p v-else class="isl-status">等房主决定要不要继续…</p>
           <button class="isl-btn wide" @click="leave">回到标题</button>
@@ -158,6 +160,7 @@
               <b>{{ s.toLocaleString() }}</b>
             </div>
           </div>
+          <GameLeaderboard game="island" :score="teamScore" :detail="runDetail" :describe="describeRun" :limit="5" />
           <button class="isl-btn primary wide" @click="leave">再玩一次</button>
           <RouterLink to="/games" class="isl-link">看看别的小游戏</RouterLink>
         </div>
@@ -209,6 +212,8 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 
 import { useRoute, useRouter } from 'vue-router'
 import type { IslandGame, Mode, NetStatus } from '@/games/island/game'
 import { track } from '@/utils/analytics'
+import GameAccountBar from '@/components/games/GameAccountBar.vue'
+import GameLeaderboard from '@/components/games/GameLeaderboard.vue'
 
 const KEYART = '/games-media/island/keyart.webp'
 const stageNames = ['浪花海滩', '雨林深处', '熔岩火山']
@@ -228,6 +233,13 @@ const info = reactive({
   fruits: [0, 0],
   twoP: false
 })
+// 小游戏可选登录: the team's score goes on the site-wide board with how far the run got.
+const teamScore = computed(() => info.scores.slice(0, info.twoP ? 2 : 1).reduce((n, x) => n + Math.floor(x), 0))
+const runDetail = computed(() => ({ mode: mode.value ?? 'solo', stage: info.stage + 1, done: phase.value === 'ending' }))
+function describeRun(d: Record<string, unknown>): string {
+  const m = d.mode === 'solo' ? '单人' : d.mode === 'local2' ? '同屏双人' : '联机双排'
+  return d.done ? `${m} · 通关` : `${m} · 第 ${Number(d.stage) || 1} 关`
+}
 const banner = ref<{ id: number; kicker: string; title: string } | null>(null)
 const paused = ref(false)
 const muted = ref(false)
