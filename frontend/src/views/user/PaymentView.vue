@@ -6,11 +6,11 @@
       </div>
       <template v-else>
         <!-- Not sure which to pick: the public comparison page -->
-        <p v-if="paymentPhase === 'select' && !selectedPlan && !course && !membership && !goodsItem" class="text-right text-sm">
+        <p v-if="paymentPhase === 'select' && !selectedPlan && !course && !membership && !goodsItem && !quotaResetQuote" class="text-right text-sm">
           <router-link to="/pricing" class="text-primary-600 hover:underline dark:text-primary-400" data-testid="payment-compare-link">{{ t('pricing.compareLink') }}</router-link>
         </p>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
-        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course && !membership && !goodsItem" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan && !course && !membership && !goodsItem && !quotaResetQuote" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
           <button v-for="tab in tabs" :key="tab.key"
             class="flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all"
             :class="activeTab === tab.key ? 'bg-white text-gray-900 shadow dark:bg-dark-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
@@ -212,6 +212,67 @@
               </button>
             </template>
             <button class="btn btn-secondary w-full" @click="leaveGoods">{{ t('common.cancel') }}</button>
+          </template>
+          <!-- 重置今日额度 checkout (/purchase?quota_reset=<groupId>) -->
+          <template v-else-if="quotaResetQuote">
+            <div class="card p-5" data-testid="quota-reset-checkout">
+              <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('quotaReset.checkout.label') }}</p>
+              <h3 class="mt-1 text-lg font-bold text-gray-900 dark:text-white">{{ quotaResetQuote.group_name }}</h3>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-bold text-primary-600 dark:text-primary-400" data-testid="quota-reset-price">{{ formatCny(quotaResetQuote.price) }}</span>
+              </div>
+              <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">{{ t('quotaReset.rule', { limit: formatUsdLimit(quotaResetQuote.daily_limit_usd) }) }}</p>
+            </div>
+            <div v-if="!quotaResetQuote.can_buy" class="card p-6 text-center text-sm text-gray-600 dark:text-gray-300" data-testid="quota-reset-reason">
+              {{ quotaResetReasonText }}
+            </div>
+            <template v-else>
+              <button
+                v-if="quotaResetBalanceEnabled"
+                :class="['btn w-full py-3 text-base font-medium', quotaResetBalanceEnough ? 'btn-primary' : 'btn-secondary']"
+                :disabled="!quotaResetBalanceEnough || submitting"
+                data-testid="quota-reset-balance-pay"
+                @click="payQuotaResetWithBalance"
+              >
+                {{ t('quotaReset.checkout.payBalance', { balance: formatPaymentAmount(quotaResetBalance, DEFAULT_PAYMENT_CURRENCY) }) }} · {{ formatCny(quotaResetQuote.balance_price) }}
+              </button>
+              <p v-if="quotaResetBalanceEnabled && !quotaResetBalanceEnough" class="text-center text-xs text-gray-500 dark:text-gray-400">
+                {{ t('quotaReset.checkout.balanceShort', { balance: formatPaymentAmount(quotaResetBalance, DEFAULT_PAYMENT_CURRENCY), price: formatPaymentAmount(quotaResetQuote.balance_price, DEFAULT_PAYMENT_CURRENCY) }) }}
+              </p>
+              <div v-if="enabledMethods.length === 0" class="card py-10 text-center">
+                <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
+              </div>
+              <template v-else>
+                <div class="card p-6">
+                  <p class="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('quotaReset.checkout.payOnline') }}</p>
+                  <PaymentMethodSelector :methods="quotaResetMethodOptions" :selected="selectedMethod" @select="selectedMethod = $event" />
+                </div>
+                <div v-if="feeRate > 0" class="card p-6">
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.amountLabel') }}</span>
+                      <span class="text-gray-900 dark:text-white">{{ formatCny(quotaResetQuote.price) }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                      <span class="text-gray-900 dark:text-white">{{ formatCny(quotaResetFeeAmount) }}</span>
+                    </div>
+                    <div class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                      <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
+                      <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatCny(quotaResetTotalAmount) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmitQuotaReset || submitting" data-testid="quota-reset-pay" @click="confirmQuotaReset">
+                  <span v-if="submitting" class="flex items-center justify-center gap-2">
+                    <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    {{ t('common.processing') }}
+                  </span>
+                  <span v-else>{{ t('payment.createOrder') }} {{ formatCny(quotaResetTotalAmount) }}</span>
+                </button>
+              </template>
+            </template>
+            <button class="btn btn-secondary w-full" @click="leaveQuotaReset">{{ t('quotaReset.checkout.back') }}</button>
           </template>
           <!-- Top-up Tab -->
           <template v-else-if="activeTab === 'recharge'">
@@ -504,7 +565,7 @@ import { paymentAPI } from '@/api/payment'
 import { extractApiErrorMessage, extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel, type PeakRateFields } from '@/utils/peak-rate'
-import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType } from '@/types/payment'
+import type { SubscriptionPlan, CheckoutInfoResponse, CreateOrderResult, OrderType, QuotaResetQuote } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
@@ -1125,6 +1186,110 @@ async function loadGoodsFromQuery(): Promise<void> {
   }
 }
 
+// --- 重置今日额度 checkout (/purchase?quota_reset=<groupId>) ---
+const quotaResetQuote = ref<QuotaResetQuote | null>(null)
+const quotaResetBalance = ref(0)
+const quotaResetBalanceEnabled = ref(false)
+
+const quotaResetFeeAmount = computed(() => {
+  const price = quotaResetQuote.value?.price ?? 0
+  if (feeRate.value <= 0 || price <= 0) return 0
+  return ceilPaymentAmount((price * feeRate.value) / 100, DEFAULT_PAYMENT_CURRENCY)
+})
+const quotaResetTotalAmount = computed(() => roundPaymentAmount((quotaResetQuote.value?.price ?? 0) + quotaResetFeeAmount.value, DEFAULT_PAYMENT_CURRENCY))
+
+const quotaResetMethodOptions = computed<PaymentMethodOption[]>(() =>
+  enabledMethods.value.map((type) => {
+    const ml = visibleMethods.value[type]
+    return {
+      type,
+      display_name: ml?.display_name,
+      fee_rate: ml?.fee_rate ?? 0,
+      available: ml?.available !== false
+        && normalizePaymentCurrency(ml?.currency) === DEFAULT_PAYMENT_CURRENCY
+        && amountFitsMethod(quotaResetTotalAmount.value, type),
+    }
+  })
+)
+
+const canSubmitQuotaReset = computed(() =>
+  quotaResetQuote.value?.can_buy === true
+    && quotaResetMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)
+)
+
+const quotaResetBalanceEnough = computed(() => {
+  const q = quotaResetQuote.value
+  return !!q && q.balance_price > 0 && quotaResetBalance.value >= q.balance_price
+})
+
+const quotaResetReasonText = computed(() => {
+  const reason = quotaResetQuote.value?.reason
+  return reason ? t(`quotaReset.reasons.${reason}`) : ''
+})
+
+function formatUsdLimit(v: number): string {
+  return Number.isInteger(v) ? String(v) : v.toFixed(2)
+}
+
+// The group id travels as plan_id (like goods), so the WeChat payment resume carries it too.
+async function confirmQuotaReset() {
+  const q = quotaResetQuote.value
+  if (!q || !canSubmitQuotaReset.value || submitting.value) return
+  await createOrder(q.price, 'quota_reset', q.group_id)
+}
+
+async function payQuotaResetWithBalance() {
+  const q = quotaResetQuote.value
+  if (!q || !quotaResetBalanceEnough.value || submitting.value) return
+  submitting.value = true
+  try {
+    const { data } = await paymentAPI.purchaseQuotaResetWithBalance(q.group_id)
+    authStore.refreshUser()
+    subscriptionStore.fetchActiveSubscriptions(true).catch(() => {})
+    if (data.fulfillment_ok) {
+      appStore.showSuccess(t('quotaReset.checkout.success'))
+      quotaResetQuote.value = null
+      router.push('/subscriptions')
+    } else {
+      appStore.showWarning(t('quotaReset.checkout.failed', { id: data.order_id }))
+    }
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  } finally {
+    submitting.value = false
+  }
+}
+
+function leaveQuotaReset() {
+  quotaResetQuote.value = null
+  router.push('/subscriptions')
+}
+
+async function loadQuotaResetFromQuery(): Promise<void> {
+  const raw = typeof route.query.quota_reset === 'string' ? route.query.quota_reset.trim() : ''
+  const groupId = Number(raw)
+  if (!raw || !Number.isInteger(groupId) || groupId <= 0) return
+  try {
+    const { data } = await paymentAPI.getQuotaResetQuotes()
+    const quote = (data.items ?? []).find(q => q.group_id === groupId)
+    if (!quote) {
+      appStore.showError(t('quotaReset.checkout.notFound'))
+      return
+    }
+    if (!data.enabled && quote.can_buy) quote.can_buy = false
+    quotaResetQuote.value = quote
+    quotaResetBalance.value = data.balance ?? 0
+    quotaResetBalanceEnabled.value = data.balance_pay_enabled === true
+    // Pick a CNY method when the default one is not.
+    const usable = quotaResetMethodOptions.value.find(m => m.available)
+    if (usable && !quotaResetMethodOptions.value.some(m => m.type === selectedMethod.value && m.available)) {
+      selectedMethod.value = usable.type
+    }
+  } catch (err: unknown) {
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('quotaReset.checkout.notFound')))
+  }
+}
+
 // --- 创作会员 checkout (/purchase?tab=membership) ---
 const membership = ref<CanvasMembershipStatus | null>(null)
 const membershipPlan = ref<CanvasMembershipPlan | null>(null)
@@ -1681,6 +1846,7 @@ onMounted(async () => {
     await loadCourseFromQuery()
     await loadMembershipFromQuery()
     await loadGoodsFromQuery()
+    await loadQuotaResetFromQuery()
     await resumeWechatPaymentFromQuery()
     if (checkout.value.balance_disabled) {
       activeTab.value = 'subscription'

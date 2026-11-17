@@ -226,6 +226,33 @@
               </p>
             </div>
 
+            <!-- 重置今日额度 -->
+            <template v-if="quoteFor(subscription)">
+              <div
+                v-if="quoteFor(subscription)!.boost_active"
+                class="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300"
+                data-testid="quota-reset-boost"
+              >
+                {{ t('quotaReset.boostActive') }}
+              </div>
+              <button
+                v-if="quoteFor(subscription)!.can_buy"
+                type="button"
+                class="w-full rounded-lg border border-primary-500 px-3 py-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20"
+                data-testid="quota-reset-button"
+                @click="router.push({ path: '/purchase', query: { quota_reset: String(subscription.group_id) } })"
+              >
+                {{ t('quotaReset.button', { price: formatPrice(quoteFor(subscription)!.price) }) }}
+              </button>
+              <p
+                v-else-if="quoteFor(subscription)!.blocked && quoteFor(subscription)!.reason === 'max_reached'"
+                class="text-xs text-gray-500 dark:text-dark-400"
+                data-testid="quota-reset-max"
+              >
+                {{ t('quotaReset.maxReached', { n: quoteFor(subscription)!.max_per_day }) }}
+              </p>
+            </template>
+
             <!-- No limits configured - Unlimited badge -->
             <div
               v-if="
@@ -260,7 +287,9 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '@/stores/app'
 import subscriptionsAPI from '@/api/subscriptions'
+import { paymentAPI } from '@/api/payment'
 import type { UserSubscription } from '@/types'
+import type { QuotaResetQuote } from '@/types/payment'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { formatDateTimeToMinute } from '@/utils/format'
@@ -289,6 +318,26 @@ const appStore = useAppStore()
 
 const subscriptions = ref<UserSubscription[]>([])
 const loading = ref(true)
+const quotaResetQuotes = ref<QuotaResetQuote[]>([])
+
+function quoteFor(subscription: UserSubscription): QuotaResetQuote | undefined {
+  if (subscription.status !== 'active') return undefined
+  return quotaResetQuotes.value.find(q => q.subscription_id === subscription.id)
+}
+
+function formatPrice(price: number): string {
+  return Number.isInteger(price) ? String(price) : price.toFixed(2)
+}
+
+// 重置今日额度 offers; optional — a failure just hides the button.
+async function loadQuotaResetQuotes() {
+  try {
+    const res = await paymentAPI.getQuotaResetQuotes()
+    quotaResetQuotes.value = res.data?.enabled ? (res.data.items ?? []) : []
+  } catch {
+    quotaResetQuotes.value = []
+  }
+}
 
 function subscriptionHasPeakRate(subscription: UserSubscription): boolean {
   return hasPeakRate(subscription.group)
@@ -397,5 +446,6 @@ function formatResetTime(windowStart: string | null, windowHours: number): strin
 
 onMounted(() => {
   loadSubscriptions()
+  loadQuotaResetQuotes()
 })
 </script>

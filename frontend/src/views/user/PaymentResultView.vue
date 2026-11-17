@@ -106,6 +106,16 @@
             <a class="btn btn-primary flex-1" :href="canvasBackUrl" data-testid="result-back-canvas">{{ t('canvasMembership.result.backToCanvas') }}</a>
           </div>
         </div>
+        <div v-else-if="isQuotaResetOrder" class="space-y-3">
+          <div v-if="isSuccess" class="text-center" data-testid="result-quota-reset-done">
+            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('quotaReset.result.done') }}</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ t('quotaReset.result.desc') }}</p>
+          </div>
+          <div class="flex gap-3">
+            <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
+            <button class="btn btn-primary flex-1" data-testid="result-quota-reset-back" @click="router.push('/subscriptions')">{{ t('quotaReset.result.back') }}</button>
+          </div>
+        </div>
         <div v-else-if="isCourseOrder" class="flex gap-3">
           <button class="btn btn-secondary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
           <button class="btn btn-primary flex-1" data-testid="result-my-courses" @click="router.push('/my-courses')">{{ t('courses.mine.go') }}</button>
@@ -235,6 +245,9 @@ const isCourseOrder = computed(() => !!order.value && 'order_type' in order.valu
 // 创作会员 orders lead back to the canvas image studio.
 const isMembershipOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'membership')
 const canvasBackUrl = canvasUrl({ path: '/image', medium: 'membership-paid' })
+
+// 重置今日额度 orders lead back to 我的订阅.
+const isQuotaResetOrder = computed(() => !!order.value && 'order_type' in order.value && order.value.order_type === 'quota_reset')
 
 // 卡密商品 orders show the delivered key. A paid order that found no key in stock is FAILED with
 // paid_at set: it is delivered automatically after the admin restocks.

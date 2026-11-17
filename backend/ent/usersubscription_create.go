@@ -189,6 +189,34 @@ func (_c *UserSubscriptionCreate) SetNillableMonthlyUsageUsd(v *float64) *UserSu
 	return _c
 }
 
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (_c *UserSubscriptionCreate) SetDailyResetUntil(v time.Time) *UserSubscriptionCreate {
+	_c.mutation.SetDailyResetUntil(v)
+	return _c
+}
+
+// SetNillableDailyResetUntil sets the "daily_reset_until" field if the given value is not nil.
+func (_c *UserSubscriptionCreate) SetNillableDailyResetUntil(v *time.Time) *UserSubscriptionCreate {
+	if v != nil {
+		_c.SetDailyResetUntil(*v)
+	}
+	return _c
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (_c *UserSubscriptionCreate) SetDailyResetCount(v int) *UserSubscriptionCreate {
+	_c.mutation.SetDailyResetCount(v)
+	return _c
+}
+
+// SetNillableDailyResetCount sets the "daily_reset_count" field if the given value is not nil.
+func (_c *UserSubscriptionCreate) SetNillableDailyResetCount(v *int) *UserSubscriptionCreate {
+	if v != nil {
+		_c.SetDailyResetCount(*v)
+	}
+	return _c
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (_c *UserSubscriptionCreate) SetAssignedBy(v int64) *UserSubscriptionCreate {
 	_c.mutation.SetAssignedBy(v)
@@ -342,6 +370,10 @@ func (_c *UserSubscriptionCreate) defaults() error {
 		v := usersubscription.DefaultMonthlyUsageUsd
 		_c.mutation.SetMonthlyUsageUsd(v)
 	}
+	if _, ok := _c.mutation.DailyResetCount(); !ok {
+		v := usersubscription.DefaultDailyResetCount
+		_c.mutation.SetDailyResetCount(v)
+	}
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		if usersubscription.DefaultAssignedAt == nil {
 			return fmt.Errorf("ent: uninitialized usersubscription.DefaultAssignedAt (forgotten import ent/runtime?)")
@@ -388,6 +420,9 @@ func (_c *UserSubscriptionCreate) check() error {
 	}
 	if _, ok := _c.mutation.MonthlyUsageUsd(); !ok {
 		return &ValidationError{Name: "monthly_usage_usd", err: errors.New(`ent: missing required field "UserSubscription.monthly_usage_usd"`)}
+	}
+	if _, ok := _c.mutation.DailyResetCount(); !ok {
+		return &ValidationError{Name: "daily_reset_count", err: errors.New(`ent: missing required field "UserSubscription.daily_reset_count"`)}
 	}
 	if _, ok := _c.mutation.AssignedAt(); !ok {
 		return &ValidationError{Name: "assigned_at", err: errors.New(`ent: missing required field "UserSubscription.assigned_at"`)}
@@ -472,6 +507,14 @@ func (_c *UserSubscriptionCreate) createSpec() (*UserSubscription, *sqlgraph.Cre
 	if value, ok := _c.mutation.MonthlyUsageUsd(); ok {
 		_spec.SetField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
 		_node.MonthlyUsageUsd = value
+	}
+	if value, ok := _c.mutation.DailyResetUntil(); ok {
+		_spec.SetField(usersubscription.FieldDailyResetUntil, field.TypeTime, value)
+		_node.DailyResetUntil = &value
+	}
+	if value, ok := _c.mutation.DailyResetCount(); ok {
+		_spec.SetField(usersubscription.FieldDailyResetCount, field.TypeInt, value)
+		_node.DailyResetCount = value
 	}
 	if value, ok := _c.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)
@@ -798,6 +841,42 @@ func (u *UserSubscriptionUpsert) AddMonthlyUsageUsd(v float64) *UserSubscription
 	return u
 }
 
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (u *UserSubscriptionUpsert) SetDailyResetUntil(v time.Time) *UserSubscriptionUpsert {
+	u.Set(usersubscription.FieldDailyResetUntil, v)
+	return u
+}
+
+// UpdateDailyResetUntil sets the "daily_reset_until" field to the value that was provided on create.
+func (u *UserSubscriptionUpsert) UpdateDailyResetUntil() *UserSubscriptionUpsert {
+	u.SetExcluded(usersubscription.FieldDailyResetUntil)
+	return u
+}
+
+// ClearDailyResetUntil clears the value of the "daily_reset_until" field.
+func (u *UserSubscriptionUpsert) ClearDailyResetUntil() *UserSubscriptionUpsert {
+	u.SetNull(usersubscription.FieldDailyResetUntil)
+	return u
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (u *UserSubscriptionUpsert) SetDailyResetCount(v int) *UserSubscriptionUpsert {
+	u.Set(usersubscription.FieldDailyResetCount, v)
+	return u
+}
+
+// UpdateDailyResetCount sets the "daily_reset_count" field to the value that was provided on create.
+func (u *UserSubscriptionUpsert) UpdateDailyResetCount() *UserSubscriptionUpsert {
+	u.SetExcluded(usersubscription.FieldDailyResetCount)
+	return u
+}
+
+// AddDailyResetCount adds v to the "daily_reset_count" field.
+func (u *UserSubscriptionUpsert) AddDailyResetCount(v int) *UserSubscriptionUpsert {
+	u.Add(usersubscription.FieldDailyResetCount, v)
+	return u
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (u *UserSubscriptionUpsert) SetAssignedBy(v int64) *UserSubscriptionUpsert {
 	u.Set(usersubscription.FieldAssignedBy, v)
@@ -1119,6 +1198,48 @@ func (u *UserSubscriptionUpsertOne) AddMonthlyUsageUsd(v float64) *UserSubscript
 func (u *UserSubscriptionUpsertOne) UpdateMonthlyUsageUsd() *UserSubscriptionUpsertOne {
 	return u.Update(func(s *UserSubscriptionUpsert) {
 		s.UpdateMonthlyUsageUsd()
+	})
+}
+
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (u *UserSubscriptionUpsertOne) SetDailyResetUntil(v time.Time) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetDailyResetUntil(v)
+	})
+}
+
+// UpdateDailyResetUntil sets the "daily_reset_until" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertOne) UpdateDailyResetUntil() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateDailyResetUntil()
+	})
+}
+
+// ClearDailyResetUntil clears the value of the "daily_reset_until" field.
+func (u *UserSubscriptionUpsertOne) ClearDailyResetUntil() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.ClearDailyResetUntil()
+	})
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (u *UserSubscriptionUpsertOne) SetDailyResetCount(v int) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetDailyResetCount(v)
+	})
+}
+
+// AddDailyResetCount adds v to the "daily_reset_count" field.
+func (u *UserSubscriptionUpsertOne) AddDailyResetCount(v int) *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddDailyResetCount(v)
+	})
+}
+
+// UpdateDailyResetCount sets the "daily_reset_count" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertOne) UpdateDailyResetCount() *UserSubscriptionUpsertOne {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateDailyResetCount()
 	})
 }
 
@@ -1617,6 +1738,48 @@ func (u *UserSubscriptionUpsertBulk) AddMonthlyUsageUsd(v float64) *UserSubscrip
 func (u *UserSubscriptionUpsertBulk) UpdateMonthlyUsageUsd() *UserSubscriptionUpsertBulk {
 	return u.Update(func(s *UserSubscriptionUpsert) {
 		s.UpdateMonthlyUsageUsd()
+	})
+}
+
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (u *UserSubscriptionUpsertBulk) SetDailyResetUntil(v time.Time) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetDailyResetUntil(v)
+	})
+}
+
+// UpdateDailyResetUntil sets the "daily_reset_until" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertBulk) UpdateDailyResetUntil() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateDailyResetUntil()
+	})
+}
+
+// ClearDailyResetUntil clears the value of the "daily_reset_until" field.
+func (u *UserSubscriptionUpsertBulk) ClearDailyResetUntil() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.ClearDailyResetUntil()
+	})
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (u *UserSubscriptionUpsertBulk) SetDailyResetCount(v int) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.SetDailyResetCount(v)
+	})
+}
+
+// AddDailyResetCount adds v to the "daily_reset_count" field.
+func (u *UserSubscriptionUpsertBulk) AddDailyResetCount(v int) *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.AddDailyResetCount(v)
+	})
+}
+
+// UpdateDailyResetCount sets the "daily_reset_count" field to the value that was provided on create.
+func (u *UserSubscriptionUpsertBulk) UpdateDailyResetCount() *UserSubscriptionUpsertBulk {
+	return u.Update(func(s *UserSubscriptionUpsert) {
+		s.UpdateDailyResetCount()
 	})
 }
 

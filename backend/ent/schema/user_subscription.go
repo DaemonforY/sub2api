@@ -69,6 +69,15 @@ func (UserSubscription) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
 			Default(0),
 
+		// 重置今日额度 (migration 328): until daily_reset_until, usage counts toward the daily window
+		// only and only the daily limit applies; daily_reset_count = resets bought in that reset day.
+		field.Time("daily_reset_until").
+			Optional().
+			Nillable().
+			SchemaType(map[string]string{dialect.Postgres: "timestamptz"}),
+		field.Int("daily_reset_count").
+			Default(0),
+
 		field.Int64("assigned_by").
 			Optional().
 			Nillable(),

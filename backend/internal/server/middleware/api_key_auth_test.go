@@ -334,13 +334,13 @@ func TestSimpleModeBypassesQuotaCheck(t *testing.T) {
 func TestCodexUsageLimitPromoIsASCII(t *testing.T) {
 	limit := 350.0
 	for _, smart := range []bool{false, true} {
-		promo := codexUsageLimitPromo("weekly", 351.5, &limit, smart)
+		promo := codexUsageLimitPromo("weekly", 351.5, &limit, smart, 0)
 		for _, r := range promo {
 			require.Less(t, r, rune(0x80), "promo must be ASCII for Codex header parsing: %q", promo)
 		}
 	}
 	require.Equal(t, "Your HiveGPT plan's monthly quota is used up. Top up at "+service.RechargeURL+" and this key continues on balance",
-		codexUsageLimitPromo("monthly", 0, nil, true))
+		codexUsageLimitPromo("monthly", 0, nil, true, 0))
 }
 
 func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
@@ -1921,4 +1921,13 @@ func TestUserFacingAuthMessagesKeepClassifierSubstrings(t *testing.T) {
 		require.Contains(t, strings.ToLower(msg), want)
 	}
 	require.Contains(t, ipDeniedMessage("9.9.9.9"), "9.9.9.9")
+}
+
+func TestCodexUsageLimitPromoOffersQuotaReset(t *testing.T) {
+	limit := 40.0
+	promo := codexUsageLimitPromo("daily", 40.47, &limit, false, 20)
+	require.Equal(t, "Your HiveGPT plan's daily quota is used up ($40.47 of $40.00). Reset today's quota for CNY 20 at hivegpt.cn/subscriptions", promo)
+	for _, r := range promo {
+		require.Less(t, r, rune(128), "Codex reads the promo header as ASCII")
+	}
 }

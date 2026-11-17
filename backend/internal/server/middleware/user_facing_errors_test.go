@@ -4,6 +4,7 @@ package middleware
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,4 +46,15 @@ func TestInsufficientBalanceMessage(t *testing.T) {
 	require.Contains(t, msg, "当前余额 0.12")
 	require.Contains(t, msg, "Insufficient account balance")
 	require.Contains(t, msg, "https://hivegpt.cn/purchase")
+}
+
+func TestWithQuotaResetHint(t *testing.T) {
+	msg := "订阅今日额度已用完（已用 $40.47 / 额度 $40.00），将于 2026-11-18 00:00 重置；急用可换一个按量计费分组的 Key（daily usage limit exceeded）"
+	got := withQuotaResetHint(msg, "也可以到 hivegpt.cn 的「我的订阅」花 ¥20 重置今日额度")
+	if !strings.HasSuffix(got, "；也可以到 hivegpt.cn 的「我的订阅」花 ¥20 重置今日额度（daily usage limit exceeded）") {
+		t.Fatalf("hint not placed before the English text: %s", got)
+	}
+	if withQuotaResetHint(msg, "") != msg {
+		t.Fatal("empty hint must leave the message alone")
+	}
 }

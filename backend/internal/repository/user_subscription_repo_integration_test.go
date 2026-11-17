@@ -915,3 +915,42 @@ func (s *UserSubscriptionRepoSuite) TestTxContext_RollbackIsolation() {
 	_, err = repo.GetByID(context.Background(), sub.ID)
 	s.Require().ErrorIs(err, service.ErrSubscriptionNotFound)
 }
+
+// 重置今日额度: a bought reset clears today's usage, and until daily_reset_until usage counts toward
+// the daily window only.
+func (s *UserSubscriptionRepoSuite) TestDailyQuotaReset_SkipsWeeklyAndMonthly() {
+	user := s.mustCreateUser("quota-reset@test.com", service.RoleUser)
+	group := s.mustCreateGroup("g-quota-reset")
+	sub := s.mustCreateSubscription(user.ID, group.ID, nil)
+	s.Require().NoError(s.repo.IncrementUsage(s.ctx, sub.ID, 40))
+
+	svc := service.NewSubscriptionService(nil, s.repo, nil, s.client, nil)
+	after, err := svc.ApplyDailyQuotaReset(s.ctx, user.ID, group.ID)
+	s.Require().NoError(err)
+	s.Require().InDelta(0, after.DailyUsageUSD, 1e-6)
+	s.Require().InDelta(40, after.WeeklyUsageUSD, 1e-6)
+	s.Require().Equal(1, after.DailyResetCount)
+	s.Require().NotNil(after.DailyResetUntil)
+	s.Require().True(after.DailyResetActiveAt(time.Now()))
+
+	s.Require().NoError(s.repo.IncrementUsage(s.ctx, sub.ID, 2.5))
+	got, err := s.repo.GetByID(s.ctx, sub.ID)
+	s.Require().NoError(err)
+	s.Require().InDelta(2.5, got.DailyUsageUSD, 1e-6)
+	s.Require().InDelta(40, got.WeeklyUsageUSD, 1e-6, "reset-day usage must not count toward the week")
+	s.Require().InDelta(40, got.MonthlyUsageUSD, 1e-6, "reset-day usage must not count toward the month")
+
+	// A second reset the same day counts up; an expired reset day starts the count again.
+	again, err := svc.ApplyDailyQuotaReset(s.ctx, user.ID, group.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(2, again.DailyResetCount)
+	_, err = s.client.UserSubscription.UpdateOneID(sub.ID).SetDailyResetUntil(time.Now().Add(-time.Minute)).Save(s.ctx)
+	s.Require().NoError(err)
+	s.Require().NoError(s.repo.IncrementUsage(s.ctx, sub.ID, 1))
+	got, err = s.repo.GetByID(s.ctx, sub.ID)
+	s.Require().NoError(err)
+	s.Require().InDelta(41, got.WeeklyUsageUSD, 1e-6, "after the reset day usage counts toward the week again")
+	third, err := svc.ApplyDailyQuotaReset(s.ctx, user.ID, group.ID)
+	s.Require().NoError(err)
+	s.Require().Equal(1, third.DailyResetCount)
+}

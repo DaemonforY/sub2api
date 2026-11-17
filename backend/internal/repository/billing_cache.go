@@ -55,6 +55,7 @@ const (
 	subFieldDailyUsage   = "daily_usage"
 	subFieldWeeklyUsage  = "weekly_usage"
 	subFieldMonthlyUsage = "monthly_usage"
+	subFieldResetUntil   = "reset_until"
 	subFieldVersion      = "version"
 )
 
@@ -91,8 +92,12 @@ var (
 		end
 		local cost = tonumber(ARGV[1])
 		redis.call('HINCRBYFLOAT', KEYS[1], 'daily_usage', cost)
-		redis.call('HINCRBYFLOAT', KEYS[1], 'weekly_usage', cost)
-		redis.call('HINCRBYFLOAT', KEYS[1], 'monthly_usage', cost)
+		-- 重置今日额度: during a bought reset day usage counts toward the daily window only (ARGV[3] = now).
+		local resetUntil = tonumber(redis.call('HGET', KEYS[1], 'reset_until') or '0') or 0
+		if resetUntil <= tonumber(ARGV[3]) then
+			redis.call('HINCRBYFLOAT', KEYS[1], 'weekly_usage', cost)
+			redis.call('HINCRBYFLOAT', KEYS[1], 'monthly_usage', cost)
+		end
 		redis.call('EXPIRE', KEYS[1], ARGV[2])
 		return 1
 	`)
@@ -212,6 +217,10 @@ func (c *billingCache) parseSubscriptionCache(data map[string]string) (*service.
 		result.MonthlyUsage, _ = strconv.ParseFloat(monthlyStr, 64)
 	}
 
+	if resetStr, ok := data[subFieldResetUntil]; ok {
+		result.ResetUntil, _ = strconv.ParseInt(resetStr, 10, 64)
+	}
+
 	if versionStr, ok := data[subFieldVersion]; ok {
 		result.Version, _ = strconv.ParseInt(versionStr, 10, 64)
 	}
@@ -232,6 +241,7 @@ func (c *billingCache) SetSubscriptionCache(ctx context.Context, userID, groupID
 		subFieldDailyUsage:   data.DailyUsage,
 		subFieldWeeklyUsage:  data.WeeklyUsage,
 		subFieldMonthlyUsage: data.MonthlyUsage,
+		subFieldResetUntil:   data.ResetUntil,
 		subFieldVersion:      data.Version,
 	}
 
@@ -244,7 +254,7 @@ func (c *billingCache) SetSubscriptionCache(ctx context.Context, userID, groupID
 
 func (c *billingCache) UpdateSubscriptionUsage(ctx context.Context, userID, groupID int64, cost float64) error {
 	key := billingSubKey(userID, groupID)
-	_, err := updateSubUsageScript.Run(ctx, c.rdb, []string{key}, cost, int(jitteredTTL().Seconds())).Result()
+	_, err := updateSubUsageScript.Run(ctx, c.rdb, []string{key}, cost, int(jitteredTTL().Seconds()), time.Now().Unix()).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		log.Printf("Warning: update subscription usage cache failed for user %d group %d: %v", userID, groupID, err)
 		return err

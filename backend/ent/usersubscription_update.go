@@ -250,6 +250,47 @@ func (_u *UserSubscriptionUpdate) AddMonthlyUsageUsd(v float64) *UserSubscriptio
 	return _u
 }
 
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (_u *UserSubscriptionUpdate) SetDailyResetUntil(v time.Time) *UserSubscriptionUpdate {
+	_u.mutation.SetDailyResetUntil(v)
+	return _u
+}
+
+// SetNillableDailyResetUntil sets the "daily_reset_until" field if the given value is not nil.
+func (_u *UserSubscriptionUpdate) SetNillableDailyResetUntil(v *time.Time) *UserSubscriptionUpdate {
+	if v != nil {
+		_u.SetDailyResetUntil(*v)
+	}
+	return _u
+}
+
+// ClearDailyResetUntil clears the value of the "daily_reset_until" field.
+func (_u *UserSubscriptionUpdate) ClearDailyResetUntil() *UserSubscriptionUpdate {
+	_u.mutation.ClearDailyResetUntil()
+	return _u
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (_u *UserSubscriptionUpdate) SetDailyResetCount(v int) *UserSubscriptionUpdate {
+	_u.mutation.ResetDailyResetCount()
+	_u.mutation.SetDailyResetCount(v)
+	return _u
+}
+
+// SetNillableDailyResetCount sets the "daily_reset_count" field if the given value is not nil.
+func (_u *UserSubscriptionUpdate) SetNillableDailyResetCount(v *int) *UserSubscriptionUpdate {
+	if v != nil {
+		_u.SetDailyResetCount(*v)
+	}
+	return _u
+}
+
+// AddDailyResetCount adds value to the "daily_reset_count" field.
+func (_u *UserSubscriptionUpdate) AddDailyResetCount(v int) *UserSubscriptionUpdate {
+	_u.mutation.AddDailyResetCount(v)
+	return _u
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (_u *UserSubscriptionUpdate) SetAssignedBy(v int64) *UserSubscriptionUpdate {
 	_u.mutation.SetAssignedBy(v)
@@ -515,6 +556,18 @@ func (_u *UserSubscriptionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.AddedMonthlyUsageUsd(); ok {
 		_spec.AddField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.DailyResetUntil(); ok {
+		_spec.SetField(usersubscription.FieldDailyResetUntil, field.TypeTime, value)
+	}
+	if _u.mutation.DailyResetUntilCleared() {
+		_spec.ClearField(usersubscription.FieldDailyResetUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DailyResetCount(); ok {
+		_spec.SetField(usersubscription.FieldDailyResetCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedDailyResetCount(); ok {
+		_spec.AddField(usersubscription.FieldDailyResetCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)
@@ -896,6 +949,47 @@ func (_u *UserSubscriptionUpdateOne) AddMonthlyUsageUsd(v float64) *UserSubscrip
 	return _u
 }
 
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (_u *UserSubscriptionUpdateOne) SetDailyResetUntil(v time.Time) *UserSubscriptionUpdateOne {
+	_u.mutation.SetDailyResetUntil(v)
+	return _u
+}
+
+// SetNillableDailyResetUntil sets the "daily_reset_until" field if the given value is not nil.
+func (_u *UserSubscriptionUpdateOne) SetNillableDailyResetUntil(v *time.Time) *UserSubscriptionUpdateOne {
+	if v != nil {
+		_u.SetDailyResetUntil(*v)
+	}
+	return _u
+}
+
+// ClearDailyResetUntil clears the value of the "daily_reset_until" field.
+func (_u *UserSubscriptionUpdateOne) ClearDailyResetUntil() *UserSubscriptionUpdateOne {
+	_u.mutation.ClearDailyResetUntil()
+	return _u
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (_u *UserSubscriptionUpdateOne) SetDailyResetCount(v int) *UserSubscriptionUpdateOne {
+	_u.mutation.ResetDailyResetCount()
+	_u.mutation.SetDailyResetCount(v)
+	return _u
+}
+
+// SetNillableDailyResetCount sets the "daily_reset_count" field if the given value is not nil.
+func (_u *UserSubscriptionUpdateOne) SetNillableDailyResetCount(v *int) *UserSubscriptionUpdateOne {
+	if v != nil {
+		_u.SetDailyResetCount(*v)
+	}
+	return _u
+}
+
+// AddDailyResetCount adds value to the "daily_reset_count" field.
+func (_u *UserSubscriptionUpdateOne) AddDailyResetCount(v int) *UserSubscriptionUpdateOne {
+	_u.mutation.AddDailyResetCount(v)
+	return _u
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (_u *UserSubscriptionUpdateOne) SetAssignedBy(v int64) *UserSubscriptionUpdateOne {
 	_u.mutation.SetAssignedBy(v)
@@ -1191,6 +1285,18 @@ func (_u *UserSubscriptionUpdateOne) sqlSave(ctx context.Context) (_node *UserSu
 	}
 	if value, ok := _u.mutation.AddedMonthlyUsageUsd(); ok {
 		_spec.AddField(usersubscription.FieldMonthlyUsageUsd, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.DailyResetUntil(); ok {
+		_spec.SetField(usersubscription.FieldDailyResetUntil, field.TypeTime, value)
+	}
+	if _u.mutation.DailyResetUntilCleared() {
+		_spec.ClearField(usersubscription.FieldDailyResetUntil, field.TypeTime)
+	}
+	if value, ok := _u.mutation.DailyResetCount(); ok {
+		_spec.SetField(usersubscription.FieldDailyResetCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedDailyResetCount(); ok {
+		_spec.AddField(usersubscription.FieldDailyResetCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AssignedAt(); ok {
 		_spec.SetField(usersubscription.FieldAssignedAt, field.TypeTime, value)

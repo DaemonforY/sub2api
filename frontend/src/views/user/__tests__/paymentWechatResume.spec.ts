@@ -89,3 +89,11 @@ describe('parseWechatResumeRoute goods', () => {
     expect(parsed?.planId).toBe(7)
   })
 })
+
+describe('parseWechatResumeRoute quota_reset', () => {
+  it('keeps a 重置今日额度 order a quota_reset order (plan_id carries the group id)', () => {
+    const parsed = parseWechatResumeRoute({ wechat_resume_token: 'tok', order_type: 'quota_reset', plan_id: '2', payment_type: 'wxpay' }, [], 10)
+    expect(parsed?.orderType).toBe('quota_reset')
+    expect(parsed?.planId).toBe(2)
+  })
+})

@@ -52,7 +52,7 @@ func isCodexClientRequest(c *gin.Context) bool {
 
 // abortWithCodexUsageLimit answers a subscription window limit in the shape Codex understands.
 // It returns false when err is not a daily/weekly/monthly limit, leaving the caller's default path.
-func abortWithCodexUsageLimit(c *gin.Context, err error, sub *service.UserSubscription, group *service.Group, message string, smartBilling bool) bool {
+func abortWithCodexUsageLimit(c *gin.Context, err error, sub *service.UserSubscription, group *service.Group, message string, smartBilling bool, resetPrice float64) bool {
 	if sub == nil || group == nil {
 		return false
 	}
@@ -84,7 +84,7 @@ func abortWithCodexUsageLimit(c *gin.Context, err error, sub *service.UserSubscr
 		body.ResetsAt = &ts
 	}
 
-	c.Header(codexPromoMessageHeader, codexUsageLimitPromo(periodEn, used, limit, smartBilling))
+	c.Header(codexPromoMessageHeader, codexUsageLimitPromo(periodEn, used, limit, smartBilling, resetPrice))
 	c.JSON(http.StatusTooManyRequests, codexUsageLimitResponse{
 		Code:    usageLimitExceededCode,
 		Message: message,
@@ -95,14 +95,16 @@ func abortWithCodexUsageLimit(c *gin.Context, err error, sub *service.UserSubscr
 }
 
 // codexUsageLimitPromo is the ASCII sentence Codex puts between "You’ve hit your usage limit." and
-// ", or try again at …".
-func codexUsageLimitPromo(periodEn string, used float64, limit *float64, smartBilling bool) string {
+// ", or try again at …". resetPrice > 0 offers 重置今日额度 at that price (CNY).
+func codexUsageLimitPromo(periodEn string, used float64, limit *float64, smartBilling bool, resetPrice float64) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Your HiveGPT plan's %s quota is used up", periodEn)
 	if limit != nil {
 		fmt.Fprintf(&b, " ($%.2f of $%.2f)", used, *limit)
 	}
-	if smartBilling {
+	if resetPrice > 0 {
+		_, _ = b.WriteString(". " + service.QuotaResetPromoText(resetPrice))
+	} else if smartBilling {
 		_, _ = b.WriteString(". Top up at " + service.RechargeURL + " and this key continues on balance")
 	} else {
 		_, _ = b.WriteString(". Use a pay-as-you-go key now")

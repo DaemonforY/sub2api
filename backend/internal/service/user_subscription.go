@@ -25,6 +25,11 @@ type UserSubscription struct {
 	WeeklyUsageUSD  float64
 	MonthlyUsageUSD float64
 
+	// 重置今日额度: until DailyResetUntil, usage counts toward the daily window only and only the
+	// daily limit applies. DailyResetCount = resets bought in that reset day (stale once it passed).
+	DailyResetUntil *time.Time
+	DailyResetCount int
+
 	AssignedBy *int64
 	AssignedAt time.Time
 	Notes      string
@@ -222,7 +227,24 @@ func (s *UserSubscription) CheckDailyLimit(group *Group, additionalCost float64)
 	return withinLimit(s.DailyUsageUSD, additionalCost, *group.DailyLimitUSD)
 }
 
+// DailyResetActiveAt: a bought 「重置今日额度」 is in force at now — usage skips the weekly and
+// monthly windows and their limits until the next daily rollover.
+func (s *UserSubscription) DailyResetActiveAt(now time.Time) bool {
+	return s != nil && s.DailyResetUntil != nil && now.Before(*s.DailyResetUntil)
+}
+
+// DailyResetsUsedAt: resets bought in the reset day that is in force at now (0 when none is).
+func (s *UserSubscription) DailyResetsUsedAt(now time.Time) int {
+	if !s.DailyResetActiveAt(now) {
+		return 0
+	}
+	return s.DailyResetCount
+}
+
 func (s *UserSubscription) CheckWeeklyLimit(group *Group, additionalCost float64) bool {
+	if s.DailyResetActiveAt(time.Now()) {
+		return true
+	}
 	if !group.HasWeeklyLimit() {
 		return true
 	}
@@ -230,6 +252,9 @@ func (s *UserSubscription) CheckWeeklyLimit(group *Group, additionalCost float64
 }
 
 func (s *UserSubscription) CheckMonthlyLimit(group *Group, additionalCost float64) bool {
+	if s.DailyResetActiveAt(time.Now()) {
+		return true
+	}
 	if !group.HasMonthlyLimit() {
 		return true
 	}

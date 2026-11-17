@@ -135,6 +135,11 @@ vi.mock("@/stores/adminSettings", () => ({
   }),
 }));
 
+// The 订阅额度重置 card loads its own settings; it has its own behaviour and is not under test here.
+vi.mock("@/components/admin/payment/QuotaResetSettingsCard.vue", () => ({
+  default: { name: "QuotaResetSettingsCard", template: "<div />" },
+}));
+
 vi.mock("@/composables/useClipboard", () => ({
   useClipboard: () => ({
     copyToClipboard: vi.fn(),

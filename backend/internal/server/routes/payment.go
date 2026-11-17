@@ -47,12 +47,14 @@ func RegisterPaymentRoutes(
 		authenticated.GET("/checkout-info", paymentHandler.GetCheckoutInfo)
 		authenticated.GET("/plans", paymentHandler.GetPlans)
 		authenticated.GET("/limits", paymentHandler.GetLimits)
+		authenticated.GET("/quota-reset", paymentHandler.GetQuotaReset)
 
 		orders := authenticated.Group("/orders")
 		{
 			orders.POST("", paymentHandler.CreateOrder)
 			orders.POST("/verify", paymentHandler.VerifyOrder)
 			orders.POST("/balance-subscription", paymentHandler.PurchaseSubscriptionWithBalance)
+			orders.POST("/balance-quota-reset", paymentHandler.PurchaseQuotaResetWithBalance)
 			orders.GET("/my", paymentHandler.GetMyOrders)
 			orders.GET("/:id", paymentHandler.GetOrder)
 			orders.POST("/:id/cancel", paymentHandler.CancelOrder)
@@ -106,6 +108,8 @@ func RegisterPaymentRoutes(
 		// Config
 		adminGroup.GET("/config", adminPaymentHandler.GetConfig)
 		adminGroup.PUT("/config", adminPaymentHandler.UpdateConfig)
+		adminGroup.GET("/quota-reset", adminPaymentHandler.GetQuotaResetSettings)
+		adminGroup.PUT("/quota-reset", adminPaymentHandler.UpdateQuotaResetSettings)
 
 		// Orders
 		adminOrders := adminGroup.Group("/orders")

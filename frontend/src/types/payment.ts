@@ -21,7 +21,7 @@ export type OrderStatus =
 
 export type PaymentType = 'alipay' | 'wxpay' | 'alipay_direct' | 'wxpay_direct' | 'stripe' | 'easypay' | 'airwallex'
 
-export type OrderType = 'balance' | 'subscription' | 'course' | 'membership' | 'goods'
+export type OrderType = 'balance' | 'subscription' | 'course' | 'membership' | 'goods' | 'quota_reset'
 
 // ==================== Configuration ====================
 
@@ -159,6 +159,46 @@ export interface BalanceSubscriptionResult {
   status: string
   group_id: number
   validity_days: number
+  fulfillment_ok: boolean
+}
+
+/** Why a subscription can't buy a 今日额度重置 right now ('' = it can). */
+export type QuotaResetReason = '' | 'disabled' | 'not_supported' | 'one_time' | 'no_daily_limit' | 'not_blocked' | 'max_reached'
+
+/** GET /payment/quota-reset item: the 重置今日额度 offer for one active subscription. */
+export interface QuotaResetQuote {
+  subscription_id: number
+  group_id: number
+  group_name: string
+  /** The feature applies to this subscription (enabled, platform allowed, has a daily limit). */
+  available: boolean
+  /** A daily / weekly / monthly limit is used up right now. */
+  blocked: boolean
+  can_buy: boolean
+  reason: QuotaResetReason
+  /** CNY */
+  price: number
+  balance_price: number
+  daily_limit_usd: number
+  max_per_day: number
+  resets_today: number
+  /** Today was reset: only the daily limit applies until boost_until (00:00). */
+  boost_active: boolean
+  boost_until: string | null
+}
+
+export interface QuotaResetQuotesResponse {
+  enabled: boolean
+  balance: number
+  balance_pay_enabled: boolean
+  items: QuotaResetQuote[]
+}
+
+export interface BalanceQuotaResetResult {
+  order_id: number
+  balance_cost: number
+  balance_after: number
+  status: string
   fulfillment_ok: boolean
 }
 

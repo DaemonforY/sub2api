@@ -52,6 +52,9 @@ const (
 	// OrderTypeGoods buys one key of a 卡密商品 (plan_id names the goods in the request; the order
 	// keeps it in goods_id); fulfilment hands the buyer a key from stock.
 	OrderTypeGoods = "goods"
+	// OrderTypeQuotaReset buys 重置今日额度 for a subscription (plan_id names the group in the request;
+	// the order keeps it in subscription_group_id); fulfilment clears today's usage.
+	OrderTypeQuotaReset = "quota_reset"
 )
 
 // Entity statuses shared across users, groups, etc.

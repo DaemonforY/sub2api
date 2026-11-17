@@ -125,6 +125,16 @@ func MonthlyUsageUsd(v float64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldMonthlyUsageUsd, v))
 }
 
+// DailyResetUntil applies equality check predicate on the "daily_reset_until" field. It's identical to DailyResetUntilEQ.
+func DailyResetUntil(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldDailyResetUntil, v))
+}
+
+// DailyResetCount applies equality check predicate on the "daily_reset_count" field. It's identical to DailyResetCountEQ.
+func DailyResetCount(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldDailyResetCount, v))
+}
+
 // AssignedBy applies equality check predicate on the "assigned_by" field. It's identical to AssignedByEQ.
 func AssignedBy(v int64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldEQ(FieldAssignedBy, v))
@@ -723,6 +733,96 @@ func MonthlyUsageUsdLT(v float64) predicate.UserSubscription {
 // MonthlyUsageUsdLTE applies the LTE predicate on the "monthly_usage_usd" field.
 func MonthlyUsageUsdLTE(v float64) predicate.UserSubscription {
 	return predicate.UserSubscription(sql.FieldLTE(FieldMonthlyUsageUsd, v))
+}
+
+// DailyResetUntilEQ applies the EQ predicate on the "daily_reset_until" field.
+func DailyResetUntilEQ(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldDailyResetUntil, v))
+}
+
+// DailyResetUntilNEQ applies the NEQ predicate on the "daily_reset_until" field.
+func DailyResetUntilNEQ(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNEQ(FieldDailyResetUntil, v))
+}
+
+// DailyResetUntilIn applies the In predicate on the "daily_reset_until" field.
+func DailyResetUntilIn(vs ...time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIn(FieldDailyResetUntil, vs...))
+}
+
+// DailyResetUntilNotIn applies the NotIn predicate on the "daily_reset_until" field.
+func DailyResetUntilNotIn(vs ...time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotIn(FieldDailyResetUntil, vs...))
+}
+
+// DailyResetUntilGT applies the GT predicate on the "daily_reset_until" field.
+func DailyResetUntilGT(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGT(FieldDailyResetUntil, v))
+}
+
+// DailyResetUntilGTE applies the GTE predicate on the "daily_reset_until" field.
+func DailyResetUntilGTE(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGTE(FieldDailyResetUntil, v))
+}
+
+// DailyResetUntilLT applies the LT predicate on the "daily_reset_until" field.
+func DailyResetUntilLT(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLT(FieldDailyResetUntil, v))
+}
+
+// DailyResetUntilLTE applies the LTE predicate on the "daily_reset_until" field.
+func DailyResetUntilLTE(v time.Time) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLTE(FieldDailyResetUntil, v))
+}
+
+// DailyResetUntilIsNil applies the IsNil predicate on the "daily_reset_until" field.
+func DailyResetUntilIsNil() predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIsNull(FieldDailyResetUntil))
+}
+
+// DailyResetUntilNotNil applies the NotNil predicate on the "daily_reset_until" field.
+func DailyResetUntilNotNil() predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotNull(FieldDailyResetUntil))
+}
+
+// DailyResetCountEQ applies the EQ predicate on the "daily_reset_count" field.
+func DailyResetCountEQ(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldEQ(FieldDailyResetCount, v))
+}
+
+// DailyResetCountNEQ applies the NEQ predicate on the "daily_reset_count" field.
+func DailyResetCountNEQ(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNEQ(FieldDailyResetCount, v))
+}
+
+// DailyResetCountIn applies the In predicate on the "daily_reset_count" field.
+func DailyResetCountIn(vs ...int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldIn(FieldDailyResetCount, vs...))
+}
+
+// DailyResetCountNotIn applies the NotIn predicate on the "daily_reset_count" field.
+func DailyResetCountNotIn(vs ...int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldNotIn(FieldDailyResetCount, vs...))
+}
+
+// DailyResetCountGT applies the GT predicate on the "daily_reset_count" field.
+func DailyResetCountGT(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGT(FieldDailyResetCount, v))
+}
+
+// DailyResetCountGTE applies the GTE predicate on the "daily_reset_count" field.
+func DailyResetCountGTE(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldGTE(FieldDailyResetCount, v))
+}
+
+// DailyResetCountLT applies the LT predicate on the "daily_reset_count" field.
+func DailyResetCountLT(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLT(FieldDailyResetCount, v))
+}
+
+// DailyResetCountLTE applies the LTE predicate on the "daily_reset_count" field.
+func DailyResetCountLTE(v int) predicate.UserSubscription {
+	return predicate.UserSubscription(sql.FieldLTE(FieldDailyResetCount, v))
 }
 
 // AssignedByEQ applies the EQ predicate on the "assigned_by" field.

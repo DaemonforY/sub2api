@@ -241,6 +241,9 @@ func (s *PaymentService) executeFulfillment(ctx context.Context, oid int64) erro
 	if o.OrderType == payment.OrderTypeGoods {
 		return s.ExecuteGoodsFulfillment(ctx, oid)
 	}
+	if o.OrderType == payment.OrderTypeQuotaReset {
+		return s.ExecuteQuotaResetFulfillment(ctx, oid)
+	}
 	return s.ExecuteBalanceFulfillment(ctx, oid)
 }
 

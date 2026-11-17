@@ -43,6 +43,10 @@ const (
 	FieldWeeklyUsageUsd = "weekly_usage_usd"
 	// FieldMonthlyUsageUsd holds the string denoting the monthly_usage_usd field in the database.
 	FieldMonthlyUsageUsd = "monthly_usage_usd"
+	// FieldDailyResetUntil holds the string denoting the daily_reset_until field in the database.
+	FieldDailyResetUntil = "daily_reset_until"
+	// FieldDailyResetCount holds the string denoting the daily_reset_count field in the database.
+	FieldDailyResetCount = "daily_reset_count"
 	// FieldAssignedBy holds the string denoting the assigned_by field in the database.
 	FieldAssignedBy = "assigned_by"
 	// FieldAssignedAt holds the string denoting the assigned_at field in the database.
@@ -106,6 +110,8 @@ var Columns = []string{
 	FieldDailyUsageUsd,
 	FieldWeeklyUsageUsd,
 	FieldMonthlyUsageUsd,
+	FieldDailyResetUntil,
+	FieldDailyResetCount,
 	FieldAssignedBy,
 	FieldAssignedAt,
 	FieldNotes,
@@ -145,6 +151,8 @@ var (
 	DefaultWeeklyUsageUsd float64
 	// DefaultMonthlyUsageUsd holds the default value on creation for the "monthly_usage_usd" field.
 	DefaultMonthlyUsageUsd float64
+	// DefaultDailyResetCount holds the default value on creation for the "daily_reset_count" field.
+	DefaultDailyResetCount int
 	// DefaultAssignedAt holds the default value on creation for the "assigned_at" field.
 	DefaultAssignedAt func() time.Time
 )
@@ -225,6 +233,16 @@ func ByWeeklyUsageUsd(opts ...sql.OrderTermOption) OrderOption {
 // ByMonthlyUsageUsd orders the results by the monthly_usage_usd field.
 func ByMonthlyUsageUsd(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMonthlyUsageUsd, opts...).ToFunc()
+}
+
+// ByDailyResetUntil orders the results by the daily_reset_until field.
+func ByDailyResetUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDailyResetUntil, opts...).ToFunc()
+}
+
+// ByDailyResetCount orders the results by the daily_reset_count field.
+func ByDailyResetCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDailyResetCount, opts...).ToFunc()
 }
 
 // ByAssignedBy orders the results by the assigned_by field.

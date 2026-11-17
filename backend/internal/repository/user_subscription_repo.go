@@ -473,8 +473,9 @@ func (r *userSubscriptionRepository) IncrementUsage(ctx context.Context, id int6
 		UPDATE user_subscriptions us
 		SET
 			daily_usage_usd = us.daily_usage_usd + $1,
-			weekly_usage_usd = us.weekly_usage_usd + $1,
-			monthly_usage_usd = us.monthly_usage_usd + $1,
+			-- 重置今日额度: after a bought reset, usage counts toward the daily window only.
+			weekly_usage_usd = us.weekly_usage_usd + CASE WHEN us.daily_reset_until > NOW() THEN 0::numeric ELSE $1 END,
+			monthly_usage_usd = us.monthly_usage_usd + CASE WHEN us.daily_reset_until > NOW() THEN 0::numeric ELSE $1 END,
 			updated_at = NOW()
 		FROM groups g
 		WHERE us.id = $2
@@ -653,6 +654,8 @@ func userSubscriptionEntityToServiceWithStatusMapping(m *dbent.UserSubscription,
 		DailyUsageUSD:      m.DailyUsageUsd,
 		WeeklyUsageUSD:     m.WeeklyUsageUsd,
 		MonthlyUsageUSD:    m.MonthlyUsageUsd,
+		DailyResetUntil:    m.DailyResetUntil,
+		DailyResetCount:    m.DailyResetCount,
 		AssignedBy:         m.AssignedBy,
 		AssignedAt:         m.AssignedAt,
 		Notes:              derefString(m.Notes),

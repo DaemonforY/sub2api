@@ -78,6 +78,11 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 			return nil, err
 		}
 	}
+	if req.OrderType == payment.OrderTypeQuotaReset {
+		if req.quotaReset, _, err = s.quoteForPurchase(ctx, req.UserID, req.PlanID, cfg); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.checkCancelRateLimit(ctx, req.UserID, cfg); err != nil {
 		return nil, err
 	}
@@ -103,6 +108,8 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		orderAmount, limitAmount = req.membershipPlan.Price, req.membershipPlan.Price
 	} else if req.goods != nil {
 		orderAmount, limitAmount = req.goods.Price, req.goods.Price
+	} else if req.quotaReset != nil {
+		orderAmount, limitAmount = req.quotaReset.Price, req.quotaReset.Price
 	} else if req.OrderType == payment.OrderTypeBalance {
 		orderAmount = calculateCreditedBalance(req.Amount, cfg.BalanceRechargeMultiplier)
 	}
@@ -122,6 +129,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	if req.goods != nil && methodCurrency != payment.DefaultPaymentCurrency {
 		return nil, ErrCardGoodsCurrency
+	}
+	if req.quotaReset != nil && methodCurrency != payment.DefaultPaymentCurrency {
+		return nil, ErrQuotaResetUnavailable
 	}
 	payAmountStr, payAmount, err := calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate, methodCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
 	if err != nil {
@@ -146,6 +156,9 @@ func (s *PaymentService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	}
 	if req.goods != nil && selectedCurrency != payment.DefaultPaymentCurrency {
 		return nil, ErrCardGoodsCurrency
+	}
+	if req.quotaReset != nil && selectedCurrency != payment.DefaultPaymentCurrency {
+		return nil, ErrQuotaResetUnavailable
 	}
 	if selectedCurrency != methodCurrency {
 		payAmountStr, payAmount, err = calculateCreateOrderPayAmountForOrderType(limitAmount, feeRate, selectedCurrency, req.OrderType, cfg.SubscriptionUSDToCNYRate)
@@ -184,8 +197,8 @@ func (s *PaymentService) validateOrderInput(ctx context.Context, req CreateOrder
 	if req.OrderType == payment.OrderTypeSubscription {
 		return s.validateSubOrder(ctx, req)
 	}
-	if req.OrderType == payment.OrderTypeCourse || req.OrderType == payment.OrderTypeMembership || req.OrderType == payment.OrderTypeGoods {
-		// Checked and priced by the course / membership / goods service.
+	if req.OrderType == payment.OrderTypeCourse || req.OrderType == payment.OrderTypeMembership || req.OrderType == payment.OrderTypeGoods || req.OrderType == payment.OrderTypeQuotaReset {
+		// Checked and priced by the course / membership / goods / quota reset service.
 		return nil, nil
 	}
 	if math.IsNaN(req.Amount) || math.IsInf(req.Amount, 0) || req.Amount <= 0 {
@@ -284,6 +297,9 @@ func (s *PaymentService) createOrderInTx(ctx context.Context, req CreateOrderReq
 	}
 	if req.goods != nil {
 		b.SetGoodsID(req.goods.ID)
+	}
+	if req.quotaReset != nil {
+		b.SetSubscriptionGroupID(req.quotaReset.GroupID)
 	}
 	order, err := b.Save(ctx)
 	if err != nil {

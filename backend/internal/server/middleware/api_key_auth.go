@@ -298,8 +298,13 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 					if smartBilling {
 						msg = smartBillingLimitMessage(msg)
 					}
+					resetPrice := 0.0
+					if status == http.StatusTooManyRequests {
+						resetPrice = subscriptionService.SubscriptionLimitHit(c.Request.Context(), subscription, apiKey.Group)
+						msg = withQuotaResetHint(msg, service.QuotaResetHintText(resetPrice))
+					}
 					if status == http.StatusTooManyRequests && isCodexClientRequest(c) &&
-						abortWithCodexUsageLimit(c, validateErr, subscription, apiKey.Group, msg, smartBilling) {
+						abortWithCodexUsageLimit(c, validateErr, subscription, apiKey.Group, msg, smartBilling, resetPrice) {
 						return
 					}
 					AbortWithError(c, status, code, msg)

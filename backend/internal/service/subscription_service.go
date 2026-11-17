@@ -44,6 +44,8 @@ var (
 
 // SubscriptionService 订阅服务
 type SubscriptionService struct {
+	// limitHitHook: see SetLimitHitHook.
+	limitHitHook        func(ctx context.Context, sub *UserSubscription, group *Group) float64
 	groupRepo           GroupRepository
 	userSubRepo         UserSubscriptionRepository
 	billingCacheService *BillingCacheService
@@ -166,6 +168,22 @@ func (s *SubscriptionService) InvalidateSubCache(userID, groupID int64) {
 func (s *SubscriptionService) InvalidateSubCacheSync(userID, groupID int64) {
 	s.notifyUserSubsChanged(userID)
 	s.invalidateSubCacheKeySync(subCacheKey(userID, groupID))
+}
+
+// SetLimitHitHook installs what runs when the gateway rejects a subscription for a used-up limit:
+// it returns the 「重置今日额度」 price the user can pay now (0 = none) and may notify them.
+func (s *SubscriptionService) SetLimitHitHook(fn func(ctx context.Context, sub *UserSubscription, group *Group) float64) {
+	if s != nil {
+		s.limitHitHook = fn
+	}
+}
+
+// SubscriptionLimitHit runs the limit-hit hook; it returns the reset price, 0 when none can be bought.
+func (s *SubscriptionService) SubscriptionLimitHit(ctx context.Context, sub *UserSubscription, group *Group) float64 {
+	if s == nil || s.limitHitHook == nil {
+		return 0
+	}
+	return s.limitHitHook(ctx, sub, group)
 }
 
 // SetUserSubsChangedHook registers what runs when a user's subscriptions change.

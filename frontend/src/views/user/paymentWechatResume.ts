@@ -4,7 +4,7 @@ import { normalizeVisibleMethod } from '@/components/payment/paymentFlow'
 
 export interface ParsedWechatResumeRoute {
   orderAmount: number
-  orderType: 'balance' | 'subscription' | 'course' | 'membership' | 'goods'
+  orderType: 'balance' | 'subscription' | 'course' | 'membership' | 'goods' | 'quota_reset'
   paymentType: string
   planId?: number
   courseId?: number
@@ -49,6 +49,8 @@ export function parseWechatResumeRoute(
       ? 'membership'
       : readQueryString(query, 'order_type') === 'goods'
       ? 'goods'
+      : readQueryString(query, 'order_type') === 'quota_reset'
+      ? 'quota_reset'
       : readQueryString(query, 'order_type') === 'subscription' || hasPlanId
       ? 'subscription'
       : 'balance'

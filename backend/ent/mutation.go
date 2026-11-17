@@ -55568,6 +55568,9 @@ type UserSubscriptionMutation struct {
 	addweekly_usage_usd     *float64
 	monthly_usage_usd       *float64
 	addmonthly_usage_usd    *float64
+	daily_reset_until       *time.Time
+	daily_reset_count       *int
+	adddaily_reset_count    *int
 	assigned_at             *time.Time
 	notes                   *string
 	clearedFields           map[string]struct{}
@@ -56299,6 +56302,111 @@ func (m *UserSubscriptionMutation) ResetMonthlyUsageUsd() {
 	m.addmonthly_usage_usd = nil
 }
 
+// SetDailyResetUntil sets the "daily_reset_until" field.
+func (m *UserSubscriptionMutation) SetDailyResetUntil(t time.Time) {
+	m.daily_reset_until = &t
+}
+
+// DailyResetUntil returns the value of the "daily_reset_until" field in the mutation.
+func (m *UserSubscriptionMutation) DailyResetUntil() (r time.Time, exists bool) {
+	v := m.daily_reset_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDailyResetUntil returns the old "daily_reset_until" field's value of the UserSubscription entity.
+// If the UserSubscription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserSubscriptionMutation) OldDailyResetUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDailyResetUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDailyResetUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDailyResetUntil: %w", err)
+	}
+	return oldValue.DailyResetUntil, nil
+}
+
+// ClearDailyResetUntil clears the value of the "daily_reset_until" field.
+func (m *UserSubscriptionMutation) ClearDailyResetUntil() {
+	m.daily_reset_until = nil
+	m.clearedFields[usersubscription.FieldDailyResetUntil] = struct{}{}
+}
+
+// DailyResetUntilCleared returns if the "daily_reset_until" field was cleared in this mutation.
+func (m *UserSubscriptionMutation) DailyResetUntilCleared() bool {
+	_, ok := m.clearedFields[usersubscription.FieldDailyResetUntil]
+	return ok
+}
+
+// ResetDailyResetUntil resets all changes to the "daily_reset_until" field.
+func (m *UserSubscriptionMutation) ResetDailyResetUntil() {
+	m.daily_reset_until = nil
+	delete(m.clearedFields, usersubscription.FieldDailyResetUntil)
+}
+
+// SetDailyResetCount sets the "daily_reset_count" field.
+func (m *UserSubscriptionMutation) SetDailyResetCount(i int) {
+	m.daily_reset_count = &i
+	m.adddaily_reset_count = nil
+}
+
+// DailyResetCount returns the value of the "daily_reset_count" field in the mutation.
+func (m *UserSubscriptionMutation) DailyResetCount() (r int, exists bool) {
+	v := m.daily_reset_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDailyResetCount returns the old "daily_reset_count" field's value of the UserSubscription entity.
+// If the UserSubscription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserSubscriptionMutation) OldDailyResetCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDailyResetCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDailyResetCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDailyResetCount: %w", err)
+	}
+	return oldValue.DailyResetCount, nil
+}
+
+// AddDailyResetCount adds i to the "daily_reset_count" field.
+func (m *UserSubscriptionMutation) AddDailyResetCount(i int) {
+	if m.adddaily_reset_count != nil {
+		*m.adddaily_reset_count += i
+	} else {
+		m.adddaily_reset_count = &i
+	}
+}
+
+// AddedDailyResetCount returns the value that was added to the "daily_reset_count" field in this mutation.
+func (m *UserSubscriptionMutation) AddedDailyResetCount() (r int, exists bool) {
+	v := m.adddaily_reset_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetDailyResetCount resets all changes to the "daily_reset_count" field.
+func (m *UserSubscriptionMutation) ResetDailyResetCount() {
+	m.daily_reset_count = nil
+	m.adddaily_reset_count = nil
+}
+
 // SetAssignedBy sets the "assigned_by" field.
 func (m *UserSubscriptionMutation) SetAssignedBy(i int64) {
 	m.assigned_by_user = &i
@@ -56615,7 +56723,7 @@ func (m *UserSubscriptionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserSubscriptionMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 19)
 	if m.created_at != nil {
 		fields = append(fields, usersubscription.FieldCreatedAt)
 	}
@@ -56657,6 +56765,12 @@ func (m *UserSubscriptionMutation) Fields() []string {
 	}
 	if m.monthly_usage_usd != nil {
 		fields = append(fields, usersubscription.FieldMonthlyUsageUsd)
+	}
+	if m.daily_reset_until != nil {
+		fields = append(fields, usersubscription.FieldDailyResetUntil)
+	}
+	if m.daily_reset_count != nil {
+		fields = append(fields, usersubscription.FieldDailyResetCount)
 	}
 	if m.assigned_by_user != nil {
 		fields = append(fields, usersubscription.FieldAssignedBy)
@@ -56703,6 +56817,10 @@ func (m *UserSubscriptionMutation) Field(name string) (ent.Value, bool) {
 		return m.WeeklyUsageUsd()
 	case usersubscription.FieldMonthlyUsageUsd:
 		return m.MonthlyUsageUsd()
+	case usersubscription.FieldDailyResetUntil:
+		return m.DailyResetUntil()
+	case usersubscription.FieldDailyResetCount:
+		return m.DailyResetCount()
 	case usersubscription.FieldAssignedBy:
 		return m.AssignedBy()
 	case usersubscription.FieldAssignedAt:
@@ -56746,6 +56864,10 @@ func (m *UserSubscriptionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldWeeklyUsageUsd(ctx)
 	case usersubscription.FieldMonthlyUsageUsd:
 		return m.OldMonthlyUsageUsd(ctx)
+	case usersubscription.FieldDailyResetUntil:
+		return m.OldDailyResetUntil(ctx)
+	case usersubscription.FieldDailyResetCount:
+		return m.OldDailyResetCount(ctx)
 	case usersubscription.FieldAssignedBy:
 		return m.OldAssignedBy(ctx)
 	case usersubscription.FieldAssignedAt:
@@ -56859,6 +56981,20 @@ func (m *UserSubscriptionMutation) SetField(name string, value ent.Value) error 
 		}
 		m.SetMonthlyUsageUsd(v)
 		return nil
+	case usersubscription.FieldDailyResetUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDailyResetUntil(v)
+		return nil
+	case usersubscription.FieldDailyResetCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDailyResetCount(v)
+		return nil
 	case usersubscription.FieldAssignedBy:
 		v, ok := value.(int64)
 		if !ok {
@@ -56897,6 +57033,9 @@ func (m *UserSubscriptionMutation) AddedFields() []string {
 	if m.addmonthly_usage_usd != nil {
 		fields = append(fields, usersubscription.FieldMonthlyUsageUsd)
 	}
+	if m.adddaily_reset_count != nil {
+		fields = append(fields, usersubscription.FieldDailyResetCount)
+	}
 	return fields
 }
 
@@ -56911,6 +57050,8 @@ func (m *UserSubscriptionMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedWeeklyUsageUsd()
 	case usersubscription.FieldMonthlyUsageUsd:
 		return m.AddedMonthlyUsageUsd()
+	case usersubscription.FieldDailyResetCount:
+		return m.AddedDailyResetCount()
 	}
 	return nil, false
 }
@@ -56941,6 +57082,13 @@ func (m *UserSubscriptionMutation) AddField(name string, value ent.Value) error 
 		}
 		m.AddMonthlyUsageUsd(v)
 		return nil
+	case usersubscription.FieldDailyResetCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDailyResetCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown UserSubscription numeric field %s", name)
 }
@@ -56960,6 +57108,9 @@ func (m *UserSubscriptionMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(usersubscription.FieldMonthlyWindowStart) {
 		fields = append(fields, usersubscription.FieldMonthlyWindowStart)
+	}
+	if m.FieldCleared(usersubscription.FieldDailyResetUntil) {
+		fields = append(fields, usersubscription.FieldDailyResetUntil)
 	}
 	if m.FieldCleared(usersubscription.FieldAssignedBy) {
 		fields = append(fields, usersubscription.FieldAssignedBy)
@@ -56992,6 +57143,9 @@ func (m *UserSubscriptionMutation) ClearField(name string) error {
 		return nil
 	case usersubscription.FieldMonthlyWindowStart:
 		m.ClearMonthlyWindowStart()
+		return nil
+	case usersubscription.FieldDailyResetUntil:
+		m.ClearDailyResetUntil()
 		return nil
 	case usersubscription.FieldAssignedBy:
 		m.ClearAssignedBy()
@@ -57048,6 +57202,12 @@ func (m *UserSubscriptionMutation) ResetField(name string) error {
 		return nil
 	case usersubscription.FieldMonthlyUsageUsd:
 		m.ResetMonthlyUsageUsd()
+		return nil
+	case usersubscription.FieldDailyResetUntil:
+		m.ResetDailyResetUntil()
+		return nil
+	case usersubscription.FieldDailyResetCount:
+		m.ResetDailyResetCount()
 		return nil
 	case usersubscription.FieldAssignedBy:
 		m.ResetAssignedBy()

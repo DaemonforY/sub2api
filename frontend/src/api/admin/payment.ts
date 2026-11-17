@@ -53,6 +53,17 @@ export interface UpdatePaymentConfigRequest {
   help_text?: string
 }
 
+/** GET/PUT /admin/payment/quota-reset: paid 重置今日额度 for subscriptions */
+export interface QuotaResetSettings {
+  enabled: boolean
+  /** Price in CNY per USD of the group's daily limit */
+  price_per_usd: number
+  max_per_day: number
+  platforms: string[]
+  /** Send a once-a-day WeChat message with the checkout link when a subscription hits its limit */
+  wechat_notice: boolean
+}
+
 export interface RefundResult {
   success: boolean
   warning?: string
@@ -72,6 +83,16 @@ export const adminPaymentAPI = {
   /** Update payment configuration */
   updateConfig(data: UpdatePaymentConfigRequest) {
     return apiClient.put('/admin/payment/config', data)
+  },
+
+  /** Get the 订阅额度重置 settings */
+  getQuotaResetSettings() {
+    return apiClient.get<QuotaResetSettings>('/admin/payment/quota-reset')
+  },
+
+  /** Update the 订阅额度重置 settings */
+  updateQuotaResetSettings(data: QuotaResetSettings) {
+    return apiClient.put<QuotaResetSettings>('/admin/payment/quota-reset', data)
   },
 
   // ==================== Dashboard ====================

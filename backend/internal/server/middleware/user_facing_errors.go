@@ -90,6 +90,17 @@ func windowLimitMessage(periodZh, periodEn string, used float64, limit *float64,
 	return fmt.Sprintf("订阅%s额度已用完%s%s；急用可换一个按量计费分组的 Key（%s usage limit exceeded）", periodZh, usage, reset, periodEn)
 }
 
+// withQuotaResetHint adds the 「重置今日额度」 hint just before the trailing English text in parentheses.
+func withQuotaResetHint(msg, hint string) string {
+	if hint == "" {
+		return msg
+	}
+	if i := strings.LastIndex(msg, "（"); i > 0 {
+		return msg[:i] + "；" + hint + msg[i:]
+	}
+	return msg + "；" + hint
+}
+
 func formatUserTime(t time.Time) string {
 	return t.In(timezone.Location()).Format("2006-01-02 15:04")
 }

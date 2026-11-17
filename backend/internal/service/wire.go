@@ -1395,6 +1395,7 @@ func ProvidePaymentService(entClient *dbent.Client, registry *payment.Registry, 
 	svc.SetCourseService(courses)
 	svc.SetCanvasMembershipService(membership)
 	svc.SetCardGoodsService(goods)
+	subscriptionSvc.SetLimitHitHook(svc.SubscriptionLimitHit)
 	return svc
 }
 

@@ -95,6 +95,8 @@ type CreateOrderRequest struct {
 	membershipPlan *CanvasMembershipPlan
 	// goods is the 卡密商品 of a goods order (PlanID; set while validating).
 	goods *CardGoods
+	// quotaReset is the 重置今日额度 quote of a quota_reset order (PlanID = group; set while validating).
+	quotaReset *QuotaResetQuote
 }
 
 type CreateOrderResponse struct {
@@ -214,6 +216,10 @@ type PaymentService struct {
 	goods                    *CardGoodsService
 	// shadow: 静默限制 accounts can't create orders; late payments are noted (see PaymentShadowGuard).
 	shadow PaymentShadowGuard
+	// limitNotice*: subscriptions already sent today's 重置今日额度 WeChat message (see notifyLimitHitOnce).
+	limitNoticeMu   sync.Mutex
+	limitNoticeDay  string
+	limitNoticeSent map[string]struct{}
 }
 
 // SetShadowGuard installs the 静默限制 payment checks.

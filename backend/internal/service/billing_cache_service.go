@@ -45,7 +45,20 @@ type subscriptionCacheData struct {
 	DailyUsage   float64
 	WeeklyUsage  float64
 	MonthlyUsage float64
+	ResetUntil   int64 // see SubscriptionCacheData.ResetUntil
 	Version      int64
+}
+
+// dailyResetActive: a bought 「重置今日额度」 is in force, so only the daily limit applies.
+func (d *subscriptionCacheData) dailyResetActive(now time.Time) bool {
+	return d != nil && d.ResetUntil > now.Unix()
+}
+
+func resetUntilUnix(t *time.Time) int64 {
+	if t == nil {
+		return 0
+	}
+	return t.Unix()
 }
 
 // 缓存写入任务类型
@@ -449,6 +462,7 @@ func (s *BillingCacheService) convertFromPortsData(data *SubscriptionCacheData) 
 		DailyUsage:   data.DailyUsage,
 		WeeklyUsage:  data.WeeklyUsage,
 		MonthlyUsage: data.MonthlyUsage,
+		ResetUntil:   data.ResetUntil,
 		Version:      data.Version,
 	}
 }
@@ -460,6 +474,7 @@ func (s *BillingCacheService) convertToPortsData(data *subscriptionCacheData) *S
 		DailyUsage:   data.DailyUsage,
 		WeeklyUsage:  data.WeeklyUsage,
 		MonthlyUsage: data.MonthlyUsage,
+		ResetUntil:   data.ResetUntil,
 		Version:      data.Version,
 	}
 }
@@ -477,6 +492,7 @@ func (s *BillingCacheService) getSubscriptionFromDB(ctx context.Context, userID,
 		DailyUsage:   sub.DailyUsageUSD,
 		WeeklyUsage:  sub.WeeklyUsageUSD,
 		MonthlyUsage: sub.MonthlyUsageUSD,
+		ResetUntil:   resetUntilUnix(sub.DailyResetUntil),
 		Version:      sub.UpdatedAt.Unix(),
 	}, nil
 }
@@ -938,6 +954,11 @@ func (s *BillingCacheService) checkSubscriptionEligibility(ctx context.Context, 
 	// 检查限额（使用传入的Group限额配置）
 	if group.HasDailyLimit() && subData.DailyUsage >= *group.DailyLimitUSD {
 		return ErrDailyLimitExceeded
+	}
+
+	// 重置今日额度: for the rest of the reset day only the daily limit applies.
+	if subData.dailyResetActive(time.Now()) {
+		return nil
 	}
 
 	if group.HasWeeklyLimit() && subData.WeeklyUsage >= *group.WeeklyLimitUSD {

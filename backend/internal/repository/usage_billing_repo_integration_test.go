@@ -420,3 +420,46 @@ func TestUsageBillingRepositoryApply_DeduplicatesAgainstArchivedKey(t *testing.T
 	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT balance FROM users WHERE id = $1", user.ID).Scan(&balance))
 	require.InDelta(t, 98.75, balance, 0.000001)
 }
+
+// 重置今日额度: during a bought reset day, billed usage adds to the daily window only.
+func TestUsageBillingRepositoryApply_SubscriptionResetDaySkipsWeeklyMonthly(t *testing.T) {
+	ctx := context.Background()
+	client := testEntClient(t)
+	rows := trackCommitted(t)
+	repo := NewUsageBillingRepository(client, integrationDB)
+
+	user := rows.user(mustCreateUser(t, client, &service.User{
+		Email:        fmt.Sprintf("usage-billing-reset-user-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash",
+	}))
+	group := rows.group(mustCreateGroup(t, client, &service.Group{
+		Name:             "usage-billing-reset-group-" + uuid.NewString(),
+		Platform:         service.PlatformOpenAI,
+		SubscriptionType: service.SubscriptionTypeSubscription,
+	}))
+	apiKey := mustCreateApiKey(t, client, &service.APIKey{
+		UserID:  user.ID,
+		GroupID: &group.ID,
+		Key:     "sk-usage-billing-reset-" + uuid.NewString(),
+		Name:    "billing-reset",
+	})
+	subscription := mustCreateSubscription(t, client, &service.UserSubscription{UserID: user.ID, GroupID: group.ID})
+	_, err := integrationDB.ExecContext(ctx, `UPDATE user_subscriptions SET daily_reset_until = NOW() + INTERVAL '1 hour', daily_reset_count = 1 WHERE id = $1`, subscription.ID)
+	require.NoError(t, err)
+
+	result, err := repo.Apply(ctx, &service.UsageBillingCommand{
+		RequestID:        uuid.NewString(),
+		APIKeyID:         apiKey.ID,
+		UserID:           user.ID,
+		SubscriptionID:   &subscription.ID,
+		SubscriptionCost: 3,
+	})
+	require.NoError(t, err)
+	require.True(t, result.Applied)
+
+	var daily, weekly, monthly float64
+	require.NoError(t, integrationDB.QueryRowContext(ctx, "SELECT daily_usage_usd, weekly_usage_usd, monthly_usage_usd FROM user_subscriptions WHERE id = $1", subscription.ID).Scan(&daily, &weekly, &monthly))
+	require.InDelta(t, 3, daily, 0.000001)
+	require.InDelta(t, 0, weekly, 0.000001)
+	require.InDelta(t, 0, monthly, 0.000001)
+}

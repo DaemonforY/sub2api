@@ -12,7 +12,9 @@ import type {
   CreateOrderRequest,
   CreateOrderResult,
   PaymentOrder,
-  BalanceSubscriptionResult
+  BalanceSubscriptionResult,
+  QuotaResetQuotesResponse,
+  BalanceQuotaResetResult
 } from '@/types/payment'
 import type { BasePaginationResponse } from '@/types'
 
@@ -53,6 +55,16 @@ export const paymentAPI = {
   /** Buy a subscription plan with account balance */
   purchaseSubscriptionWithBalance(planId: number) {
     return apiClient.post<BalanceSubscriptionResult>('/payment/orders/balance-subscription', { plan_id: planId })
+  },
+
+  /** 重置今日额度: offers for the user's active subscriptions */
+  getQuotaResetQuotes() {
+    return apiClient.get<QuotaResetQuotesResponse>('/payment/quota-reset')
+  },
+
+  /** 重置今日额度 paid with account balance */
+  purchaseQuotaResetWithBalance(groupId: number) {
+    return apiClient.post<BalanceQuotaResetResult>('/payment/orders/balance-quota-reset', { group_id: groupId })
   },
 
   /** Get current user's orders */
