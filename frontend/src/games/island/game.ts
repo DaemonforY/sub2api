@@ -26,6 +26,12 @@ function relayBase(): string {
   const r = new URLSearchParams(location.search).get('relay')
   return r && /^wss?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(r) ? r : ''
 }
+
+/** Dev only: ?lag=150 delays every outgoing message by half of it (so the round trip grows by ~150 ms). */
+function devLag(): number {
+  if (!import.meta.env.DEV) return 0
+  return Math.min(1000, Number(new URLSearchParams(location.search).get('lag')) || 0) / 2
+}
 const INTERP_MS = 95
 
 export class IslandGame {
@@ -118,7 +124,7 @@ export class IslandGame {
       msg: (m) => this.hostMsg(m),
       error: (code) => this.cb.net('error', { error: code }),
       closed: () => this.cb.net('error', { error: 'closed' })
-    }, relayBase())
+    }, relayBase(), devLag())
   }
 
   /** Host pressed 开始: both heroes in. */
@@ -151,7 +157,7 @@ export class IslandGame {
       msg: (m) => this.guestMsg(m),
       error: (c) => this.cb.net('error', { error: c }),
       closed: () => this.cb.net('host-left', {})
-    }, relayBase())
+    }, relayBase(), devLag())
   }
 
   leaveRoom() {
@@ -187,6 +193,15 @@ export class IslandGame {
       p.y = 20
     }
     w.ents = w.ents.filter((e) => e.x > w.camX - 40)
+  }
+
+  /** Dev helper: run the world synchronously (the hidden preview pane throttles rAF). */
+  debugBits: ((player: number, w: World) => number) | null = null
+  debugStep(frames: number) {
+    const w = this.world
+    if (!w) return
+    for (let i = 0; i < frames; i++) this.stepLocal(w)
+    this.renderer.draw(w as unknown as RView, null)
   }
 
   setPaused(p: boolean) {
@@ -421,7 +436,8 @@ export class IslandGame {
       }
       p2 = this.guestBits
     }
-    stepWorld(w, [this.input.bits(0, shared), p2])
+    if (this.debugBits) stepWorld(w, [this.debugBits(0, w), this.debugBits(1, w)])
+    else stepWorld(w, [this.input.bits(0, shared), p2])
     const evs = w.events
     w.events = []
     if (evs.length) {

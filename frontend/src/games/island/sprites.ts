@@ -137,8 +137,8 @@ function drawHead(dst: Pix, look: HeroLook, cx: number, cy: number, pose: Pose) 
   head.circle(cx - 1.2, cy + 1.2, 1.5, look.skin)
   head.set(cx - 1.4, cy + 1.2, shadowOf(look.skin, 0.25))
   // bangs over the forehead
-  head.poly([cx - 1, cy - 5.5, cx + 6.8, cy - 3.5, cx + 3.2, cy - 1.2, cx + 1.5, cy - 2.4, cx - 0.5, cy - 0.5], look.hair)
-  if (look.style === 1) head.poly([cx + 4.5, cy - 3, cx + 6.9, cy + 1.5, cx + 5.4, cy + 3.6, cx + 4.6, cy], look.hair)
+  if (look.style === 0) head.poly([cx - 1, cy - 5.5, cx + 6.8, cy - 3.5, cx + 3.2, cy - 1.2, cx + 1.5, cy - 2.4, cx - 0.5, cy - 0.5], look.hair)
+  else head.poly([cx - 1, cy - 5.8, cx + 6.4, cy - 4.2, cx + 4.6, cy - 2.8, cx + 2.4, cy - 3.2, cx + 0.6, cy - 2.2, cx - 0.6, cy - 1.2], look.hair)
   head.shade(1, 0.22, 0.3)
   // bandana band across the forehead (style 0), drawn after shading so it stays a clean stripe
   if (look.style === 0) {
@@ -587,15 +587,16 @@ function clamFrames(): Pix[] {
 function boomFrames(gold: boolean): Pix[] {
   const wood = gold ? C('#ffcf2e') : C('#b8743a')
   const band = gold ? C('#fff6b0') : C('#ffd27a')
-  const base = new Pix(14, 14)
-  part(base, 14, 14, (q) => {
-    q.line(2.5, 3, 7, 7.5, wood, 3.2)
-    q.line(7, 7.5, 2.5, 12, wood, 3.2)
+  const base = new Pix(16, 16)
+  part(base, 16, 16, (q) => {
+    q.line(2.5, 2.5, 8.5, 8, wood, 3.6)
+    q.line(8.5, 8, 2.5, 13.5, wood, 3.6)
   })
   base.set(4, 4, band)
   base.set(5, 5, band)
-  base.set(4, 10, band)
-  base.set(5, 9, band)
+  base.set(4, 12, band)
+  base.set(5, 11, band)
+  base.set(8, 8, lightOf(wood, 0.4))
   return [0, 1, 2, 3].map((i) => base.rotate((i * Math.PI) / 2))
 }
 
@@ -731,21 +732,24 @@ function fruitFrames(): Pix[] {
     p.set(11, 3, EYE_DARK)
     out.push(p)
   }
-  // grapes
+  // grapes: each grape outlined on its own so the bunch reads as round berries
   {
-    const p = new Pix(14, 14)
-    part(p, 14, 14, (q) => {
-      for (const [x, y] of [
-        [5, 5],
-        [9, 5],
-        [7, 7.5],
-        [4, 8],
-        [10, 8],
-        [7, 10.5]
-      ])
-        q.circle(x, y, 2.2, C('#8b4fd8'))
-    })
+    const p = new Pix(14, 15)
     p.line(7, 0.5, 7, 3, C('#4cc35a'))
+    p.poly([7, 2, 11, 1, 10, 3.5], C('#4cc35a'))
+    for (const [x, y] of [
+      [4.5, 5],
+      [9.5, 5],
+      [7, 7.2],
+      [3.6, 8.6],
+      [10.4, 8.6],
+      [7, 10.6],
+      [5, 12.4],
+      [9, 12.4]
+    ]) {
+      part(p, 14, 15, (q) => q.circle(x, y, 2.1, C('#8b4fd8')))
+      p.set(x - 1, y - 1, C('#e0c8ff'))
+    }
     out.push(p)
   }
   // golden coconut
@@ -1100,8 +1104,8 @@ export function buildArt(): Art {
     fire: sheet(campfireFrames()),
     rock: sheet([rockFrame()]),
     clam: sheet(clamFrames()),
-    boom: sheet(boomFrames(false), 7, 7),
-    gold: sheet(boomFrames(true), 7, 7),
+    boom: sheet(boomFrames(false), 8, 8),
+    gold: sheet(boomFrames(true), 8, 8),
     board: sheet([boardFrame()]),
     fairy: sheet(fairyFrames(), 8, 8),
     cloud: sheet(cloudFrames(), 11, 7),

@@ -19,7 +19,11 @@ export class Room {
   code = ''
   seat = -1
 
-  constructor(code: string | null, h: RoomHandlers, base = '') {
+  private lag: number
+
+  /** lag (dev only): extra milliseconds before each outgoing message, to rehearse a far-away server. */
+  constructor(code: string | null, h: RoomHandlers, base = '', lag = 0) {
+    this.lag = lag
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const host = base || `${proto}://${location.host}`
     const url = `${host}/api/v1/games/rooms/ws?game=${GAME_SLUG}${code ? `&room=${encodeURIComponent(code)}` : ''}`
@@ -50,7 +54,12 @@ export class Room {
   }
 
   send(m: Record<string, unknown>) {
-    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(m))
+    const data = JSON.stringify(m)
+    const go = () => {
+      if (this.ws.readyState === WebSocket.OPEN) this.ws.send(data)
+    }
+    if (this.lag > 0) setTimeout(go, this.lag)
+    else go()
   }
 
   close() {
