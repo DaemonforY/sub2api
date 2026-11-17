@@ -27,14 +27,14 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Check, ChevronDown, Clock, Cpu, Mic } from 'lucide-vue-next'
+import { Bookmark, Check, ChevronDown, Clock, Cpu, Mic } from 'lucide-vue-next'
 
 const props = defineProps({ modelValue: { type: [String, Number], default: '' }, options: { type: Array, default: () => [] }, label: { type: String, default: '' }, icon: { type: String, default: 'cpu' } })
 const emit = defineEmits(['update:modelValue'])
 const open = ref(false)
 const root = ref(null)
 const current = computed(() => props.options.find((o) => o.value === props.modelValue))
-const iconComp = computed(() => ({ cpu: Cpu, mic: Mic, clock: Clock })[props.icon] || Cpu)
+const iconComp = computed(() => ({ cpu: Cpu, mic: Mic, clock: Clock, bookmark: Bookmark })[props.icon] || Cpu)
 function pick(v) {
   emit('update:modelValue', v)
   open.value = false

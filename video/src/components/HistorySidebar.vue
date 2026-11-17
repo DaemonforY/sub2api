@@ -19,6 +19,7 @@
           <span class="rounded px-1 py-px" :class="badge(p)">{{ modeLabel(p) }}</span>
           <span v-if="p.status === 'running'" class="text-brand-600">生成中…</span>
           <span v-else-if="p.status === 'questions'" class="text-brand-600">待确认</span>
+          <span v-else-if="p.status === 'script'" class="text-brand-600">待审剧本</span>
           <span v-else-if="p.status === 'failed'" class="text-red-500">失败</span>
           <span v-else>{{ when(p.updated_at) }}</span>
         </span>

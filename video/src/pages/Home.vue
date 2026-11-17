@@ -57,7 +57,7 @@
           </div>
           <div class="flex flex-wrap items-center gap-2 border-t border-ink-100 px-4 py-3 dark:border-ink-800">
             <div class="flex overflow-hidden rounded-xl border border-ink-200 dark:border-ink-700" role="radiogroup" aria-label="画面比例">
-              <button v-for="r in ratioChoices" :key="r.id" class="flex items-center gap-1 px-2.5 py-1.5 text-xs" :class="ratio === r.id ? 'bg-brand-500 text-white' : 'text-ink-600 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-ink-800'" :title="r.title" @click="ratio = r.id">
+              <button v-for="r in ratioChoices" :key="r.id" class="flex items-center gap-1 px-2.5 py-1.5 text-xs disabled:opacity-50" :class="ratio === r.id ? 'bg-brand-500 text-white' : 'text-ink-600 hover:bg-ink-50 dark:text-ink-300 dark:hover:bg-ink-800'" :title="pickedCard ? '画幅跟随风格卡「' + pickedCard.name + '」' : r.title" :disabled="!!pickedCard && ratio !== r.id" @click="ratio = r.id">
                 <component :is="r.icon" class="h-3.5 w-3.5" />{{ r.label }}
               </button>
             </div>
@@ -68,6 +68,10 @@
             <button class="chip" @click="scrollToStyles"><Palette class="h-3.5 w-3.5 text-brand-500" />{{ styleName }}</button>
             <label v-if="mode === 'film'" class="chip cursor-pointer" title="开始前先问 1–3 个问题确认讲解深度、时长和语气">
               <input v-model="ask" type="checkbox" class="h-3.5 w-3.5 accent-brand-500" />先确认方向
+            </label>
+            <Picker v-if="mode === 'film' && session.key" v-model="myStyle" :options="myStyleOptions" icon="bookmark" label="我的风格" data-testid="my-style-picker" />
+            <label v-if="mode === 'film'" class="chip cursor-pointer" title="写完脚本先停下：你先看每段的看点、旁白、画面和镜头，直接改文字，确认后才配音和做动画（改文字最省钱）" data-testid="confirm-script">
+              <input v-model="confirmScript" type="checkbox" class="h-3.5 w-3.5 accent-brand-500" />先审镜头剧本
             </label>
             <span class="flex-1"></span>
             <button class="btn-primary px-5 py-2.5" :disabled="creating || !prompt.trim() || imagesBusy" :title="imagesBusy ? '图片还在上传' : ''" data-testid="create-submit" @click="create">
@@ -85,6 +89,7 @@
           <button v-if="cheapModel" class="ml-1 font-medium underline" data-testid="low-balance-cheap" @click="model = cheapModel.id">换成 {{ cheapModel.name }}（约 {{ costText(cheapCost) }}）</button>
           <a :href="`${MAIN_SITE_URL}/purchase`" target="_blank" class="ml-2 font-medium underline">去充值</a>
         </p>
+        <MyStylesDialog v-if="stylesOpen" @close="stylesOpen = false" @changed="loadStyles" />
         <Modal v-if="costConfirm" title="余额可能不够做完" @close="costConfirm = false">
           <div data-testid="cost-confirm">
             <p class="text-sm leading-6 text-ink-600 dark:text-ink-300">
@@ -148,10 +153,11 @@ import { Clapperboard, HelpCircle, Loader2, Monitor, Palette, Smartphone, Sparkl
 import HistorySidebar from '../components/HistorySidebar.vue'
 import ImageAttach from '../components/ImageAttach.vue'
 import Modal from '../components/Modal.vue'
+import MyStylesDialog from '../components/MyStylesDialog.vue'
 import Picker from '../components/Picker.vue'
 import StyleCard from '../components/StyleCard.vue'
 import WorkCard from '../components/WorkCard.vue'
-import { MAIN_SITE_URL, api, catalog, myClones, session, signIn, textModels } from '../lib/api'
+import { MAIN_SITE_URL, api, catalog, myClones, myStyles, session, signIn, textModels } from '../lib/api'
 import { toast, toastError } from '../lib/toast'
 import { prefs, savePrefs } from '../lib/prefs'
 
@@ -178,6 +184,38 @@ const style = ref(prefs.style || 'auto')
 const genre = ref('')
 const category = ref(typeof route.query.category === 'string' ? route.query.category : prefs.category || 'other')
 const ask = ref(prefs.ask ?? true)
+// 先审镜头剧本 and 我的风格 (the series workflow)
+const confirmScript = ref(prefs.confirm ?? false)
+const styleCards = ref([])
+const myStyle = ref(prefs.myStyle || 0)
+const stylesOpen = ref(false)
+const pickedCard = computed(() => (mode.value === 'film' && styleCards.value.find((c) => c.id === myStyle.value)) || null)
+const myStyleOptions = computed(() => [
+  { value: 0, label: '不用我的风格', hint: styleCards.value.length ? '按下面选的视觉风格做' : '做好满意的视频后，在作品页「存为我的风格」' },
+  ...styleCards.value.map((c) => ({ value: c.id, label: c.name, hint: `${c.ratio === '9:16' ? '竖屏' : '横屏'} · ${c.rules?.length ? c.rules.length + ' 条系列规则' : '同一系列的配色、字体、角色'}` })),
+  { value: -1, label: '管理我的风格…', hint: '改名、编辑系列规则、删除' }
+])
+watch(myStyle, (v, old) => {
+  if (v === -1) {
+    myStyle.value = old
+    stylesOpen.value = true
+    return
+  }
+  const card = styleCards.value.find((c) => c.id === v)
+  if (card) {
+    if (card.ratio) ratio.value = card.ratio
+    if (card.base_style) style.value = card.base_style
+  }
+})
+async function loadStyles() {
+  styleCards.value = await myStyles()
+  const card = styleCards.value.find((c) => c.id === myStyle.value)
+  if (!card) myStyle.value = 0
+  else {
+    if (card.ratio) ratio.value = card.ratio
+    if (card.base_style) style.value = card.base_style
+  }
+}
 const showAllStyles = ref(false)
 const creating = ref(false)
 const remixOf = ref('')
@@ -280,8 +318,8 @@ const examples = computed(() => {
 })
 const placeholder = computed(() => (mode.value === 'film' ? '输入视频主题或完整口播稿，例如：用科技博主的风格讲解牛顿三大定律…' : '描述你想要的动画，例如：三个圆点依次跳动，像波浪一样'))
 
-watch([mode, ratio, model, voice, length, seconds, style, category, ask], () =>
-  savePrefs({ mode: mode.value, ratio: ratio.value, model: model.value, voice: voice.value, length: length.value, seconds: seconds.value, style: style.value, category: category.value, ask: ask.value })
+watch([mode, ratio, model, voice, length, seconds, style, category, ask, confirmScript, myStyle], () =>
+  savePrefs({ mode: mode.value, ratio: ratio.value, model: model.value, voice: voice.value, length: length.value, seconds: seconds.value, style: style.value, category: category.value, ask: ask.value, confirm: confirmScript.value, myStyle: myStyle.value > 0 ? myStyle.value : 0 })
 )
 watch(mode, (m) => {
   if (m === 'film' && ratio.value === '1:1') ratio.value = '16:9'
@@ -331,7 +369,9 @@ async function create() {
         images: images.value.filter((x) => x.status === 'done').map((x) => x.token),
         options: {
           ratio: ratio.value, style: style.value, genre: genre.value || undefined, category: mode.value === 'motion' ? category.value : 'film',
-          voice: voice.value, model: model.value, length: length.value, ask: mode.value === 'film' && ask.value, seconds: seconds.value
+          voice: voice.value, model: model.value, length: length.value, ask: mode.value === 'film' && ask.value, seconds: seconds.value,
+          confirm: mode.value === 'film' && confirmScript.value,
+          my_style: pickedCard.value ? pickedCard.value.id : undefined
         }
       }
     })
@@ -371,10 +411,12 @@ onMounted(async () => {
   api('/models', { auth: false }).then((r) => (siteModels.value = r.items || [])).catch(() => {})
   api('/clone-info', { auth: false }).then((r) => (cloneOn.value = !!r.enabled)).catch(() => {})
   loadClones()
+  loadStyles()
   models.value = await textModels()
 })
 watch(() => session.key, async () => {
   loadClones()
+  loadStyles()
   models.value = await textModels()
 })
 

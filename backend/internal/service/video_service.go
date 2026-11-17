@@ -174,6 +174,15 @@ func (s *VideoService) Create(ctx context.Context, key *APIKey, in VideoCreateIn
 	}
 	normalizeVideoOptions(in.Mode, &in.Options)
 	in.Options.Images = nil // only from staged uploads, below
+	in.Options.ScriptOK = false
+	if in.Mode == VideoModeFilm {
+		// 我的风格: the film takes the card's ratio and base style; its kit is adapted at run time.
+		if _, err := s.applyStyleCard(ctx, key.UserID, &in.Options); err != nil {
+			return nil, err
+		}
+	} else {
+		in.Options.Confirm, in.Options.MyStyle, in.Options.MyStyleName = false, 0, ""
+	}
 	if len(in.Images) > VideoImagesMax {
 		return nil, ErrVideoImageCount
 	}
@@ -506,6 +515,9 @@ func (s *VideoService) build(ctx context.Context, r *videoRun) error {
 			return err
 		}
 	}
+	if s.scriptGate(ctx, r) {
+		return nil // 先审镜头剧本: ApproveScript continues
+	}
 	if p.Mode == VideoModeMotion && p.Spec == nil {
 		s.motionSpec(r)
 	}
@@ -570,7 +582,8 @@ func (s *VideoService) askQuestions(ctx context.Context, r *videoRun) error {
 
 func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 	s.step(ctx, r, "script", "正在写脚本和分镜…")
-	msgs := videoScriptPrompt(r.p)
+	card := s.styleCard(ctx, r.p)
+	msgs := videoScriptPrompt(r.p, card)
 	if len(r.p.Options.Images) > 0 {
 		msgs[len(msgs)-1].Images = orderedImages(r.p, s.imagesForModel(r.p))
 	}
@@ -597,6 +610,15 @@ func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 	}
 	style := findVideoStyle(r.p.Options.Style)
 	spec.Theme = style.Theme
+	spec.Rules = nil
+	if card != nil {
+		// 我的风格: the series keeps its palette, its recurring character and its house rules.
+		spec.Theme = card.Theme
+		if strings.TrimSpace(card.Character) != "" {
+			spec.Character = card.Character
+		}
+		spec.Rules = cleanVideoRules(card.Rules)
+	}
 	spec.Width, spec.Height = r.p.Width, r.p.Height
 	descs := map[string]string{}
 	for _, n := range notes.ImageNotes {
@@ -618,6 +640,7 @@ func (s *VideoService) writeScript(ctx context.Context, r *videoRun) error {
 		}
 		sc.Images = ids
 		sc.Code, sc.Audio, sc.Error = "", nil, ""
+		sc.Hook, sc.Camera = clipRunes(sc.Hook, 200), clipRunes(sc.Camera, 300)
 		if videoSilent(r.p) {
 			// No voice to follow: the script gives each scene's length.
 			sc.Narration, sc.Tone = "", ""
@@ -781,7 +804,12 @@ func (s *VideoService) voiceAndKit(ctx context.Context, r *videoRun) error {
 		return s.voiceScenes(ctx, r)
 	}
 	kitDone := make(chan error, 1)
-	go func() { kitDone <- s.writeKit(ctx, r, "") }()
+	if card := s.styleCard(ctx, p); card != nil && strings.TrimSpace(card.Common) != "" {
+		// 我的风格: adapt the series' approved kit instead of designing a new look.
+		go func() { kitDone <- s.writeKit(ctx, r, card.Common, videoStyleKitInstruction) }()
+	} else {
+		go func() { kitDone <- s.writeKit(ctx, r, "", "") }()
+	}
 	voiceErr := s.voiceScenes(ctx, r)
 	kitErr := <-kitDone
 	if voiceErr != nil {
@@ -799,18 +827,23 @@ func (s *VideoService) voiceAndKit(ctx context.Context, r *videoRun) error {
 	return nil
 }
 
-// writeKit writes the film's shared kit (spec.common), or changes it by instruction.
-func (s *VideoService) writeKit(ctx context.Context, r *videoRun, instruction string) error {
+// writeKit writes the film's shared kit (spec.common), or changes a previous kit by instruction: the
+// film's own kit for a revision, or the series' saved kit for a film made in 我的风格.
+func (s *VideoService) writeKit(ctx context.Context, r *videoRun, previous, instruction string) error {
 	p := r.p
 	r.mu.Lock()
 	spec := *p.Spec
 	spec.Scenes = append([]VideoScene(nil), p.Spec.Scenes...)
 	r.mu.Unlock()
-	previous := ""
-	if instruction != "" {
-		previous = spec.Common
+	if instruction == "" {
+		previous = ""
+	}
+	switch {
+	case instruction != "" && spec.Common == "":
+		s.step(ctx, r, "kit", "正在套用我的风格「"+p.Options.MyStyleName+"」…")
+	case instruction != "":
 		s.step(ctx, r, "kit", "正在修改整片的画面风格…")
-	} else {
+	default:
 		s.step(ctx, r, "kit", "正在设计整片统一的画面风格…")
 	}
 	style := findVideoStyle(p.Options.Style)
@@ -1151,6 +1184,9 @@ func (s *VideoService) Resume(ctx context.Context, key *APIKey, id string) (*Vid
 		if p.Status == VideoStatusReady || p.Status == VideoStatusQuestions {
 			return ErrVideoInvalid
 		}
+		if p.Status == VideoStatusScript {
+			return ErrVideoScriptWait
+		}
 		if p.Spec != nil {
 			for i := range p.Spec.Scenes {
 				if p.Spec.Scenes[i].Error != "" {
@@ -1172,6 +1208,9 @@ func (s *VideoService) Message(ctx context.Context, key *APIKey, id, text, focus
 		return nil, ErrVideoInvalid
 	}
 	return s.startOn(ctx, key, id, func(p *VideoProject) error {
+		if p.Status == VideoStatusScript {
+			return ErrVideoScriptWait
+		}
 		if p.Spec == nil || p.Status == VideoStatusQuestions {
 			return ErrVideoNotReady
 		}
@@ -1199,7 +1238,7 @@ func (s *VideoService) revise(ctx context.Context, r *videoRun, text, focus stri
 		}
 		if kit := strings.TrimSpace(plan.Kit); kit != "" && p.Spec.Common != "" {
 			// The whole look lives in the kit: change it once instead of in every scene.
-			if err := s.writeKit(ctx, r, kit); err != nil {
+			if err := s.writeKit(ctx, r, p.Spec.Common, kit); err != nil {
 				return err
 			}
 			kitChanged = true
@@ -1286,12 +1325,17 @@ type VideoSceneEdit struct {
 	Title     string `json:"title"`
 	Narration string `json:"narration"`
 	Visual    string `json:"visual"`
+	Hook      string `json:"hook,omitempty"`
+	Camera    string `json:"camera,omitempty"`
 }
 
 // EditScript applies script edits and rebuilds the scenes they touch (re-recording changed narration).
 func (s *VideoService) EditScript(ctx context.Context, key *APIKey, id string, edits []VideoSceneEdit) (*VideoProject, error) {
 	redo := map[string]string{}
 	return s.startOn(ctx, key, id, func(p *VideoProject) error {
+		if p.Status == VideoStatusScript {
+			return ErrVideoScriptWait
+		}
 		if p.Spec == nil || p.Mode != VideoModeFilm {
 			return ErrVideoNotReady
 		}
@@ -1314,6 +1358,14 @@ func (s *VideoService) EditScript(ctx context.Context, key *APIKey, id string, e
 				if v := clipRunes(e.Visual, 3000); v != "" && v != sc.Visual {
 					sc.Visual = v
 					changed = append(changed, "visual plan")
+				}
+				if h := clipRunes(e.Hook, 200); h != "" && h != sc.Hook {
+					sc.Hook = h
+					changed = append(changed, "hook")
+				}
+				if c := clipRunes(e.Camera, 300); c != "" && c != sc.Camera {
+					sc.Camera = c
+					changed = append(changed, "camera")
 				}
 				if len(changed) > 0 {
 					redo[sc.ID] = "The scene's " + strings.Join(changed, " and ") + " changed (see the user message above). Rebuild the animation so it matches them and the narration timing."

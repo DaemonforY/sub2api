@@ -2,6 +2,10 @@
   <div class="mx-auto max-w-4xl">
     <div v-if="!spec" class="card p-8 text-center text-sm text-ink-500">{{ project.status === 'running' ? '脚本正在写…' : '还没有脚本' }}</div>
     <template v-else>
+      <div v-if="reviewing" class="mb-4 rounded-2xl border border-brand-200 bg-brand-50/70 px-5 py-4 text-sm leading-6 dark:border-brand-900/50 dark:bg-brand-900/10" data-testid="script-review-banner">
+        <p class="flex items-center gap-1.5 font-semibold text-brand-700 dark:text-brand-300"><ClipboardCheck class="h-4 w-4" />先审镜头剧本，再开工</p>
+        <p class="mt-1 text-ink-600 dark:text-ink-300">还没有配音和动画，改文字最省事。逐段看：<b>看点</b>是不是观众会记住的那一下（谁对谁做了什么）、旁白顺不顺、画面和镜头怎么走。直接在下面改，满意后点「确认，开始制作」。</p>
+      </div>
       <div class="card flex flex-wrap items-center gap-4 px-5 py-3">
         <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-900/30"><FileText class="h-5 w-5" /></span>
         <span class="font-semibold">{{ project.mode === 'film' ? '视频脚本' : '动画说明' }}</span>
@@ -13,7 +17,7 @@
           <button class="rounded-lg px-3 py-1" :class="view === 'md' ? 'bg-white text-brand-600 shadow-sm dark:bg-ink-900' : ''" @click="view = 'md'">文档</button>
           <button class="rounded-lg px-3 py-1" :class="view === 'json' ? 'bg-white text-brand-600 shadow-sm dark:bg-ink-900' : ''" @click="view = 'json'">JSON</button>
         </div>
-        <button v-if="project.mode === 'film' && view === 'md' && !editing" class="btn-ghost btn-sm" :disabled="busy || project.status !== 'ready'" @click="startEdit"><Pencil class="h-3.5 w-3.5" />编辑脚本</button>
+        <button v-if="project.mode === 'film' && view === 'md' && !editing && !reviewing" class="btn-ghost btn-sm" :disabled="busy || project.status !== 'ready'" @click="startEdit"><Pencil class="h-3.5 w-3.5" />编辑脚本</button>
       </div>
 
       <pre v-if="view === 'json'" class="thin-scroll card mt-4 max-h-[70vh] overflow-auto p-4 text-xs leading-5">{{ json }}</pre>
@@ -48,6 +52,11 @@
                 <span v-else class="font-medium">{{ sc.title }}</span>
                 <span class="ml-auto shrink-0 text-xs text-ink-500">{{ sc.duration.toFixed(1) }}s</span>
               </div>
+              <template v-if="project.mode === 'film' && (editing || sc.hook)">
+                <p class="mt-3 text-xs font-medium text-brand-600">看点 <span class="font-normal text-ink-400">观众会记住的那一下</span></p>
+                <input v-if="editing" v-model="draft[i].hook" class="input mt-1 py-1.5" maxlength="200" placeholder="谁对谁做了什么，例如：一张任务纸撕成四份，被四台机器各吸走一份" />
+                <p v-else class="mt-1 font-medium leading-7">{{ sc.hook }}</p>
+              </template>
               <template v-if="project.mode === 'film' && project.options?.voice !== 'none'">
                 <p class="mt-3 text-xs font-medium text-ink-500">旁白</p>
                 <textarea v-if="editing" v-model="draft[i].narration" rows="3" class="input mt-1 leading-6"></textarea>
@@ -56,9 +65,18 @@
               <p class="mt-3 text-xs font-medium text-ink-500">画面</p>
               <textarea v-if="editing" v-model="draft[i].visual" rows="4" class="input mt-1 leading-6"></textarea>
               <p v-else class="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink-600 dark:text-ink-300">{{ sc.visual }}</p>
+              <template v-if="project.mode === 'film' && (editing || sc.camera)">
+                <p class="mt-3 text-xs font-medium text-ink-500">镜头</p>
+                <input v-if="editing" v-model="draft[i].camera" class="input mt-1 py-1.5" maxlength="300" placeholder="例如：从全景推近到主角，读字时停稳" />
+                <p v-else class="mt-1 text-sm leading-6 text-ink-600 dark:text-ink-300">{{ sc.camera }}</p>
+              </template>
             </div>
           </div>
-          <div v-if="editing" class="sticky bottom-0 mt-4 flex justify-end gap-2 bg-white/90 py-3 dark:bg-ink-900/90">
+          <div v-if="reviewing" class="sticky bottom-0 mt-4 flex items-center justify-end gap-2 bg-white/90 py-3 dark:bg-ink-900/90">
+            <span class="mr-auto self-center text-xs text-ink-500">{{ changes.length ? `改了 ${changes.length} 段` : '没改也可以直接确认' }} · 确认后才配音和写动画</span>
+            <button class="btn-primary" :disabled="busy" data-testid="script-approve" @click="$emit('approve', draft)"><Play class="h-4 w-4" />确认，开始制作</button>
+          </div>
+          <div v-else-if="editing" class="sticky bottom-0 mt-4 flex justify-end gap-2 bg-white/90 py-3 dark:bg-ink-900/90">
             <span class="mr-auto self-center text-xs text-ink-500">只有改动的分镜会重新配音和制作</span>
             <button class="btn-ghost" @click="editing = false">取消</button>
             <button class="btn-primary" :disabled="!changes.length" @click="$emit('save', changes)">保存并重新生成（{{ changes.length }}）</button>
@@ -70,14 +88,16 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { Clock, FileText, LayoutGrid, Pencil, Type } from 'lucide-vue-next'
+import { computed, ref, watch } from 'vue'
+import { ClipboardCheck, Clock, FileText, LayoutGrid, Pencil, Play, Type } from 'lucide-vue-next'
 
 const props = defineProps({ project: { type: Object, required: true }, busy: Boolean })
-defineEmits(['save'])
+defineEmits(['save', 'approve'])
 const view = ref('md')
 const editing = ref(false)
 const draft = ref([])
+// 先审镜头剧本: the script waits for the user, editable right away.
+const reviewing = computed(() => props.project.status === 'script' && !!props.project.spec)
 
 const spec = computed(() => props.project.spec)
 const total = computed(() => spec.value.scenes.reduce((s, sc) => s + sc.duration, 0))
@@ -94,11 +114,19 @@ const facts = computed(() => [
 const changes = computed(() =>
   draft.value.filter((d, i) => {
     const sc = spec.value.scenes[i]
-    return d.title !== sc.title || d.narration !== (sc.narration || '') || d.visual !== sc.visual
+    return d.title !== sc.title || d.narration !== (sc.narration || '') || d.visual !== sc.visual || d.hook !== (sc.hook || '') || d.camera !== (sc.camera || '')
   })
 )
 function startEdit() {
-  draft.value = spec.value.scenes.map((sc) => ({ id: sc.id, title: sc.title, narration: sc.narration || '', visual: sc.visual }))
+  draft.value = spec.value.scenes.map((sc) => ({ id: sc.id, title: sc.title, narration: sc.narration || '', visual: sc.visual, hook: sc.hook || '', camera: sc.camera || '' }))
   editing.value = true
 }
+watch(
+  reviewing,
+  (r) => {
+    if (r) startEdit()
+    else editing.value = false
+  },
+  { immediate: true }
+)
 </script>

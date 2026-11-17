@@ -20,6 +20,8 @@
           <template v-if="!isUpload">
             <button class="btn-ghost btn-sm" title="更换图片：换掉、删掉或新加图片，只重做用到它们的分镜" :disabled="busy || !p.spec || p.status === 'questions'" data-testid="images-open" @click="imagesOpen = true"><ImageIcon class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">换图</span></button>
             <button v-if="hasNarration" class="btn-ghost btn-sm" title="字幕设置：位置、大小、关闭，免费，不用重新生成" :disabled="!hasCode" data-testid="subtitles-open" @click="player?.openSubtitles()"><Captions class="h-3.5 w-3.5" />字幕</button>
+            <button v-if="p.mode === 'film'" class="btn-ghost btn-sm" title="复盘：AI 找出这部片子返工的原因，把要记住的写成系列规则，下一部同风格的片子自动遵守" :disabled="!isReady" data-testid="retro-open" @click="retroOpen = true"><ListChecks class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">复盘</span></button>
+            <button v-if="p.mode === 'film' && p.spec?.common" class="btn-ghost btn-sm" title="存为我的风格：把这部片子的配色、字体、圆角、背景和角色存成风格卡，以后的视频保持同一个系列的样子" :disabled="!isReady" data-testid="save-style-open" @click="saveStyleOpen = true"><Bookmark class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">存为我的风格</span></button>
             <button class="btn-ghost btn-sm" title="版本历史" @click="versionsOpen = true"><History class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">版本</span></button>
             <button class="btn-ghost btn-sm" title="导出 HTML（带配音和字幕的单个网页文件）" :disabled="!isReady || exporting" @click="doExport"><Download class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出 HTML</span></button>
             <button class="btn-ghost btn-sm" :disabled="!isReady || !exportEnabled" :title="exportEnabled ? '导出 MP4（1080p 30 帧），发布到抖音、视频号、小红书、B站' : '视频导出（MP4）即将上线'" @click="exportOpen = true"><Film class="h-3.5 w-3.5" /><span class="hidden 2xl:inline">导出视频</span></button>
@@ -65,6 +67,11 @@
                   <MessageCircleQuestion class="h-8 w-8 text-brand-400" />
                   <p class="text-sm">AI 有几个问题想先确认，请在右边回答</p>
                 </template>
+                <template v-else-if="p.status === 'script'">
+                  <ClipboardCheck class="h-8 w-8 text-brand-400" />
+                  <p class="text-sm">镜头剧本写好了，还没开始配音和做动画</p>
+                  <button class="btn-primary btn-sm" @click="tab = 'script'">去看镜头剧本</button>
+                </template>
                 <template v-else>
                   <AlertCircle class="h-8 w-8 text-red-400" />
                   <p class="text-sm">{{ p.error || '还没有画面' }}</p>
@@ -87,6 +94,7 @@
               @stop="stop"
               @resume="resume"
               @voice="setVoice"
+              @open-script="tab = 'script'"
             />
 
             <div v-if="p.spec?.scenes?.length > 1" class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -112,7 +120,7 @@
         </template>
 
         <!-- script -->
-        <ScriptTab v-else-if="tab === 'script'" :project="p" :busy="busy" @save="saveScript" />
+        <ScriptTab v-else-if="tab === 'script'" :project="p" :busy="busy" @save="saveScript" @approve="approveScript" />
 
         <!-- code -->
         <div v-else class="mx-auto max-w-4xl space-y-3">
@@ -146,6 +154,7 @@
       @stop="stop"
       @resume="resume"
       @voice="setVoice"
+      @open-script="tab = 'script'"
     />
 
     <ExportDialog v-if="exportOpen && p" :project="p" @close="exportOpen = false" />
@@ -158,6 +167,8 @@
       </div>
     </Modal>
     <ImagesDialog v-if="imagesOpen && p" :project="p" @close="imagesOpen = false" @changed="onImagesChanged" />
+    <SaveStyleDialog v-if="saveStyleOpen && p" :project="p" @close="saveStyleOpen = false" @saved="saveStyleOpen = false" />
+    <RetroDialog v-if="retroOpen && p" :project="p" @close="retroOpen = false" />
     <VersionsDialog v-if="versionsOpen && p" :project-id="p.id" :busy="busy" @close="versionsOpen = false" @restored="onRestored" />
   </div>
 </template>
@@ -165,13 +176,15 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertCircle, Captions, Code2, Download, FileCode2, FileText, Film, History, Image as ImageIcon, Link2, Loader2, MessageCircleQuestion, Play, Send } from 'lucide-vue-next'
+import { AlertCircle, Bookmark, Captions, ClipboardCheck, Code2, Download, FileCode2, FileText, Film, History, Image as ImageIcon, Link2, ListChecks, Loader2, MessageCircleQuestion, Play, Send } from 'lucide-vue-next'
 import AgentPanel from '../components/AgentPanel.vue'
 import FilmPlayer from '../components/FilmPlayer.vue'
 import HistorySidebar from '../components/HistorySidebar.vue'
 import PublishDialog from '../components/PublishDialog.vue'
 import ExportDialog from '../components/ExportDialog.vue'
 import ScriptTab from '../components/ScriptTab.vue'
+import SaveStyleDialog from '../components/SaveStyleDialog.vue'
+import RetroDialog from '../components/RetroDialog.vue'
 import VersionsDialog from '../components/VersionsDialog.vue'
 import ImagesDialog from '../components/ImagesDialog.vue'
 import Modal from '../components/Modal.vue'
@@ -194,6 +207,8 @@ const history = ref(null)
 const publishOpen = ref(false)
 const versionsOpen = ref(false)
 const imagesOpen = ref(false)
+const saveStyleOpen = ref(false)
+const retroOpen = ref(false)
 const exporting = ref(false)
 const voices = ref([])
 const voicePrice = ref(0)
@@ -336,6 +351,25 @@ async function saveScript(scenes) {
     toastError(err)
   }
 }
+// 先审镜头剧本: the user's edits go with the confirmation; then voice and animation start.
+async function approveScript(scenes) {
+  try {
+    p.value = await api(`/projects/${id.value}/script/approve`, { method: 'POST', body: { scenes } })
+    toast('镜头剧本已确认，开始配音和制作动画')
+    tab.value = 'preview'
+    await refresh()
+    schedule()
+  } catch (err) {
+    toastError(err)
+  }
+}
+// A film whose shot script waits for the user opens on the script tab.
+watch(
+  () => p.value?.status,
+  (s, was) => {
+    if (s === 'script' && was !== 'script') tab.value = 'script'
+  }
+)
 async function unpublish() {
   try {
     p.value = await api(`/projects/${id.value}/unpublish`, { method: 'POST', body: {} })

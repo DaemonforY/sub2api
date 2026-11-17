@@ -120,7 +120,7 @@ func videoScenePlan(length string) (int, int, int) {
 	}
 }
 
-func videoScriptPrompt(p *VideoProject) []LearnMessage {
+func videoScriptPrompt(p *VideoProject, series *VideoStyleCard) []LearnMessage {
 	minScenes, maxScenes, seconds := videoScenePlan(p.Options.Length)
 	style := findVideoStyle(p.Options.Style)
 	genre, _ := findVideoGenre(p.Options.Genre)
@@ -133,7 +133,7 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 		"language":  "zh-CN",
 		"character": "",
 		"facts":     []string{"光速 c ≈ 30 万千米/秒", "1905 年 爱因斯坦发表狭义相对论"},
-		"scenes":    []map[string]any{{"id": "s1", "title": "开场：一个看似矛盾的公设", "narration": "旁白原文，口语化，一句一句……", "tone": "好奇地抛出问题，语速稍快", "visual": "画面设计：要出现什么、怎么动、关键字幕、图表数据"}},
+		"scenes":    []map[string]any{{"id": "s1", "title": "开场：一个看似矛盾的公设", "narration": "旁白原文，口语化，一句一句……", "tone": "好奇地抛出问题，语速稍快", "hook": "两束光从同一点出发，一束追上火车却没变慢", "visual": "画面设计：要出现什么、怎么动、关键字幕、图表数据", "camera": "从全景火车推近到车灯，光束出现时镜头跟着光跑"}},
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "You are the director and scriptwriter of short narrated explainer videos rendered as HTML animation.\n")
@@ -160,6 +160,9 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 		_, _ = b.WriteString("- visual: a concrete animation plan a motion designer can build without guessing — which picture goes where and how it moves (slow pan / zoom, reveal, split screen, before / after), labels or arrows pointing at details in it (say where in the picture), plus text, icons and simple diagrams around it, tied to phrases of the narration. Plan pictures large: crop and zoom into the part being talked about (especially a tall picture on a wide stage) rather than showing it small; where a picture already has its own labels, use them or crop them away instead of stacking new labels on top. Besides the user's pictures, only HTML, SVG and canvas graphics; no other photos or footage.\n")
 		_, _ = b.WriteString("- image_notes: one line per picture saying what is in it and where (e.g. 「白色保温杯居中，杯身左侧有 logo，背景浅灰」), including any text, labels, logos or watermarks already in the picture and where they are, and its shape (portrait / landscape) — the designer uses it to place labels and crops.\n")
 	}
+	_, _ = b.WriteString("- hook (看点): the one moment of the scene the viewer will remember, as one short sentence of who does what to whom or what (e.g. 「一张任务纸撕成四份，被四台机器各吸走一份」), in the user's language. Plan the visual around it: an action, not a label appearing.\n")
+	_, _ = b.WriteString("- camera: how the shot moves through the scene (push in, pull out to reveal, pan along, follow an object, hold still while text is read), one short phrase in the user's language.\n")
+	_, _ = b.WriteString("- In the visual plan, give every sentence of the narration something on screen that moves forward (a new object, a change, a new relation) and change the framing at least once per scene; things hold still only while the viewer reads text. Within a scene, what is already on screen stays and becomes the starting point of the next beat instead of being cleared away.\n")
 	_, _ = b.WriteString("- The first scene hooks the viewer with a question or surprising fact; the last scene sums up in one memorable line.\n")
 	_, _ = b.WriteString("- character: when the video has a recurring character, mascot or host, describe its look once and concretely (body shape, colours, face, clothes or accessories) so every scene draws the same one; \"\" when there is none.\n")
 	_, _ = b.WriteString("- facts: the facts, numbers, names and dates the video shows on screen, each written exactly as it must appear in every scene (e.g. 「订阅费 ¥1,450/月」). Take them from the request or well-established knowledge; never invent dates, prices or statistics — an illustrative number is written here once and reused unchanged. Every number in the visual plans must match this list.\n")
@@ -172,6 +175,18 @@ func videoScriptPrompt(p *VideoProject) []LearnMessage {
 	}
 	if len(answers) > 0 {
 		_, _ = b.WriteString("The user's choices: " + strings.Join(answers, "; ") + "\n")
+	}
+	if series != nil {
+		_, _ = b.WriteString("This video is a new episode of the user's series 「" + series.Name + "」, which keeps one look across its videos.\n")
+		if c := strings.TrimSpace(series.Character); c != "" {
+			_, _ = b.WriteString("The series' recurring character appears in this video too; set character to exactly this: " + c + "\n")
+		}
+		if len(series.Rules) > 0 {
+			_, _ = b.WriteString("The series' house rules (the user's own, from reviews of earlier videos; follow them):\n")
+			for _, rule := range series.Rules {
+				_, _ = b.WriteString("- " + rule + "\n")
+			}
+		}
 	}
 	if silent {
 		scene := map[string]any{"id": "s1", "title": "开场：一个看似矛盾的公设", "duration": 5, "visual": "画面设计，含屏幕上的原文文字：标题「……」，副标题「……」；元素怎么动"}
@@ -272,6 +287,12 @@ func videoScenePrompt(in videoSceneBrief, previous, instruction, failure string)
 			fmt.Fprintf(&u, "Scene %s — %s\nDuration: %.2f s\nVisual plan: %s\n", in.Scene.ID, in.Scene.Title, in.Scene.Duration, in.Scene.Visual)
 		} else {
 			fmt.Fprintf(&u, "Scene %s — %s\nDuration: %.2f s\nNarration: %s\nVisual plan: %s\n", in.Scene.ID, in.Scene.Title, in.Scene.Duration, in.Scene.Narration, in.Scene.Visual)
+		}
+		if in.Scene.Hook != "" {
+			_, _ = u.WriteString("Hook (看点 — the moment viewers must remember; build the scene around it as a visible action, give it time and the strongest framing): " + in.Scene.Hook + "\n")
+		}
+		if in.Scene.Camera != "" {
+			_, _ = u.WriteString("Camera (move the whole stage content together, e.g. one transformed wrapper; keep it still while text is being read): " + in.Scene.Camera + "\n")
 		}
 		if in.Scene.Audio != nil && len(in.Scene.Audio.Words) > 0 {
 			_, _ = u.WriteString("Narration timing (word @ seconds): ")
@@ -374,6 +395,12 @@ func videoSettingSheet(spec *VideoSpec) string {
 	if spec.Character != "" {
 		_, _ = b.WriteString("Recurring character (draw exactly this, the same in every scene): " + spec.Character + "\n")
 	}
+	if len(spec.Rules) > 0 {
+		_, _ = b.WriteString("House rules of this series (the user's own, from reviews of earlier videos — follow them):\n")
+		for _, r := range spec.Rules {
+			_, _ = b.WriteString("- " + r + "\n")
+		}
+	}
 	if len(spec.Facts) > 0 {
 		_, _ = b.WriteString("Facts shown on screen — write them exactly like this, never contradict them, never invent other dates or numbers:\n")
 		for _, f := range spec.Facts {
@@ -451,6 +478,9 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []
 	var outline strings.Builder
 	for _, sc := range p.Spec.Scenes {
 		fmt.Fprintf(&outline, "- %s 「%s」 (%.1fs)\n  narration: %s\n  visual: %s\n", sc.ID, sc.Title, sc.Duration, sc.Narration, sc.Visual)
+		if sc.Hook != "" {
+			fmt.Fprintf(&outline, "  hook: %s\n", sc.Hook)
+		}
 		if len(sc.Images) > 0 {
 			fmt.Fprintf(&outline, "  pictures: %s\n", strings.Join(sc.Images, ", "))
 		}
@@ -467,6 +497,9 @@ func videoRevisionPrompt(p *VideoProject, message, focusScene string, earlier []
 	sys := "You are the director of an HTML video. The user asks for changes. Decide which scenes must change and write a precise instruction for the motion designer for each (what to change, keep the rest). Only include narration when the spoken words must change (it will be re-recorded). " + whole + " Reply to the user in one or two sentences in their language. Answer with JSON only, shaped like:\n" + videoJSONSchemaHint(schema)
 	if videoSilent(p) {
 		sys += "\nThis video has no narration (on-screen text only): never fill narration; put text changes in the instruction."
+	}
+	if len(p.Spec.Rules) > 0 {
+		sys += "\nHouse rules the user keeps for this series (your instructions must not break them): " + strings.Join(p.Spec.Rules, "；")
 	}
 	if p.Spec.Common != "" {
 		sys += "\nThis video has a shared kit that every scene runs first: the palette, fonts, background, header / counter and the recurring character's design. A change to any of those for the whole video goes in \"kit\" (one precise instruction, e.g. 「主色改成深蓝 #1e3a8a，背景去掉网格」) instead of listing every scene; list scenes only when their own content must change too. Leave kit empty otherwise."

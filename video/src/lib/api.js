@@ -223,6 +223,16 @@ export async function textModels() {
 }
 
 /** The signed-in user's cloned voices (我的音色); [] when signed out or unavailable. */
+// 我的风格: the user's saved series looks ([] when signed out or on error).
+export async function myStyles() {
+  if (!session.key) return []
+  try {
+    return (await api('/styles')).items || []
+  } catch {
+    return []
+  }
+}
+
 export async function myClones() {
   if (!session.key) return []
   try {

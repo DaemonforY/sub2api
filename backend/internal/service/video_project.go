@@ -20,6 +20,7 @@ const (
 	// VideoModeUpload (video_upload.go) is a work the user made elsewhere and uploaded.
 
 	VideoStatusQuestions = "questions" // waiting for the user's answers
+	VideoStatusScript    = "script"    // 先审镜头剧本: the script is written, waiting for the user to confirm it
 	VideoStatusRunning   = "running"
 	VideoStatusReady     = "ready"
 	VideoStatusFailed    = "failed"
@@ -47,6 +48,8 @@ var (
 	ErrVideoNotReady     = infraerrors.BadRequest("VIDEO_NOT_READY", "作品还没生成完成，完成后才能发布（Finish the video before publishing）")
 	ErrVideoForbidden    = infraerrors.Forbidden("VIDEO_FORBIDDEN", "只有管理员可以审核作品（Admins only）")
 	ErrVideoNoQuestion   = infraerrors.BadRequest("VIDEO_NO_QUESTION", "这个作品现在没有需要回答的问题（Nothing to answer）")
+	ErrVideoScriptWait   = infraerrors.BadRequest("VIDEO_SCRIPT_WAIT", "镜头剧本还在等你确认：请到「脚本」页看一遍，改好后点「确认，开始制作」（Confirm the shot script first）")
+	ErrVideoNoScriptWait = infraerrors.BadRequest("VIDEO_NO_SCRIPT_WAIT", "这个作品现在没有待确认的镜头剧本（No shot script waiting）")
 )
 
 // VideoOptions are the create-page choices, kept with the project.
@@ -62,6 +65,13 @@ type VideoOptions struct {
 	Ask      bool              `json:"ask,omitempty"`    // ask clarifying questions first
 	Answers  map[string]string `json:"answers,omitempty"`
 	Seconds  int               `json:"seconds,omitempty"` // motion: loop length
+	// Confirm (先审镜头剧本): stop after the script so the user reviews the shot script before any
+	// narration or animation is made; ScriptOK records that they confirmed it.
+	Confirm  bool `json:"confirm,omitempty"`
+	ScriptOK bool `json:"script_ok,omitempty"`
+	// MyStyle (我的风格): the id of the user's saved style card this film follows (0 = none).
+	MyStyle     int64  `json:"my_style,omitempty"`
+	MyStyleName string `json:"my_style_name,omitempty"`
 	// Images: the user's pictures for this project, set by the server from staged uploads.
 	Images []VideoImage `json:"images,omitempty"`
 }
@@ -88,6 +98,9 @@ type VideoSpec struct {
 	// Common is the shared kit (palette, backdrop and chrome, the recurring character …) the player runs
 	// before every scene's code, so the scenes share one look. "" for single animations and older films.
 	Common string `json:"common,omitempty"`
+	// Rules are the house rules of the user's style card (kept from 复盘), copied in when the script is
+	// written so the kit, every scene, the review and revisions follow them.
+	Rules []string `json:"rules,omitempty"`
 	// Subtitles is how the owner wants the subtitles shown (player, MP4 and HTML exports); nil = defaults.
 	Subtitles *VideoSubtitles `json:"subtitles,omitempty"`
 }
@@ -100,17 +113,21 @@ type VideoSubtitles struct {
 }
 
 type VideoScene struct {
-	ID        string            `json:"id"`
-	Title     string            `json:"title"`
-	Narration string            `json:"narration,omitempty"`
-	Tone      string            `json:"tone,omitempty"` // delivery hint for paid voices, e.g. 「好奇地提问」
-	Visual    string            `json:"visual"`
-	Images    []string          `json:"images,omitempty"` // ids of the user's pictures this scene shows
-	Duration  float64           `json:"duration"`
-	Audio     *VideoSceneAudio  `json:"audio,omitempty"`
-	Code      string            `json:"code,omitempty"`
-	Error     string            `json:"error,omitempty"`
-	Meta      map[string]string `json:"meta,omitempty"`
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Narration string `json:"narration,omitempty"`
+	Tone      string `json:"tone,omitempty"` // delivery hint for paid voices, e.g. 「好奇地提问」
+	Visual    string `json:"visual"`
+	// Shot script (镜头剧本): Hook is the one moment viewers remember (who does what to whom); Camera is
+	// how the shot moves. Both guide the scene's animation.
+	Hook     string            `json:"hook,omitempty"`
+	Camera   string            `json:"camera,omitempty"`
+	Images   []string          `json:"images,omitempty"` // ids of the user's pictures this scene shows
+	Duration float64           `json:"duration"`
+	Audio    *VideoSceneAudio  `json:"audio,omitempty"`
+	Code     string            `json:"code,omitempty"`
+	Error    string            `json:"error,omitempty"`
+	Meta     map[string]string `json:"meta,omitempty"`
 }
 
 type VideoSceneAudio struct {

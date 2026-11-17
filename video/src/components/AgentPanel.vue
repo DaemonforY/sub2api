@@ -58,6 +58,13 @@
           </div>
         </div>
 
+        <!-- 先审镜头剧本: the script waits for the user -->
+        <div v-else-if="g.kind === 'script'" class="rounded-2xl border border-brand-200 bg-brand-50/60 p-3.5 text-sm dark:border-brand-900/50 dark:bg-brand-900/10" data-testid="script-wait">
+          <p class="flex items-center gap-1.5 font-semibold text-brand-700 dark:text-brand-300"><ClipboardCheck class="h-4 w-4" />镜头剧本待确认</p>
+          <p class="mt-1.5 leading-6">{{ g.text }}</p>
+          <button v-if="project?.status === 'script'" class="btn-primary btn-sm mt-2.5" @click="$emit('open-script')">去看镜头剧本</button>
+        </div>
+
         <div v-else-if="g.kind === 'assistant'" class="flex gap-2">
           <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/40"><Sparkles class="h-4 w-4" /></span>
           <div class="rounded-2xl rounded-tl-md bg-ink-100 px-3.5 py-2.5 text-sm leading-6 dark:bg-ink-800">{{ g.text }}</div>
@@ -110,7 +117,7 @@
 
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { ArrowUp, Check, ChevronDown, CircleCheck, Coins, Loader2, Mic, RotateCw, Sparkle, Sparkles, Square } from 'lucide-vue-next'
+import { ArrowUp, Check, ChevronDown, CircleCheck, ClipboardCheck, Coins, Loader2, Mic, RotateCw, Sparkle, Sparkles, Square } from 'lucide-vue-next'
 
 const props = defineProps({
   project: { type: Object, default: null },
@@ -121,7 +128,7 @@ const props = defineProps({
   clones: { type: Array, default: () => [] },
   focusScene: { type: String, default: '' }
 })
-const emit = defineEmits(['send', 'answer', 'stop', 'resume', 'voice'])
+const emit = defineEmits(['send', 'answer', 'stop', 'resume', 'voice', 'open-script'])
 const text = ref('')
 const list = ref(null)
 const picked = reactive({})
@@ -133,6 +140,7 @@ const canResume = computed(() => props.project && (props.project.status === 'fai
 const placeholder = computed(() => {
   if (props.busy) return 'Agent 正在工作，完成后可继续输入'
   if (props.project?.status === 'questions') return '请先回答上面的问题'
+  if (props.project?.status === 'script') return '镜头剧本等你确认：到「脚本」页直接改文字，确认后才开始制作'
   return '继续修改，例如：背景换成深蓝色、第 2 个分镜的图表慢一点、标题再大一些'
 })
 const usageTip = '这个作品累计调用模型的 token 数，按所选模型的价格从余额扣费，明细见 HiveGPT 主站「用量明细」'

@@ -220,6 +220,7 @@ type fakeModel struct {
 	planSystems   []string        // system prompts of the revision plan calls
 	scenes        []string        // system prompts of the scene calls
 	kitAsks       []string        // last user message of every kit call
+	retroAsks     []string        // last user message of every 复盘 call
 }
 
 const fixedScene = "const el = S.h('div', {text: 'fixed'});\nS.root.appendChild(el);\nreturn function update(t) { S.set(el, {opacity: 1}); };"
@@ -241,6 +242,10 @@ func (m *fakeModel) stream(ctx context.Context, _, _ string, msgs []LearnMessage
 	var ans string
 	m.mu.Lock()
 	switch {
+	case strings.Contains(sys, "带用户复盘"):
+		m.calls = append(m.calls, "retro")
+		m.retroAsks = append(m.retroAsks, last)
+		ans = `{"summary":"第二段改了一次","rework":[{"what":"第二段字太小","cause":"规则没写"}],"keep":["第一段的开场"],"rules":["正文不小于 28px"],"drop":[]}`
 	case strings.Contains(sys, "multiple-choice questions"):
 		m.calls = append(m.calls, "questions")
 		ans = `{"questions":[{"id":"depth","title":"深度","options":[{"label":"入门","recommended":true},{"label":"进阶"}]}]}`
