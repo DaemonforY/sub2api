@@ -3,6 +3,7 @@ export default {
     title: 'Games',
     subtitle: 'A few minutes a round, then turn your result into a share card.',
     play: 'Play',
+    credit: 'By {author} · MIT licensed',
     minutes: 'About {n} min',
     soon: 'More games on the way',
     soonDesc: 'What would you like to play? Tell the assistant; the most wanted ones come first.',
@@ -10,6 +11,7 @@ export default {
     askDraft: 'I would like a game where ',
     share: { brand: 'HiveGPT Games', title: 'AI games, a few minutes a round', cta: 'Scan to play' },
     list: {
+      rustedcannon: { title: 'Rusted Cannon', desc: 'An open-source pixel-art run-and-gun: one mercenary, three missions, a scrap-iron vehicle, POWs to rescue, grenades and three multi-phase bosses. Keyboard or touch.', tag: 'Run and gun' },
       planet: { title: 'Hive Planet', desc: 'Fly a little bee round a tiny sleeping planet. Pass through the golden rings and the flower fields open; six islands wake one by one and the music grows with them. (Game text is in Chinese.)', tag: 'Flying' },
       ink: { title: 'Ink in water', desc: 'Stir a pool of ink with your finger and watch it bleed into rice paper; guide it into a character.', tag: 'Ink' },
       craft: { title: 'AI Infinite Alchemy', desc: 'Start from metal, wood, water, fire and earth; drag two together and the AI invents something new. The first maker is remembered site-wide.', tag: 'AI' },

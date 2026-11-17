@@ -29,6 +29,17 @@
             </div>
             <h2 class="mt-2 text-lg font-bold text-gray-950 group-hover:text-primary-700 dark:text-white dark:group-hover:text-primary-300">{{ t(`games.list.${g.key}.title`) }}</h2>
             <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-dark-300">{{ t(`games.list.${g.key}.desc`) }}</p>
+            <!-- open-source games credit their author; a nested <a> is not allowed inside the card link -->
+            <span
+              v-if="g.credit"
+              role="link"
+              tabindex="0"
+              class="mt-2 block w-fit text-xs text-gray-500 underline decoration-dotted underline-offset-2 hover:text-primary-600 dark:text-dark-400"
+              :data-testid="`game-${g.key}-credit`"
+              @click.stop.prevent="openCredit(g.credit.href)"
+              @keydown.enter.stop.prevent="openCredit(g.credit.href)"
+              >{{ t('games.credit', { author: g.credit.author }) }}</span
+            >
             <span class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary-600 dark:text-primary-400">{{ t('games.play') }} →</span>
           </div>
         </component>
@@ -95,8 +106,21 @@ function askForGame() {
   assistant.value?.openWith(t('games.askDraft'))
 }
 
+function openCredit(href: string) {
+  window.open(href, '_blank', 'noopener,noreferrer')
+}
+
 // A game with `href` is a static page under public/games-play/ (its own HTML, not an SPA route).
-const GAMES: { key: string; to?: string; href?: string; minutes: number; images: string[]; emoji: string; cover: string }[] = [
+const GAMES: { key: string; to?: string; href?: string; minutes: number; images: string[]; emoji: string; cover: string; credit?: { author: string; href: string } }[] = [
+  {
+    key: 'rustedcannon',
+    href: '/games-play/rusted-cannon/',
+    minutes: 15,
+    images: ['/games-media/rusted-cannon/cover.webp'],
+    emoji: '',
+    cover: '',
+    credit: { author: 'Cyril Dieumegard', href: 'https://github.com/CyrilDieumegard/rusted-cannon' }
+  },
   {
     key: 'planet',
     to: '/games/planet',
