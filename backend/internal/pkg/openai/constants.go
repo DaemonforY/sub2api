@@ -43,6 +43,19 @@ var DefaultModels = []Model{
 	{ID: "gpt-image-2.6-sunburst", Object: "model", Created: 1793750400, OwnedBy: "openai", Type: "model", DisplayName: "GPT Image 2.6 Sunburst"},
 }
 
+// ChatGPTCodexUnavailableModels are default-catalog models that ChatGPT-login
+// (OAuth) Codex accounts reject with "The '<model>' model is not supported when
+// using Codex with a ChatGPT account". They stay in DefaultModels because API-key
+// accounts may still serve them; model lists hide them when only ChatGPT
+// accounts could take the request. gpt-5.5 left ChatGPT-login Codex on
+// 2026-10-14; the gpt-5.4 family and gpt-5.3-codex-spark went earlier.
+var ChatGPTCodexUnavailableModels = map[string]bool{
+	"gpt-5.5":             true,
+	"gpt-5.4":             true,
+	"gpt-5.4-mini":        true,
+	"gpt-5.3-codex-spark": true,
+}
+
 // DefaultModelIDs returns the default model ID list
 func DefaultModelIDs() []string {
 	ids := make([]string, len(DefaultModels))

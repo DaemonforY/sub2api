@@ -1387,10 +1387,13 @@ func (s *GatewayService) DoGrokNativeResponsesJSON(ctx context.Context, account 
 
 // availableModelsEntry is the cached per group/platform model list.
 // unrestrictedOpenAI records that an eligible OpenAI account has no
-// model_mapping and therefore serves every model.
+// model_mapping and therefore serves every model; unrestrictedAPIKey that one
+// of those is an API-key account (a ChatGPT OAuth account cannot serve the
+// models in openai.ChatGPTCodexUnavailableModels).
 type availableModelsEntry struct {
 	models             []string
 	unrestrictedOpenAI bool
+	unrestrictedAPIKey bool
 }
 
 func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64, platform string) []string {
@@ -1403,17 +1406,45 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 // unmapped account serves those models, so a sibling's whitelist must not hide
 // them (e.g. new image models the mapped account lacks). Composite groups keep
 // using GetAvailableModels, which lists administrator-configured models only.
+//
+// When the only accounts without a whitelist are ChatGPT OAuth accounts, the
+// default models those accounts reject (openai.ChatGPTCodexUnavailableModels)
+// are left out unless a whitelist names them, so clients such as Codex do not
+// offer a model every request for would fail.
 func (s *GatewayService) GetListedModels(ctx context.Context, groupID *int64, platform string) []string {
 	entry := s.loadAvailableModels(ctx, groupID, platform)
-	if len(entry.models) == 0 || !entry.unrestrictedOpenAI {
+	if !entry.unrestrictedOpenAI {
 		return cloneStringSlice(entry.models)
+	}
+	hide := func(model string) bool { return false }
+	if !entry.unrestrictedAPIKey {
+		mapped := make(map[string]struct{}, len(entry.models))
+		for _, model := range entry.models {
+			mapped[model] = struct{}{}
+		}
+		hide = func(model string) bool {
+			_, named := mapped[model]
+			return openai.ChatGPTCodexUnavailableModels[model] && !named
+		}
+	}
+	if len(entry.models) == 0 {
+		// No whitelist anywhere: the default catalog in its own order.
+		models := make([]string, 0, len(openai.DefaultModels))
+		for _, model := range openai.DefaultModelIDs() {
+			if !hide(model) {
+				models = append(models, model)
+			}
+		}
+		return models
 	}
 	modelSet := make(map[string]struct{}, len(entry.models))
 	for _, model := range entry.models {
 		modelSet[model] = struct{}{}
 	}
 	for _, model := range openai.DefaultModelIDs() {
-		modelSet[model] = struct{}{}
+		if !hide(model) {
+			modelSet[model] = struct{}{}
+		}
 	}
 	models := make([]string, 0, len(modelSet))
 	for model := range modelSet {
@@ -1471,6 +1502,7 @@ func (s *GatewayService) loadAvailableModels(ctx context.Context, groupID *int64
 	modelSet := make(map[string]struct{})
 	hasAnyMapping := false
 	unrestrictedOpenAI := false
+	unrestrictedAPIKey := false
 
 	for _, acc := range accounts {
 		// Passthrough routing accepts models independently of model_mapping. A stale
@@ -1488,12 +1520,16 @@ func (s *GatewayService) loadAvailableModels(ctx context.Context, groupID *int64
 			}
 		} else if platform == PlatformOpenAI {
 			unrestrictedOpenAI = true
+			if acc.Type != AccountTypeOAuth {
+				unrestrictedAPIKey = true
+			}
 		}
 	}
 
-	// If no account has model_mapping, return nil (use default)
+	// If no account has model_mapping, GetAvailableModels returns nil (the
+	// handler's default set); GetListedModels still filters that default set.
 	if !hasAnyMapping {
-		return store(availableModelsEntry{})
+		return store(availableModelsEntry{unrestrictedOpenAI: unrestrictedOpenAI, unrestrictedAPIKey: unrestrictedAPIKey})
 	}
 
 	// Convert to slice
@@ -1503,7 +1539,7 @@ func (s *GatewayService) loadAvailableModels(ctx context.Context, groupID *int64
 	}
 	sort.Strings(models)
 
-	return store(availableModelsEntry{models: models, unrestrictedOpenAI: unrestrictedOpenAI})
+	return store(availableModelsEntry{models: models, unrestrictedOpenAI: unrestrictedOpenAI, unrestrictedAPIKey: unrestrictedAPIKey})
 }
 
 func (s *GatewayService) resolveCompositeModelOwnership(ctx context.Context, groupID int64, model string) (CompositeModelOwnership, error) {

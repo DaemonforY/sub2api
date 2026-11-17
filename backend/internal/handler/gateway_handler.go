@@ -1162,7 +1162,11 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	}
 
 	if len(availableModels) > 0 {
-		writeModelsList(c, platform, availableModels)
+		if platform == service.PlatformOpenAI {
+			writeOpenAIModelsList(c, availableModels)
+		} else {
+			writeModelsList(c, platform, availableModels)
+		}
 		return
 	}
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -969,5 +970,36 @@ func TestGetListedModels_OpenAIUnmappedAccountAddsDefaultCatalog(t *testing.T) {
 	require.Equal(t, []string{"gpt-5.4-mini", "gpt-6.1-sol"}, onlyMapped.GetListedModels(context.Background(), &groupID, PlatformOpenAI))
 
 	onlyUnmapped := &GatewayService{accountRepo: &modelsListAccountRepoStub{byGroup: map[int64][]Account{groupID: {unmapped}}}}
-	require.Empty(t, onlyUnmapped.GetListedModels(context.Background(), &groupID, PlatformOpenAI), "no mapping anywhere keeps the handler default")
+	require.Nil(t, onlyUnmapped.GetAvailableModels(context.Background(), &groupID, PlatformOpenAI), "no mapping anywhere keeps the handler default")
+}
+
+// Models a ChatGPT login rejects are not listed when only ChatGPT OAuth accounts
+// could serve them (hivegpt 11-17: account 1 off, gpt-5.5 offered but failing).
+func TestGetListedModels_HidesModelsChatGPTAccountsCannotServe(t *testing.T) {
+	groupID := int64(5)
+	oauth := Account{ID: 10, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Credentials: map[string]any{}}
+	apiKey := Account{ID: 3, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Credentials: map[string]any{}}
+	mappedWith55 := Account{ID: 1, Platform: PlatformOpenAI, Type: AccountTypeAPIKey, Credentials: map[string]any{
+		"model_mapping": map[string]any{"gpt-5.5": "gpt-5.5", "gpt-6.1-sol": "gpt-6.1-sol"},
+	}}
+	list := func(accounts ...Account) []string {
+		svc := &GatewayService{accountRepo: &modelsListAccountRepoStub{byGroup: map[int64][]Account{groupID: accounts}}}
+		return svc.GetListedModels(context.Background(), &groupID, PlatformOpenAI)
+	}
+
+	only := list(oauth)
+	require.Equal(t, "gpt-5.6-sol", only[0], "the default catalog keeps its order")
+	require.Contains(t, only, "gpt-6.1-sol")
+	require.Contains(t, only, "gpt-image-2.6-flare")
+	for model := range openai.ChatGPTCodexUnavailableModels {
+		require.NotContains(t, only, model)
+	}
+	require.Len(t, only, len(openai.DefaultModels)-len(openai.ChatGPTCodexUnavailableModels))
+
+	// An unmapped API-key account serves everything: nothing is hidden.
+	require.Contains(t, list(oauth, apiKey), "gpt-5.5")
+	// A whitelist that names the model keeps it; the others stay hidden.
+	withMapped := list(oauth, mappedWith55)
+	require.Contains(t, withMapped, "gpt-5.5")
+	require.NotContains(t, withMapped, "gpt-5.4-mini")
 }
