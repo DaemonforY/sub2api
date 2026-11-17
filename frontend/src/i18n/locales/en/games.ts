@@ -12,6 +12,7 @@ export default {
     share: { brand: 'HiveGPT Games', title: 'AI games, a few minutes a round', cta: 'Scan to play' },
     list: {
       rustedcannon: { title: 'Rusted Cannon', desc: 'An open-source pixel-art run-and-gun: one mercenary, three missions, a scrap-iron vehicle, POWs to rescue, grenades and three multi-phase bosses. Keyboard or touch.', tag: 'Run and gun' },
+      island: { title: 'Coco Breeze Island', desc: 'An original pixel-art co-op platformer: eat fruit to keep your energy up, crack giant clams for boomerangs and boards, and beat a boss on the beach, in the jungle and in the volcano. Two players on one keyboard or online with a room code. (Game text is in Chinese.)', tag: 'Co-op platformer' },
       planet: { title: 'Hive Planet', desc: 'Fly a little bee round a tiny sleeping planet. Pass through the golden rings and the flower fields open; six islands wake one by one and the music grows with them. (Game text is in Chinese.)', tag: 'Flying' },
       ink: { title: 'Ink in water', desc: 'Stir a pool of ink with your finger and watch it bleed into rice paper; guide it into a character.', tag: 'Ink' },
       craft: { title: 'AI Infinite Alchemy', desc: 'Start from metal, wood, water, fire and earth; drag two together and the AI invents something new. The first maker is remembered site-wide.', tag: 'AI' },
@@ -30,6 +31,7 @@ export default {
       }
     },
     planet: { title: 'Hive Planet' },
+    island: { title: 'Coco Breeze Island' },
     craft: {
       title: 'AI Infinite Alchemy',
       tagline: 'Start from the five elements, drag two together and the AI invents the result',
