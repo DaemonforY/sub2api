@@ -165,7 +165,9 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: backendUrl,
-          changeOrigin: true
+          changeOrigin: true,
+          // game rooms (/api/v1/games/rooms/ws) are WebSockets
+          ws: true
         },
         '/v1': {
           target: backendUrl,
