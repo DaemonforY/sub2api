@@ -546,7 +546,7 @@ export class World {
         ps.x += (tx - ps.x) * 0.05
         ps.y += (ty - ps.y) * 0.05 + Math.sin(p.t * 0.08) * 0.3
         ps.x = Math.max(this.cam + 12, Math.min(this.cam + VIEW_W - 12, ps.x))
-        const near = Math.abs(ps.x - tx) < 18 && Math.abs(ps.y - partner.ps.y) < 30
+        const near = Math.abs(ps.x - tx) < 18 && Math.abs(ps.y - ty) < 12
         const wantPop = (p.btn & BTN.J) !== 0 && (ps.prev & BTN.J) === 0 && p.t > 30
         ps.prev = p.btn
         if ((near || wantPop || p.t > 600) && !boxHitsSolid(this.area, ps.x - 5, ps.y - 14, ps.x + 5, ps.y)) {
@@ -1352,25 +1352,18 @@ export class World {
   }
 
   private stepDefeat(e: Ent): void {
-    // the bridge falls away tile by tile and the boss drops into the pit
-    if (e.t % 4 === 0) {
-      for (let tx = 0; tx < this.area.width; tx++) {
-        if (cell(this.area, tx, 12) === T.BRIDGE) {
-          this.edit(tx, 12, T.EMPTY)
-          this.sfx('break')
-          break
-        }
-      }
-    }
+    // the boss flips over and drops through the bridge into the pit (the bridge stays, so nobody
+    // standing on it falls with it)
     if (e.t > 30) {
       e.vy = Math.min(5, e.vy + 0.2)
       e.y += e.vy
-    }
-    if (e.t === 140) {
+    } else if (e.t % 6 === 0) this.events.push({ e: 'puff', x: e.x + (Math.random() - 0.5) * e.w, y: e.y - Math.random() * e.h })
+    if (e.t === 120) {
       // the stolen 年灯 drops down; touching it ends the level
       this.addEnt('lamp', (this.area.width - 4) * TILE, 3 * TILE, {})
+      this.sfx('sprout')
     }
-    if (e.y > VIEW_H + 80 && e.t > 140) e.dead = true
+    if (e.y > VIEW_H + 80 && e.t > 120) e.dead = true
   }
 
   private hitBoss(e: Ent, p: Player | null): void {

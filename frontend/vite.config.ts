@@ -165,7 +165,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: backendUrl,
-          changeOrigin: true
+          changeOrigin: true,
+          ws: true // 小游戏联机双排 relay: /api/v1/games/rooms/ws
         },
         '/v1': {
           target: backendUrl,

@@ -116,6 +116,7 @@ export class HutuGame {
 
   destroy(): void {
     cancelAnimationFrame(this.raf)
+    window.clearInterval(this.hiddenTimer)
     this.input.detach()
     this.audio.destroy()
     this.room?.close()
@@ -265,7 +266,7 @@ export class HutuGame {
     const mine = m.p[1]
     if (!mine) return
     this.pending = this.pending.filter((p) => p.s > m.a)
-    const tmp = (w.players[1] = w.players[1])
+    const tmp = w.players[1]
     unpackPlayer(mine, tmp)
     if (tmp.st !== 'play') {
       this.pred = null
@@ -291,19 +292,36 @@ export class HutuGame {
 
   private frame = (now: number): void => {
     this.raf = requestAnimationFrame(this.frame)
-    const dt = Math.min(0.1, (now - this.last) / 1000)
+    this.lastRaf = performance.now()
+    this.advance(now, 6)
+    this.draw(now)
+    if (++this.hudT % 6 === 0) this.emitHud(false)
+  }
+
+  private advance(now: number, maxSteps: number): void {
+    const dt = Math.min(0.25, (now - this.last) / 1000)
     this.last = now
     this.acc += dt
     let n = 0
-    while (this.acc >= STEP && n < 6) {
+    while (this.acc >= STEP && n < maxSteps) {
       this.step()
       this.acc -= STEP
       n++
     }
-    if (n >= 6) this.acc = 0
-    this.draw(now)
-    if (++this.hudT % 6 === 0) this.emitHud(false)
+    if (n >= maxSteps) this.acc = 0
   }
+
+  /**
+   * Browsers stop animation frames in background tabs (and hidden windows). Online, the host must keep the world
+   * running (and the guest keep sending input) when the tab is hidden, so a timer takes over.
+   */
+  private lastRaf = 0
+  private hiddenTimer = window.setInterval(() => {
+    if (this.mode !== 'host' && this.mode !== 'guest') return
+    const now = performance.now()
+    if (now - this.lastRaf < 150) return
+    this.advance(now, 16)
+  }, 50)
 
   private drain(): Ev[] {
     const w = this.world

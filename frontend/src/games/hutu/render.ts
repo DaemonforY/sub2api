@@ -483,14 +483,14 @@ export class Renderer {
       case 'mudking': {
         if (e.st === ST.HURT && e.t % 6 < 3) break
         const fr = e.st === ST.DEFEAT || e.st === ST.HURT || !e.ground ? 'mudking2' : 'mudking1'
-        this.drawImg(sprite(fr, e.dir > 0), e.x, e.y + 1)
+        this.drawImg(sprite(fr, e.dir > 0), e.x, e.y + 1, e.st === ST.DEFEAT && e.t > 30)
         break
       }
       case 'nian': {
         if (e.st === ST.HURT && e.t % 6 < 3) break
         const shake = e.st === ST.ROAR ? (e.t % 4 < 2 ? 1 : -1) : 0
         const fr = e.st === ST.CHARGE ? (Math.floor(e.age / 4) % 2 ? 'nian2' : 'nian1') : Math.floor(e.age / 12) % 2 ? 'nian2' : 'nian1'
-        this.drawImg(sprite(fr, e.dir > 0), e.x + shake, e.y + 1)
+        this.drawImg(sprite(fr, e.dir > 0), e.x + shake, e.y + 1, e.st === ST.DEFEAT && e.t > 30)
         if (e.st === ST.STUN) {
           for (let i = 0; i < 3; i++) {
             const a = this.frame * 0.12 + (i * Math.PI * 2) / 3

@@ -183,6 +183,102 @@ describe('world rules', () => {
   })
 })
 
+describe('level flow', () => {
+  function ready(players = 1) {
+    const w = new World({ players })
+    while (w.phase === 'intro') w.tick(Array(players).fill(0))
+    return w
+  }
+
+  it('grabbing the pole clears the level and moves on to the next', () => {
+    const w = ready()
+    const goal = w.area.def.goal as number
+    w.cam = (goal - 12) * TILE
+    const p = w.players[0]
+    p.ps.x = (goal - 2) * TILE
+    p.ps.y = 6 * TILE
+    let steps = 0
+    while (w.levelIdx === 0 && steps < 3000) {
+      w.tick([steps % 40 < 20 ? BTN.R | BTN.J : BTN.R])
+      steps++
+    }
+    expect(w.levelIdx).toBe(1)
+    expect(p.score).toBeGreaterThan(0)
+  })
+
+  it('pressing down on the marked tube takes the team to the coin room and back', () => {
+    const w = ready(2)
+    const warp = w.area.def.warps[0]
+    w.cam = (warp.tx - 10) * TILE
+    w.players.forEach((p) => {
+      p.ps.x = (warp.tx + 1) * TILE
+      p.ps.y = warp.ty * TILE
+      p.ps.ground = true
+    })
+    for (let i = 0; i < 90; i++) w.tick([BTN.D, 0])
+    expect(w.areaIdx).toBe(1)
+    expect(w.players.every((p) => p.st === 'play')).toBe(true)
+  })
+
+  it('falling in a pit costs a life and restarts; no lives left is game over', () => {
+    const w = new World({ players: 1, lives: 1 })
+    while (w.phase === 'intro') w.tick([0])
+    const p = w.players[0]
+    p.ps.y = 300
+    for (let i = 0; i < 400 && w.phase !== 'intro'; i++) w.tick([0])
+    expect(w.lives).toBe(0)
+    while (w.phase === 'intro') w.tick([0])
+    w.players[0].ps.y = 300
+    for (let i = 0; i < 400 && w.phase !== 'over'; i++) w.tick([0])
+    expect(w.phase).toBe('over')
+    w.continueGame()
+    expect(w.lives).toBeGreaterThan(0)
+    expect(w.phase).toBe('intro')
+  })
+
+  it('a partner who dies comes back in a bubble while the other keeps playing', () => {
+    const w = ready(2)
+    const lives = w.lives
+    w.kill(w.players[1])
+    for (let i = 0; i < 160; i++) w.tick([0, 0])
+    expect(w.players[1].st).toBe('bubble')
+    expect(w.lives).toBe(lives - 1)
+    for (let i = 0; i < 400 && w.players[1].st === 'bubble'; i++) w.tick([0, 0])
+    expect(w.players[1].st).toBe('play')
+  })
+
+  it('beating the 泥大王 drops the 年灯 and touching it clears the level', () => {
+    const w = new World({ players: 1 })
+    w.restartFrom(3)
+    while (w.phase === 'intro') w.tick([0])
+    w.cam = w.maxCam()
+    w.players[0].ps.x = (w.area.width - 26) * TILE
+    for (let i = 0; i < 5; i++) w.tick([0])
+    const boss = w.ents.find((e) => e.k === 'mudking')
+    expect(boss).toBeTruthy()
+    for (let hit = 0; hit < 6 && boss && boss.hp > 0; hit++) {
+      // drop onto its head
+      const p = w.players[0]
+      p.ps.x = boss.x
+      p.ps.y = boss.y - boss.h - 8
+      p.ps.vy = 3
+      p.inv = 999
+      for (let i = 0; i < 70; i++) w.tick([0])
+    }
+    expect(w.bossDown).toBe(true)
+    for (let i = 0; i < 400 && !w.ents.some((e) => e.k === 'lamp'); i++) w.tick([0])
+    const lamp = w.ents.find((e) => e.k === 'lamp')
+    expect(lamp).toBeTruthy()
+    if (!lamp) return
+    for (let i = 0; i < 200; i++) w.tick([0])
+    w.players[0].st = 'play'
+    w.players[0].ps.x = lamp.x
+    w.players[0].ps.y = lamp.y
+    w.tick([0])
+    expect(w.phase).toBe('clear')
+  })
+})
+
 describe('network packing', () => {
   it('round-trips players and entities', () => {
     const w = new World({ players: 2 })

@@ -37,7 +37,6 @@ export function restore(w: World, s: Snap): void {
   w.editLog = o.editLog
   w.area = s.area
   w.area.cells.splice(0, w.area.cells.length, ...s.cells)
-  w.level = w.level
 }
 
 const R = BTN.R | BTN.F

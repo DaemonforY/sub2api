@@ -255,23 +255,34 @@ function drawHard(th: Theme, px: Pix): void {
 function drawWall(th: Theme, px: Pix, exposedTop: boolean, x: number, y: number): void {
   const [w0, w1, w2] = THEME[th].wall
   if (th === 'town' || th === 'canal') {
-    // whitewashed wall with dark timber, a tiled roof on top
+    // 白墙黛瓦: whitewashed wall, dark timber posts, a few lattice windows, tiled roof on top
     px(0, 0, w0, 16, 16)
     px(0, 15, w1, 16, 1)
-    if ((x + y) % 3 === 0) {
-      px(4, 5, w2, 8, 7)
-      px(5, 6, '#ffd36a', 6, 5)
-      px(7, 6, w2, 1, 5)
-      px(5, 8, w2, 6, 1)
+    if (x % 4 === 0) px(0, 0, w2, 2, 16)
+    if (hash(x, y, 4) > 0.62 && x % 4 !== 0) {
+      px(4, 4, w2, 9, 8)
+      px(5, 5, '#ffcf6a', 7, 6)
+      px(8, 5, w2, 1, 6)
+      px(5, 7, w2, 7, 1)
+      px(5, 9, w2, 7, 1)
     }
-    px(0, 0, w2, 1, 16)
     if (exposedTop) {
-      px(0, 0, '#4a5068', 16, 6)
-      for (let i = 0; i < 16; i += 4) {
-        px(i, 0, '#6a7290', 3, 5)
-        px(i + 3, 0, '#2e3248', 1, 6)
+      const R0 = '#3a3f58'
+      const R1 = '#5a6282'
+      const R2 = '#22253a'
+      px(0, 0, R2, 16, 2)
+      px(0, 2, R0, 16, 7)
+      for (let i = 0; i < 16; i += 3) {
+        px(i, 2, R1, 2, 6)
+        px(i + 2, 2, R2, 1, 7)
       }
-      px(0, 6, '#2e3248', 16, 1)
+      px(0, 9, R2, 16, 1)
+      px(0, 10, '#c9bfae', 16, 1)
+      // ridge ornament at house corners
+      if (x % 7 === 0) {
+        px(1, 0, R2, 3, 1)
+        px(0, 0, '#8a90a8', 1, 1)
+      }
     }
     return
   }
@@ -362,7 +373,10 @@ export function tileArt(th: Theme, c: string, ctx: { top: boolean; x: number; y:
       draw = (px) => drawHard(th, px)
       break
     case 'W': {
-      const v = th === 'town' || th === 'canal' ? (ctx.x + ctx.y) % 3 : (ctx.x * 3 + ctx.y) % 5
+      const v =
+        th === 'town' || th === 'canal'
+          ? `${hash(ctx.x, ctx.y, 4) > 0.62 ? 1 : 0}${ctx.x % 4 === 0 ? 1 : 0}${ctx.x % 7 === 0 ? 1 : 0}`
+          : `${(ctx.x * 3 + ctx.y) % 5}|${ctx.x}|${ctx.y}`
       key = `w${th}${ctx.top ? 1 : 0}${v}${ctx.x % 2}`
       draw = (px) => drawWall(th, px, ctx.top, ctx.x, ctx.y)
       break

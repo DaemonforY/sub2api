@@ -147,7 +147,7 @@ const joinCode = ref('')
 const muted = ref(false)
 const copied = ref(false)
 const levels = LEVELS
-const COVER = '/games-media/hutu/cover.webp'
+const COVER = '/games-media/hutu/title.webp'
 const saved = reactive({ best: 0, reached: 0 })
 const isTouch = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches
 const canFullscreen = typeof document !== 'undefined' && !!document.documentElement.requestFullscreen

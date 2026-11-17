@@ -113,6 +113,14 @@ function openCredit(href: string) {
 // A game with `href` is a static page under public/games-play/ (its own HTML, not an SPA route).
 const GAMES: { key: string; to?: string; href?: string; minutes: number; images: string[]; emoji: string; cover: string; credit?: { author: string; href: string } }[] = [
   {
+    key: 'hutu',
+    to: '/games/hutu',
+    minutes: 15,
+    images: ['/games-media/hutu/cover.webp'],
+    emoji: '',
+    cover: ''
+  },
+  {
     key: 'rustedcannon',
     href: '/games-play/rusted-cannon/',
     minutes: 15,
