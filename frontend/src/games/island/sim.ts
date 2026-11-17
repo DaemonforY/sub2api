@@ -1523,7 +1523,7 @@ function bloom(w: World, b: Ent, floor: number, angry: boolean) {
       const k = b.t / 70
       const reach = angry ? 250 : 200
       b.x = b.ox - Math.sin(Math.min(1, k) * Math.PI) * reach
-      b.y = b.oy + Math.sin(Math.min(1, k) * Math.PI) * 74
+      b.y = b.oy + Math.sin(Math.min(1, k) * Math.PI) * 58
       if (b.t > 70) {
         b.st = 1
         b.t = 0
