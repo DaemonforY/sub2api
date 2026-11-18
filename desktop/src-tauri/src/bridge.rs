@@ -68,7 +68,7 @@ fn write_codex_home(home: &PathBuf, base_url: &str, office_ready: bool) -> Resul
     std::fs::create_dir_all(home).map_err(|e| format!("创建配置目录失败：{e}"))?;
     let config = format!(
         r#"# 由 HiveGPT 桌面助手生成，每次启动都会重写。
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_provider = "hivegpt"
 
 [model_providers.hivegpt]

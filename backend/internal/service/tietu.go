@@ -404,7 +404,7 @@ func (s *TietuService) model(ctx context.Context) string {
 			return st.Model
 		}
 	}
-	return "gpt-6.1-sol"
+	return "gpt-6.2-sol"
 }
 
 func (s *TietuService) Get(ctx context.Context, userID, id int64) (*TietuProject, error) {

@@ -8,7 +8,7 @@ describe('codex starter config', () => {
     expect(toml).toContain('wire_api = "responses"')
     expect(toml).toContain('requires_openai_auth = false')
     expect(toml).toContain('experimental_bearer_token = "sk-test\\"x"')
-    expect(toml).toContain('model = "gpt-6.1-sol"')
+    expect(toml).toContain('model = "gpt-6.2-sol"')
     expect(toml).not.toContain('model_catalog_json')
   })
 
@@ -23,11 +23,12 @@ describe('codex starter config', () => {
 
 describe('pickCodexDefaultModel', () => {
   it("follows Codex's order through what the group's catalog has", () => {
+    expect(pickCodexDefaultModel(['gpt-6.1-sol', 'gpt-6.2-astra', 'gpt-6.2-sol'])).toBe('gpt-6.2-sol')
     expect(pickCodexDefaultModel(['gpt-5.5', 'gpt-6-luna', 'gpt-6.1-sol'])).toBe('gpt-6.1-sol')
     expect(pickCodexDefaultModel(['gpt-5.5', 'gpt-6-luna'])).toBe('gpt-6-luna')
     expect(pickCodexDefaultModel(['gpt-6-luna', 'gpt-6.1-terra'])).toBe('gpt-6.1-terra')
     expect(pickCodexDefaultModel(['claude-opus-4-8', 'gpt-5.5'])).toBe('gpt-5.5')
     expect(pickCodexDefaultModel(['deepseek-v4-pro'])).toBe('deepseek-v4-pro')
-    expect(pickCodexDefaultModel([])).toBe('gpt-6.1-sol')
+    expect(pickCodexDefaultModel([])).toBe('gpt-6.2-sol')
   })
 })

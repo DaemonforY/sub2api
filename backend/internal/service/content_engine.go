@@ -64,7 +64,7 @@ const (
 	ContentTopicUsed      = "used"
 	ContentTopicDismissed = "dismissed"
 
-	contentDefaultModel      = "gpt-6.1-sol"
+	contentDefaultModel      = "gpt-6.2-sol"
 	contentDefaultDailyTime  = "09:00"
 	contentDefaultPromoBonus = 1.0
 	contentMaxDailyCount     = 3

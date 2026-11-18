@@ -666,7 +666,7 @@ func (s *EditorService) aiKey(ctx context.Context, userID, keyID int64) (string,
 	st, _ := s.learn.loadSettings(ctx)
 	model := st.Model
 	if model == "" {
-		model = "gpt-6.1-sol"
+		model = "gpt-6.2-sol"
 	}
 	return k.Key, model, nil
 }
