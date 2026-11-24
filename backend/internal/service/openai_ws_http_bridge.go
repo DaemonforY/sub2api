@@ -850,6 +850,9 @@ func (s *OpenAIGatewayService) proxyOpenAIWSHTTPBridgeTurn(
 			if wroteDownstream && requestScopedCapacity && !capacityFailoverSuppressedLogged {
 				logOpenAICapacityFailoverSuppressed(ctx, account, "ws_http_bridge", resp.Header.Get("x-request-id"), eventType)
 				capacityFailoverSuppressedLogged = true
+				if account.Platform == PlatformOpenAI {
+					s.noteOpenAIAccountCapacityShed(account, upstreamMessage, nil)
+				}
 			}
 			if eventType == "error" && !officialOpenAIResponses {
 				upstreamEventErr = errors.New(errMessage)

@@ -103,7 +103,9 @@ func (s *OpenAIGatewayService) handleOpenAIAccountUpstreamError(ctx context.Cont
 	}
 	// Capacity shedding describes this request, not account health. Keep the
 	// account schedulable while the request-local retry budget handles recovery.
+	// Repeated sheds still deprioritize the account (openai_account_overload_shed.go).
 	if account != nil && account.Platform == PlatformOpenAI && isOpenAIRequestScopedCapacityShed("", responseBody) {
+		s.noteOpenAIAccountCapacityShed(account, responseBody, headers)
 		return false
 	}
 	// A 5xx on a request using the hosted web_search tool is the tool failing upstream; other requests

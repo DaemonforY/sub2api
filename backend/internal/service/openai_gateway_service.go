@@ -498,6 +498,9 @@ type OpenAIGatewayService struct {
 	// transportStrikes counts recent durable proxy/network failures per account;
 	// the account is only cooled down once they repeat (openai_upstream_transport_error.go).
 	transportStrikes openAITransportStrikeTracker
+	// overloadSheds deprioritizes accounts that keep shedding load
+	// (openai_account_overload_shed.go).
+	overloadSheds openAIOverloadShedTracker
 
 	// contentLog receives captured request content (请求内容日志); nil-safe.
 	contentLog ContentLogRecorder

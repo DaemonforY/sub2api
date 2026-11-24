@@ -1549,7 +1549,7 @@ func (s *OpenAIGatewayService) resolveFreshSchedulableOpenAIAccountBeforeProfit(
 	if s.isOpenAIAccountBlockedBySchedulingThreshold(ctx, fresh) {
 		return nil
 	}
-	if s.isOpenAIProxyStreamQuarantined(ctx, fresh) {
+	if s.isOpenAIAccountSoftExcluded(ctx, fresh) {
 		return nil
 	}
 	return fresh
@@ -1598,7 +1598,7 @@ func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDBBeforeProfit(ct
 		if !parentHealthyForShadow(account, s.parentAccountLookup(ctx)) {
 			return nil
 		}
-		if s.isOpenAIProxyStreamQuarantined(ctx, account) {
+		if s.isOpenAIAccountSoftExcluded(ctx, account) {
 			return nil
 		}
 		return account
@@ -1626,7 +1626,7 @@ func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDBBeforeProfit(ct
 	if s.isOpenAIAccountBlockedBySchedulingThreshold(ctx, latest) {
 		return nil
 	}
-	if s.isOpenAIProxyStreamQuarantined(ctx, latest) {
+	if s.isOpenAIAccountSoftExcluded(ctx, latest) {
 		return nil
 	}
 	return latest

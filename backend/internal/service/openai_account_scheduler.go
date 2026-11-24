@@ -1830,6 +1830,9 @@ func (s *defaultOpenAIAccountScheduler) isAccountRequestCompatibleReason(ctx con
 	if s != nil && s.service != nil && s.service.isOpenAIProxyStreamQuarantined(ctx, account) {
 		return false, "proxy_stream_quarantined"
 	}
+	if s != nil && s.service != nil && s.service.isOpenAIAccountOverloadDeprioritized(ctx, account) {
+		return false, "overload_deprioritized"
+	}
 	// Quota auto-pause must be evaluated during the initial filter too. Without it the
 	// TopK candidate pool can be filled with paused accounts and the later fresh/DB
 	// rechecks won't reach healthy accounts that fell outside TopK — manifesting as
@@ -2225,11 +2228,13 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 	if NormalizeOpenAICompatiblePlatform(platform) != PlatformOpenAI {
 		return selection, decision, err
 	}
-	blocked := s.getOpenAIProxyStreamCircuit().activeBlockCount(time.Now())
-	if blocked == 0 {
+	now := time.Now()
+	blocked := s.getOpenAIProxyStreamCircuit().activeBlockCount(now)
+	deprioritized := s.overloadSheds.activePenaltyCount(now)
+	if blocked == 0 && deprioritized == 0 {
 		return selection, decision, err
 	}
-	s.logOpenAIProxyStreamQuarantineFailOpen(requestedModel, blocked)
+	s.logOpenAIProxyStreamQuarantineFailOpen(requestedModel, blocked, deprioritized)
 	return s.selectAccountWithSchedulerOnce(withOpenAIProxyStreamQuarantineBypass(ctx), groupID, previousResponseID, sessionHash, requestedModel, excludedIDs, requiredTransport, requiredCapability, requiredImageCapability, requireCompact, platform, previousResponseCanMove, useUpstreamTokenCost)
 }
 

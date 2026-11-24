@@ -1625,6 +1625,10 @@ func (s *OpenAIGatewayService) handleOpenAIStreamTerminalAccountSideEffects(
 	canonicalModel ...string,
 ) (int, bool) {
 	statusCode := openAIStreamFailureStatus(payload, message)
+	if statusCode == http.StatusServiceUnavailable && account != nil && account.Platform == PlatformOpenAI &&
+		isOpenAIUpstreamCapacityShedEvent(payload) {
+		s.noteOpenAIAccountCapacityShed(account, payload, nil)
+	}
 	switch statusCode {
 	case http.StatusForbidden:
 		if !openAIStream403AccountFailure(payload, message) {

@@ -269,6 +269,8 @@ func (s *OpenAIGatewayService) clearOpenAIProxyStreamDisconnect(account *Account
 // proxy quarantine. It is set for the second, fail-open selection attempt when
 // the first pass found no available account while the circuit was withholding
 // proxies: a degraded proxy is strictly better than answering 502 (#5056).
+// The same pass also re-admits overload-deprioritized accounts
+// (openai_account_overload_shed.go).
 type openAIProxyStreamQuarantineBypassKey struct{}
 
 func withOpenAIProxyStreamQuarantineBypass(ctx context.Context) context.Context {
@@ -297,7 +299,7 @@ func (s *OpenAIGatewayService) isOpenAIProxyStreamQuarantined(ctx context.Contex
 
 // logOpenAIProxyStreamQuarantineFailOpen emits a rate-limited warning when a
 // selection pass had to re-admit quarantined proxies to serve at all.
-func (s *OpenAIGatewayService) logOpenAIProxyStreamQuarantineFailOpen(requestedModel string, blockedProxies int) {
+func (s *OpenAIGatewayService) logOpenAIProxyStreamQuarantineFailOpen(requestedModel string, blockedProxies int, overloadDeprioritized int) {
 	now := time.Now().UnixNano()
 	last := s.openaiProxyStreamFailOpenLogAt.Load()
 	if now-last < int64(openAIProxyStreamFailOpenLogInterval) ||
@@ -307,6 +309,7 @@ func (s *OpenAIGatewayService) logOpenAIProxyStreamQuarantineFailOpen(requestedM
 	logger.L().With(zap.String("component", "service.openai_gateway")).Warn(
 		"openai.proxy_stream_quarantine_fail_open",
 		zap.Int("blocked_proxies", blockedProxies),
+		zap.Int("overload_deprioritized_accounts", overloadDeprioritized),
 		zap.String("model", requestedModel),
 	)
 }
