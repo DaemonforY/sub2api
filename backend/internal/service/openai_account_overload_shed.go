@@ -25,6 +25,10 @@ import (
 // 742 requests without a single error in that time, yet account 10 kept
 // getting new requests and its sticky sessions.
 //
+// The window is longer than the retry-after OpenAI sends (~5–6 minutes): on
+// 2026-11-24 account 10 shed once per retry-after period, 5m05s apart, which a
+// 5-minute window never caught.
+//
 // An account that sheds twice within the window is deprioritized for the
 // upstream's retry-after (clamped). Deprioritized means it is left out of
 // selection while another account can serve; when it is the only usable
@@ -32,7 +36,7 @@ import (
 // again, so this never turns partial failures into "no available accounts".
 const (
 	openAIOverloadShedThreshold = 2
-	openAIOverloadShedWindow    = 5 * time.Minute
+	openAIOverloadShedWindow    = 10 * time.Minute
 	// openAIOverloadShedCollapse merges sheds that land together: a bare error
 	// event followed by response.failed for the same request, or several
 	// streams cut in the same instant, are one observation.
