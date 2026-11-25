@@ -52,7 +52,14 @@
         >
           {{ t('chat.modeImage') }}
         </button>
-        <button type="button" class="mode-btn" :class="mode === 'video' ? 'mode-on' : ''" data-testid="chat-mode-video" @click="setMode('video')">
+        <button
+          v-if="showVideo || mode === 'video'"
+          type="button"
+          class="mode-btn"
+          :class="mode === 'video' ? 'mode-on' : ''"
+          data-testid="chat-mode-video"
+          @click="setMode('video')"
+        >
           {{ t('chat.modeVideo') }}
         </button>
       </div>
@@ -113,6 +120,8 @@ import { fileURL, uploadFile } from '@/api/chat'
 const props = defineProps<{
   busy: boolean
   canDraw: boolean
+  /** Muse video is no longer sold: 视频 shows only for users who still hold a video key. */
+  showVideo: boolean
   mode: 'text' | 'image' | 'video'
   imageSize: string
   videoAspect: string
@@ -153,7 +162,6 @@ const canSend = computed(
   () => !props.disabled && !uploading.value && (text.value.trim() !== '' || (props.mode === 'text' && attachments.value.length > 0))
 )
 
-// 视频 is always offered: the page switches to the user's Muse video key, or explains how to get one.
 function setMode(m: 'text' | 'image' | 'video') {
   if (m === 'image' && !props.canDraw) {
     appStore.showInfo(t('chat.drawNeedsGpt'))

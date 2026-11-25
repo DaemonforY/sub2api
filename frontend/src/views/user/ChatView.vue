@@ -201,6 +201,7 @@
           v-model:video-aspect="videoAspect"
           :busy="busy"
           :can-draw="canDraw"
+          :show-video="hasVideoKey"
           :disabled="!keyId || (mode === 'text' && !model) || running"
           @send="(p) => send(p)"
           @stop="stop"
@@ -288,6 +289,7 @@ const composer = ref<InstanceType<typeof ChatComposer>>()
 const selectedKey = computed(() => keys.value.find((k) => k.id === keyId.value) || null)
 const canDraw = computed(() => !!selectedKey.value?.can_draw)
 const canVideo = computed(() => !!selectedKey.value?.can_video)
+const hasVideoKey = computed(() => keys.value.some((k) => k.can_video))
 /** The last key used for chat/画图, to come back to after 视频 (a video key does only videos). */
 let lastChatKeyId = 0
 const systemPrompt = computed(() => (conv.value ? conv.value.system_prompt : draftSystemPrompt.value))
