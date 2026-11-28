@@ -176,6 +176,7 @@ export default {
         works: 'Gallery',
         games: 'Games',
         pricing: 'Pricing',
+        partner: 'Earn',
         signupTag: '+${amount}'
       },
       hero: {
@@ -515,7 +516,7 @@ export default {
         secondary: 'Try the canvas first'
       },
       footer: {
-        desc: 'Images, writing and code: say it in one sentence and AI gets it done.',
+        desc: 'Images, writing and code: say it in one sentence and AI gets it done. Recommend it to friends and earn a share.',
         product: 'Product',
         support: 'Support',
         canvas: 'Infinite Canvas',

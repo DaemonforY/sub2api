@@ -218,6 +218,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: 'Pricing', titleKey: 'pricing.title' }
   },
   {
+    path: '/partner',
+    name: 'Partner',
+    component: () => import('@/views/PartnerView.vue'),
+    meta: { requiresAuth: false, title: 'Earn with us', titleKey: 'partner.title' }
+  },
+  {
     path: '/courses',
     name: 'Courses',
     component: () => import('@/views/CoursesView.vue'),

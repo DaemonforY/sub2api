@@ -176,6 +176,7 @@ export default {
         works: '作品',
         games: '小游戏',
         pricing: '价格',
+        partner: '合作赚钱',
         signupTag: '送${amount}'
       },
       hero: {
@@ -515,7 +516,7 @@ export default {
         secondary: '先去画布看看'
       },
       footer: {
-        desc: '画图、写作、编程，用中文说一句，AI 帮你做完。',
+        desc: '画图、写作、编程，用中文说一句，AI 帮你做完；推荐给朋友，还能拿分成。',
         product: '产品',
         support: '支持',
         canvas: '无限画布',

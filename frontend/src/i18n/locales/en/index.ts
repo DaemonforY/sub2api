@@ -31,6 +31,7 @@ import inspiration from './inspiration'
 import poems from './poems'
 import desktop from './desktop'
 import quotaReset from './quotaReset'
+import partner from './partner'
 
 export default {
   ...landing,
@@ -66,4 +67,5 @@ export default {
   ...desktop,
   ...desktopAdmin,
   ...quotaReset,
+  ...partner,
 }

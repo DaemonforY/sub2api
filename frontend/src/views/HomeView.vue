@@ -291,6 +291,9 @@
       <!-- ④ 数据在流动: the honeycomb floor and the real totals -->
       <HomeLiveStats :total-tokens="usage?.total_tokens" :total-requests="usage?.total_requests" />
 
+      <!-- ⑤ 一起挣钱: the referral / partner program, shown only while it is switched on -->
+      <HomePartner :site-name="siteName" />
+
       <div id="pricing" class="mx-auto max-w-6xl scroll-mt-16 px-4 pb-4 pt-20 sm:px-6">
         <HomePricing :is-authenticated="isAuthenticated" :signup-bonus="signupBonus" :contact-info="contactInfo" />
         <HomeCommunityWall />
@@ -424,6 +427,7 @@ import HomeCommunityWall from '@/components/home/HomeCommunityWall.vue'
 import HomeAssistant from '@/components/home/HomeAssistant.vue'
 import HomePromoMascot from '@/components/home/HomePromoMascot.vue'
 import HomeFaq from '@/components/home/HomeFaq.vue'
+import HomePartner from '@/components/home/HomePartner.vue'
 
 const { t } = useI18n()
 
@@ -472,7 +476,8 @@ const navLinks = [
   { key: 'code', href: '/learn/codex/hivegpt?utm_source=home&utm_medium=nav', external: false },
   { key: 'works', href: canvasLink('nav-explore', '/explore'), external: true },
   { key: 'games', href: '/games', external: false },
-  { key: 'pricing', href: '/pricing', external: false }
+  { key: 'pricing', href: '/pricing', external: false },
+  { key: 'partner', href: '/partner', external: false }
 ]
 // Phones keep AI 对话 in the header, so their link row starts with 小游戏 where it can't scroll out of sight.
 const mobileNavLinks = [...navLinks.filter((l) => l.key === 'games'), ...navLinks.filter((l) => l.key !== 'games' && l.key !== 'chat')]
