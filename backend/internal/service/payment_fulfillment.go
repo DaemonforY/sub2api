@@ -845,12 +845,16 @@ func (s *PaymentService) applyAffiliateRebateForOrder(ctx context.Context, o *db
 
 	sourceOrderID := o.ID
 	var rebateAmount float64
-	if o.OrderType == payment.OrderTypeCourse {
+	switch o.OrderType {
+	case payment.OrderTypeCourse:
 		// Course orders earn the course rebate rate (0 = none).
 		if rate := s.courseRebateRate(ctx); rate > 0 {
 			rebateAmount, err = s.affiliateService.AccrueInviteRebateWithRate(txCtx, o.UserID, baseAmount, &sourceOrderID, rate)
 		}
-	} else {
+	case payment.OrderTypeSubscription:
+		// Subscription orders earn the 订阅订单返利比例 when it is set (see 推广设置).
+		rebateAmount, err = s.affiliateService.AccrueInviteRebateForSubscription(txCtx, o.UserID, baseAmount, &sourceOrderID)
+	default:
 		rebateAmount, err = s.affiliateService.AccrueInviteRebateForOrder(txCtx, o.UserID, baseAmount, &sourceOrderID)
 	}
 	if err != nil {

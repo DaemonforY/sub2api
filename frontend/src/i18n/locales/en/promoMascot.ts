@@ -19,8 +19,9 @@ export default {
     },
     invite: {
       title: 'Invite friends',
-      descBoth: 'Friend gets {bonus}% back, you earn {rebate}%',
-      descRebate: 'Earn {rebate}% of every friend payment',
+      descBoth: 'Friend gets {bonus}% back, you earn {rebate}% of top-ups',
+      descRebate: 'Earn {rebate}% of friend top-ups',
+      descSub: ' ({sub}% on plans)',
       descBonus: 'Friend gets {bonus}% back on first order',
       descWithdraw: ', withdrawable',
       value: 'Both win'

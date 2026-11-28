@@ -27,7 +27,7 @@ describe('invite poster copy', () => {
     const invite = inviteCopy(data, t)
     expect(invite.stats.map((s) => s.value)).toEqual(['10', '20'])
     expect(invite.stats[0].desc).toContain('最高 ¥30')
-    expect(invite.example).toBe('举个例子：好友付费 ¥100 → 好友得 ¥10 余额，你得 ¥20 返利')
+    expect(invite.example).toBe('举个例子：好友充值 ¥100 → 好友得 ¥10 余额，你得 ¥20 返利')
     expect(invite.footer.code).toBe('邀请码 ABC123')
     expect(studentCopy(data, t).items[0].title).toBe('教育邮箱认证，订阅立减 10%')
     expect(canvasCopy(data, t).footer.cta).toBe('扫码注册，首单返 10%')
@@ -42,7 +42,7 @@ describe('invite poster copy', () => {
   it('drops the friend reward when the invitee bonus is off', () => {
     const off = { ...data, inviteeBonusRate: 0, eduDiscount: 0 }
     expect(inviteCopy(off, t).stats.map((s) => s.label)).toEqual(['你'])
-    expect(inviteCopy(off, t).example).toBe('举个例子：好友付费 ¥100 → 你得 ¥20 返利')
+    expect(inviteCopy(off, t).example).toBe('举个例子：好友充值 ¥100 → 你得 ¥20 返利')
     expect(studentCopy(off, t).items.map((i) => i.title)).toEqual(['Codex 订阅：写代码、改论文', '无限画布：文生图、改图', '邀请同学，一起省'])
     expect(minimalCopy(off, t).offer).toBe('扫码注册，开始用 AI')
   })

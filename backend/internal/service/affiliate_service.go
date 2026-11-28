@@ -92,8 +92,11 @@ type AffiliateDetail struct {
 	// EffectiveRebateRatePercent 是当前用户作为邀请人时实际生效的返利比例：
 	// 优先用户自己的专属比例（aff_rebate_rate_percent），否则回退到全局比例。
 	// 用于在用户的 /affiliate 页面直观展示「分享后能拿到多少」。
-	EffectiveRebateRatePercent float64            `json:"effective_rebate_rate_percent"`
-	Invitees                   []AffiliateInvitee `json:"invitees"`
+	EffectiveRebateRatePercent float64 `json:"effective_rebate_rate_percent"`
+	// EffectiveSubscriptionRebateRatePercent is set when subscription orders earn this user a
+	// different rate (订阅订单返利比例), so the page can say so.
+	EffectiveSubscriptionRebateRatePercent *float64           `json:"effective_subscription_rebate_rate_percent,omitempty"`
+	Invitees                               []AffiliateInvitee `json:"invitees"`
 	// CanBindInviter: no inviter yet and still within AffiliateLateBindWindow of signing up.
 	CanBindInviter      bool       `json:"can_bind_inviter"`
 	BindInviterDeadline *time.Time `json:"bind_inviter_deadline,omitempty"`
@@ -296,16 +299,22 @@ func (s *AffiliateService) GetAffiliateDetail(ctx context.Context, userID int64)
 	if err != nil {
 		return nil, err
 	}
+	rate := s.resolveRebateRatePercent(ctx, summary)
+	var subRate *float64
+	if v := s.resolveSubscriptionRebateRatePercent(ctx, summary); v != rate {
+		subRate = &v
+	}
 	return &AffiliateDetail{
-		UserID:                     summary.UserID,
-		AffCode:                    summary.AffCode,
-		InviterID:                  summary.InviterID,
-		AffCount:                   summary.AffCount,
-		AffQuota:                   summary.AffQuota,
-		AffFrozenQuota:             summary.AffFrozenQuota,
-		AffHistoryQuota:            summary.AffHistoryQuota,
-		EffectiveRebateRatePercent: s.resolveRebateRatePercent(ctx, summary),
-		Invitees:                   invitees,
+		EffectiveSubscriptionRebateRatePercent: subRate,
+		UserID:                                 summary.UserID,
+		AffCode:                                summary.AffCode,
+		InviterID:                              summary.InviterID,
+		AffCount:                               summary.AffCount,
+		AffQuota:                               summary.AffQuota,
+		AffFrozenQuota:                         summary.AffFrozenQuota,
+		AffHistoryQuota:                        summary.AffHistoryQuota,
+		EffectiveRebateRatePercent:             rate,
+		Invitees:                               invitees,
 	}, nil
 }
 
@@ -363,6 +372,12 @@ func (s *AffiliateService) AccrueInviteRebateForOrder(ctx context.Context, invit
 	return s.accrueInviteRebate(ctx, inviteeUserID, baseRechargeAmount, sourceOrderID, nil)
 }
 
+// AccrueInviteRebateForSubscription credits the inviter for a subscription order: the 订阅订单返利比例
+// from 推广设置 when it is set and the inviter has no exclusive rate, else the usual rate.
+func (s *AffiliateService) AccrueInviteRebateForSubscription(ctx context.Context, inviteeUserID int64, baseAmount float64, sourceOrderID *int64) (float64, error) {
+	return s.accrueInviteRebateOpts(ctx, inviteeUserID, baseAmount, sourceOrderID, nil, true)
+}
+
 // AccrueInviteRebateWithRate credits the inviter ratePercent of the amount instead of their usual
 // rate (course orders use the course rebate rate); the switch, validity and caps still apply.
 func (s *AffiliateService) AccrueInviteRebateWithRate(ctx context.Context, inviteeUserID int64, baseAmount float64, sourceOrderID *int64, ratePercent float64) (float64, error) {
@@ -370,6 +385,10 @@ func (s *AffiliateService) AccrueInviteRebateWithRate(ctx context.Context, invit
 }
 
 func (s *AffiliateService) accrueInviteRebate(ctx context.Context, inviteeUserID int64, baseRechargeAmount float64, sourceOrderID *int64, rateOverride *float64) (float64, error) {
+	return s.accrueInviteRebateOpts(ctx, inviteeUserID, baseRechargeAmount, sourceOrderID, rateOverride, false)
+}
+
+func (s *AffiliateService) accrueInviteRebateOpts(ctx context.Context, inviteeUserID int64, baseRechargeAmount float64, sourceOrderID *int64, rateOverride *float64, subscription bool) (float64, error) {
 	if s == nil || s.repo == nil {
 		return 0, nil
 	}
@@ -406,6 +425,9 @@ func (s *AffiliateService) accrueInviteRebate(ctx context.Context, inviteeUserID
 	}
 
 	rebateRatePercent := s.resolveRebateRatePercent(ctx, inviterSummary)
+	if subscription {
+		rebateRatePercent = s.resolveSubscriptionRebateRatePercent(ctx, inviterSummary)
+	}
 	if rateOverride != nil {
 		rebateRatePercent = *rateOverride
 	}
@@ -466,6 +488,21 @@ func (s *AffiliateService) resolveRebateRatePercent(ctx context.Context, inviter
 			return s.globalRebateRatePercent(ctx)
 		}
 		return clampAffiliateRebateRate(v)
+	}
+	return s.globalRebateRatePercent(ctx)
+}
+
+// resolveSubscriptionRebateRatePercent is the rate a subscription order earns: an exclusive rate
+// always wins (it was agreed with that inviter); otherwise the subscription rate when set, else
+// the global rate.
+func (s *AffiliateService) resolveSubscriptionRebateRatePercent(ctx context.Context, inviter *AffiliateSummary) float64 {
+	if inviter != nil && inviter.AffRebateRatePercent != nil {
+		return s.resolveRebateRatePercent(ctx, inviter)
+	}
+	if s != nil && s.settingService != nil {
+		if rate, ok := s.settingService.GetSubscriptionRebateRatePercent(ctx); ok {
+			return rate
+		}
 	}
 	return s.globalRebateRatePercent(ctx)
 }

@@ -7,12 +7,15 @@ export default {
     heroSubtitle: 'People around you want GPT, image generation and Codex but don\'t know where to buy or how to pay. Recommend {site}: they save the hassle, you get a share.',
     stats: {
       rebate: 'Of every friend payment',
+      rebateTopup: 'Of friend top-ups',
+      rebateSub: '{rate}% on subscription plans',
       bonus: 'Extra on a friend\'s first order',
       withdraw: 'Cash out to Alipay / WeChat',
       withdrawValue: 'from ¥{min}',
       signup: 'Extra for friends who sign up',
     },
     example: 'Example: a friend tops up ¥100 and you get ¥{rebate}; every later top-up or renewal earns you {rate}% again.',
+    exampleSub: 'Example: a friend tops up ¥100 and you get ¥{rebate}; a ¥100 subscription plan earns you ¥{subRebate}. Every later payment counts too.',
     ctaInvite: 'Get my invite link',
     ctaRegister: 'Sign up for an invite link',
     ways: {
@@ -25,6 +28,7 @@ export default {
         p1: 'Your own link and poster are under Referrals in the console',
         p2: 'Friends get extra credit on sign-up and on their first order',
         p3: 'You earn {rate}% of every real payment they make',
+        p3Sub: 'You earn {rate}% of their top-ups and {sub}% of subscription plans',
         p3NoRate: 'You earn a share of every real payment they make',
         cta: 'Get invite link',
       },

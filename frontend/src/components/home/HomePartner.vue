@@ -14,6 +14,7 @@
         <div v-for="s in stats" :key="s.key" class="rounded-2xl bg-white/80 px-4 py-4 shadow-sm dark:bg-dark-900/70">
           <p class="text-2xl font-extrabold text-amber-700 dark:text-amber-300">{{ s.value }}</p>
           <p class="mt-1 text-sm text-gray-600 dark:text-dark-300">{{ s.label }}</p>
+          <p v-if="s.sub" class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">{{ s.sub }}</p>
         </div>
       </div>
     </div>
@@ -38,7 +39,12 @@ const stats = computed(() => {
   const c = cfg.value
   const rate = Number(c?.inviter_rebate_rate_percent || 0)
   if (!c?.affiliate_enabled || rate <= 0) return []
-  const out = [{ key: 'rebate', value: `${money(rate)}%`, label: t('partner.stats.rebate') }]
+  const sub = c.subscription_rebate_rate_percent
+  const out: { key: string; value: string; label: string; sub?: string }[] = [
+    sub != null
+      ? { key: 'rebate', value: `${money(rate)}%`, label: t('partner.stats.rebateTopup'), sub: t('partner.stats.rebateSub', { rate: money(Number(sub)) }) }
+      : { key: 'rebate', value: `${money(rate)}%`, label: t('partner.stats.rebate') },
+  ]
   if (c.invitee_bonus_rate_percent > 0) out.push({ key: 'bonus', value: `${money(c.invitee_bonus_rate_percent)}%`, label: t('partner.stats.bonus') })
   if (c.withdraw_enabled) out.push({ key: 'withdraw', value: t('partner.stats.withdrawValue', { min: money(Number(c.withdraw_min_cny || 0)) }), label: t('partner.stats.withdraw') })
   return out

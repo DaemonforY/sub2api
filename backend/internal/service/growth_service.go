@@ -24,32 +24,34 @@ import (
 // "推广设置" page (GET/PUT /admin/growth/settings).
 
 const (
-	SettingKeyGrowthInviteeBonusRate    = "growth_invitee_bonus_rate"         // 被邀请人首单奖励比例（百分比，0=关闭）
-	SettingKeyGrowthInviteeBonusCap     = "growth_invitee_bonus_cap"          // 被邀请人首单奖励上限（0=不限）
-	SettingKeyGrowthLeaderboardEnabled  = "growth_leaderboard_enabled"        // 是否向用户展示邀请排行榜
-	SettingKeyGrowthSignupBonus         = "growth_invitee_signup_bonus"       // 被邀请人注册试用余额（0=关闭）
-	SettingKeyGrowthSignupDailyLimit    = "growth_invitee_signup_daily_limit" // 注册试用每天最多发放人数
-	SettingKeyGrowthWithdrawEnabled     = "growth_withdraw_enabled"           // 是否开放返利提现（人工打款）
-	SettingKeyGrowthWithdrawMinCNY      = "growth_withdraw_min_cny"           // 最低提现金额（元）
-	SettingKeyGrowthWithdrawMonthly     = "growth_withdraw_monthly_limit"     // 每人每月最多提现次数（0=不限）
-	SettingKeyPriceLockEnabled          = "plan_price_lock_enabled"           // 老用户锁价（默认开启）
-	SettingKeyPriceLockGraceDays        = "plan_price_lock_grace_days"        // 订阅到期后多少天内续费仍按锁定价
-	SettingKeyEduVerifyEnabled          = "edu_verify_enabled"                // 是否开放教育邮箱认证
-	SettingKeyEduEmailSuffixes          = "edu_email_suffixes"                // 教育邮箱后缀（JSON 数组，如 ["edu.cn"]）
-	SettingKeyEduSubscriptionDiscount   = "edu_subscription_discount_percent" // 认证用户订阅折扣（百分比，0=无折扣）
-	SettingKeyGrowthFirstTopupRate      = "growth_first_topup_bonus_rate"     // 首充奖励比例（百分比，0=关闭）
-	SettingKeyGrowthFirstTopupCap       = "growth_first_topup_bonus_cap"      // 首充奖励上限（0=不限）
-	SettingKeyGrowthFirstTopupMin       = "growth_first_topup_min_amount"     // 首充奖励起充金额（到账余额）
-	growthSettingsCacheTTL              = 5 * time.Second
-	growthInviteeBonusRateMax           = 100.0
-	growthEduDiscountMax                = 90.0
-	growthEduSuffixesMax                = 20
-	growthLeaderboardPublicLimitDefault = 20
-	growthSignupBonusMax                = 5.0
-	growthSignupDailyLimitDefault       = 20
-	growthSignupDailyLimitMax           = 1000
-	growthPriceLockGraceDefault         = 30
-	growthPriceLockGraceMax             = 365
+	SettingKeyGrowthInviteeBonusRate   = "growth_invitee_bonus_rate"         // 被邀请人首单奖励比例（百分比，0=关闭）
+	SettingKeyGrowthInviteeBonusCap    = "growth_invitee_bonus_cap"          // 被邀请人首单奖励上限（0=不限）
+	SettingKeyGrowthLeaderboardEnabled = "growth_leaderboard_enabled"        // 是否向用户展示邀请排行榜
+	SettingKeyGrowthSignupBonus        = "growth_invitee_signup_bonus"       // 被邀请人注册试用余额（0=关闭）
+	SettingKeyGrowthSignupDailyLimit   = "growth_invitee_signup_daily_limit" // 注册试用每天最多发放人数
+	SettingKeyGrowthWithdrawEnabled    = "growth_withdraw_enabled"           // 是否开放返利提现（人工打款）
+	SettingKeyGrowthWithdrawMinCNY     = "growth_withdraw_min_cny"           // 最低提现金额（元）
+	SettingKeyGrowthWithdrawMonthly    = "growth_withdraw_monthly_limit"     // 每人每月最多提现次数（0=不限）
+	SettingKeyPriceLockEnabled         = "plan_price_lock_enabled"           // 老用户锁价（默认开启）
+	SettingKeyPriceLockGraceDays       = "plan_price_lock_grace_days"        // 订阅到期后多少天内续费仍按锁定价
+	SettingKeyEduVerifyEnabled         = "edu_verify_enabled"                // 是否开放教育邮箱认证
+	SettingKeyEduEmailSuffixes         = "edu_email_suffixes"                // 教育邮箱后缀（JSON 数组，如 ["edu.cn"]）
+	SettingKeyEduSubscriptionDiscount  = "edu_subscription_discount_percent" // 认证用户订阅折扣（百分比，0=无折扣）
+	SettingKeyGrowthFirstTopupRate     = "growth_first_topup_bonus_rate"     // 首充奖励比例（百分比，0=关闭）
+	SettingKeyGrowthFirstTopupCap      = "growth_first_topup_bonus_cap"      // 首充奖励上限（0=不限）
+	SettingKeyGrowthFirstTopupMin      = "growth_first_topup_min_amount"     // 首充奖励起充金额（到账余额）
+	// 订阅订单返利比例（百分比；空 = 和充值一样用统一比例；有专属比例的邀请人不受影响）
+	SettingKeyGrowthSubscriptionRebateRate = "growth_subscription_rebate_rate"
+	growthSettingsCacheTTL                 = 5 * time.Second
+	growthInviteeBonusRateMax              = 100.0
+	growthEduDiscountMax                   = 90.0
+	growthEduSuffixesMax                   = 20
+	growthLeaderboardPublicLimitDefault    = 20
+	growthSignupBonusMax                   = 5.0
+	growthSignupDailyLimitDefault          = 20
+	growthSignupDailyLimitMax              = 1000
+	growthPriceLockGraceDefault            = 30
+	growthPriceLockGraceMax                = 365
 	// One inviter gets at most this many trial credits granted to their invitees per day.
 	growthSignupPerInviterDaily    = 5
 	growthLeaderboardAdminLimitMax = 500
@@ -100,6 +102,9 @@ type GrowthSettings struct {
 	FirstTopupBonusPercent float64 `json:"first_topup_bonus_percent"`
 	FirstTopupBonusCap     float64 `json:"first_topup_bonus_cap"`
 	FirstTopupMinAmount    float64 `json:"first_topup_min_amount"`
+	// 订阅订单返利比例: subscription orders earn the inviter this % instead of the normal rate
+	// (nil = the normal rate). Inviters with an exclusive rate keep it on every order.
+	SubscriptionRebateRatePercent *float64 `json:"subscription_rebate_rate_percent"`
 	// 未付款订单提醒: email users whose order expired unpaid (see AbandonedOrderReminderService).
 	AbandonedOrderReminder bool `json:"abandoned_order_reminder"`
 	// 体验金用完提醒: one email when a recent sign-up spends the trial credit without paying.
@@ -225,9 +230,9 @@ func (s *GrowthService) shadowed(userID int64) bool {
 func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error) {
 	s.mu.Lock()
 	if s.cached != nil && time.Since(s.cachedAt) < growthSettingsCacheTTL {
-		out := *s.cached
+		out := s.cached.clone()
 		s.mu.Unlock()
-		return &out, nil
+		return out, nil
 	}
 	s.mu.Unlock()
 
@@ -237,7 +242,7 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 		SettingKeyEduVerifyEnabled, SettingKeyEduEmailSuffixes, SettingKeyEduSubscriptionDiscount,
 		SettingKeyGrowthWithdrawEnabled, SettingKeyGrowthWithdrawMinCNY, SettingKeyGrowthWithdrawMonthly,
 		SettingKeyGrowthFirstTopupRate, SettingKeyGrowthFirstTopupCap, SettingKeyGrowthFirstTopupMin,
-		SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
+		SettingKeyGrowthSubscriptionRebateRate, SettingKeyGrowthAbandonedOrderReminder, SettingKeyGrowthTrialExhaustedEmail, SettingKeyGrowthWinbackEmail,
 		SettingKeyGrowthSignupTrialDedupDays, SettingKeyGrowthShadowLinkedFlagged, SettingKeyGrowthShadowFreeDailyUSD,
 		SettingKeyGrowthShadowBlockPayments, SettingKeyGrowthSignupTrialUnusedDays,
 		SettingKeyRiskLinkedSignup, SettingKeyRiskTrialDay1, SettingKeyRiskRelayFree, SettingKeyRiskBurstSignups,
@@ -250,8 +255,19 @@ func (s *GrowthService) GetSettings(ctx context.Context) (*GrowthSettings, error
 	s.mu.Lock()
 	s.cached, s.cachedAt = settings, time.Now()
 	s.mu.Unlock()
-	out := *settings
-	return &out, nil
+	return settings.clone(), nil
+}
+
+// clone copies the settings, including what pointer fields point to, so a caller that decodes
+// JSON on top of its copy (the admin PUT does) can't change the cached settings.
+func (g *GrowthSettings) clone() *GrowthSettings {
+	out := *g
+	out.EduEmailSuffixes = append([]string(nil), g.EduEmailSuffixes...)
+	if g.SubscriptionRebateRatePercent != nil {
+		v := *g.SubscriptionRebateRatePercent
+		out.SubscriptionRebateRatePercent = &v
+	}
+	return &out
 }
 
 func parseGrowthSettings(vals map[string]string) *GrowthSettings {
@@ -283,6 +299,9 @@ func parseGrowthSettings(vals map[string]string) *GrowthSettings {
 			MinCNY:       clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMinCNY], withdrawMinCNYDefault), withdrawMinCNYFloor, 100000),
 			MonthlyLimit: int(clampFloat(parseFloatOr(vals[SettingKeyGrowthWithdrawMonthly], withdrawMonthlyLimitDefault), 0, withdrawMonthlyLimitMax)),
 		},
+	}
+	if rate, ok := parseSubscriptionRebateRate(vals[SettingKeyGrowthSubscriptionRebateRate]); ok {
+		settings.SubscriptionRebateRatePercent = &rate
 	}
 	if raw := strings.TrimSpace(vals[SettingKeyEduEmailSuffixes]); raw != "" {
 		var list []string
@@ -336,6 +355,13 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 	if !finite(in.FirstTopupBonusCap) || in.FirstTopupBonusCap < 0 || !finite(in.FirstTopupMinAmount) || in.FirstTopupMinAmount < 0 {
 		return nil, infraerrors.BadRequest("INVALID_FIRST_TOPUP_LIMITS", "首充奖励上限和起充金额不能为负数（First top-up cap and minimum must be >= 0）")
 	}
+	subscriptionRebate := ""
+	if r := in.SubscriptionRebateRatePercent; r != nil {
+		if !finite(*r) || *r < AffiliateRebateRateMin || *r > AffiliateRebateRateMax {
+			return nil, infraerrors.BadRequest("INVALID_SUBSCRIPTION_REBATE_RATE", "订阅订单返利比例需在 0 到 100 之间，留空表示和充值一样（Subscription rebate rate must be between 0 and 100）")
+		}
+		subscriptionRebate = strconv.FormatFloat(*r, 'f', -1, 64)
+	}
 	suffixes := normalizeEduSuffixes(in.EduEmailSuffixes)
 	if len(suffixes) == 0 {
 		return nil, infraerrors.BadRequest("INVALID_EDU_SUFFIXES", "at least one school email suffix is required")
@@ -377,6 +403,7 @@ func (s *GrowthService) UpdateSettings(ctx context.Context, in GrowthSettings) (
 		SettingKeyGrowthFirstTopupRate:         strconv.FormatFloat(in.FirstTopupBonusPercent, 'f', -1, 64),
 		SettingKeyGrowthFirstTopupCap:          strconv.FormatFloat(in.FirstTopupBonusCap, 'f', -1, 64),
 		SettingKeyGrowthFirstTopupMin:          strconv.FormatFloat(in.FirstTopupMinAmount, 'f', -1, 64),
+		SettingKeyGrowthSubscriptionRebateRate: subscriptionRebate,
 		SettingKeyGrowthAbandonedOrderReminder: strconv.FormatBool(in.AbandonedOrderReminder),
 		SettingKeyGrowthTrialExhaustedEmail:    strconv.FormatBool(in.TrialExhaustedEmail),
 		SettingKeyGrowthWinbackEmail:           strconv.FormatBool(in.WinbackEmail),

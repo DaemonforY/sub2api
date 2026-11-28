@@ -27,8 +27,8 @@ export default {
       friendDesc: 'of the first payment back as balance (once{cap})',
       you: 'You',
       youDesc: 'rebate on every payment your friend makes',
-      example: 'Example: friend pays ¥{amount} → friend gets ¥{bonus} balance, you get ¥{rebate}',
-      exampleNoBonus: 'Example: friend pays ¥{amount} → you get ¥{rebate}'
+      example: 'Example: friend tops up ¥{amount} → friend gets ¥{bonus} balance, you get ¥{rebate}',
+      exampleNoBonus: 'Example: friend tops up ¥{amount} → you get ¥{rebate}'
     },
     student: {
       tag: 'Students / teachers',
@@ -45,7 +45,7 @@ export default {
       bonusTitle: 'Sign up here: {rate}% back on first order',
       bonusDesc: 'Credited to your balance automatically{cap}',
       rebateTitle: 'Invite classmates, save together',
-      rebateDesc: 'Earn {rate}% of every payment they make'
+      rebateDesc: 'Earn {rate}% of their top-ups'
     },
     canvas: {
       tag: 'Infinite canvas',
@@ -362,6 +362,11 @@ export default {
         saved: 'Growth settings saved',
         affiliateOff: 'The affiliate program is turned off, so the invitee bonus and leaderboard are inactive. Enable it in System settings first.',
         inviteeBonusTitle: 'Invitee first-order bonus',
+        subscriptionRebateTitle: 'Subscription order rebate',
+        subscriptionRebateDesc: 'When an invitee buys a subscription plan, the inviter earns this rate; balance top-ups keep the normal rate. Inviters with an exclusive rate (e.g. partner bloggers) keep it on every order.',
+        subscriptionRebateRate: 'Subscription rebate rate (%)',
+        subscriptionRebatePlaceholder: 'Empty = same as top-ups',
+        subscriptionRebateHint: 'Empty means subscriptions earn the normal rate from System settings → Referrals; applies to orders paid after saving.',
         firstTopupTitle: 'First top-up bonus',
         abandonedTitle: 'Unpaid order reminder',
         trialTitle: 'Trial credit used up',

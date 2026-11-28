@@ -42,7 +42,7 @@
               {{ formattedRebateRate }}<span class="ml-0.5 text-base font-medium">%</span>
             </p>
             <p class="mt-1 text-xs text-gray-400 dark:text-dark-500">
-              {{ t('affiliate.stats.rebateRateHint') }}
+              {{ subscriptionRebateRate != null ? t('affiliate.stats.rebateRateHintSub', { rate: subscriptionRebateRate }) : t('affiliate.stats.rebateRateHint') }}
             </p>
           </div>
           <div class="card p-5">
@@ -237,6 +237,13 @@ const inviteLink = computed(() => {
 // We trim trailing zeros (e.g. 20.00 → "20", 12.50 → "12.5") for a cleaner UI.
 const formattedRebateRate = computed(() => {
   const v = detail.value?.effective_rebate_rate_percent ?? 0
+  const rounded = Math.round(v * 100) / 100
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toString()
+})
+
+const subscriptionRebateRate = computed(() => {
+  const v = detail.value?.effective_subscription_rebate_rate_percent
+  if (v == null) return null
   const rounded = Math.round(v * 100) / 100
   return Number.isInteger(rounded) ? String(rounded) : rounded.toString()
 })

@@ -19,8 +19,9 @@ export default {
     },
     invite: {
       title: '邀请好友',
-      descBoth: '好友首单返 {bonus}%，你拿 {rebate}% 返利',
-      descRebate: '好友每笔付费你拿 {rebate}% 返利',
+      descBoth: '好友首单返 {bonus}%，好友充值你拿 {rebate}% 返利',
+      descRebate: '好友充值你拿 {rebate}% 返利',
+      descSub: '（订阅 {sub}%）',
       descBonus: '好友首单返 {bonus}% 余额',
       descWithdraw: '，返利可提现',
       value: '双向奖'

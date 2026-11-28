@@ -12,6 +12,8 @@ export interface GrowthPublicConfig {
   invitee_signup_bonus: number
   /** Global share (%) of each invitee payment the inviter earns; per-user overrides not reflected. */
   inviter_rebate_rate_percent?: number
+  /** Rate subscription orders earn instead, when it differs from the one above. */
+  subscription_rebate_rate_percent?: number
   /** 老用户锁价: buyers keep their price on renewal within price_lock_grace_days of expiry. */
   price_lock_enabled: boolean
   price_lock_grace_days: number
@@ -184,6 +186,8 @@ export interface GrowthSettings {
   first_topup_bonus_percent: number
   first_topup_bonus_cap: number
   first_topup_min_amount: number
+  /** 订阅订单返利比例 (%); null = subscriptions earn the normal rate. Exclusive rates are unaffected. */
+  subscription_rebate_rate_percent: number | null
   abandoned_order_reminder: boolean
   trial_exhausted_email: boolean
   winback_email: boolean

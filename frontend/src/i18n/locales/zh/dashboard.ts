@@ -733,6 +733,7 @@ export default {
     stats: {
       rebateRate: '我的返利比例',
       rebateRateHint: '被邀请用户每次充值后你可获得的返利比例',
+      rebateRateHintSub: '好友充值按这个比例，买订阅套餐按 {rate}%',
       invitedUsers: '邀请人数',
       availableQuota: '可转返利额度',
       frozenQuota: '冻结中',

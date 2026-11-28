@@ -729,6 +729,7 @@ export default {
     stats: {
       rebateRate: 'My Rebate Rate',
       rebateRateHint: 'What you earn each time an invitee recharges',
+      rebateRateHintSub: 'On invitee top-ups; subscription plans earn {rate}%',
       invitedUsers: 'Invited Users',
       availableQuota: 'Available Rebate Quota',
       frozenQuota: 'Frozen',

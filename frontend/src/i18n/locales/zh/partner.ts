@@ -7,12 +7,15 @@ export default {
     heroSubtitle: '你身边总有人想用 GPT、画图和 Codex，却不知道去哪买、怎么付钱。把 {site} 推荐给他们：他们省事，你拿分成。',
     stats: {
       rebate: '好友每笔付费，你拿',
+      rebateTopup: '好友充值，你拿',
+      rebateSub: '买订阅套餐 {rate}%',
       bonus: '好友首单多送',
       withdraw: '提现到支付宝 / 微信',
       withdrawValue: '¥{min} 起',
       signup: '好友注册多送',
     },
     example: '举个例子：好友充值 ¥100，你得 ¥{rebate} 返利；他之后每次续费、充值，你都按 {rate}% 继续拿。',
+    exampleSub: '举个例子：好友充值 ¥100，你得 ¥{rebate} 返利；买 ¥100 的订阅套餐，你得 ¥{subRebate}。之后每次付费都继续算。',
     ctaInvite: '拿我的邀请链接',
     ctaRegister: '注册拿邀请链接',
     ways: {
@@ -25,6 +28,7 @@ export default {
         p1: '控制台「邀请返利」里有你的专属链接和海报',
         p2: '好友注册多送体验额度，首单多送余额',
         p3: '好友每笔真实付费，你拿 {rate}% 返利',
+        p3Sub: '好友充值你拿 {rate}% 返利，买订阅套餐拿 {sub}%',
         p3NoRate: '好友每笔真实付费，你都拿返利',
         cta: '拿邀请链接',
       },

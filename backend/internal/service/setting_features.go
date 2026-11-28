@@ -122,6 +122,30 @@ func (s *SettingService) GetAffiliateRebateRatePercent(ctx context.Context) floa
 	return clampAffiliateRebateRate(rate)
 }
 
+// GetSubscriptionRebateRatePercent is the rebate rate for subscription orders, for inviters
+// without an exclusive rate. ok is false when it is unset (subscriptions then earn the normal
+// rate). Edited on 推广设置 (GrowthSettings.SubscriptionRebateRatePercent).
+func (s *SettingService) GetSubscriptionRebateRatePercent(ctx context.Context) (rate float64, ok bool) {
+	raw, err := s.settingRepo.GetValue(ctx, SettingKeyGrowthSubscriptionRebateRate)
+	if err != nil {
+		return 0, false
+	}
+	return parseSubscriptionRebateRate(raw)
+}
+
+// parseSubscriptionRebateRate reads the stored subscription rebate rate ("" = unset).
+func parseSubscriptionRebateRate(raw string) (float64, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, false
+	}
+	rate, err := strconv.ParseFloat(raw, 64)
+	if err != nil || math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
+		return 0, false
+	}
+	return clampAffiliateRebateRate(rate), true
+}
+
 // GetAffiliateRebateFreezeHours 返回返利冻结期（小时）。
 // 返回 0 表示不冻结（向后兼容）。
 func (s *SettingService) GetAffiliateRebateFreezeHours(ctx context.Context) int {

@@ -31,6 +31,18 @@
           </div>
         </section>
 
+        <section class="card space-y-4 p-6" data-testid="growth-subscription-rebate">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white">📦 {{ t('growth.admin.settings.subscriptionRebateTitle') }}</h2>
+          <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('growth.admin.settings.subscriptionRebateDesc') }}</p>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="input-label" for="growth-sub-rebate">{{ t('growth.admin.settings.subscriptionRebateRate') }}</label>
+              <input id="growth-sub-rebate" v-model="subscriptionRebateText" type="number" min="0" max="100" step="0.1" class="input" :placeholder="t('growth.admin.settings.subscriptionRebatePlaceholder')" />
+              <p class="mt-1 text-xs text-gray-400">{{ t('growth.admin.settings.subscriptionRebateHint') }}</p>
+            </div>
+          </div>
+        </section>
+
         <section class="card space-y-4 p-6" data-testid="growth-first-topup">
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">💰 {{ t('growth.admin.settings.firstTopupTitle') }}</h2>
           <p class="text-xs text-gray-500 dark:text-dark-400">{{ t('growth.admin.settings.firstTopupDesc') }}</p>
@@ -332,6 +344,8 @@ const appStore = useAppStore()
 const loading = ref(true)
 const saving = ref(false)
 const form = ref<GrowthSettings | null>(null)
+// 订阅订单返利比例: empty = subscriptions earn the normal rate (sent as null).
+const subscriptionRebateText = ref('')
 const suffixText = ref('')
 const affiliateEnabled = ref(true)
 const priceLocks = ref<PlanPriceLockStat[]>([])
@@ -369,6 +383,7 @@ async function loadSettings() {
   try {
     const [settings, publicConfig] = await Promise.all([adminGrowthAPI.getSettings(), growthAPI.getPublicConfig()])
     form.value = settings
+    subscriptionRebateText.value = settings.subscription_rebate_rate_percent == null ? '' : String(settings.subscription_rebate_rate_percent)
     suffixText.value = settings.edu_email_suffixes.join('\n')
     affiliateEnabled.value = publicConfig.affiliate_enabled
     adminGrowthAPI.priceLocks().then((v) => { priceLocks.value = v }).catch(() => {})
@@ -392,6 +407,7 @@ async function save() {
       first_topup_bonus_percent: Number(form.value.first_topup_bonus_percent) || 0,
       first_topup_bonus_cap: Number(form.value.first_topup_bonus_cap) || 0,
       first_topup_min_amount: Number(form.value.first_topup_min_amount) || 0,
+      subscription_rebate_rate_percent: String(subscriptionRebateText.value ?? '').trim() === '' ? null : Number(subscriptionRebateText.value),
       invitee_signup_daily_limit: Number(form.value.invitee_signup_daily_limit) || 20,
       price_lock_grace_days: Math.max(0, Math.round(Number(form.value.price_lock_grace_days) || 0)),
       signup_trial_dedup_days: Math.min(365, Math.max(0, Math.round(Number(form.value.signup_trial_dedup_days) || 0))),
@@ -404,6 +420,7 @@ async function save() {
       edu_email_suffixes: suffixText.value.split(/[\s,，、]+/).map((s) => s.trim()).filter(Boolean),
     }
     form.value = await adminGrowthAPI.updateSettings(payload)
+    subscriptionRebateText.value = form.value.subscription_rebate_rate_percent == null ? '' : String(form.value.subscription_rebate_rate_percent)
     suffixText.value = form.value.edu_email_suffixes.join('\n')
     appStore.showSuccess(t('growth.admin.settings.saved'))
   } catch (err) {

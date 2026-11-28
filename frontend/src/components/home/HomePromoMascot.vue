@@ -213,6 +213,7 @@ const offers = computed<Offer[]>(() => {
         : rebate > 0
           ? t('promoMascot.invite.descRebate', { rebate: pct(rebate) })
           : t('promoMascot.invite.descBonus', { bonus: pct(bonus) })
+    if (rebate > 0 && cfg.subscription_rebate_rate_percent != null) desc += t('promoMascot.invite.descSub', { sub: pct(Number(cfg.subscription_rebate_rate_percent)) })
     if (rebate > 0 && cfg.withdraw_enabled) desc += t('promoMascot.invite.descWithdraw')
     list.push({
       key: 'invite',

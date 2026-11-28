@@ -12,10 +12,11 @@
           <div v-for="s in stats" :key="s.key" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 dark:border-amber-700/40 dark:bg-amber-900/20">
             <p class="text-3xl font-extrabold text-amber-700 dark:text-amber-300">{{ s.value }}</p>
             <p class="mt-1 text-sm text-amber-900/80 dark:text-amber-100/70">{{ s.label }}</p>
+            <p v-if="s.sub" class="mt-0.5 text-xs text-amber-800/70 dark:text-amber-200/60" data-testid="partner-stat-sub">{{ s.sub }}</p>
           </div>
         </div>
         <p v-if="rate > 0" class="mx-auto mt-4 max-w-2xl text-sm text-gray-500 dark:text-dark-400" data-testid="partner-example">
-          {{ t('partner.example', { rebate: money(rate), rate: money(rate) }) }}
+          {{ subRate != null ? t('partner.exampleSub', { rebate: money(rate), subRebate: money(subRate) }) : t('partner.example', { rebate: money(rate), rate: money(rate) }) }}
         </p>
 
         <div class="mt-7 flex justify-center">
@@ -102,17 +103,31 @@ const cfg = ref<GrowthPublicConfig | null>(null)
 const money = (n: number) => String(Math.round(n * 100) / 100)
 const rate = computed(() => (cfg.value?.affiliate_enabled ? Number(cfg.value.inviter_rebate_rate_percent || 0) : 0))
 const withdrawOn = computed(() => !!cfg.value?.withdraw_enabled)
+// 订阅订单返利比例, only sent when it differs from the top-up rate.
+const subRate = computed(() => (rate.value > 0 && cfg.value?.subscription_rebate_rate_percent != null ? Number(cfg.value.subscription_rebate_rate_percent) : null))
 
 // Only what is switched on in 推广设置 is shown, so the page never promises a closed program.
 const stats = computed(() => {
   const c = cfg.value
   if (!c?.affiliate_enabled) return []
-  const out: { key: string; value: string; label: string }[] = []
-  if (rate.value > 0) out.push({ key: 'rebate', value: `${money(rate.value)}%`, label: t('partner.stats.rebate') })
+  const out: { key: string; value: string; label: string; sub?: string }[] = []
+  if (rate.value > 0) {
+    out.push(
+      subRate.value != null
+        ? { key: 'rebate', value: `${money(rate.value)}%`, label: t('partner.stats.rebateTopup'), sub: t('partner.stats.rebateSub', { rate: money(subRate.value) }) }
+        : { key: 'rebate', value: `${money(rate.value)}%`, label: t('partner.stats.rebate') },
+    )
+  }
   if (c.invitee_bonus_rate_percent > 0) out.push({ key: 'bonus', value: `${money(c.invitee_bonus_rate_percent)}%`, label: t('partner.stats.bonus') })
   else if (c.invitee_signup_bonus > 0) out.push({ key: 'signup', value: `$${money(c.invitee_signup_bonus)}`, label: t('partner.stats.signup') })
   if (c.withdraw_enabled) out.push({ key: 'withdraw', value: t('partner.stats.withdrawValue', { min: money(Number(c.withdraw_min_cny || 0)) }), label: t('partner.stats.withdraw') })
   return out
+})
+
+const invitePoint = computed(() => {
+  if (rate.value <= 0) return t('partner.ways.invite.p3NoRate')
+  if (subRate.value != null) return t('partner.ways.invite.p3Sub', { rate: money(rate.value), sub: money(subRate.value) })
+  return t('partner.ways.invite.p3', { rate: money(rate.value) })
 })
 
 type IconName = 'users' | 'chatBubble' | 'book'
@@ -125,7 +140,7 @@ const ways = computed(() => {
       tone: 'bg-amber-500',
       title: t('partner.ways.invite.title'),
       fit: t('partner.ways.invite.fit'),
-      points: [t('partner.ways.invite.p1'), t('partner.ways.invite.p2'), rate.value > 0 ? t('partner.ways.invite.p3', { rate: money(rate.value) }) : t('partner.ways.invite.p3NoRate')],
+      points: [t('partner.ways.invite.p1'), t('partner.ways.invite.p2'), invitePoint.value],
       cta: t('partner.ways.invite.cta'),
       to: inviteTo.value,
     })

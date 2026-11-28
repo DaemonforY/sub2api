@@ -27,8 +27,8 @@ export default {
       friendDesc: '首笔付费返到好友余额（每人一次{cap}）',
       you: '你',
       youDesc: '好友每一笔付费，你都拿返利',
-      example: '举个例子：好友付费 ¥{amount} → 好友得 ¥{bonus} 余额，你得 ¥{rebate} 返利',
-      exampleNoBonus: '举个例子：好友付费 ¥{amount} → 你得 ¥{rebate} 返利'
+      example: '举个例子：好友充值 ¥{amount} → 好友得 ¥{bonus} 余额，你得 ¥{rebate} 返利',
+      exampleNoBonus: '举个例子：好友充值 ¥{amount} → 你得 ¥{rebate} 返利'
     },
     student: {
       tag: '学生 / 教师 · 教育优惠',
@@ -45,7 +45,7 @@ export default {
       bonusTitle: '扫码注册，首单返 {rate}% 余额',
       bonusDesc: '首笔付费自动返到余额{cap}',
       rebateTitle: '邀请同学，一起省',
-      rebateDesc: '好友每笔付费你得 {rate}% 返利，可直接买订阅'
+      rebateDesc: '好友充值你得 {rate}% 返利，可直接买订阅'
     },
     canvas: {
       tag: '无限画布',
@@ -362,6 +362,11 @@ export default {
         saved: '推广设置已保存',
         affiliateOff: '邀请返利总开关当前是关闭的，首单奖励和排行榜不会生效。请先在「系统设置」中开启邀请返利。',
         inviteeBonusTitle: '被邀请人首单奖励',
+        subscriptionRebateTitle: '订阅订单返利',
+        subscriptionRebateDesc: '好友买订阅套餐时，邀请人按这个比例拿返利；充值余额仍按统一返利比例。订阅用满成本高，可以设得比充值低。有专属比例的邀请人（如合作博主）不受影响，所有订单都按专属比例。',
+        subscriptionRebateRate: '订阅订单返利比例（%）',
+        subscriptionRebatePlaceholder: '留空 = 和充值一样',
+        subscriptionRebateHint: '留空表示订阅也按「系统设置 → 邀请返利」里的统一比例；只影响设置之后支付的订单。',
         firstTopupTitle: '首充奖励',
         abandonedTitle: '未付款订单提醒',
         trialTitle: '体验金用完提醒',
